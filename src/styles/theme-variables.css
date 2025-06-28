@@ -1,0 +1,76 @@
+/* 甘特图组件主题变量 */
+
+/* 明亮主题 */
+:root {
+  /* 背景色 - 原始的浅色设计 */
+  --gantt-bg-primary: #ffffff; /* 最浅背景 - body主体 */
+  --gantt-bg-secondary: #f5f7fa; /* Header背景 - 浅色 */
+  --gantt-bg-tertiary: #f9f9f9; /* 三级背景 - 父任务 */
+  --gantt-bg-hover: rgba(225, 228, 231, 0.2); /* 悬停背景 - 普通任务，增加透明度 */
+  --gantt-bg-hover-parent: rgba(245, 247, 250, 0.8); /* 悬停背景 - 父任务，稍高透明度 */
+  --gantt-bg-toolbar: #f8f9fa; /* 工具栏背景 - 中性浅色 */
+
+  /* 文字颜色 */
+  --gantt-text-primary: #333333;
+  --gantt-text-secondary: #8d9095;
+  --gantt-text-muted: #909399;
+  --gantt-text-white: #ffffff;
+  --gantt-text-header: #333333; /* Header文字颜色 - 明亮模式下Header为浅色背景，使用深色文字 */
+
+  /* 边框颜色 */
+  --gantt-border-light: #ebeef5;
+  --gantt-border-medium: #dcdfe6; /* Header边框 - 与浅色Header搭配 */
+  --gantt-border-dark: #c0c4cc;
+  --gantt-border-color: #dcdfe6; /* 通用边框色，与按钮边框一致 */
+
+  /* 强调色 */
+  --gantt-primary: #409eff;
+  --gantt-primary-light: #ecf5ff;
+  --gantt-success: #67c23a;
+  --gantt-warning: #e6a23c;
+  --gantt-warning-light: #f5dab1;
+  --gantt-danger: #f56c6c;
+  --gantt-danger-light: #fab6b6; /* 里程碑边框浅红色 */
+
+  /* 滚动条 */
+  --gantt-scrollbar-thumb: #c1c1c1;
+  --gantt-scrollbar-thumb-hover: #a8a8a8;
+}
+
+/* 暗黑主题 */
+html[data-theme='dark'] {
+  /* 背景色 - 大幅提升亮度，接近中性灰 */
+  --gantt-bg-primary: #6b6b6b; /* Body主体 - 明显更亮，接近中性灰 */
+  --gantt-bg-secondary: #4b4b4b; /* Header背景 - 中等亮度，保持层次 */
+  --gantt-bg-tertiary: #7b7b7b; /* 三级背景 - 父任务，最亮的背景 */
+  --gantt-bg-hover: rgba(180, 180, 180, 0.35); /* 悬停背景 - 明亮的悬停效果 */
+  --gantt-bg-hover-parent: rgba(140, 140, 140, 0.8); /* 悬停背景 - 父任务 */
+  --gantt-bg-toolbar: #5b5b5b; /* 工具栏背景 - 与Body背景保持协调 */
+
+  /* 文字颜色 - 最大化对比度，确保清晰可读 */
+  --gantt-text-primary: #ffffff; /* 主要文字纯白 */
+  --gantt-text-secondary: #f8f8f8; /* 次要文字接近纯白 */
+  --gantt-text-muted: #e0e0e0; /* 弱化文字保持高可读性 */
+  --gantt-text-white: #ffffff; /* 纯白 */
+  --gantt-text-parent: #ffffff; /* 父任务文字纯白 */
+  --gantt-text-header: #ffffff; /* Header文字纯白 */
+
+  /* 边框颜色 - 高对比度分界线 */
+  --gantt-border-light: #888888; /* body内边框 - 高可见性 */
+  --gantt-border-medium: #666666; /* header边框 - 中等对比 */
+  --gantt-border-dark: #999999; /* 强调边框 - 最清晰 */
+  --gantt-border-color: #808080; /* 通用边框色，高可见性 */
+
+  /* 强调色 - 鲜艳醒目，在亮灰背景上突出 */
+  --gantt-primary: #3399ff; /* 鲜艳的蓝色，在亮灰背景上突出 */
+  --gantt-primary-light: #4d6699; /* 深蓝背景 */
+  --gantt-success: #66cc33; /* 鲜艳的绿色 */
+  --gantt-warning: #ff9933; /* 鲜艳的橙色 */
+  --gantt-warning-light: #cc7722; /* 深橙背景 */
+  --gantt-danger: #ff4444; /* 鲜艳的红色 */
+  --gantt-danger-light: #cc3333; /* 深红背景，里程碑边框 */
+
+  /* 滚动条 - 高可见性 */
+  --gantt-scrollbar-thumb: #888888; /* 明亮的滚动条 */
+  --gantt-scrollbar-thumb-hover: #999999; /* 悬停时更亮 */
+}

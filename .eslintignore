@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+coverage/
+
+# Generated files
+*.d.ts
+.tmp/
+.cache/
+.vscode/
+.git/
+
+# Config files
+*.config.js
+*.config.ts
+vite.config.*.ts
+.eslintrc.cjs
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

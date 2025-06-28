@@ -1,0 +1,67 @@
+/* 通用 .btn 基础按钮样式 */
+.btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  outline: none;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 通用 .btn-default 按钮样式（亮色+暗黑模式） */
+.btn-default {
+  background: var(--gantt-bg-secondary, #f5f7fa);
+  border-color: var(--gantt-border-medium, #dcdfe6);
+  color: var(--gantt-text-secondary, #8d9095);
+}
+
+.btn-default:hover:not(:disabled) {
+  border-color: var(--gantt-border-dark, #c0c4cc);
+  color: var(--gantt-primary, #409eff);
+  background: var(--gantt-bg-hover, #f0f1f3);
+}
+
+/* 暗黑主题下 .btn-default 全局样式 */
+:global(html[data-theme='dark']) .btn-default {
+  background: var(--gantt-bg-tertiary, #454545) !important;
+  border-color: var(--gantt-border-color, #dcdfe6) !important;
+  color: var(--gantt-text-white, #ffffff) !important;
+}
+
+:global(html[data-theme='dark']) .btn-default:hover:not(:disabled) {
+  background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.1)) !important;
+  border-color: var(--gantt-primary, #409eff) !important;
+  color: var(--gantt-primary, #409eff) !important;
+}
+
+/* 通用 .btn-primary 按钮样式 */
+.btn-primary {
+  background: var(--gantt-primary, #409eff);
+  border-color: var(--gantt-primary, #409eff);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #66b1ff;
+  border-color: #66b1ff;
+}
+
+/* 通用 .btn-danger 按钮样式 */
+.btn-danger {
+  background: var(--gantt-danger, #f56c6c);
+  border-color: var(--gantt-danger, #f56c6c);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #f78989;
+  border-color: #f78989;
+}

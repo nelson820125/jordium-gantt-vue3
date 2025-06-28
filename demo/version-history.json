@@ -1,0 +1,72 @@
+[
+  {
+    "version": "alpha 0.8.1",
+    "date": "2025-06-25",
+    "notes": ["升级优化DatePicker组件"]
+  },
+  {
+    "version": "alpha 0.8.2",
+    "date": "2025-06-25",
+    "notes": ["升级Demo", "移除导出按钮的初始化光晕效果"]
+  },
+  {
+    "version": "alpha 0.8.3",
+    "date": "2025-06-25",
+    "notes": ["升级里程碑Taskbar，允许拖拽"]
+  },
+  {
+    "version": "alpha 0.8.4",
+    "date": "2025-06-25",
+    "notes": ["升级需求/任务TaskBar新建以及上下级关系变更", "添加Github和Gitee的文档入口"]
+  },
+  {
+    "version": "alpha 0.8.5",
+    "date": "2025-06-26",
+    "notes": ["升级Timeline今日定位和滑动问题"]
+  },
+  {
+    "version": "alpha 0.9.0",
+    "date": "2025-06-26",
+    "notes": ["添加新增里程碑和删除里程碑功能"]
+  },
+  {
+    "version": "alpha 0.9.1",
+    "date": "2025-06-27",
+    "notes": ["优化时间轴的延伸"]
+  },
+  {
+    "version": "alpha 0.9.2",
+    "date": "2025-06-27",
+    "notes": ["增加历史版本查看"]
+  },
+  {
+    "version": "alpha 0.9.3",
+    "date": "2025-06-27",
+    "notes": ["修复今日定位问题"]
+  },
+  {
+    "version": "alpha 0.9.4",
+    "date": "2025-06-27",
+    "notes": ["调整暗黑主题的亮度", "调整暗黑主题的布局", "修复暗黑主题下的版本历史的样式"]
+  },
+  {
+    "version": "alpha 0.9.5",
+    "date": "2025-06-27",
+    "notes": ["统一管理各个组件的全球化配置"]
+  },
+  {
+    "version": "alpha 0.9.6",
+    "date": "2025-06-27",
+    "notes": ["各个组件分离Task/Milestone/Language对象"]
+  },
+  {
+    "version": "alpha 0.9.7",
+    "date": "2025-06-28",
+    "notes": ["解决Milestone组件和类型的同名问题"]
+  },
+  {
+    "version": "alpha 0.9.8",
+    "date": "2025-06-28",
+    "notes": ["按钮样式统一管理"]
+  }
+]

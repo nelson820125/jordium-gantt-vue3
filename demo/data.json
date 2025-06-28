@@ -1,0 +1,187 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "name": "项目启动",
+      "assignee": "张三",
+      "startDate": "2025-06-15",
+      "endDate": "2025-06-25",
+      "progress": 100,
+      "estimatedHours": 40,
+      "actualHours": 38,
+      "type": "story",
+      "children": [
+        {
+          "id": 2,
+          "name": "需求分析",
+          "assignee": "李四",
+          "startDate": "2025-04-16",
+          "endDate": "2025-06-20",
+          "progress": 100,
+          "estimatedHours": 16,
+          "actualHours": 15,
+          "type": "task"
+        },
+        {
+          "id": 3,
+          "name": "技术选型",
+          "assignee": "王五",
+          "startDate": "2025-06-21",
+          "endDate": "2025-06-28",
+          "progress": 80,
+          "estimatedHours": 24,
+          "actualHours": 28,
+          "type": "story",
+          "children": [
+            {
+              "id": 4,
+              "name": "调研A",
+              "predecessor": "2",
+              "assignee": "赵六",
+              "startDate": "2025-06-21",
+              "endDate": "2025-06-23",
+              "progress": 80,
+              "estimatedHours": 8,
+              "actualHours": 10,
+              "type": "task"
+            },
+            {
+              "id": 5,
+              "name": "调研B",
+              "predecessor": "4",
+              "assignee": "钱七",
+              "startDate": "2025-06-24",
+              "endDate": "2025-06-28",
+              "progress": 0,
+              "estimatedHours": 16,
+              "actualHours": 0,
+              "type": "task"
+            }
+          ],
+          "collapsed": false
+        }
+      ],
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "name": "开发阶段",
+      "assignee": "开发团队",
+      "startDate": "2025-06-29",
+      "endDate": "2025-07-15",
+      "progress": 30,
+      "estimatedHours": 120,
+      "actualHours": 45,
+      "type": "story",
+      "children": [
+        {
+          "id": 8,
+          "name": "前端开发",
+          "assignee": "李四",
+          "startDate": "2025-06-29",
+          "endDate": "2025-07-10",
+          "progress": 40,
+          "estimatedHours": 80,
+          "actualHours": 35,
+          "type": "task",
+          "predecessor": "5"
+        },
+        {
+          "id": 11,
+          "name": "后端开发",
+          "assignee": "李四",
+          "startDate": "2025-07-07",
+          "endDate": "2025-07-15",
+          "progress": 0,
+          "estimatedHours": 80,
+          "actualHours": 0,
+          "type": "task",
+          "predecessor": "5"
+        },
+        {
+          "id": 12,
+          "name": "Job开发",
+          "assignee": "李四",
+          "startDate": "2025-07-07",
+          "endDate": "2025-07-18",
+          "progress": 0,
+          "estimatedHours": 88,
+          "actualHours": 0,
+          "type": "task",
+          "predecessor": "5"
+        }
+      ],
+      "collapsed": false
+    },
+    {
+      "id": 13,
+      "name": "测试阶段",
+      "assignee": "测试团队",
+      "startDate": "2025-07-21",
+      "endDate": "2025-07-31",
+      "progress": 0,
+      "estimatedHours": 80,
+      "actualHours": 0,
+      "type": "story",
+      "children": [
+        {
+          "id": 14,
+          "name": "SIT",
+          "assignee": "李四",
+          "startDate": "2025-07-21",
+          "endDate": "2025-07-28",
+          "progress": 0,
+          "estimatedHours": 48,
+          "actualHours": 0,
+          "type": "task",
+          "predecessor": "7"
+        },
+        {
+          "id": 15,
+          "name": "UAT",
+          "assignee": "李四",
+          "startDate": "2025-07-29",
+          "endDate": "2025-07-31",
+          "progress": 0,
+          "estimatedHours": 24,
+          "actualHours": 0,
+          "type": "task",
+          "predecessor": "7"
+        }
+      ],
+      "collapsed": false
+    }
+  ],
+  "milestones": [
+    {
+      "id": 6,
+      "name": "技术选型完成",
+      "assignee": "王五",
+      "startDate": "2025-06-25",
+      "endDate": "2025-06-25",
+      "type": "milestone",
+      "icon": "diamond",
+      "description": "完成技术选型调研，确定项目技术栈和架构方案。"
+    },
+    {
+      "id": 10,
+      "name": "开发完成",
+      "assignee": "开发团队",
+      "startDate": "2025-07-11",
+      "endDate": "2025-07-11",
+      "type": "milestone",
+      "icon": "rocket",
+      "description": "完成所有开发任务，准备进入测试阶段。"
+    },
+    {
+      "id": 9,
+      "name": "Alpha版本发布",
+      "assignee": "项目经理",
+      "startDate": "2025-07-15",
+      "endDate": "2025-07-15",
+      "type": "milestone",
+      "icon": "rocket",
+      "description": "发布Alpha测试版本，提供给内部团队进行功能验证和测试。"
+    }
+  ]
+}
