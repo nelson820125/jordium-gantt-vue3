@@ -97,7 +97,7 @@ watch(
       singleValue.value = (newValue as string) || ''
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 处理单日期输入变化（预留，当前版本不使用）
@@ -569,9 +569,6 @@ const showClearButton = computed(() => {
 
 // 计算面板位置
 const panelStyle = computed(() => {
-  // 依赖 positionUpdateKey 来强制重新计算
-  positionUpdateKey.value // eslint-disable-line no-unused-expressions
-
   if (!inputRef.value || !showPicker.value) return {}
 
   const rect = inputRef.value.getBoundingClientRect()

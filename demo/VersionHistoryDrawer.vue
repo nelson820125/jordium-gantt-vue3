@@ -233,9 +233,6 @@ onMounted(async () => {
   top: 18px;
   width: 0;
   height: 0;
-  /*border-top: 6px solid transparent;
-  border-bottom: 6px solid transparent;
-  border-right: 16px solid #fff;*/
   filter: drop-shadow(-2px 0 2px var(--gantt-timeline-line, #a0cfff));
   z-index: 1;
 }
