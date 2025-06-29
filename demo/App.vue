@@ -8,24 +8,10 @@ import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
+import { useMessage } from '../src/composables/useMessage'
+import type { Task } from '../src/models/Task'
 
-interface Task {
-  id: number
-  name: string
-  predecessor?: string
-  assignee?: string
-  startDate?: string
-  endDate?: string
-  progress?: number
-  estimatedHours?: number
-  actualHours?: number
-  children?: Task[]
-  collapsed?: boolean
-  isParent?: boolean
-  type?: string
-  description?: string
-  parentId?: number // 上级任务ID
-}
+const { showMessage } = useMessage()
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
@@ -56,9 +42,7 @@ const toolbarConfig = {
 
 // 自定义CSV导出处理器（可选）
 const handleCustomCsvExport = () => {
-  console.log('自定义CSV导出被调用')
-  console.log('当前任务数据：', tasks.value)
-  console.log('当前里程碑数据：', milestones.value)
+  showMessage('自定义CSV导出被调用', 'info', { closable: true })
 
   // 这里可以实现自定义的CSV导出逻辑
   // 例如：添加额外的数据处理、格式化、或发送到服务器等
@@ -86,11 +70,11 @@ const handleAddMilestone = () => {
 }
 
 const handleLanguageChange = (lang: 'zh' | 'en') => {
-  console.log('语言切换到：', lang)
+  showMessage(`语言切换到：${lang}`, 'info', { closable: true })
 }
 
 const handleThemeChange = (isDark: boolean) => {
-  console.log('主题切换到：', isDark ? '暗黑模式' : '明亮模式')
+  showMessage(`主题切换到：${isDark ? '暗黑模式' : '明亮模式'}`, 'info', { closable: true })
 }
 
 // 里程碑保存处理器示例
@@ -116,13 +100,11 @@ const handleMilestoneSave = (milestone: Task) => {
 
 // 里程碑删除处理器
 const handleMilestoneDelete = async (milestoneId: number) => {
-  console.log('删除里程碑，ID：', milestoneId)
-
   // 从里程碑数据中删除
   const milestoneIndex = milestones.value.findIndex(m => m.id === milestoneId)
   if (milestoneIndex !== -1) {
     milestones.value.splice(milestoneIndex, 1)
-    console.log('里程碑删除成功')
+    showMessage('里程碑删除成功', 'success', { closable: false })
 
     // 等待DOM更新完成
     await nextTick()
@@ -148,10 +130,6 @@ const handleMilestoneDelete = async (milestoneId: number) => {
 
 // 任务更新处理器
 const handleTaskUpdate = (updatedTask: Task) => {
-  console.log('Demo App 接收到任务更新：', updatedTask)
-  console.log('updatedTask.type:', updatedTask.type)
-  console.log('updatedTask.parentId:', updatedTask.parentId)
-
   // 先找到原任务，检查parentId是否改变了
   const findOriginalTask = (taskArray: Task[]): Task | null => {
     for (const task of taskArray) {
@@ -168,7 +146,7 @@ const handleTaskUpdate = (updatedTask: Task) => {
 
   const originalTask = findOriginalTask(tasks.value)
   if (!originalTask) {
-    console.log('未找到要更新的任务，ID：', updatedTask.id)
+    showMessage(`未找到要更新的任务，ID： ${updatedTask.id}`, 'warning', { closable: true })
     return
   }
 
@@ -177,13 +155,10 @@ const handleTaskUpdate = (updatedTask: Task) => {
 
   if (parentIdChanged) {
     // parentId改变了，需要移除任务并重新添加到新位置
-    console.log('任务父级关系改变，执行移动操作')
-
     const removeTaskFromArray = (taskArray: Task[]): Task | null => {
       for (let i = 0; i < taskArray.length; i++) {
         if (taskArray[i].id === updatedTask.id) {
           const removedTask = taskArray.splice(i, 1)[0]
-          console.log('从数组中移除任务：', removedTask)
           return removedTask
         }
 
@@ -218,7 +193,6 @@ const handleTaskUpdate = (updatedTask: Task) => {
             if (!task.children) task.children = []
             task.children.push(taskToAdd)
             task.isParent = true
-            console.log('已将任务添加到新父任务的children中，父任务ID：', taskToAdd.parentId)
             return true
           }
           if (task.children && task.children.length > 0) {
@@ -229,17 +203,16 @@ const handleTaskUpdate = (updatedTask: Task) => {
       }
 
       if (!addToParentChildren(tasks.value)) {
-        console.warn('未找到新父任务，ID：', taskToAdd.parentId, '，将作为顶级任务添加')
+        showMessage(`未找到新父任务，ID： ${taskToAdd.parentId}，将作为顶级任务添加`, 'warning', {
+          closable: true,
+        })
         tasks.value.push(taskToAdd)
       }
     } else {
       tasks.value.push(taskToAdd)
-      console.log('已将任务添加为顶级任务')
     }
   } else {
     // parentId没有改变，只是就地更新任务数据
-    console.log('任务父级关系未变，执行就地更新')
-
     const updateTaskInPlace = (taskArray: Task[]): boolean => {
       for (let i = 0; i < taskArray.length; i++) {
         if (taskArray[i].id === updatedTask.id) {
@@ -251,7 +224,6 @@ const handleTaskUpdate = (updatedTask: Task) => {
               updatedTask.type === 'story' ||
               (taskArray[i].children && taskArray[i].children.length > 0),
           }
-          console.log('已就地更新任务数据：', taskArray[i])
           return true
         }
 
@@ -265,18 +237,15 @@ const handleTaskUpdate = (updatedTask: Task) => {
     }
 
     if (!updateTaskInPlace(tasks.value)) {
-      console.log('就地更新失败，未找到任务，ID：', updatedTask.id)
+      showMessage(`就地更新失败，未找到任务，ID： ${updatedTask.id}`, 'warning', { closable: true })
     }
   }
 
-  console.log('任务更新完成，当前任务数据：', tasks.value)
+  showMessage('任务更新完成', 'success', { closable: false })
 }
 
 // 任务添加处理器
 const handleTaskAdd = (newTask: Task) => {
-  console.log('Demo App 接收到新增任务：', newTask)
-  console.log('newTask.type:', newTask.type)
-
   // 为新任务生成ID（如果没有的话）
   if (!newTask.id) {
     // 找到当前最大的ID，然后+1
@@ -304,7 +273,6 @@ const handleTaskAdd = (newTask: Task) => {
           }
           // 将新任务添加到父任务的children中
           task.children.push({ ...newTask })
-          console.log('已将子任务添加到父任务的children中，父任务ID：', newTask.parentId)
           return true
         }
         // 递归查找父任务（支持多层嵌套）
@@ -331,15 +299,13 @@ const handleTaskAdd = (newTask: Task) => {
 
 // 任务删除处理器
 const handleTaskDelete = (taskToDelete: Task) => {
-  console.log('删除任务：', taskToDelete)
-
   // 递归查找和删除任务（支持嵌套结构）
   const deleteTaskFromArray = (taskArray: Task[]): boolean => {
     for (let i = 0; i < taskArray.length; i++) {
       if (taskArray[i].id === taskToDelete.id) {
         // 找到任务，删除它
         taskArray.splice(i, 1)
-        console.log('已删除任务')
+        showMessage('已删除任务', 'success', { closable: false })
         return true
       }
 
@@ -354,20 +320,17 @@ const handleTaskDelete = (taskToDelete: Task) => {
   }
 
   if (!deleteTaskFromArray(tasks.value)) {
-    console.log('未找到要删除的任务，ID：', taskToDelete.id)
+    showMessage(`未找到要删除的任务，ID： ${taskToDelete.id}`, 'warning', { closable: true })
   }
 }
 
 // 里程碑图标变更处理器
 const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
-  console.log('里程碑图标变更：', { milestoneId, icon })
-
   const milestoneIndex = milestones.value.findIndex(m => m.id === milestoneId)
   if (milestoneIndex !== -1) {
     milestones.value[milestoneIndex].icon = icon
-    console.log('已更新里程碑图标')
   } else {
-    console.log('未找到要更新图标的里程碑，ID：', milestoneId)
+    showMessage(`未找到要更新图标的里程碑，ID： ${milestoneId}`, 'warning', { closable: true })
   }
 }
 
@@ -411,14 +374,45 @@ const handleGiteeDocsClick = (event: Event) => {
   window.open('https://gitee.com/jordium-gantt/jordium-gantt-vue3#readme', '_blank')
 }
 
+// 任务拖拽/拉伸/里程碑拖拽监听
+function handleTaskbarDragOrResizeEnd(newTask) {
+  const oldTask = findTaskDeep(tasks.value, newTask.id)
+  if (!oldTask) return
+  showMessage(
+    `任务【${newTask.name}】\n` +
+      `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
+      `结束: ${oldTask.endDate} → ${newTask.endDate}`,
+    'info',
+    { closable: true },
+  )
+}
+function handleMilestoneDragEnd(newMilestone) {
+  const oldMilestone = findTaskDeep(milestones.value, newMilestone.id)
+  if (!oldMilestone) return
+  showMessage(
+    `里程碑【${newMilestone.name}】\n` +
+      `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
+    'info',
+    { closable: true },
+  )
+}
+
 onMounted(() => {
   tasks.value = demoData.tasks as Task[]
   milestones.value = demoData.milestones as Task[]
-
-  // 调试信息：打印原始任务数据
-  console.log('原始任务数据：', tasks.value)
-  console.log('里程碑数据：', milestones.value)
 })
+
+// 递归查找任务/里程碑，因为原始结构一致
+function findTaskDeep(taskArray: Task[], id: number): Task | null {
+  for (const task of taskArray) {
+    if (task.id === id) return task
+    if (task.children && task.children.length > 0) {
+      const found = findTaskDeep(task.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
 </script>
 
 <template>
@@ -469,6 +463,9 @@ onMounted(() => {
         :on-task-add="handleTaskAdd"
         :on-task-delete="handleTaskDelete"
         :on-milestone-icon-change="handleMilestoneIconChange"
+        @taskbar-drag-end="handleTaskbarDragOrResizeEnd"
+        @taskbar-resize-end="handleTaskbarDragOrResizeEnd"
+        @milestone-drag-end="handleMilestoneDragEnd"
       />
     </div>
     <div class="license-info">

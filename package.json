@@ -1,7 +1,7 @@
 {
   "name": "jordium-gantt-vue3",
   "private": true,
-  "version": "0.9.8-alpha",
+  "version": "1.0.0-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",

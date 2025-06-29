@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onUnmounted, onMounted, computed, watch, nextTick, defineEmits } from 'vue'
 import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
@@ -8,6 +8,36 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
+import { useMessage } from '../composables/useMessage'
+
+const props = withDefaults(defineProps<Props>(), {
+  tasks: () => [],
+  milestones: () => [],
+  onTaskDoubleClick: undefined,
+  editComponent: undefined,
+  useDefaultDrawer: true,
+  onTaskDelete: undefined,
+  onMilestoneSave: undefined,
+  onMilestoneDelete: undefined,
+  onTaskUpdate: undefined,
+  onTaskAdd: undefined,
+  onMilestoneIconChange: undefined,
+  toolbarConfig: () => ({}),
+  showToolbar: true,
+  onAddTask: undefined,
+  onAddMilestone: undefined,
+  onTodayLocate: undefined,
+  onExportCsv: undefined,
+  onExportPdf: undefined,
+  onLanguageChange: undefined,
+  onThemeChange: undefined,
+  onFullscreenChange: undefined,
+  localeMessages: undefined,
+})
+
+const emit = defineEmits(['taskbar-drag-end', 'taskbar-resize-end', 'milestone-drag-end'])
+
+const { showMessage } = useMessage()
 
 interface Props {
   // 任务数据
@@ -54,31 +84,6 @@ interface Props {
    */
   localeMessages?: Partial<import('../composables/useI18n').Messages['zh-CN']>
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  tasks: () => [],
-  milestones: () => [],
-  onTaskDoubleClick: undefined,
-  editComponent: undefined,
-  useDefaultDrawer: true,
-  onTaskDelete: undefined,
-  onMilestoneSave: undefined,
-  onMilestoneDelete: undefined,
-  onTaskUpdate: undefined,
-  onTaskAdd: undefined,
-  onMilestoneIconChange: undefined,
-  toolbarConfig: () => ({}),
-  showToolbar: true,
-  onAddTask: undefined,
-  onAddMilestone: undefined,
-  onTodayLocate: undefined,
-  onExportCsv: undefined,
-  onExportPdf: undefined,
-  onLanguageChange: undefined,
-  onThemeChange: undefined,
-  onFullscreenChange: undefined,
-  localeMessages: undefined,
-})
 
 const leftPanelWidth = ref(320)
 
@@ -229,10 +234,29 @@ const handleToggleTaskList = (event: CustomEvent) => {
   isTaskListVisible.value = event.detail
 }
 
+// --- 事件链路：监听 Timeline 传递上来的拖拽/拉伸事件，并通过 props 回调暴露 ---
+function handleTaskBarDragEnd(event: CustomEvent) {
+  emit('taskbar-drag-end', event.detail)
+}
+function handleTaskBarResizeEnd(event: CustomEvent) {
+  emit('taskbar-resize-end', event.detail)
+}
+function handleMilestoneDragEnd(event: CustomEvent) {
+  emit('milestone-drag-end', event.detail)
+}
+onMounted(() => {
+  window.addEventListener('taskbar-drag-end', handleTaskBarDragEnd as EventListener)
+  window.addEventListener('taskbar-resize-end', handleTaskBarResizeEnd as EventListener)
+  window.addEventListener('milestone-drag-end', handleMilestoneDragEnd as EventListener)
+})
+onUnmounted(() => {
+  window.removeEventListener('taskbar-drag-end', handleTaskBarDragEnd as EventListener)
+  window.removeEventListener('taskbar-resize-end', handleTaskBarResizeEnd as EventListener)
+  window.removeEventListener('milestone-drag-end', handleMilestoneDragEnd as EventListener)
+})
+
 // 处理TaskList的任务折叠状态变化
 const handleTaskCollapseChange = (task: Task) => {
-  console.log('任务折叠状态变化：', task)
-
   // 递归查找并更新原始数据中的任务折叠状态
   const updateTaskCollapsedState = (
     tasks: Task[],
@@ -242,7 +266,6 @@ const handleTaskCollapseChange = (task: Task) => {
     for (const t of tasks) {
       if (t.id === targetId) {
         t.collapsed = collapsed
-        console.log(`已更新任务 ${t.name} 的折叠状态为: ${collapsed}`)
         return true
       }
       if (t.children && t.children.length > 0) {
@@ -385,7 +408,6 @@ const tasksForTaskList = computed(() => {
     result.push(...props.tasks)
   }
 
-  console.log('TaskList数据（保持层级结构）：', result)
   return result
 })
 
@@ -489,7 +511,6 @@ const tasksForTimeline = computed(() => {
             startDate,
             endDate,
           }
-          console.log(`父任务 ${task.name} 时间范围已更新: ${startDate} - ${endDate}`)
         }
 
         return updatedTask
@@ -528,11 +549,9 @@ const tasksForTimeline = computed(() => {
     // 因为tasksForTaskList返回的是props.tasks的副本，我们需要确保Timeline能看到最新的折叠状态
     // 通过触发器强制重新计算来实现状态同步
     const flattenedTasks = smartFlattenTasks(tasksWithUpdatedDates)
-    console.log('Timeline智能扁平化任务数据（考虑折叠状态）：', flattenedTasks)
     result.push(...flattenedTasks)
   }
 
-  console.log('Timeline最终数据：', result)
   return result
 })
 
@@ -645,6 +664,7 @@ const defaultExportCsv = () => {
     URL.revokeObjectURL(url)
   } catch (error) {
     console.error('CSV导出失败:', error)
+    showMessage('CSV导出失败', 'error', { closable: false })
   }
 }
 
@@ -877,8 +897,6 @@ const handleMilestoneSave = (milestone: Task) => {
 
   // 如果没有外部处理器，执行默认的更新逻辑
   // 这里可以添加默认的里程碑数据更新逻辑，比如更新本地数据或者触发重新渲染
-
-  console.log('Milestone saved:', milestone)
 }
 
 // 处理任务更新事件
@@ -907,7 +925,6 @@ const handleMilestoneIconChangeEvent = (event: CustomEvent) => {
   if (props.onMilestoneIconChange && typeof props.onMilestoneIconChange === 'function') {
     props.onMilestoneIconChange(milestoneId, icon)
   }
-  console.log('Milestone icon changed:', { milestoneId, icon })
 }
 
 // 处理里程碑删除事件
@@ -980,8 +997,6 @@ const defaultAddMilestone = () => {
 
 // 默认今日定位功能
 const defaultTodayLocate = () => {
-  console.log('执行默认今日定位逻辑defaultTodayLocate')
-
   // 优先使用Timeline组件的scrollToToday方法（已优化的定位逻辑）
   if (timelineRef.value && typeof timelineRef.value.scrollToToday === 'function') {
     timelineRef.value.scrollToToday()

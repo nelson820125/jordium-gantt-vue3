@@ -97,7 +97,7 @@ watch(
       singleValue.value = (newValue as string) || ''
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 处理单日期输入变化（预留，当前版本不使用）

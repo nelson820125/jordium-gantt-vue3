@@ -13,7 +13,13 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const emit = defineEmits(['update:task', 'bar-mounted', 'dblclick'])
+const emit = defineEmits([
+  'update:task',
+  'bar-mounted',
+  'dblclick',
+  'drag-end', // 新增
+  'resize-end', // 新增
+])
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -255,7 +261,12 @@ const handleMouseUp = () => {
       ...tempTaskData.value,
     }
 
-    console.log('TaskBar操作完成，提交数据更新：', updatedTask)
+    // 判断是拖拽还是拉伸
+    if (isDragging.value) {
+      emit('drag-end', updatedTask)
+    } else if (isResizingLeft.value || isResizingRight.value) {
+      emit('resize-end', updatedTask)
+    }
     emit('update:task', updatedTask)
 
     // 清空临时数据

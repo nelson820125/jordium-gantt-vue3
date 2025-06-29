@@ -230,8 +230,6 @@ const handleMilestoneDelete = (milestoneId: number) => {
 
 // 处理里程碑拖拽更新事件
 const handleMilestoneUpdate = (updatedMilestone: any) => {
-  console.log('Timeline 接收到里程碑拖拽更新事件：', updatedMilestone)
-
   // 通知父组件里程碑数据已更新
   if (props.onMilestoneSave && typeof props.onMilestoneSave === 'function') {
     props.onMilestoneSave(updatedMilestone)
@@ -345,15 +343,6 @@ const scrollToTodayCenter = (retry = 0) => {
   const scrollContainer = document.querySelector('.timeline') as HTMLElement
 
   const containerWidth = scrollContainer.clientWidth
-  console.log('[scrollToTodayCenter]', {
-    retry,
-    today: todayNormalized,
-    timelineStart: startNormalized,
-    daysDiff,
-    todayPosition,
-    containerWidth,
-    containerClass: scrollContainer.className,
-  })
   // 若宽度为0，递归重试，最多10次
   if (containerWidth === 0 && retry < 10) {
     setTimeout(() => scrollToTodayCenter(retry + 1), 60)
@@ -367,19 +356,8 @@ const scrollToTodayCenter = (retry = 0) => {
   } else {
     scrollContainer.scrollLeft = Math.max(0, centeredScrollPosition)
   }
-  console.log(
-    '[scrollToTodayCenter] scrollLeft set:',
-    Math.max(0, centeredScrollPosition),
-    'on',
-    scrollContainer.className,
-  )
-  console.log(
-    '[scrollToTodayCenter] scrollContainer.scrollLeft updated:',
-    scrollContainer.scrollLeft,
-  )
 }
 
-// 聚焦到任务所在位置
 const scrollToTasks = () => {
   if (tasks.value.length === 0) {
     // 如果没有任务，滚动到今天
@@ -563,6 +541,22 @@ function handleBarMounted(payload: {
     height: payload.height,
   }
   updateSvgSize()
+}
+
+// 向上传递 TaskBar 拖拽/拉伸事件
+const handleTaskBarDragEnd = (updatedTask: Task) => {
+  // 通过全局事件或 emit/props 回调传递给 GanttChart
+  window.dispatchEvent(new CustomEvent('taskbar-drag-end', { detail: updatedTask }))
+  // TODO: 你可以在这里加 emit/props 回调
+}
+const handleTaskBarResizeEnd = (updatedTask: Task) => {
+  window.dispatchEvent(new CustomEvent('taskbar-resize-end', { detail: updatedTask }))
+  // TODO: 你可以在这里加 emit/props 回调
+}
+// 向上传递 MilestonePoint 拖拽事件
+const handleMilestoneDragEnd = (updatedMilestone: any) => {
+  window.dispatchEvent(new CustomEvent('milestone-drag-end', { detail: updatedMilestone }))
+  // TODO: 你可以在这里加 emit/props 回调
 }
 
 // 计算所有连线
@@ -987,6 +981,7 @@ const convertTaskToMilestone = (task: Task): Milestone => {
                   :milestone="convertTaskToMilestone(milestone)"
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
+                  @drag-end="handleMilestoneDragEnd"
                 />
               </template>
               <!-- 普通任务条 - 排除里程碑分组和普通里程碑 -->
@@ -1002,6 +997,8 @@ const convertTaskToMilestone = (task: Task): Milestone => {
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"
                 @dblclick="handleTaskBarDoubleClick(task)"
+                @drag-end="handleTaskBarDragEnd"
+                @resize-end="handleTaskBarResizeEnd"
               />
             </div>
           </div>

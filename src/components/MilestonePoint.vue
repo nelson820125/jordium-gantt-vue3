@@ -17,6 +17,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'milestone-double-click': [milestone: Milestone]
   'update:milestone': [milestone: Milestone] // 新增里程碑更新事件
+  'drag-end': [milestone: Milestone] // 新增
 }>()
 
 // 拖拽相关状态
@@ -89,17 +90,11 @@ const handleMouseUp = () => {
       ...props.milestone,
       ...tempMilestoneData.value,
     }
-
-    console.log('里程碑拖拽完成，提交数据更新：', updatedMilestone)
     emit('update:milestone', updatedMilestone)
-
-    // 清空临时数据
+    emit('drag-end', updatedMilestone) // 新增
     tempMilestoneData.value = null
   }
-
   isDragging.value = false
-
-  // 移除全局事件监听器
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 }

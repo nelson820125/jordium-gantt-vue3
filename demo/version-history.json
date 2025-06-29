@@ -68,5 +68,17 @@
     "version": "alpha 0.9.8",
     "date": "2025-06-28",
     "notes": ["按钮样式统一管理"]
+  },
+  {
+    "version": "beta 1.0.0",
+    "date": "2025-06-29",
+    "notes": [
+      "GanttChart接口增强",
+      "添加GanttChart的拖拽事件回调",
+      "添加GanttChart的里程碑拖拽事件回调",
+      "修复里程碑点的样式问题",
+      "更新README文档",
+      "重构项目目录结构"
+    ]
   }
 ]
