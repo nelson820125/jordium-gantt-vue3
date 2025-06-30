@@ -9,6 +9,7 @@ export default defineConfig({
       entry: './src/index.ts',
       name: 'JordiumGanttVue3',
       fileName: format => `jordium-gantt-vue3.${format}.js`,
+      formats: ['es', 'cjs'],
     },
     rollupOptions: {
       // 确保外部化处理那些你不想打包进库的依赖

@@ -70,7 +70,7 @@
     "notes": ["按钮样式统一管理"]
   },
   {
-    "version": "beta 1.0.0",
+    "version": "1.0.0",
     "date": "2025-06-29",
     "notes": [
       "GanttChart接口增强",

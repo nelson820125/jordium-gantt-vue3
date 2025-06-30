@@ -768,7 +768,9 @@ const handleTimelineScroll = (event: Event) => {
 
   // 设置滚动状态
   isScrolling.value = true
-  target.classList.add('scrolling')
+  if (target && 'classList' in target && typeof target.classList.add === 'function') {
+    target.classList.add('scrolling')
+  }
 
   // 清除之前的定时器
   if (scrollTimeout) {
@@ -778,7 +780,9 @@ const handleTimelineScroll = (event: Event) => {
   // 500ms后移除滚动状态
   scrollTimeout = setTimeout(() => {
     isScrolling.value = false
-    target.classList.remove('scrolling')
+    if (target && 'classList' in target && typeof target.classList.remove === 'function') {
+      target.classList.remove('scrolling')
+    }
   }, 500)
 }
 

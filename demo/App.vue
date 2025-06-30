@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import GanttChart from '../src/components/GanttChart.vue'
-import TaskDrawer from '../src/components/TaskDrawer.vue'
-import MilestoneDialog from '../src/components/MilestoneDialog.vue'
+//import GanttChart from '../src/components/GanttChart.vue'
+//import TaskDrawer from '../src/components/TaskDrawer.vue'
+//import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import demoData from './data.json'
 import packageInfo from '../package.json'
 // 导入主题变量
-import '../src/styles/theme-variables.css'
+//import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
-import { useMessage } from '../src/composables/useMessage'
-import type { Task } from '../src/models/Task'
+//import { useMessage } from '../src/composables/useMessage'
+//import type { Task } from '../src/models/Task'
+import { GanttChart, TaskDrawer, MilestoneDialog, useMessage, Task } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/jordium-gantt-vue3.css'
 
 const { showMessage } = useMessage()
 
@@ -113,14 +115,14 @@ const handleMilestoneDelete = async (milestoneId: number) => {
     window.dispatchEvent(
       new CustomEvent('milestone-deleted', {
         detail: { milestoneId },
-      }),
+      })
     )
 
     // 触发强制更新事件，确保Timeline重新渲染
     window.dispatchEvent(
       new CustomEvent('milestone-data-changed', {
         detail: { milestones: milestones.value },
-      }),
+      })
     )
   }
 
@@ -252,7 +254,7 @@ const handleTaskAdd = (newTask: Task) => {
     const maxId = Math.max(
       ...tasks.value.map(t => t.id || 0),
       ...milestones.value.map(m => m.id || 0),
-      0,
+      0
     )
     newTask.id = maxId + 1
   }
@@ -383,7 +385,7 @@ function handleTaskbarDragOrResizeEnd(newTask) {
       `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
       `结束: ${oldTask.endDate} → ${newTask.endDate}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
@@ -393,7 +395,7 @@ function handleMilestoneDragEnd(newMilestone) {
     `里程碑【${newMilestone.name}】\n` +
       `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 
