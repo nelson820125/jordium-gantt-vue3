@@ -1,11 +1,29 @@
 # jordium-gantt-vue3
 
+<!-- For English documentation, see README-EN.md -->
+**🌐 Languages**: [📖 English Documentation](./README-EN.md) | [📖 中文文档](./README.md)
+
 [![npm version](https://badge.fury.io/js/jordium-gantt-vue3.svg)](https://badge.fury.io/js/jordium-gantt-vue3)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Vue 3](https://img.shields.io/badge/vue-3.x-green.svg)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
 > 现代化的 Vue 3 甘特图组件库，为项目管理和任务调度提供完整解决方案
+
+ 
+## 🖼️ Demo展示
+
+![甘特图概览](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/demo.gif)
+
+## 🎨 主题支持
+
+### 亮色主题
+
+![亮色主题](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/light-theme.png)
+
+### 暗色主题
+
+![暗色主题](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/dark-theme.png)
 
 ## 🚀 插件特点
 

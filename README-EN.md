@@ -1,11 +1,27 @@
 # jordium-gantt-vue3
 
+**🌐 Languages**: [📖 English Documentation](./README-EN.md) | [📖 中文文档](./README.md)
+
 [![npm version](https://badge.fury.io/js/jordium-gantt-vue3.svg)](https://badge.fury.io/js/jordium-gantt-vue3)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Vue 3](https://img.shields.io/badge/vue-3.x-green.svg)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
 > Modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling
+
+## 🖼️ Demo Show
+
+![Gantt Chart Overview](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/demo.gif)
+
+## 🎨 Theme Support
+
+### Light Theme
+
+![Light Theme](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/light-theme.png)
+
+### Dark Theme
+
+![Dark Theme](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/dark-theme.png)
 
 ## 🚀 Features
 
