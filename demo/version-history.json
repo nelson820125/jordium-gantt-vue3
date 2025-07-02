@@ -95,5 +95,10 @@
     "version": "1.0.3",
     "date": "2025-07-02",
     "notes": ["增加Github Pages", "修改README, 添加GIthub在线Demo入口", "移除大体积静态资源"]
+  },
+  {
+    "version": "1.0.4",
+    "date": "2025-07-02",
+    "notes": ["修改NPM徽章CDN"]
   }
 ]

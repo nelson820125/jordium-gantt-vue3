@@ -3,7 +3,7 @@
 <!-- For English documentation, see README-EN.md -->
 **🌐 Languages**: [📖 English Documentation](./README-EN.md) | [📖 中文文档](./README.md)
 
-[![npm version](https://badge.fury.io/js/jordium-gantt-vue3.svg)](https://badge.fury.io/js/jordium-gantt-vue3)
+[![npm version](https://img.shields.io/npm/v/jordium-gantt-vue3.svg?cacheBust=1)](https://www.npmjs.com/package/jordium-gantt-vue3)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Vue 3](https://img.shields.io/badge/vue-3.x-green.svg)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)](https://www.typescriptlang.org/)
