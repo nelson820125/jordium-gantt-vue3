@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Show deployment message
-        run: echo "🚀 Deployment message: ${{ github.event.inputs.deploy_message || 'Automated deployment' }}"
+        run: echo "Deployment message: ${{ github.event.inputs.deploy_message || 'Automated deployment' }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
