@@ -10,7 +10,12 @@
 
 > 现代化的 Vue 3 甘特图组件库，为项目管理和任务调度提供完整解决方案
 
- 
+## 🌐 在线体验
+
+🎯 **[立即体验 Demo →](https://nelson820125.github.io/jordium-gantt-vue3/)**
+
+*在线 Demo 包含完整功能展示：任务管理、里程碑、主题切换、国际化等*
+
 ## 🖼️ Demo展示
 
 ![甘特图概览](design/screenshots/demo.gif)

@@ -9,6 +9,12 @@
 
 > Modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling
 
+## 🌐 Online Demo
+
+🎯 **[Try Live Demo →](https://nelson820125.github.io/jordium-gantt-vue3/)**
+
+*The online demo includes full feature showcase: task management, milestones, theme switching, internationalization, etc.*
+
 ## 🖼️ Demo Show
 
 ![Gantt Chart Overview](design/screenshots/demo.gif)
