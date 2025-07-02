@@ -49,7 +49,6 @@
     "dev:demo": "vite",
     "build": "vue-tsc -b && vite build",
     "build:demo": "vue-tsc -b && vite build",
-    "build:pages": "NODE_ENV=production vue-tsc -b && vite build",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
