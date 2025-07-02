@@ -1,8 +1,13 @@
 name: Deploy GitHub Pages
 
 on:
-  watch:
-    types: [started]
+  workflow_dispatch:
+    inputs:
+      deploy_message:
+        description: 'Deployment message'
+        required: false
+        default: 'Manual deployment'
+        type: string
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -20,10 +25,21 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
-    if: github.event.repository.owner.id == github.event.sender.id
+    # 权限控制：只允许特定用户或仓库所有者触发
+    if: github.actor == github.repository_owner || github.actor == 'nelson820125' || contains(fromJson('["nelson820125", "other-user"]'), github.actor)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Check permissions
+        run: |
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Repository owner: ${{ github.repository_owner }}"
+          echo "Event name: ${{ github.event_name }}"
+
+      - name: Show deployment message
+        run: |
+          echo "Deployment message: ${{ github.event.inputs.deploy_message || 'Manual deployment' }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
