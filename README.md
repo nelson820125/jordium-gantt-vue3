@@ -1,4 +1,4 @@
-# jordium-gantt-vue3
+<img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="48" style="vertical-align:middle;margin-right:10px;" /># jordium-gantt-vue3
 
 <!-- For English documentation, see README-EN.md -->
 **🌐 Languages**: [📖 English Documentation](./README-EN.md) | [📖 中文文档](./README.md)
