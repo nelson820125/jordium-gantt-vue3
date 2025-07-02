@@ -1,10 +1,14 @@
 name: Deploy GitHub Pages
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
+  # 仅手动触发
+  workflow_dispatch:
+    inputs:
+      deploy_message:
+        description: 'Deployment message'
+        required: false
+        default: 'Manual deployment'
+        type: string
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -25,6 +29,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Show deployment message
+        run: echo "🚀 Deployment message: ${{ github.event.inputs.deploy_message || 'Automated deployment' }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
