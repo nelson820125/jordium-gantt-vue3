@@ -100,5 +100,10 @@
     "version": "1.0.4",
     "date": "2025-07-02",
     "notes": ["修改NPM徽章CDN"]
+  },
+  {
+    "version": "1.0.5",
+    "date": "2025-07-02",
+    "notes": ["更新README中所有NPM徽章CDN地址"]
   }
 ]

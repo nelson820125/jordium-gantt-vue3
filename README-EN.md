@@ -56,7 +56,7 @@ pnpm add jordium-gantt-vue3
 ---
 
 > 💡 **Badge Downloads**：
-> - npm version badge：https://badge.fury.io/
+> - npm version badge：https://img.shields.io/npm/v/jordium-gantt-vue3.svg
 > - MIT license badge：https://img.shields.io/badge/license-MIT-blue.svg
 > - Vue version badge：https://img.shields.io/badge/vue-3.x-green.svg
 > - TypeScript badge：https://img.shields.io/badge/typescript-5.x-blue.svg

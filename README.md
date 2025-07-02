@@ -57,7 +57,7 @@ pnpm add jordium-gantt-vue3
 ---
 
 > 💡 **徽章下载**：
-> - npm 版本徽章：https://badge.fury.io/
+> - npm 版本徽章：https://img.shields.io/npm/v/jordium-gantt-vue3.svg
 > - MIT 许可证徽章：https://img.shields.io/badge/license-MIT-blue.svg
 > - Vue 版本徽章：https://img.shields.io/badge/vue-3.x-green.svg
 > - TypeScript 徽章：https://img.shields.io/badge/typescript-5.x-blue.svg

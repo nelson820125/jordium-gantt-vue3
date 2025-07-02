@@ -1,6 +1,6 @@
 {
   "name": "jordium-gantt-vue3",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "main": "dist/jordium-gantt-vue3.cjs.js",
   "module": "dist/jordium-gantt-vue3.es.js",
@@ -13,6 +13,7 @@
     "type": "git",
     "url": "https://github.com/nelson820125/jordium-gantt-vue3"
   },
+  "homepage": "https://nelson820125.github.io/jordium-gantt-vue3/",
   "keywords": [
     "gantt",
     "vue",
