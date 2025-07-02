@@ -1,4 +1,4 @@
-# <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="48" style="vertical-align:middle;margin-right:10px;" />jordium-gantt-vue3
+# ![logo](public/assets/jordium-gantt-vue3-logo.svg){width=32px} jordium-gantt-vue3
 
 **🌐 Languages**: [📖 English Documentation](./README-EN.md) | [📖 中文文档](./README.md)
 
