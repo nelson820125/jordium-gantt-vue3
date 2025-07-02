@@ -11,13 +11,9 @@
 
 ## 🌐 Online Demo
 
-🎯 **[Try Live Demo →](https://nelson820125.github.io/jordium-gantt-vue3/)**
+🎯 **[Try Github Live Demo →](https://nelson820125.github.io/jordium-gantt-vue3/)**
 
 *The online demo includes full feature showcase: task management, milestones, theme switching, internationalization, etc.*
-
-## 🖼️ Demo Show
-
-![Gantt Chart Overview](design/screenshots/demo.gif)
 
 ## 🎨 Theme Support
 
