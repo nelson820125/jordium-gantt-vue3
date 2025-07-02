@@ -5,6 +5,8 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   build: {
+    outDir: './npm-package/dist',
+    emptyOutDir: true,
     lib: {
       entry: './src/index.ts',
       name: 'JordiumGanttVue3',

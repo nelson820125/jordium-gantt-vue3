@@ -11,17 +11,17 @@
 
 ## 🖼️ Demo Show
 
-![Gantt Chart Overview](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/demo.gif)
+![Gantt Chart Overview](design/screenshots/demo.gif)
 
 ## 🎨 Theme Support
 
 ### Light Theme
 
-![Light Theme](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/light-theme.png)
+![Light Theme](design/screenshots/light-theme.png)
 
 ### Dark Theme
 
-![Dark Theme](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/dark-theme.png)
+![Dark Theme](design/screenshots/dark-theme.png)
 
 ## 🚀 Features
 

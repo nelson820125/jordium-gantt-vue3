@@ -134,7 +134,7 @@ const handleTaskRowHover = (taskId: number | null) => {
   window.dispatchEvent(
     new CustomEvent('timeline-task-hover', {
       detail: taskId,
-    })
+    }),
   )
 }
 
@@ -186,7 +186,7 @@ const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
   window.dispatchEvent(
     new CustomEvent('milestone-icon-changed', {
       detail: { milestoneId, icon },
-    })
+    }),
   )
 }
 
@@ -204,7 +204,7 @@ const handleMilestoneSave = (updatedMilestone: any) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    })
+    }),
   )
 }
 
@@ -217,14 +217,14 @@ const handleMilestoneDelete = (milestoneId: number) => {
   window.dispatchEvent(
     new CustomEvent('milestone-deleted', {
       detail: { milestoneId },
-    })
+    }),
   )
 
   // 广播里程碑数据变化事件，确保Timeline重新渲染
   window.dispatchEvent(
     new CustomEvent('milestone-data-changed', {
       detail: { milestoneId },
-    })
+    }),
   )
 }
 
@@ -239,7 +239,7 @@ const handleMilestoneUpdate = (updatedMilestone: any) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    })
+    }),
   )
 }
 
@@ -301,7 +301,7 @@ watch(
   () => [timelineConfig.value.startDate, timelineConfig.value.endDate],
   () => {
     timelineData.value = generateTimelineData()
-  }
+  },
 )
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
@@ -316,7 +316,7 @@ watch(
       })
     }
   },
-  { deep: true }
+  { deep: true },
 )
 
 // 将今日定位到时间线中间位置
@@ -329,7 +329,7 @@ const scrollToTodayCenter = (retry = 0) => {
   const startNormalized = new Date(
     timelineStart.getFullYear(),
     timelineStart.getMonth(),
-    timelineStart.getDate()
+    timelineStart.getDate(),
   )
 
   // 计算今天距离时间线开始日期的天数
@@ -412,7 +412,7 @@ const scrollToToday = () => {
   const startNormalized = new Date(
     timelineStart.getFullYear(),
     timelineStart.getMonth(),
-    timelineStart.getDate()
+    timelineStart.getDate(),
   )
 
   // 计算今天距离时间线开始日期的天数
@@ -463,7 +463,7 @@ const updateTask = (updatedTask: Task) => {
   window.dispatchEvent(
     new CustomEvent('task-updated', {
       detail: updatedTask,
-    })
+    }),
   )
 }
 
@@ -493,7 +493,7 @@ const handleDrawerSubmit = (task: Task) => {
     window.dispatchEvent(
       new CustomEvent('task-added', {
         detail: task,
-      })
+      }),
     )
   }
 
@@ -599,7 +599,7 @@ onMounted(() => {
   // 监听TaskList的垂直滚动事件
   window.addEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener
+    handleTaskListVerticalScroll as EventListener,
   )
   // 监听语言变化
   window.addEventListener('locale-changed', handleLocaleChange as EventListener)
@@ -652,7 +652,7 @@ watch(
       updateSvgSize()
     })
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 拖拽滑动相关状态
@@ -762,7 +762,7 @@ const handleTimelineScroll = (event: Event) => {
     window.dispatchEvent(
       new CustomEvent('timeline-vertical-scroll', {
         detail: { scrollTop },
-      })
+      }),
     )
   }
 
@@ -795,7 +795,7 @@ onUnmounted(() => {
   window.removeEventListener('task-list-hover', handleTaskListHover as EventListener)
   window.removeEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener
+    handleTaskListVerticalScroll as EventListener,
   )
   window.removeEventListener('locale-changed', handleLocaleChange as EventListener)
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
@@ -823,7 +823,7 @@ const handleTaskDelete = (taskId: number) => {
   window.dispatchEvent(
     new CustomEvent('task-deleted', {
       detail: taskId,
-    })
+    }),
   )
 
   // 关闭抽屉

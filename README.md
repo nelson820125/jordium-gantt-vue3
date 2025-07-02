@@ -13,17 +13,17 @@
  
 ## 🖼️ Demo展示
 
-![甘特图概览](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/demo.gif)
+![甘特图概览](design/screenshots/demo.gif)
 
 ## 🎨 主题支持
 
 ### 亮色主题
 
-![亮色主题](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/light-theme.png)
+![亮色主题](design/screenshots/light-theme.png)
 
 ### 暗色主题
 
-![暗色主题](https://cdn.jsdelivr.net/gh/nelson820125/my-github-cdn@master/screenshots/dark-theme.png)
+![暗色主题](design/screenshots/dark-theme.png)
 
 ## 🚀 插件特点
 

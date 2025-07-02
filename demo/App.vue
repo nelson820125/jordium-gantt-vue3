@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-//import GanttChart from '../src/components/GanttChart.vue'
-//import TaskDrawer from '../src/components/TaskDrawer.vue'
-//import MilestoneDialog from '../src/components/MilestoneDialog.vue'
+import GanttChart from '../src/components/GanttChart.vue'
+import TaskDrawer from '../src/components/TaskDrawer.vue'
+import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import demoData from './data.json'
 import packageInfo from '../package.json'
 // 导入主题变量
-//import '../src/styles/theme-variables.css'
+import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
-//import { useMessage } from '../src/composables/useMessage'
-//import type { Task } from '../src/models/Task'
-import { GanttChart, TaskDrawer, MilestoneDialog, useMessage, Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/jordium-gantt-vue3.css'
+import { useMessage } from '../src/composables/useMessage'
+import type { Task } from '../src/models/Task'
 
 const { showMessage } = useMessage()
 
