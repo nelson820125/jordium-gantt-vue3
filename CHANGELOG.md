@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-07-02
+
+### Added
+- 增加Github Pages
+
+### Changed
+- 修改README, 添加GIthub在线Demo入口
+
+### Removed
+- 移除大体积静态资源
+
 ## [1.0.2] - 2025-07-01
 
 ### Changed / Added

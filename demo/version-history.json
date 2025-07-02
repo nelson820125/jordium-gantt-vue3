@@ -90,5 +90,10 @@
     "version": "1.0.2",
     "date": "2025-07-01",
     "notes": ["升级README文档", "增加贡献说明", "增加贡献者列表"]
+  },
+  {
+    "version": "1.0.3",
+    "date": "2025-07-02",
+    "notes": ["增加Github Pages", "修改README, 添加GIthub在线Demo入口", "移除大体积静态资源"]
   }
 ]
