@@ -20,7 +20,8 @@
           "progress": 100,
           "estimatedHours": 16,
           "actualHours": 15,
-          "type": "task"
+          "type": "task",
+          "parentId": 1
         },
         {
           "id": 3,
@@ -32,6 +33,7 @@
           "estimatedHours": 24,
           "actualHours": 28,
           "type": "story",
+          "parentId": 1,
           "children": [
             {
               "id": 4,
@@ -43,7 +45,8 @@
               "progress": 80,
               "estimatedHours": 8,
               "actualHours": 10,
-              "type": "task"
+              "type": "task",
+              "parentId": 3
             },
             {
               "id": 5,
@@ -55,7 +58,8 @@
               "progress": 0,
               "estimatedHours": 16,
               "actualHours": 0,
-              "type": "task"
+              "type": "task",
+              "parentId": 3
             }
           ],
           "collapsed": false
@@ -84,7 +88,8 @@
           "estimatedHours": 80,
           "actualHours": 35,
           "type": "task",
-          "predecessor": "5"
+          "predecessor": "5",
+          "parentId": 7
         },
         {
           "id": 11,
@@ -96,7 +101,8 @@
           "estimatedHours": 80,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "5"
+          "predecessor": "5",
+          "parentId": 7
         },
         {
           "id": 12,
@@ -108,7 +114,8 @@
           "estimatedHours": 88,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "5"
+          "predecessor": "5",
+          "parentId": 7
         }
       ],
       "collapsed": false
@@ -134,7 +141,8 @@
           "estimatedHours": 48,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "7"
+          "predecessor": "7",
+          "parentId": 13
         },
         {
           "id": 15,
@@ -146,7 +154,8 @@
           "estimatedHours": 24,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "7"
+          "predecessor": "7",
+          "parentId": 13
         }
       ],
       "collapsed": false

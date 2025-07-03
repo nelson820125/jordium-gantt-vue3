@@ -55,7 +55,7 @@ const allTasks = ref<Task[]>([])
 // 获取可作为前置任务的任务列表（只包含type="task"的任务，且不包含当前任务）
 const availablePredecessorTasks = computed(() => {
   return allTasks.value.filter(
-    task => task.type === 'task' && task.id !== props.task?.id, // 排除当前任务自己
+    task => task.type === 'task' && task.id !== props.task?.id // 排除当前任务自己
   )
 })
 
@@ -65,7 +65,7 @@ const availableParentTasks = computed(() => {
     .filter(
       task =>
         task.id !== props.task?.id && // 排除当前任务自己
-        (task.type === 'story' || task.type === 'task'), // 只显示story和task类型
+        (task.type === 'story' || task.type === 'task') // 只显示story和task类型
     )
     .map(task => ({
       ...task,
@@ -76,6 +76,97 @@ const availableParentTasks = computed(() => {
 // 获取任务类型的显示文本
 const getTaskTypeDisplay = (type: string): string => {
   return (t.value.taskTypeMap as Record<string, string>)?.[type] || type
+}
+
+// 计算进度条样式
+const progressSliderStyle = computed(() => {
+  const progressPercent = formData.progress || 0
+  return {
+    '--progress-percent': `${progressPercent}%`,
+  }
+})
+
+// 进度输入框的显示值
+const progressDisplayValue = ref('0')
+
+// 处理进度输入
+const handleProgressInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  let value = target.value
+
+  // 只保留数字
+  value = value.replace(/[^\d]/g, '')
+
+  // 更新输入框显示
+  target.value = value
+  progressDisplayValue.value = value
+}
+
+// 处理进度输入失焦或回车
+const handleProgressInputBlur = () => {
+  const value = progressDisplayValue.value
+
+  // 转换为数字
+  let progress = parseInt(value) || 0
+
+  // 数据验证：小于0或非数字显示0，大于100显示100
+  if (progress < 0 || isNaN(progress)) {
+    progress = 0
+  } else if (progress > 100) {
+    progress = 100
+  }
+
+  // 更新数据和显示
+  formData.progress = progress
+  progressDisplayValue.value = progress.toString()
+}
+
+// 处理进度输入框聚焦（选中全部文本）
+const handleProgressInputFocus = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  // 延迟选中，确保聚焦完成
+  setTimeout(() => {
+    target.select()
+  }, 0)
+}
+
+// 处理键盘事件
+const handleProgressKeydown = (event: KeyboardEvent) => {
+  const key = event.key
+
+  // 允许的按键：数字、退格、删除、方向键、Tab等
+  const allowedKeys = [
+    'Backspace',
+    'Delete',
+    'Tab',
+    'Escape',
+    'Enter',
+    'ArrowLeft',
+    'ArrowRight',
+    'ArrowUp',
+    'ArrowDown',
+    'Home',
+    'End',
+    'Control',
+    'Meta',
+    'Alt',
+    'Shift',
+  ]
+
+  // 允许数字
+  const isNumber = /^[0-9]$/.test(key)
+  const isAllowedKey = allowedKeys.includes(key)
+
+  // 如果是Ctrl+A、Ctrl+C、Ctrl+V、Ctrl+X等组合键，允许通过
+  if (event.ctrlKey || event.metaKey) {
+    return
+  }
+
+  // 如果不是允许的按键或数字，阻止输入
+  if (!isNumber && !isAllowedKey) {
+    event.preventDefault()
+    return
+  }
 }
 
 // 错误信息
@@ -100,7 +191,7 @@ watch(
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
     }
-  },
+  }
 )
 
 // 监听 isVisible 变化，同步到父组件
@@ -264,6 +355,15 @@ const showMessage = (message: string, type: 'success' | 'error') => {
     }
   }, 3000)
 }
+
+// 监听 formData.progress 变化，同步更新显示值
+watch(
+  () => formData.progress,
+  newValue => {
+    progressDisplayValue.value = (newValue || 0).toString()
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -422,11 +522,26 @@ const showMessage = (message: string, type: 'success' | 'error') => {
                 v-model.number="formData.progress"
                 type="range"
                 class="progress-slider"
+                :style="progressSliderStyle"
                 min="0"
                 max="100"
                 step="5"
               />
-              <div class="progress-value">{{ formData.progress }}%</div>
+              <div class="progress-input-group">
+                <input
+                  v-model="progressDisplayValue"
+                  type="text"
+                  class="progress-input"
+                  placeholder="0"
+                  maxlength="3"
+                  @blur="handleProgressInputBlur"
+                  @keyup.enter="handleProgressInputBlur"
+                  @input="handleProgressInput"
+                  @focus="handleProgressInputFocus"
+                  @keydown="handleProgressKeydown"
+                />
+                <span class="progress-unit">%</span>
+              </div>
             </div>
           </div>
 
@@ -653,7 +768,66 @@ const showMessage = (message: string, type: 'success' | 'error') => {
   outline: none;
   appearance: none;
   cursor: pointer;
+  position: relative;
+  /* 确保input元素本身垂直居中 */
+  vertical-align: middle;
 }
+
+/* 移除悬停时的高度变化动画，避免抖动 */
+
+/* WebKit 浏览器的已完成部分样式 */
+.progress-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--gantt-primary, #409eff) 0%,
+    var(--gantt-primary, #409eff) var(--progress-percent, 0%),
+    var(--gantt-border-light, #e4e7ed) var(--progress-percent, 0%),
+    var(--gantt-border-light, #e4e7ed) 100%
+  );
+}
+
+/* Firefox 浏览器的已完成部分样式 */
+.progress-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--gantt-primary, #409eff) 0%,
+    var(--gantt-primary, #409eff) var(--progress-percent, 0%),
+    var(--gantt-border-light, #e4e7ed) var(--progress-percent, 0%),
+    var(--gantt-border-light, #e4e7ed) 100%
+  );
+  border: none;
+}
+
+/* Firefox 需要额外重置，确保轨道居中 */
+.progress-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gantt-primary, #409eff);
+}
+
+.progress-slider::-moz-range-track {
+  background: var(--gantt-border-light, #e4e7ed);
+}
+
+/* 为更好的兼容性，添加一个伪元素来显示已完成部分 */
+.progress-slider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 6px;
+  width: var(--progress-percent, 0%);
+  background: var(--gantt-primary, #409eff);
+  border-radius: 3px;
+  pointer-events: none;
+  transition: width 0.2s ease; /* 只保留宽度变化的过渡效果 */
+}
+
+/* 移除悬停时的高度变化，避免抖动 */
 
 .progress-slider::-webkit-slider-thumb {
   appearance: none;
@@ -662,6 +836,15 @@ const showMessage = (message: string, type: 'success' | 'error') => {
   border-radius: 50%;
   background: var(--gantt-primary, #409eff);
   cursor: pointer;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease; /* 只保留阴影过渡效果 */
+  margin-top: -5px; /* 将滑块向上偏移，使其垂直居中 */
+}
+
+.progress-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .progress-slider::-moz-range-thumb {
@@ -671,14 +854,90 @@ const showMessage = (message: string, type: 'success' | 'error') => {
   background: var(--gantt-primary, #409eff);
   cursor: pointer;
   border: none;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease; /* 只保留阴影过渡效果 */
+  margin-top: -5px; /* 将滑块向上偏移，使其垂直居中 */
 }
 
-.progress-value {
+.progress-slider::-moz-range-thumb:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 移除悬停和聚焦状态下的滑块位置调整，保持一致 */
+
+/* 进度输入组样式 */
+.progress-input-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gantt-border-medium, #dcdfe6);
+  border-radius: 4px;
+  background: var(--gantt-bg-primary, white);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+  width: 70px; /* 固定宽度，保持紧凑 */
+}
+
+.progress-input-group:hover {
+  border-color: var(--gantt-primary, #409eff);
+}
+
+.progress-input-group:focus-within {
+  border-color: var(--gantt-primary, #409eff);
+}
+
+/* 进度输入框样式 - 与其他input保持一致 */
+.progress-input {
+  flex: 1;
   font-size: 14px;
-  font-weight: 500;
+  color: var(--gantt-text-primary, #303133);
+  text-align: center;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 12px 8px; /* 与其他input的padding保持一致 */
+  min-width: 0; /* 允许收缩 */
+}
+
+.progress-input::placeholder {
+  color: var(--gantt-text-placeholder, #c0c4cc);
+}
+
+/* 百分号单位样式 */
+.progress-unit {
+  font-size: 14px;
   color: var(--gantt-text-secondary, #606266);
-  min-width: 40px;
-  text-align: right;
+  padding: 12px 12px 12px 4px; /* 与input的padding匹配 */
+  user-select: none;
+  flex-shrink: 0; /* 防止%号被压缩 */
+}
+
+/* 暗黑模式样式 */
+:global(html[data-theme='dark']) .progress-input-group {
+  border-color: var(--gantt-border-medium, #4c4d4f);
+  background: var(--gantt-bg-primary, #2b2b2b);
+}
+
+:global(html[data-theme='dark']) .progress-input-group:hover {
+  border-color: var(--gantt-primary, #409eff);
+}
+
+:global(html[data-theme='dark']) .progress-input-group:focus-within {
+  border-color: var(--gantt-primary, #409eff);
+}
+
+:global(html[data-theme='dark']) .progress-input {
+  color: var(--gantt-text-primary, #e5eaf3);
+  background: transparent;
+}
+
+:global(html[data-theme='dark']) .progress-input::placeholder {
+  color: var(--gantt-text-placeholder, #8b949e);
+}
+
+:global(html[data-theme='dark']) .progress-unit {
+  color: var(--gantt-text-secondary, #a8a8a8);
 }
 
 /* 抽屉底部 */
