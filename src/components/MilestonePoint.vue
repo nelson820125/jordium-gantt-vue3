@@ -27,7 +27,19 @@ const dragStartLeft = ref(0)
 const tempMilestoneData = ref<{ startDate?: string } | null>(null)
 
 // 双击事件处理
-const handleDoubleClick = () => {
+const handleDoubleClick = (e: MouseEvent) => {
+  // 阻止事件冒泡和默认行为
+  e.preventDefault()
+  e.stopPropagation()
+
+  // 清理任何可能残留的拖拽状态
+  isDragging.value = false
+  tempMilestoneData.value = null
+
+  // 移除可能残留的事件监听器
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
+
   if (props.milestone) {
     emit('milestone-double-click', props.milestone)
   } else {
@@ -57,10 +69,11 @@ const formatDateToLocalString = (date: Date): string => {
 
 // 拖拽事件处理
 const handleMouseDown = (e: MouseEvent) => {
+  // 如果正在双击过程中，不启动拖拽
   e.preventDefault()
   e.stopPropagation()
 
-  isDragging.value = true
+  // 设置拖拽状态，但不立即开始拖拽
   dragStartX.value = e.clientX
   dragStartLeft.value = parseInt(milestoneStyle.value.left)
   tempMilestoneData.value = null
@@ -71,8 +84,12 @@ const handleMouseDown = (e: MouseEvent) => {
 }
 
 const handleMouseMove = (e: MouseEvent) => {
-  if (isDragging.value) {
-    const deltaX = e.clientX - dragStartX.value
+  const deltaX = e.clientX - dragStartX.value
+
+  // 只有在真正移动了一定距离后才开始拖拽（避免意外触发）
+  if (Math.abs(deltaX) > 3) {
+    isDragging.value = true
+
     const newLeft = Math.max(0, dragStartLeft.value + deltaX)
     const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
 
@@ -84,17 +101,21 @@ const handleMouseMove = (e: MouseEvent) => {
 }
 
 const handleMouseUp = () => {
-  // 如果有临时数据，说明发生了拖拽，提交数据更新
-  if (tempMilestoneData.value && props.milestone) {
+  // 只有在真正拖拽了（有临时数据）且状态为拖拽中时才触发更新
+  if (isDragging.value && tempMilestoneData.value && props.milestone) {
     const updatedMilestone = {
       ...props.milestone,
       ...tempMilestoneData.value,
     }
     emit('update:milestone', updatedMilestone)
-    emit('drag-end', updatedMilestone) // 新增
-    tempMilestoneData.value = null
+    emit('drag-end', updatedMilestone)
   }
+
+  // 重置所有拖拽状态
   isDragging.value = false
+  tempMilestoneData.value = null
+
+  // 移除事件监听器
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 }
@@ -144,6 +165,11 @@ const milestoneIcon = computed(() => {
 
 // 组件销毁时清理事件监听器
 onUnmounted(() => {
+  // 清理拖拽状态
+  isDragging.value = false
+  tempMilestoneData.value = null
+
+  // 移除事件监听器
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 })

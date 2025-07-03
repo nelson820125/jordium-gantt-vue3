@@ -31,6 +31,10 @@ function getContainer() {
   return container
 }
 
+// 防重复消息队列，存储最近的消息内容和时间
+const recentMessages = new Map<string, number>()
+const DUPLICATE_THRESHOLD = 1000 // 1秒内相同消息视为重复
+
 export function useMessage() {
   /**
    * @param message 消息内容
@@ -38,12 +42,32 @@ export function useMessage() {
    * @param options 可选项：
    *   - duration: 自动关闭的毫秒数（默认3000，0表示不自动关闭）
    *   - closable: 是否显示关闭按钮（true=手动关闭，false=自动关闭）
+   *   - allowDuplicate: 是否允许重复消息（默认false）
    */
   const showMessage = (
     message: string,
     type: MessageType = 'success',
-    options?: { duration?: number; closable?: boolean },
+    options?: { duration?: number; closable?: boolean; allowDuplicate?: boolean },
   ) => {
+    // 防重复检查
+    const now = Date.now()
+    const messageKey = `${type}:${message}`
+    const lastTime = recentMessages.get(messageKey)
+
+    if (!options?.allowDuplicate && lastTime && now - lastTime < DUPLICATE_THRESHOLD) {
+      // 重复消息，忽略
+      return
+    }
+
+    // 记录消息时间
+    recentMessages.set(messageKey, now)
+
+    // 清理过期的消息记录
+    for (const [key, time] of recentMessages.entries()) {
+      if (now - time > DUPLICATE_THRESHOLD * 2) {
+        recentMessages.delete(key)
+      }
+    }
     const messageEl = document.createElement('div')
     messageEl.className = `message ${type}`
     messageEl.textContent = message

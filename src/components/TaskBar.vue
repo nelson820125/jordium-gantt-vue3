@@ -306,11 +306,17 @@ watch(
 const handleTaskBarDoubleClick = (e: MouseEvent) => {
   // 阻止事件冒泡，避免触发拖拽等其他事件
   e.stopPropagation()
+  e.preventDefault()
 
-  // 如果正在拖拽或调整大小，不触发双击事件
-  if (isDragging.value || isResizingLeft.value || isResizingRight.value) {
-    return
-  }
+  // 清理任何可能残留的拖拽状态和临时数据
+  isDragging.value = false
+  isResizingLeft.value = false
+  isResizingRight.value = false
+  tempTaskData.value = null
+
+  // 移除可能残留的事件监听器
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
 
   // 优先调用外部传入的双击处理器
   if (props.onDoubleClick && typeof props.onDoubleClick === 'function') {

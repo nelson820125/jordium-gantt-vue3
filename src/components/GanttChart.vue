@@ -902,11 +902,70 @@ const handleMilestoneSave = (milestone: Task) => {
 // 处理任务更新事件
 const handleTaskUpdate = (event: CustomEvent) => {
   const updatedTask = event.detail
-  if (props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
+
+  // 如果更新的是task类型且有parentId，需要同时更新对应的story进度
+  if (updatedTask.type === 'task' && updatedTask.parentId) {
+    const updatedStory = calculateStoryProgress(updatedTask.parentId, updatedTask)
+
+    // 先调用外部的任务更新处理器更新子任务
+    if (props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
+      props.onTaskUpdate(updatedTask)
+    }
+
+    // 如果story进度有变化，也更新story
+    if (updatedStory && props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
+      props.onTaskUpdate(updatedStory)
+    }
+  } else if (props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
+    // 普通任务更新
     props.onTaskUpdate(updatedTask)
   }
+
   // 关键：任务更新后强制刷新Timeline时间轴
   updateTaskTrigger.value++
+}
+
+// 计算story的进度（根据其下所有task的进度计算）
+const calculateStoryProgress = (storyId: number, updatedTask?: Task): Task | null => {
+  // 获取所有任务的扁平列表
+  const allTasks = [...(props.tasks || [])]
+  const flatTasks: Task[] = []
+
+  const flattenTasks = (tasks: Task[]) => {
+    tasks.forEach(task => {
+      flatTasks.push(task)
+      if (task.children && task.children.length > 0) {
+        flattenTasks(task.children)
+      }
+    })
+  }
+
+  flattenTasks(allTasks)
+
+  // 找到对应的story
+  const storyTask = flatTasks.find(task => task.id === storyId && task.type === 'story')
+  if (!storyTask) return null
+
+  // 获取该story下所有的task
+  let childTasks = flatTasks.filter(task => task.parentId === storyId && task.type === 'task')
+  if (childTasks.length === 0) return null
+
+  // 如果有正在更新的task，使用最新的数据替换旧数据
+  if (updatedTask && updatedTask.type === 'task' && updatedTask.parentId === storyId) {
+    childTasks = childTasks.map(task => (task.id === updatedTask.id ? updatedTask : task))
+  }
+
+  // 计算平均进度
+  const totalProgress = childTasks.reduce((sum, task) => sum + (task.progress || 0), 0)
+  const avgProgress = Math.round(totalProgress / childTasks.length)
+
+  // 如果进度有变化，返回更新后的story
+  if (storyTask.progress !== avgProgress) {
+    return { ...storyTask, progress: avgProgress }
+  }
+
+  // 进度没有变化，返回null
+  return null
 }
 
 // 处理任务添加事件

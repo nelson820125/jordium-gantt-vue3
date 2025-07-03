@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import { useMessage } from '../composables/useMessage'
 import DatePicker from './DatePicker.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
 import type { Task } from '../models/classes/Task'
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { showMessage } = useMessage()
 
 const submitting = ref(false)
 const isVisible = ref(props.visible)
@@ -55,7 +57,7 @@ const allTasks = ref<Task[]>([])
 // 获取可作为前置任务的任务列表（只包含type="task"的任务，且不包含当前任务）
 const availablePredecessorTasks = computed(() => {
   return allTasks.value.filter(
-    task => task.type === 'task' && task.id !== props.task?.id // 排除当前任务自己
+    task => task.type === 'task' && task.id !== props.task?.id, // 排除当前任务自己
   )
 })
 
@@ -65,7 +67,7 @@ const availableParentTasks = computed(() => {
     .filter(
       task =>
         task.id !== props.task?.id && // 排除当前任务自己
-        (task.type === 'story' || task.type === 'task') // 只显示story和task类型
+        (task.type === 'story' || task.type === 'task'), // 只显示story和task类型
     )
     .map(task => ({
       ...task,
@@ -191,7 +193,7 @@ watch(
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
     }
-  }
+  },
 )
 
 // 监听 isVisible 变化，同步到父组件
@@ -278,8 +280,7 @@ const handleSubmit = async () => {
     showMessage(props.isEdit ? t.value.taskUpdateSuccess : t.value.taskCreateSuccess, 'success')
     handleClose()
   } catch (error) {
-    // 记录异常，保证 lint 通过
-    console.error(error)
+    // 处理错误但不在控制台输出
     showMessage(t.value.operationFailed, 'error')
   } finally {
     submitting.value = false
@@ -327,42 +328,13 @@ onUnmounted(() => {
   window.removeEventListener('task-list-updated', handleTasksChanged as EventListener)
 })
 
-// 简单的消息提示函数
-const showMessage = (message: string, type: 'success' | 'error') => {
-  // 创建消息元素
-  const messageEl = document.createElement('div')
-  messageEl.className = `message ${type}`
-  messageEl.textContent = message
-  messageEl.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    border-radius: 4px;
-    color: white;
-    font-size: 14px;
-    z-index: 9999;
-    background: ${type === 'success' ? '#67c23a' : '#f56c6c'};
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  `
-
-  document.body.appendChild(messageEl)
-
-  // 3秒后自动移除
-  setTimeout(() => {
-    if (messageEl.parentNode) {
-      document.body.removeChild(messageEl)
-    }
-  }, 3000)
-}
-
 // 监听 formData.progress 变化，同步更新显示值
 watch(
   () => formData.progress,
   newValue => {
     progressDisplayValue.value = (newValue || 0).toString()
   },
-  { immediate: true }
+  { immediate: true },
 )
 </script>
 

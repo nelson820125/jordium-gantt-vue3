@@ -113,14 +113,14 @@ const handleMilestoneDelete = async (milestoneId: number) => {
     window.dispatchEvent(
       new CustomEvent('milestone-deleted', {
         detail: { milestoneId },
-      })
+      }),
     )
 
     // 触发强制更新事件，确保Timeline重新渲染
     window.dispatchEvent(
       new CustomEvent('milestone-data-changed', {
         detail: { milestones: milestones.value },
-      })
+      }),
     )
   }
 
@@ -240,8 +240,6 @@ const handleTaskUpdate = (updatedTask: Task) => {
       showMessage(`就地更新失败，未找到任务，ID： ${updatedTask.id}`, 'warning', { closable: true })
     }
   }
-
-  showMessage('任务更新完成', 'success', { closable: false })
 }
 
 // 任务添加处理器
@@ -252,7 +250,7 @@ const handleTaskAdd = (newTask: Task) => {
     const maxId = Math.max(
       ...tasks.value.map(t => t.id || 0),
       ...milestones.value.map(m => m.id || 0),
-      0
+      0,
     )
     newTask.id = maxId + 1
   }
@@ -383,7 +381,7 @@ function handleTaskbarDragOrResizeEnd(newTask) {
       `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
       `结束: ${oldTask.endDate} → ${newTask.endDate}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
@@ -393,7 +391,7 @@ function handleMilestoneDragEnd(newMilestone) {
     `里程碑【${newMilestone.name}】\n` +
       `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-07-03
+
+### Changed
+- 更新TaskDrawer组件的Progressbar样式
+- 可通过拖拽进度条和文本修改的方式更改任务的进度
+- Story进度根据子任务集进度改编重新计算
+- 同时保留Story进度单独的调整方式
+
 ## [1.0.5] - 2025-07-02
 
 ### Changed
