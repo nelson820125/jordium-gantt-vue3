@@ -19,9 +19,6 @@
   ],
   "author": "Jordium.com",
   "license": "MIT",
-  "dependencies": {
-    "jordium-gantt-vue3": "^1.0.1"
-  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",

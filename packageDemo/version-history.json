@@ -90,5 +90,39 @@
     "version": "1.0.2",
     "date": "2025-07-01",
     "notes": ["升级README文档", "增加贡献说明", "增加贡献者列表"]
+  },
+  {
+    "version": "1.0.3",
+    "date": "2025-07-02",
+    "notes": ["增加Github Pages", "修改README, 添加GIthub在线Demo入口", "移除大体积静态资源"]
+  },
+  {
+    "version": "1.0.4",
+    "date": "2025-07-02",
+    "notes": ["修改NPM徽章CDN"]
+  },
+  {
+    "version": "1.0.5",
+    "date": "2025-07-02",
+    "notes": ["更新README中所有NPM徽章CDN地址"]
+  },
+  {
+    "version": "1.0.6",
+    "date": "2025-07-03",
+    "notes": [
+      "更新TaskDrawer组件的Progressbar样式",
+      "可通过拖拽进度条和文本修改的方式更改任务的进度",
+      "Story进度根据子任务集进度改编重新计算",
+      "同时保留Story进度单独的调整方式"
+    ]
+  },
+  {
+    "version": "1.0.9",
+    "date": "2025-07-04",
+    "notes": [
+      "更新多语言标签",
+      "增加Story删除时选择是否删除子任务的选项",
+      "删除Story或Task时同时删除前后的关系线路"
+    ]
   }
 ]

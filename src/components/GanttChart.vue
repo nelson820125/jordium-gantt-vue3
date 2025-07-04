@@ -51,7 +51,7 @@ interface Props {
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
   // 自定义删除处理器API
-  onTaskDelete?: (task: Task) => void
+  onTaskDelete?: (task: Task, deleteChildren?: boolean) => void
   // 里程碑保存处理器API
   onMilestoneSave?: (milestone: Task) => void
   // 里程碑删除处理器API

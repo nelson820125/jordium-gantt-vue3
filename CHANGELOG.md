@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2025-07-04
+
+### Changed
+- 更新多语言标签
+
+### Added
+- 增加Story删除时选择是否删除子任务的选项
+- 删除Story或Task时同时删除前后的关系线路
+
 ## [1.0.6] - 2025-07-03
 
 ### Changed

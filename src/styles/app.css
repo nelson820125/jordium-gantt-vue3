@@ -65,3 +65,14 @@
   background: #f78989;
   border-color: #f78989;
 }
+
+/* 通用 .btn-warning 按钮样式 */
+.btn-warning {
+  background: var(--gantt-warning, #e6a23c);
+  border-color: var(--gantt-warning, #e6a23c);
+  color: #fff;
+}
+.btn-warning:hover:not(:disabled) {
+  background: #ebb563;
+  border-color: #ebb563;
+}

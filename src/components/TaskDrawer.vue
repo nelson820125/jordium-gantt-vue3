@@ -25,7 +25,7 @@ const emit = defineEmits<{
   'update:visible': [value: boolean]
   submit: [task: Task]
   close: []
-  delete: [task: Task]
+  delete: [task: Task, deleteChildren?: boolean]
 }>()
 
 const { t } = useI18n()
@@ -34,6 +34,19 @@ const { showMessage } = useMessage()
 const submitting = ref(false)
 const isVisible = ref(props.visible)
 const showDeleteConfirm = ref(false)
+
+// 根据任务类型确定dialog类型
+const dialogType = computed(() => {
+  return props.task?.type === 'story' ? 'yes-no-cancel' : 'confirm-cancel'
+})
+
+// 根据任务类型确定dialog消息
+const dialogMessage = computed(() => {
+  if (props.task?.type === 'story') {
+    return t.value.confirmDeleteStory.replace('{name}', props.task?.name || '')
+  }
+  return t.value.confirmDeleteTask.replace('{name}', props.task?.name || '')
+})
 
 // 表单数据
 const formData = reactive<Task>({
@@ -156,7 +169,7 @@ const handleProgressKeydown = (event: KeyboardEvent) => {
   ]
 
   // 允许数字
-  const isNumber = /^[0-9]$/.test(key)
+  const isNumber = /^\d$/.test(key)
   const isAllowedKey = allowedKeys.includes(key)
 
   // 如果是Ctrl+A、Ctrl+C、Ctrl+V、Ctrl+X等组合键，允许通过
@@ -167,7 +180,6 @@ const handleProgressKeydown = (event: KeyboardEvent) => {
   // 如果不是允许的按键或数字，阻止输入
   if (!isNumber && !isAllowedKey) {
     event.preventDefault()
-    return
   }
 }
 
@@ -311,6 +323,39 @@ const cancelDelete = () => {
   showDeleteConfirm.value = false
 }
 
+// Story删除：选择"是" - 删除story及其所有子任务
+const handleDeleteYes = () => {
+  showDeleteConfirm.value = false
+  if (props.task && props.isEdit) {
+    try {
+      submitting.value = true
+      emit('delete', props.task, true) // 传递true表示删除所有子任务
+      handleClose()
+    } catch (error) {
+      showMessage(t.value.taskDeleteFailed, 'error')
+    } finally {
+      submitting.value = false
+    }
+  }
+}
+
+// Story删除：选择"否" - 仅删除story，保留子任务
+// Story删除：选择"否" - 仅删除story，保留子任务
+const handleDeleteNo = () => {
+  showDeleteConfirm.value = false
+  if (props.task && props.isEdit) {
+    try {
+      submitting.value = true
+      emit('delete', props.task, false) // 传递false表示仅删除story
+      handleClose()
+    } catch (error) {
+      showMessage(t.value.taskDeleteFailed, 'error')
+    } finally {
+      submitting.value = false
+    }
+  }
+}
+
 // 获取任务数据的事件处理器
 const handleTasksChanged = (event: CustomEvent) => {
   allTasks.value = event.detail || []
@@ -390,7 +435,7 @@ watch(
           <div class="form-group">
             <label class="form-label" for="task-assignee">{{ t.assignee }}</label>
             <select id="task-assignee" v-model="formData.assignee" class="form-select">
-              <option value="">请选择负责人</option>
+              <option value="">{{ t.selectAssignee }}</option>
               <option value="张三">张三</option>
               <option value="李四">李四</option>
               <option value="王五">王五</option>
@@ -546,10 +591,15 @@ watch(
           <GanttConfirmDialog
             :visible="showDeleteConfirm"
             :title="t.delete"
-            :message="t.confirmDeleteTask.replace('{name}', task?.name || '')"
+            :type="dialogType"
+            :message="dialogMessage"
             :confirm-text="t.confirm"
             :cancel-text="t.cancel"
+            :yes-text="t.storyDeleteYes"
+            :no-text="t.storyDeleteNo"
             @confirm="confirmDelete"
+            @yes="handleDeleteYes"
+            @no="handleDeleteNo"
             @cancel="cancelDelete"
           />
         </div>

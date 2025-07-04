@@ -9,9 +9,11 @@ import packageInfo from '../package.json'
 import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
 import { useMessage } from '../src/composables/useMessage'
+import { useI18n } from '../src/composables/useI18n'
 import type { Task } from '../src/models/Task'
 
 const { showMessage } = useMessage()
+const { t, formatTranslation } = useI18n()
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
@@ -42,7 +44,7 @@ const toolbarConfig = {
 
 // 自定义CSV导出处理器（可选）
 const handleCustomCsvExport = () => {
-  showMessage('自定义CSV导出被调用', 'info', { closable: true })
+  showMessage(t.value.customCsvExportCalled, 'info', { closable: true })
 
   // 这里可以实现自定义的CSV导出逻辑
   // 例如：添加额外的数据处理、格式化、或发送到服务器等
@@ -70,11 +72,17 @@ const handleAddMilestone = () => {
 }
 
 const handleLanguageChange = (lang: 'zh' | 'en') => {
-  showMessage(`语言切换到：${lang}`, 'info', { closable: true })
+  const languageText = lang === 'zh' ? '中文' : 'English'
+  showMessage(formatTranslation('languageSwitchedTo', { language: languageText }), 'info', {
+    closable: true,
+  })
 }
 
 const handleThemeChange = (isDark: boolean) => {
-  showMessage(`主题切换到：${isDark ? '暗黑模式' : '明亮模式'}`, 'info', { closable: true })
+  const themeText = isDark ? t.value.darkModeText : t.value.lightModeText
+  showMessage(formatTranslation('themeSwitchedTo', { theme: themeText }), 'info', {
+    closable: true,
+  })
 }
 
 // 里程碑保存处理器示例
@@ -104,7 +112,7 @@ const handleMilestoneDelete = async (milestoneId: number) => {
   const milestoneIndex = milestones.value.findIndex(m => m.id === milestoneId)
   if (milestoneIndex !== -1) {
     milestones.value.splice(milestoneIndex, 1)
-    showMessage('里程碑删除成功', 'success', { closable: false })
+    showMessage(t.value.milestoneDeleteSuccess, 'success', { closable: false })
 
     // 等待DOM更新完成
     await nextTick()
@@ -146,7 +154,9 @@ const handleTaskUpdate = (updatedTask: Task) => {
 
   const originalTask = findOriginalTask(tasks.value)
   if (!originalTask) {
-    showMessage(`未找到要更新的任务，ID： ${updatedTask.id}`, 'warning', { closable: true })
+    showMessage(formatTranslation('taskNotFound', { id: updatedTask.id }), 'warning', {
+      closable: true,
+    })
     return
   }
 
@@ -203,9 +213,11 @@ const handleTaskUpdate = (updatedTask: Task) => {
       }
 
       if (!addToParentChildren(tasks.value)) {
-        showMessage(`未找到新父任务，ID： ${taskToAdd.parentId}，将作为顶级任务添加`, 'warning', {
-          closable: true,
-        })
+        showMessage(
+          formatTranslation('newParentTaskNotFound', { parentId: taskToAdd.parentId }),
+          'warning',
+          { closable: true },
+        )
         tasks.value.push(taskToAdd)
       }
     } else {
@@ -237,7 +249,9 @@ const handleTaskUpdate = (updatedTask: Task) => {
     }
 
     if (!updateTaskInPlace(tasks.value)) {
-      showMessage(`就地更新失败，未找到任务，ID： ${updatedTask.id}`, 'warning', { closable: true })
+      showMessage(formatTranslation('inPlaceUpdateFailed', { id: updatedTask.id }), 'warning', {
+        closable: true,
+      })
     }
   }
 }
@@ -285,7 +299,6 @@ const handleTaskAdd = (newTask: Task) => {
 
     // 尝试添加到父任务的children中
     if (!addToParentChildren(tasks.value)) {
-      console.warn('未找到父任务，ID：', newTask.parentId, '，将作为顶级任务添加')
       // 如果没找到父任务，作为顶级任务添加
       tasks.value.push({ ...newTask })
     }
@@ -297,13 +310,16 @@ const handleTaskAdd = (newTask: Task) => {
 
 // 任务删除处理器
 const handleTaskDelete = (taskToDelete: Task) => {
+  // 收集要删除的所有任务ID（包括子任务）
+  const deletedTaskIds = collectAllTaskIds(taskToDelete)
+
   // 递归查找和删除任务（支持嵌套结构）
   const deleteTaskFromArray = (taskArray: Task[]): boolean => {
     for (let i = 0; i < taskArray.length; i++) {
       if (taskArray[i].id === taskToDelete.id) {
         // 找到任务，删除它
         taskArray.splice(i, 1)
-        showMessage('已删除任务', 'success', { closable: false })
+        showMessage(t.value.taskDeletedSuccess, 'success', { closable: false })
         return true
       }
 
@@ -317,8 +333,116 @@ const handleTaskDelete = (taskToDelete: Task) => {
     return false
   }
 
-  if (!deleteTaskFromArray(tasks.value)) {
-    showMessage(`未找到要删除的任务，ID： ${taskToDelete.id}`, 'warning', { closable: true })
+  if (deleteTaskFromArray(tasks.value)) {
+    // 删除成功后，清理predecessor依赖关系
+    cleanupPredecessorReferences(deletedTaskIds)
+  } else {
+    showMessage(formatTranslation('taskToDeleteNotFound', { id: taskToDelete.id }), 'warning', {
+      closable: true,
+    })
+  }
+}
+
+// 删除story及其所有子任务
+const handleStoryDeleteWithChildren = (storyToDelete: Task) => {
+  // 收集要删除的所有任务ID（story及其所有子任务）
+  const deletedTaskIds = collectAllTaskIds(storyToDelete)
+
+  // 递归查找和删除story（包含其所有子任务）
+  const deleteStoryFromArray = (taskArray: Task[]): boolean => {
+    for (let i = 0; i < taskArray.length; i++) {
+      if (taskArray[i].id === storyToDelete.id) {
+        // 找到story，直接删除它（包含所有子任务）
+        taskArray.splice(i, 1)
+        showMessage(
+          formatTranslation('storyDeleteAllSuccess', { name: storyToDelete.name }),
+          'success',
+          {
+            closable: false,
+          },
+        )
+        return true
+      }
+
+      // 如果有子任务，递归查找
+      if (taskArray[i].children && taskArray[i].children.length > 0) {
+        if (deleteStoryFromArray(taskArray[i].children!)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  if (deleteStoryFromArray(tasks.value)) {
+    // 删除成功后，清理predecessor依赖关系
+    cleanupPredecessorReferences(deletedTaskIds)
+  } else {
+    showMessage(formatTranslation('storyNotFound', { id: storyToDelete.id }), 'warning', {
+      closable: true,
+    })
+  }
+}
+
+// 仅删除story，保留子任务
+const handleStoryDeleteOnly = (storyToDelete: Task) => {
+  // 递归查找story并处理其子任务
+  const deleteStoryOnlyFromArray = (taskArray: Task[]): boolean => {
+    for (let i = 0; i < taskArray.length; i++) {
+      if (taskArray[i].id === storyToDelete.id) {
+        // 找到story
+        const childrenToPromote = taskArray[i].children || []
+
+        // 步骤a: 克隆并升级子任务
+        const upgradedChildren: Task[] = []
+        if (childrenToPromote.length > 0) {
+          childrenToPromote.forEach(child => {
+            // 深度克隆子任务
+            const clonedChild = JSON.parse(JSON.stringify(child))
+            // 升级：移除parentId，使其成为顶级任务
+            delete clonedChild.parentId
+            upgradedChildren.push(clonedChild)
+          })
+        }
+
+        // 步骤b: 删除story数据
+        taskArray.splice(i, 1)
+
+        // 将升级后的子任务push到tasks集合顶层
+        if (upgradedChildren.length > 0) {
+          tasks.value.push(...upgradedChildren)
+        }
+
+        showMessage(
+          formatTranslation('storyDeleteOnlySuccess', {
+            name: storyToDelete.name,
+            count: upgradedChildren.length,
+          }),
+          'success',
+          {
+            closable: false,
+          },
+        )
+        return true
+      }
+
+      // 如果有子任务，递归查找
+      if (taskArray[i].children && taskArray[i].children.length > 0) {
+        if (deleteStoryOnlyFromArray(taskArray[i].children!)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  if (deleteStoryOnlyFromArray(tasks.value)) {
+    // 删除成功后，清理story的predecessor依赖关系（只清理story本身的ID，不影响子任务）
+    cleanupPredecessorReferences([storyToDelete.id])
+  } else {
+    showMessage(formatTranslation('storyNotFound', { id: storyToDelete.id }), 'warning', {
+      closable: true,
+    })
   }
 }
 
@@ -328,7 +452,9 @@ const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
   if (milestoneIndex !== -1) {
     milestones.value[milestoneIndex].icon = icon
   } else {
-    showMessage(`未找到要更新图标的里程碑，ID： ${milestoneId}`, 'warning', { closable: true })
+    showMessage(formatTranslation('milestoneIconUpdateNotFound', { id: milestoneId }), 'warning', {
+      closable: true,
+    })
   }
 }
 
@@ -350,10 +476,16 @@ const handleTaskDrawerClose = () => {
   isEditMode.value = false
 }
 
-const handleTaskDrawerDelete = (taskId: number) => {
-  const taskToDelete = tasks.value.find(t => t.id === taskId)
-  if (taskToDelete) {
-    handleTaskDelete(taskToDelete)
+const handleTaskDrawerDelete = (task: Task, deleteChildren?: boolean) => {
+  if (task.type === 'story' && deleteChildren === true) {
+    // 删除story及其所有子任务
+    handleStoryDeleteWithChildren(task)
+  } else if (task.type === 'story' && deleteChildren === false) {
+    // 仅删除story，保留子任务
+    handleStoryDeleteOnly(task)
+  } else {
+    // 普通任务删除
+    handleTaskDelete(task)
   }
   showTaskDrawer.value = false
 }
@@ -411,6 +543,50 @@ function findTaskDeep(taskArray: Task[], id: number): Task | null {
   }
   return null
 }
+
+// 清理被删除任务的predecessor依赖关系
+const cleanupPredecessorReferences = (deletedTaskIds: number[]) => {
+  // 递归清理所有任务（包括嵌套的子任务）的predecessor
+  const cleanupTaskArray = (taskArray: Task[]) => {
+    taskArray.forEach(task => {
+      if (task.predecessor) {
+        // 将predecessor字符串解析为ID数组
+        const predecessorIds = task.predecessor
+          .split(',')
+          .map(id => parseInt(id.trim()))
+          .filter(id => !isNaN(id))
+
+        // 过滤掉被删除的任务ID
+        const validPredecessorIds = predecessorIds.filter(id => !deletedTaskIds.includes(id))
+
+        // 更新predecessor属性
+        if (validPredecessorIds.length === 0) {
+          delete task.predecessor
+        } else {
+          task.predecessor = validPredecessorIds.join(',')
+        }
+      }
+
+      // 递归处理子任务
+      if (task.children && task.children.length > 0) {
+        cleanupTaskArray(task.children)
+      }
+    })
+  }
+
+  cleanupTaskArray(tasks.value)
+}
+
+// 收集被删除任务及其所有子任务的ID
+const collectAllTaskIds = (task: Task): number[] => {
+  const ids = [task.id]
+  if (task.children && task.children.length > 0) {
+    task.children.forEach(child => {
+      ids.push(...collectAllTaskIds(child))
+    })
+  }
+  return ids
+}
 </script>
 
 <template>
@@ -459,7 +635,7 @@ function findTaskDeep(taskArray: Task[], id: number): Task | null {
         :on-milestone-delete="handleMilestoneDelete"
         :on-task-update="handleTaskUpdate"
         :on-task-add="handleTaskAdd"
-        :on-task-delete="handleTaskDelete"
+        :on-task-delete="handleTaskDrawerDelete"
         :on-milestone-icon-change="handleMilestoneIconChange"
         @taskbar-drag-end="handleTaskbarDragOrResizeEnd"
         @taskbar-resize-end="handleTaskbarDragOrResizeEnd"

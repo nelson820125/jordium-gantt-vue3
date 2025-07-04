@@ -7,10 +7,15 @@ const props = defineProps({
   message: { type: String, default: '' },
   confirmText: { type: String, default: '确认' },
   cancelText: { type: String, default: '取消' },
+  yesText: { type: String, default: '是' },
+  noText: { type: String, default: '否' },
+  type: { type: String, default: 'confirm-cancel' }, // 'confirm-cancel' | 'yes-no-cancel'
 })
-const emit = defineEmits(['confirm', 'cancel'])
+const emit = defineEmits(['confirm', 'cancel', 'yes', 'no'])
 const onConfirm = () => emit('confirm')
 const onCancel = () => emit('cancel')
+const onYes = () => emit('yes')
+const onNo = () => emit('no')
 </script>
 
 <template>
@@ -23,12 +28,27 @@ const onCancel = () => emit('cancel')
         <p>{{ props.message }}</p>
       </div>
       <div class="gantt-confirm-footer">
-        <button type="button" class="btn btn-default" @click="onCancel">
-          {{ props.cancelText }}
-        </button>
-        <button type="button" class="btn btn-danger" @click="onConfirm">
-          {{ props.confirmText }}
-        </button>
+        <template v-if="props.type === 'yes-no-cancel'">
+          <button type="button" class="btn btn-default" @click="onCancel">
+            {{ props.cancelText }}
+          </button>
+          <div class="gantt-confirm-footer-right">
+            <button type="button" class="btn btn-warning" @click="onNo">
+              {{ props.noText }}
+            </button>
+            <button type="button" class="btn btn-danger" @click="onYes">
+              {{ props.yesText }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <button type="button" class="btn btn-default" @click="onCancel">
+            {{ props.cancelText }}
+          </button>
+          <button type="button" class="btn btn-danger" @click="onConfirm">
+            {{ props.confirmText }}
+          </button>
+        </template>
       </div>
     </div>
   </div>
@@ -73,7 +93,13 @@ const onCancel = () => emit('cancel')
 }
 .gantt-confirm-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.gantt-confirm-footer-right {
+  display: flex;
   gap: 12px;
 }
 

@@ -22,7 +22,7 @@ interface Props {
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
   // 自定义删除处理器
-  onTaskDelete?: (task: Task) => void
+  onTaskDelete?: (task: Task, deleteChildren?: boolean) => void
   // 里程碑保存事件处理器
   onMilestoneSave?: (milestone: Task) => void
   // 新增：外部传入的时间轴起止
@@ -810,12 +810,12 @@ onUnmounted(() => {
   }
 })
 
-const handleTaskDelete = (taskId: number) => {
+const handleTaskDelete = (taskId: number, deleteChildren?: boolean) => {
   // 调用父组件传入的删除处理器
   if (props.onTaskDelete && typeof props.onTaskDelete === 'function') {
     const taskToDelete = tasks.value.find(task => task.id === taskId)
     if (taskToDelete) {
-      props.onTaskDelete(taskToDelete)
+      props.onTaskDelete(taskToDelete, deleteChildren)
     }
   }
 
@@ -833,8 +833,8 @@ const handleTaskDelete = (taskId: number) => {
 }
 
 // TaskDrawer删除事件适配器
-const handleDrawerTaskDelete = (task: Task) => {
-  handleTaskDelete(task.id)
+const handleDrawerTaskDelete = (task: Task, deleteChildren?: boolean) => {
+  handleTaskDelete(task.id, deleteChildren)
 }
 
 // 暴露公共API

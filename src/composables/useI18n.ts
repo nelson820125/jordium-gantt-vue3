@@ -119,8 +119,31 @@ const messages = {
     taskUpdateSuccess: '任务更新成功',
     taskCreateSuccess: '任务创建成功',
     confirmDeleteTask: '确定要删除任务"{name}"吗？此操作不可撤销。',
-    taskDeleteSuccess: '任务删除成功',
     taskDeleteFailed: '删除失败，请重试',
+    // Story删除相关
+    confirmDeleteStory: '是否删除该需求{name}及其所有的子任务？该操作不可撤回',
+    storyDeleteYes: '是, 继续',
+    storyDeleteNo: '不，仅删除需求',
+    storyDeleteAllSuccess: '已删除需求【{name}】及其所有子任务',
+    storyDeleteOnlySuccess: '已删除需求【{name}】，{count}个子任务已升级保留',
+    storyNotFound: '未找到要删除的需求，ID：{id}',
+    // 里程碑删除成功
+    milestoneDeleteSuccess: '里程碑删除成功',
+    // 其他删除成功消息
+    taskDeletedSuccess: '已删除任务',
+    // 选择器占位符
+    selectAssignee: '请选择负责人',
+    // 通用消息
+    customCsvExportCalled: '自定义CSV导出被调用',
+    languageSwitchedTo: '语言切换到：{language}',
+    themeSwitchedTo: '主题切换到：{theme}',
+    lightModeText: '明亮模式',
+    darkModeText: '暗黑模式',
+    taskNotFound: '未找到要更新的任务，ID：{id}',
+    newParentTaskNotFound: '未找到新父任务，ID：{parentId}，将作为顶级任务添加',
+    inPlaceUpdateFailed: '就地更新失败，未找到任务，ID：{id}',
+    taskToDeleteNotFound: '未找到要删除的任务，ID：{id}',
+    milestoneIconUpdateNotFound: '未找到要更新图标的里程碑，ID：{id}',
     overtime: '超',
     overdue: '逾期',
     days: '天',
@@ -238,8 +261,33 @@ const messages = {
     taskCreateSuccess: 'Task created successfully',
     confirmDeleteTask:
       'Are you sure you want to delete task "{name}"? This action cannot be undone.',
-    taskDeleteSuccess: 'Task deleted successfully',
     taskDeleteFailed: 'Delete failed, please try again',
+    // Story deletion related
+    confirmDeleteStory:
+      'Do you want to delete the requirement {name} and all its subtasks? This action cannot be undone',
+    storyDeleteYes: 'Yes, Continue',
+    storyDeleteNo: 'No, Delete Requirement Only',
+    storyDeleteAllSuccess: 'Deleted requirement [{name}] and all its subtasks',
+    storyDeleteOnlySuccess: 'Deleted requirement [{name}], {count} subtasks have been promoted',
+    storyNotFound: 'Requirement not found, ID: {id}',
+    // Milestone deletion success
+    milestoneDeleteSuccess: 'Milestone deleted successfully',
+    // Other deletion success messages
+    taskDeletedSuccess: 'Task deleted',
+    // Selector placeholders
+    selectAssignee: 'Select assignee',
+    // Common messages
+    customCsvExportCalled: 'Custom CSV export called',
+    languageSwitchedTo: 'Language switched to: {language}',
+    themeSwitchedTo: 'Theme switched to: {theme}',
+    lightModeText: 'Light Mode',
+    darkModeText: 'Dark Mode',
+    taskNotFound: 'Task not found for update, ID: {id}',
+    newParentTaskNotFound:
+      'New parent task not found, ID: {parentId}, will be added as top-level task',
+    inPlaceUpdateFailed: 'In-place update failed, task not found, ID: {id}',
+    taskToDeleteNotFound: 'Task to delete not found, ID: {id}',
+    milestoneIconUpdateNotFound: 'Milestone not found for icon update, ID: {id}',
     overtime: 'Over',
     overdue: 'Overdue',
     days: ' days',
@@ -282,6 +330,15 @@ export function useI18n() {
     return typeof translation === 'string' ? translation : key
   }
 
+  // 格式化带参数的翻译文本
+  const formatTranslation = (key: string, params: Record<string, string | number>): string => {
+    let text = getTranslation(key)
+    Object.keys(params).forEach(param => {
+      text = text.replace(new RegExp(`{${param}}`, 'g'), String(params[param]))
+    })
+    return text
+  }
+
   // 切换语言
   const setLocale = (locale: Locale) => {
     currentLocale.value = locale
@@ -305,6 +362,7 @@ export function useI18n() {
   return {
     t,
     getTranslation,
+    formatTranslation,
     locale,
     setLocale,
     formatYearMonth,
