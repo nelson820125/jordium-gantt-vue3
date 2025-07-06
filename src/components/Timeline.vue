@@ -864,8 +864,7 @@ onMounted(() => {
     updateSvgSize()
   }, 200)
   window.addEventListener('resize', updateSvgSize)
-  // 监听时间轴滚动事件
-  window.addEventListener('scroll', handleTimelineScroll as EventListener)
+  // 注意：Timeline滚动事件已在模板中通过@scroll="handleTimelineScroll"绑定，无需重复监听
 })
 
 // 处理TaskList垂直滚动同步
@@ -875,6 +874,23 @@ const handleTaskListVerticalScroll = (event: CustomEvent) => {
   if (timelineBody && timelineBody.scrollTop !== scrollTop) {
     // 避免循环触发，只在scrollTop不同时才设置
     timelineBody.scrollTop = scrollTop
+  }
+}
+
+// 处理Timeline body的垂直滚动同步
+const handleTimelineBodyScroll = (event: Event) => {
+  const target = event.target as HTMLElement
+  if (!target) return
+
+  const scrollTop = target.scrollTop
+
+  // 同步垂直滚动到TaskList
+  if (scrollTop >= 0) {
+    window.dispatchEvent(
+      new CustomEvent('timeline-vertical-scroll', {
+        detail: { scrollTop },
+      }),
+    )
   }
 }
 
@@ -973,13 +989,12 @@ const handleMouseUp = () => {
   document.removeEventListener('mouseup', handleMouseUp)
 }
 
-// 检测滚动状态
+// 检测滚动状态（主要处理水平滚动）
 const handleTimelineScroll = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target) return
 
   const scrollLeft = target.scrollLeft
-  const scrollTop = target.scrollTop
   const scrollWidth = target.scrollWidth
   const clientWidth = target.clientWidth
   const maxScroll = scrollWidth - clientWidth
@@ -997,15 +1012,6 @@ const handleTimelineScroll = (event: Event) => {
   // 判断是否滚动到边缘
   isScrolledLeft.value = scrollLeft > 20 // 距离左边超过20px
   isScrolledRight.value = scrollLeft < maxScroll - 20 // 距离右边超过20px
-
-  // 同步垂直滚动到TaskList
-  if (scrollTop >= 0) {
-    window.dispatchEvent(
-      new CustomEvent('timeline-vertical-scroll', {
-        detail: { scrollTop },
-      }),
-    )
-  }
 
   // 设置滚动状态
   isScrolling.value = true
@@ -1047,7 +1053,7 @@ onUnmounted(() => {
   )
   window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
   window.removeEventListener('resize', updateSvgSize)
-  window.removeEventListener('scroll', handleTimelineScroll as EventListener)
+  // 注意：Timeline滚动事件通过模板@scroll绑定，会自动清理
 
   // 清理ResizeObserver
   if (resizeObserver) {
@@ -1207,7 +1213,7 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
     </div>
 
     <!-- Timeline Body (Task Bar Area) -->
-    <div class="timeline-body">
+    <div class="timeline-body" @scroll="handleTimelineBodyScroll">
       <div ref="bodyContentRef" class="timeline-body-content">
         <!-- SVG关系线层 -->
         <svg
