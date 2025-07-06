@@ -38,7 +38,7 @@
             {
               "id": 4,
               "name": "调研A",
-              "predecessor": "2",
+              "predecessor": [2],
               "assignee": "赵六",
               "startDate": "2025-06-21",
               "endDate": "2025-06-23",
@@ -51,7 +51,7 @@
             {
               "id": 5,
               "name": "调研B",
-              "predecessor": "4",
+              "predecessor": [4],
               "assignee": "钱七",
               "startDate": "2025-06-24",
               "endDate": "2025-06-28",
@@ -88,7 +88,7 @@
           "estimatedHours": 80,
           "actualHours": 35,
           "type": "task",
-          "predecessor": "5",
+          "predecessor": [5],
           "parentId": 7
         },
         {
@@ -101,7 +101,7 @@
           "estimatedHours": 80,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "5",
+          "predecessor": [5],
           "parentId": 7
         },
         {
@@ -114,7 +114,7 @@
           "estimatedHours": 88,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "5",
+          "predecessor": [5],
           "parentId": 7
         }
       ],
@@ -141,7 +141,7 @@
           "estimatedHours": 48,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "7",
+          "predecessor": [8, 11, 12],
           "parentId": 13
         },
         {
@@ -154,7 +154,7 @@
           "estimatedHours": 24,
           "actualHours": 0,
           "type": "task",
-          "predecessor": "7",
+          "predecessor": [14],
           "parentId": 13
         }
       ],

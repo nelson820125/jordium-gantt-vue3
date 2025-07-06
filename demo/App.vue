@@ -10,6 +10,7 @@ import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
 import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
+import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
 
 const { showMessage } = useMessage()
@@ -550,11 +551,8 @@ const cleanupPredecessorReferences = (deletedTaskIds: number[]) => {
   const cleanupTaskArray = (taskArray: Task[]) => {
     taskArray.forEach(task => {
       if (task.predecessor) {
-        // 将predecessor字符串解析为ID数组
-        const predecessorIds = task.predecessor
-          .split(',')
-          .map(id => parseInt(id.trim()))
-          .filter(id => !isNaN(id))
+        // 使用工具函数获取前置任务ID数组
+        const predecessorIds = getPredecessorIds(task.predecessor)
 
         // 过滤掉被删除的任务ID
         const validPredecessorIds = predecessorIds.filter(id => !deletedTaskIds.includes(id))
@@ -563,7 +561,7 @@ const cleanupPredecessorReferences = (deletedTaskIds: number[]) => {
         if (validPredecessorIds.length === 0) {
           delete task.predecessor
         } else {
-          task.predecessor = validPredecessorIds.join(',')
+          task.predecessor = predecessorIdsToString(validPredecessorIds)
         }
       }
 

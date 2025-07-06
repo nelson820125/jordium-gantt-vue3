@@ -4,6 +4,7 @@ import { useI18n } from '../composables/useI18n'
 import { useMessage } from '../composables/useMessage'
 import DatePicker from './DatePicker.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
+import MultiSelectPredecessor from './MultiSelectPredecessor.vue'
 import type { Task } from '../models/classes/Task'
 import '../styles/app.css'
 
@@ -56,7 +57,7 @@ const formData = reactive<Task>({
   assignee: '',
   startDate: '',
   endDate: '',
-  predecessor: '',
+  predecessor: [],
   estimatedHours: 0,
   actualHours: 0,
   progress: 0,
@@ -66,13 +67,6 @@ const formData = reactive<Task>({
 
 // 任务列表数据
 const allTasks = ref<Task[]>([])
-
-// 获取可作为前置任务的任务列表（只包含type="task"的任务，且不包含当前任务）
-const availablePredecessorTasks = computed(() => {
-  return allTasks.value.filter(
-    task => task.type === 'task' && task.id !== props.task?.id, // 排除当前任务自己
-  )
-})
 
 // 获取可作为上级任务的任务列表（只显示story和task类型，排除当前任务自己）
 const availableParentTasks = computed(() => {
@@ -221,7 +215,7 @@ const resetForm = () => {
     assignee: '',
     startDate: '',
     endDate: '',
-    predecessor: '',
+    predecessor: [],
     estimatedHours: 0,
     actualHours: 0,
     progress: 0,
@@ -489,19 +483,13 @@ watch(
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="task-predecessor">{{ t.predecessor }}</label>
-            <select id="task-predecessor" v-model="formData.predecessor" class="form-select">
-              <option value="">{{ t.predecessorPlaceholder }}</option>
-              <option
-                v-for="predTask in availablePredecessorTasks"
-                :key="predTask.id"
-                :value="predTask.id"
-              >
-                {{ predTask.name }} (ID: {{ predTask.id }})
-              </option>
-            </select>
-          </div>
+          <MultiSelectPredecessor
+            v-model="formData.predecessor"
+            :tasks="allTasks"
+            :current-task-id="props.task?.id"
+            :label="t.predecessor"
+            :placeholder="t.predecessorPlaceholder"
+          />
 
           <div class="form-row">
             <div class="form-group">

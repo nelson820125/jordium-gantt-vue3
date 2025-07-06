@@ -4,6 +4,7 @@ import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
+import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
@@ -222,16 +223,35 @@ const toggleTaskList = () => {
     isTaskListVisible.value = !isTaskListVisible.value
   }, 200)
 
-  // 动画结束后清理状态
+  // 动画结束后清理状态，并通知Timeline容器变化
   setTimeout(() => {
     isAnimating.value = false
     animationClass.value = ''
+
+    // 手动切换TaskList后，通知Timeline重新计算半圆
+    nextTick(() => {
+      window.dispatchEvent(
+        new CustomEvent('timeline-container-resized', {
+          detail: { source: 'manual-task-list-toggle' },
+        }),
+      )
+    })
   }, 400)
 }
 
 // 监听Timeline的TaskList切换事件
 const handleToggleTaskList = (event: CustomEvent) => {
   isTaskListVisible.value = event.detail
+
+  // TaskList切换会改变Timeline容器宽度，需要通知Timeline重新计算半圆
+  // 派发事件通知Timeline容器宽度发生了变化
+  nextTick(() => {
+    window.dispatchEvent(
+      new CustomEvent('timeline-container-resized', {
+        detail: { source: 'task-list-toggle' },
+      }),
+    )
+  })
 }
 
 // --- 事件链路：监听 Timeline 传递上来的拖拽/拉伸事件，并通过 props 回调暴露 ---
@@ -716,7 +736,7 @@ const generateCsvContent = (tasks: Task[]): string => {
       result.push({
         id: task.id,
         name: task.name || '',
-        predecessor: task.predecessor || '',
+        predecessor: formatPredecessorDisplay(task.predecessor),
         assignee: task.assignee || '',
         startDate: task.startDate || '',
         endDate: task.endDate || '',
@@ -747,7 +767,7 @@ const generateCsvContent = (tasks: Task[]): string => {
       return [
         escapeCSVField(task.id),
         escapeCSVField(task.name),
-        escapeCSVField(task.predecessor),
+        escapeCSVField(formatPredecessorDisplay(task.predecessor)),
         escapeCSVField(task.assignee),
         escapeCSVField(task.startDate),
         escapeCSVField(task.endDate),
@@ -1181,12 +1201,6 @@ watch(
       </div>
 
       <div class="gantt-panel gantt-panel-right" :class="{ 'full-width': !isTaskListVisible }">
-        <!-- 左侧渐隐效果覆盖层 -->
-        <div class="timeline-fade-overlay timeline-fade-left"></div>
-
-        <!-- 右侧渐隐效果覆盖层 -->
-        <div class="timeline-fade-overlay timeline-fade-right"></div>
-
         <Timeline
           ref="timelineRef"
           :tasks="tasksForTimeline"
@@ -1203,38 +1217,6 @@ watch(
     </div>
   </div>
 </template>
-
-<!-- 独立的无scoped样式块处理暗色主题渐隐效果 -->
-<style>
-/* 暗色主题下的渐隐效果 */
-html[data-theme='dark'] .timeline-fade-left {
-  background: linear-gradient(
-    to right,
-    var(--gantt-bg-primary, rgb(35, 35, 35)) 0%,
-    rgba(35, 35, 35, 0.95) 0%,
-    rgba(35, 35, 35, 0.85) 20%,
-    rgba(35, 35, 35, 0.7) 35%,
-    rgba(35, 35, 35, 0.5) 50%,
-    rgba(35, 35, 35, 0.3) 70%,
-    rgba(35, 35, 35, 0.15) 85%,
-    transparent 100%
-  ) !important;
-}
-
-html[data-theme='dark'] .timeline-fade-right {
-  background: linear-gradient(
-    to left,
-    var(--gantt-bg-primary, rgb(35, 35, 35)) 0%,
-    rgba(35, 35, 35, 0.95) 0%,
-    rgba(35, 35, 35, 0.85) 20%,
-    rgba(35, 35, 35, 0.7) 35%,
-    rgba(35, 35, 35, 0.5) 50%,
-    rgba(35, 35, 35, 0.3) 70%,
-    rgba(35, 35, 35, 0.15) 85%,
-    transparent 100%
-  ) !important;
-}
-</style>
 
 <style scoped>
 @import '../styles/theme-variables.css';
@@ -1306,55 +1288,6 @@ html[data-theme='dark'] .timeline-fade-right {
   text-align: center;
   margin: auto;
   font-size: 18px;
-}
-
-/* Timeline区域左右两侧渐隐覆盖层 */
-.timeline-fade-overlay {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 120px;
-  pointer-events: none;
-  z-index: 100;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  opacity: 0.8;
-}
-
-/* 左侧渐隐效果 - 增强版 */
-.timeline-fade-left {
-  left: 0;
-  background: linear-gradient(
-    to right,
-    var(--gantt-bg-primary, #ffffff) 0%,
-    rgba(255, 255, 255, 0.9) 15%,
-    rgba(255, 255, 255, 0.7) 30%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0.3) 70%,
-    rgba(255, 255, 255, 0.1) 85%,
-    transparent 100%
-  );
-}
-
-/* 右侧渐隐效果 - 增强版 */
-.timeline-fade-right {
-  right: 0;
-  background: linear-gradient(
-    to left,
-    var(--gantt-bg-primary, #ffffff) 0%,
-    rgba(255, 255, 255, 0.9) 15%,
-    rgba(255, 255, 255, 0.7) 30%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0.3) 70%,
-    rgba(255, 255, 255, 0.1) 85%,
-    transparent 100%
-  );
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .timeline-fade-overlay {
-    width: 60px;
-  }
 }
 
 /* 左侧撞击动画 */

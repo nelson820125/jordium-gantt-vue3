@@ -9,6 +9,19 @@ interface Props {
   startDate: Date
   name?: string
   milestone?: Milestone // 完整的里程碑数据
+  // 新增：用于边界粘性显示的滚动位置信息
+  scrollLeft?: number
+  containerWidth?: number
+  // 新增：里程碑推挤效果所需的信息
+  milestoneId?: string | number // 唯一标识符
+  otherMilestones?: Array<{
+    id: string | number
+    left: number
+    originalLeft: number // 原始位置（不考虑停靠）
+    isSticky: boolean
+    stickyPosition: 'left' | 'right' | 'none'
+    priority: number // 推挤优先级
+  }> // 其他里程碑的位置信息
 }
 
 const props = defineProps<Props>()
@@ -31,6 +44,15 @@ const handleDoubleClick = (e: MouseEvent) => {
   // 阻止事件冒泡和默认行为
   e.preventDefault()
   e.stopPropagation()
+
+  // 如果是停靠状态或被推出边界，禁止双击编辑
+  if (
+    milestoneVisibility.value.isSticky ||
+    milestoneVisibility.value.isPushedOut ||
+    !milestoneVisibility.value.showIcon
+  ) {
+    return
+  }
 
   // 清理任何可能残留的拖拽状态
   isDragging.value = false
@@ -69,6 +91,15 @@ const formatDateToLocalString = (date: Date): string => {
 
 // 拖拽事件处理
 const handleMouseDown = (e: MouseEvent) => {
+  // 如果是停靠状态或被推出边界，禁止拖拽
+  if (
+    milestoneVisibility.value.isSticky ||
+    milestoneVisibility.value.isPushedOut ||
+    !milestoneVisibility.value.showIcon
+  ) {
+    return
+  }
+
   // 如果正在双击过程中，不启动拖拽
   e.preventDefault()
   e.stopPropagation()
@@ -120,6 +151,48 @@ const handleMouseUp = () => {
   document.removeEventListener('mouseup', handleMouseUp)
 }
 
+// 单击事件处理 - 定位到里程碑位置（居中）
+const handleMilestoneClick = (e: MouseEvent) => {
+  // 阻止事件冒泡
+  e.preventDefault()
+  e.stopPropagation()
+
+  // 如果正在拖拽，不响应单击
+  if (isDragging.value) {
+    return
+  }
+
+  // 如果里程碑被推出边界（完全隐藏），不响应点击
+  if (milestoneVisibility.value.isPushedOut || !milestoneVisibility.value.showIcon) {
+    return
+  }
+
+  // 如果里程碑完全在视野内，不需要定位
+  if (milestoneVisibility.value.isFullyVisible) {
+    return
+  }
+
+  const containerWidth = props.containerWidth || 0
+
+  // 计算里程碑的原始位置（用户点击停靠里程碑是想定位到原始位置）
+  const milestoneLeft = parseInt(milestoneStyle.value.left) + 12 // 图标中心位置
+
+  if (containerWidth > 0) {
+    // 计算需要滚动到的位置，让里程碑居中
+    const targetScrollLeft = Math.max(0, milestoneLeft - containerWidth / 2)
+
+    // 发送滚动定位事件
+    window.dispatchEvent(
+      new CustomEvent('milestone-click-locate', {
+        detail: {
+          scrollLeft: targetScrollLeft,
+          smooth: true,
+        },
+      }),
+    )
+  }
+}
+
 // 计算菱形位置 - 考虑拖拽临时数据
 const milestoneStyle = computed(() => {
   const milestoneDate = tempMilestoneData.value?.startDate
@@ -163,6 +236,198 @@ const milestoneIcon = computed(() => {
   return props.milestone?.icon || 'diamond' // 默认为菱形
 })
 
+// 计算里程碑的边界粘性显示状态（包含推挤效果）
+const milestoneVisibility = computed(() => {
+  const scrollLeft = props.scrollLeft || 0
+  const containerWidth = props.containerWidth || 0
+
+  // 如果没有有效的滚动信息，正常显示
+  if (!containerWidth || containerWidth <= 0) {
+    return {
+      showIcon: true,
+      showLabel: true,
+      isSticky: false,
+      stickyPosition: 'none',
+      iconLeft: '0px',
+      isPushedOut: false,
+      clipPath: 'none',
+      isFullyVisible: true, // 无滚动信息时认为完全可见
+    }
+  }
+
+  // 获取当前里程碑的位置
+  const milestoneLeft = parseInt(milestoneStyle.value.left) + 12 // 图标中心位置
+  const leftBoundary = scrollLeft
+  const rightBoundary = scrollLeft + containerWidth
+  const iconSize = 24 // 图标大小
+  const iconLeft = milestoneLeft - iconSize / 2
+  const iconRight = milestoneLeft + iconSize / 2
+  const currentId = props.milestoneId
+
+  // 判断里程碑是否完全在视野内（左右边界都不碰到）
+  const isFullyVisible = iconLeft >= leftBoundary && iconRight <= rightBoundary
+
+  // 检查是否被其他里程碑推挤
+  const otherMilestones = props.otherMilestones || []
+
+  // 左侧边界逻辑
+  if (iconRight <= leftBoundary + iconSize / 2) {
+    // 检查左侧是否有其他停靠的里程碑，需要判断推挤优先级
+    const leftStickyMilestones = otherMilestones.filter(
+      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky,
+    )
+
+    // 如果有其他里程碑已经停靠在左侧，比较优先级决定推挤顺序
+    if (leftStickyMilestones.length > 0) {
+      // 获取当前里程碑的原始位置（不考虑停靠）
+      const currentOriginalLeft = parseInt(milestoneStyle.value.left) + 12
+
+      // 检查是否有里程碑的原始位置比当前里程碑更靠右（即后来者推挤先来者）
+      const hasLaterMilestone = leftStickyMilestones.some(m => {
+        // 后来的里程碑（原始位置更靠右，数值更大）会推挤先来的人
+        return m.originalLeft > currentOriginalLeft
+      })
+
+      if (hasLaterMilestone) {
+        // 被后来的里程碑推出边界，完全隐藏
+        return {
+          showIcon: false,
+          showLabel: false,
+          isSticky: false,
+          stickyPosition: 'none',
+          iconLeft: '0px',
+          isPushedOut: true,
+          clipPath: 'none',
+          isFullyVisible: false,
+        }
+      }
+    }
+
+    // 停靠在左边界，显示右半部分
+    return {
+      showIcon: true,
+      showLabel: false,
+      isSticky: true,
+      stickyPosition: 'left',
+      iconLeft: `${leftBoundary - parseInt(milestoneStyle.value.left) - iconSize / 2}px`,
+      isPushedOut: false,
+      clipPath: 'polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%)', // 只显示右半部分
+      isFullyVisible: false,
+    }
+  }
+
+  // 右侧边界逻辑
+  if (iconLeft >= rightBoundary - iconSize / 2) {
+    // 检查右侧是否有其他停靠的里程碑，需要判断推挤优先级
+    const rightStickyMilestones = otherMilestones.filter(
+      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky,
+    )
+
+    // 如果有其他里程碑已经停靠在右侧，比较优先级决定推挤顺序
+    if (rightStickyMilestones.length > 0) {
+      // 获取当前里程碑的原始位置（不考虑停靠）
+      const currentOriginalLeft = parseInt(milestoneStyle.value.left) + 12
+
+      // 检查是否有里程碑的原始位置比当前里程碑更靠左（即后来者推挤先来者）
+      const hasLaterMilestone = rightStickyMilestones.some(m => {
+        // 后来的里程碑（原始位置更靠左，数值更小）会推挤先来的人
+        return m.originalLeft < currentOriginalLeft
+      })
+
+      if (hasLaterMilestone) {
+        // 被后来的里程碑推出边界，完全隐藏
+        return {
+          showIcon: false,
+          showLabel: false,
+          isSticky: false,
+          stickyPosition: 'none',
+          iconLeft: '0px',
+          isPushedOut: true,
+          clipPath: 'none',
+          isFullyVisible: false,
+        }
+      }
+    }
+
+    // 停靠在右边界，显示左半部分
+    return {
+      showIcon: true,
+      showLabel: false,
+      isSticky: true,
+      stickyPosition: 'right',
+      iconLeft: `${rightBoundary - parseInt(milestoneStyle.value.left) - iconSize / 2}px`,
+      isPushedOut: false,
+      clipPath: 'polygon(0% 0%, 50% 0%, 50% 100%, 0% 100%)', // 只显示左半部分
+      isFullyVisible: false,
+    }
+  }
+
+  // 图标在边界内，正常显示
+  return {
+    showIcon: true,
+    showLabel: true,
+    isSticky: false,
+    stickyPosition: 'none',
+    iconLeft: '0px',
+    isPushedOut: false,
+    clipPath: 'none',
+    isFullyVisible,
+  }
+})
+
+// Tooltip状态管理
+const showTooltip = ref(false)
+const tooltipPosition = ref({ x: 0, y: 0 })
+
+// 处理里程碑悬停 - 只在停靠状态且显示图标时显示tooltip
+const handleMilestoneMouseEnter = (event: MouseEvent) => {
+  // 只有在停靠状态、显示图标且未被推出时才显示tooltip
+  if (
+    milestoneVisibility.value.isSticky &&
+    milestoneVisibility.value.showIcon &&
+    !milestoneVisibility.value.isPushedOut
+  ) {
+    showTooltip.value = true
+
+    // 计算tooltip位置
+    const rightOffset = !props.milestone || props.milestone?.icon === 'diamond' ? -300 : -270
+    const offsetX = milestoneVisibility.value.stickyPosition === 'left' ? 10 : rightOffset // 左侧停靠在右侧显示，右侧停靠在左侧显示
+
+    tooltipPosition.value = {
+      x: event.clientX + offsetX,
+      y: event.clientY - 10,
+    }
+  }
+}
+
+const handleMilestoneMouseLeave = () => {
+  showTooltip.value = false
+}
+
+// 格式化日期显示
+const formatDisplayDate = (dateStr: string): string => {
+  if (!dateStr) return '未设置'
+
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '未设置'
+
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  } catch {
+    return '未设置'
+  }
+}
+
+// Tooltip内容
+const tooltipContent = computed(() => {
+  const milestoneName = props.name || props.milestone?.name || '里程碑'
+  const targetDate = formatDisplayDate(props.date || props.milestone?.startDate || '')
+  return `里程碑：${milestoneName} - 目标日期：${targetDate}`
+})
+
 // 组件销毁时清理事件监听器
 onUnmounted(() => {
   // 清理拖拽状态
@@ -179,12 +444,34 @@ onUnmounted(() => {
   <div
     class="milestone"
     :style="milestoneStyle"
-    :title="props.name || '里程碑'"
-    :class="{ dragging: isDragging }"
-    @dblclick="handleDoubleClick"
-    @mousedown="handleMouseDown"
+    :title="milestoneVisibility.isSticky ? '' : props.name || '里程碑'"
+    :class="{
+      dragging: isDragging,
+      'milestone-sticky': milestoneVisibility.isSticky,
+      'milestone-sticky-left': milestoneVisibility.stickyPosition === 'left',
+      'milestone-sticky-right': milestoneVisibility.stickyPosition === 'right',
+      'milestone-pushed-out': milestoneVisibility.isPushedOut,
+    }"
+    @click.stop="handleMilestoneClick"
   >
-    <svg :width="24" :height="24" :viewBox="`0 0 24 24`">
+    <svg
+      v-if="milestoneVisibility.showIcon"
+      :width="24"
+      :height="24"
+      :viewBox="`0 0 24 24`"
+      :style="{
+        position: milestoneVisibility.isSticky ? 'relative' : 'static',
+        left: milestoneVisibility.isSticky ? milestoneVisibility.iconLeft : '0px',
+        clipPath: milestoneVisibility.clipPath,
+        zIndex: milestoneVisibility.isSticky ? 200 : 120,
+      }"
+      style="cursor: pointer"
+      @mouseenter="handleMilestoneMouseEnter"
+      @mouseleave="handleMilestoneMouseLeave"
+      @click.stop="handleMilestoneClick"
+      @dblclick.stop="handleDoubleClick"
+      @mousedown.stop="handleMouseDown"
+    >
       <!-- 菱形图标 -->
       <g v-if="milestoneIcon === 'diamond'" transform="rotate(45 16 16)">
         <rect
@@ -222,8 +509,30 @@ onUnmounted(() => {
         />
       </g>
     </svg>
-    <span v-if="props.name" class="milestone-label milestone-label-right">{{ props.name }}</span>
+    <!-- 里程碑标签 - 只在非停靠状态显示 -->
+    <span
+      v-if="props.name && milestoneVisibility.showLabel"
+      class="milestone-label milestone-label-right"
+    >
+      {{ props.name }}
+    </span>
   </div>
+
+  <!-- Tooltip 弹窗 - 只在停靠状态显示 -->
+  <Teleport to="body">
+    <div
+      v-if="showTooltip && milestoneVisibility.isSticky"
+      class="milestone-tooltip"
+      :style="{
+        left: `${tooltipPosition.x}px`,
+        top: `${tooltipPosition.y}px`,
+      }"
+    >
+      <div class="tooltip-content">
+        {{ tooltipContent }}
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -280,11 +589,22 @@ onUnmounted(() => {
   font-weight: bold;
   color: var(--gantt-text-primary, #222);
   white-space: nowrap;
+  z-index: 10; /* 确保标签在上层 */
 }
 
 .milestone-label-right {
   margin-left: 5px;
   align-self: center;
+}
+
+/* 粘性标签的特殊样式 */
+.milestone-label[style*='position: absolute'] {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(245, 108, 108, 0.2);
+  backdrop-filter: blur(4px);
 }
 
 /* 火箭emoji样式 */
@@ -308,6 +628,13 @@ onUnmounted(() => {
 /* 暗黑模式下的适配 */
 :global(html[data-theme='dark']) .milestone-label {
   color: var(--gantt-text-white, #ffffff) !important;
+}
+
+/* 暗黑模式下的粘性标签样式 */
+:global(html[data-theme='dark']) .milestone-label[style*='position: absolute'] {
+  background: rgba(30, 30, 30, 0.9) !important;
+  border-color: rgba(246, 124, 124, 0.3) !important;
+  color: #ffffff !important;
 }
 
 :global(html[data-theme='dark']) .milestone svg {
@@ -360,5 +687,177 @@ onUnmounted(() => {
 :global(html[data-theme='dark']) .milestone.dragging svg {
   filter: drop-shadow(0 0 20px var(--gantt-danger, #f67c7c))
     drop-shadow(0 0 32px rgba(246, 124, 124, 0.6));
+}
+
+/* 停靠状态的特殊样式 */
+.milestone-sticky svg {
+  z-index: 150;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.milestone-sticky-left svg {
+  animation: milestone-glow-sticky 3s ease-in-out infinite alternate;
+}
+
+.milestone-sticky-right svg {
+  animation: milestone-glow-sticky 3s ease-in-out infinite alternate;
+}
+
+/* 半图标显示时取消发光效果 */
+.milestone-sticky-left svg[style*='clip-path'],
+.milestone-sticky-right svg[style*='clip-path'] {
+  animation: none;
+  filter: none;
+}
+
+@keyframes milestone-glow-sticky {
+  from {
+    filter: drop-shadow(0 0 6px var(--gantt-danger, #f56c6c))
+      drop-shadow(0 0 12px rgba(245, 108, 108, 0.4));
+  }
+  to {
+    filter: drop-shadow(0 0 10px var(--gantt-danger, #f56c6c))
+      drop-shadow(0 0 20px rgba(245, 108, 108, 0.6));
+  }
+}
+
+/* 暗黑模式下的停靠状态样式 */
+:global(html[data-theme='dark']) .milestone-sticky-left svg,
+:global(html[data-theme='dark']) .milestone-sticky-right svg {
+  animation: milestone-glow-sticky-dark 3s ease-in-out infinite alternate;
+}
+
+/* 暗黑模式下半图标显示时取消发光效果 */
+:global(html[data-theme='dark']) .milestone-sticky-left svg[style*='clip-path'],
+:global(html[data-theme='dark']) .milestone-sticky-right svg[style*='clip-path'] {
+  animation: none;
+  filter: none;
+}
+
+@keyframes milestone-glow-sticky-dark {
+  from {
+    filter: drop-shadow(0 0 6px var(--gantt-danger, #f67c7c))
+      drop-shadow(0 0 12px rgba(246, 124, 124, 0.4));
+  }
+  to {
+    filter: drop-shadow(0 0 10px var(--gantt-danger, #f67c7c))
+      drop-shadow(0 0 20px rgba(246, 124, 124, 0.6));
+  }
+}
+
+/* 半图标显示效果 - 优化clip-path过渡 */
+.milestone-sticky svg[style*='clip-path'] {
+  transition:
+    clip-path 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.3s ease-in-out;
+}
+
+/* 左侧停靠的半图标效果增强 */
+.milestone-sticky-left svg[style*='clip-path'] {
+  transform-origin: 100% 50%; /* 右侧为缩放原点 */
+}
+
+/* 右侧停靠的半图标效果增强 */
+.milestone-sticky-right svg[style*='clip-path'] {
+  transform-origin: 0% 50%; /* 左侧为缩放原点 */
+}
+
+/* 半图标悬停效果 */
+.milestone-sticky svg[style*='clip-path']:hover {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 18px var(--gantt-danger, #f56c6c))
+    drop-shadow(0 0 30px rgba(245, 108, 108, 0.8));
+}
+
+.milestone-sticky.milestone-pushing svg {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 15px var(--gantt-danger, #f56c6c))
+    drop-shadow(0 0 25px rgba(245, 108, 108, 0.7));
+}
+
+/* 停靠状态的增强发光效果 */
+.milestone-sticky-left svg,
+.milestone-sticky-right svg {
+  animation: milestone-glow-sticky-enhanced 2s ease-in-out infinite alternate;
+}
+
+@keyframes milestone-glow-sticky-enhanced {
+  from {
+    filter: drop-shadow(0 0 8px var(--gantt-danger, #f56c6c))
+      drop-shadow(0 0 16px rgba(245, 108, 108, 0.5));
+  }
+  to {
+    filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
+      drop-shadow(0 0 24px rgba(245, 108, 108, 0.7)) drop-shadow(0 0 32px rgba(245, 108, 108, 0.3));
+  }
+}
+
+/* === Milestone Tooltip 样式 === */
+.milestone-tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 10000; /* 确保在最上层 */
+  max-width: 300px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.milestone-tooltip .tooltip-content {
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.4;
+}
+
+/* 暗黑模式下的Tooltip样式 */
+:global(html[data-theme='dark']) .milestone-tooltip {
+  background: rgba(30, 30, 30, 0.95) !important;
+  color: #ffffff !important;
+}
+
+/* 推挤状态的视觉增强 */
+.milestone-pushing {
+  animation: milestone-pushing-pulse 0.6s ease-in-out;
+}
+
+@keyframes milestone-pushing-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
+      drop-shadow(0 0 20px rgba(245, 108, 108, 0.6));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 推挤动画效果 - 被推出边界的里程碑 */
+.milestone-pushed-out {
+  opacity: 0;
+  transform: scale(0.6) translateY(-10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+/* 停靠状态的交互提示 */
+.milestone-sticky svg:hover {
+  transform: scale(1.05);
+  cursor: pointer;
+}
+
+/* 停靠状态下的点击提示 */
+.milestone-sticky svg:active {
+  transform: scale(0.95);
 }
 </style>

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2025-07-06
+
+### Added
+- 支持多前置任务功能
+- 增加边框粘性toolBar，表示隐藏的TaskBar和MilestoneBar
+- 点击边框粘性toolBar，快速定位滑动到对应的TaskBar和MilestoneBar
+
+### Changed
+- 支持多前置任务功能
+- Timeline中sub-task隐藏后，关系线也随之隐藏
+
 ## [1.0.9] - 2025-07-04
 
 ### Changed

@@ -124,5 +124,16 @@
       "增加Story删除时选择是否删除子任务的选项",
       "删除Story或Task时同时删除前后的关系线路"
     ]
+  },
+  {
+    "version": "1.0.10",
+    "date": "2025-07-06",
+    "notes": [
+      "升级用户体验",
+      "增加边框粘性toolBar，表示隐藏的TaskBar和MilestoneBar",
+      "点击边框粘性toolBar，快速定位滑动到对应的TaskBar和MilestoneBar",
+      "Timeline中sub-task隐藏后，关系线也随之隐藏",
+      "增强TaskBar可以存在多个前置任务"
+    ]
   }
 ]

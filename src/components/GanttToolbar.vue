@@ -587,7 +587,7 @@ onUnmounted(() => {
   background: var(--gantt-bg-toolbar, #f8f9fa);
   border-bottom: 1px solid var(--gantt-border-color, #ebeef5);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  /*transition: all 0.2s ease;*/
 }
 
 .toolbar-left {
@@ -616,7 +616,7 @@ onUnmounted(() => {
   background: transparent;
   color: var(--gantt-text-primary, #606266);
   cursor: pointer;
-  transition: all 0.2s ease;
+  /*transition: all 0.2s ease;*/
   outline: none;
 }
 
@@ -682,7 +682,7 @@ onUnmounted(() => {
   border: 1px solid var(--gantt-border-color, #dcdfe6);
   color: var(--gantt-text-primary, #606266);
   cursor: pointer;
-  transition: all 0.2s ease;
+  /*transition: all 0.2s ease;*/
   outline: none;
   font-size: 14px;
   white-space: nowrap;

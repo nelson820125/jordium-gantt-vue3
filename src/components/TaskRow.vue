@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
 
 interface Props {
@@ -264,7 +265,7 @@ onUnmounted(() => {
 
       <!-- 普通任务显示详细信息 -->
       <template v-else>
-        <div class="col col-pre">{{ props.task.predecessor || '-' }}</div>
+        <div class="col col-pre">{{ formatPredecessorDisplay(props.task.predecessor) }}</div>
         <div class="col col-assignee">
           <div class="assignee-info">
             <div class="avatar">

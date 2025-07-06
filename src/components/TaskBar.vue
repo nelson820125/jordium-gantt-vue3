@@ -9,6 +9,11 @@ interface Props {
   startDate: Date
   isParent?: boolean
   onDoubleClick?: (task: Task) => void
+  // 新增：用于粘性文字显示的滚动位置信息
+  scrollLeft?: number
+  containerWidth?: number
+  // 新增：外部控制半圆隐藏状态（用于Timeline初始化等场景）
+  hideBubbles?: boolean
 }
 
 const props = defineProps<Props>()
@@ -19,6 +24,7 @@ const emit = defineEmits([
   'dblclick',
   'drag-end', // 新增
   'resize-end', // 新增
+  'scroll-to-position', // 新增：半圆点击定位事件
 ])
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
@@ -327,10 +333,404 @@ const handleTaskBarDoubleClick = (e: MouseEvent) => {
   }
 }
 
+// 计算粘性样式 - 支持左右边界的精细控制
+const stickyStyles = computed(() => {
+  const scrollLeft = props.scrollLeft || 0
+  const containerWidth = props.containerWidth || 0
+
+  if (!scrollLeft && !containerWidth) {
+    return {
+      nameLeft: '',
+      namePosition: '',
+      nameTop: '',
+      progressLeft: '',
+      progressPosition: '',
+      progressTop: '',
+    }
+  }
+
+  const taskLeft = parseInt(taskBarStyle.value.left)
+  const taskWidth = parseInt(taskBarStyle.value.width)
+  const taskRight = taskLeft + taskWidth
+  const taskCenterX = taskLeft + taskWidth / 2
+  const leftBoundary = scrollLeft
+  const rightBoundary = scrollLeft + containerWidth
+
+  // 默认样式
+  let nameLeft = ''
+  let namePosition = ''
+  let nameTop = ''
+  let progressLeft = ''
+  let progressPosition = ''
+  let progressTop = ''
+
+  // 估算文字内容的实际位置
+  const nameText = props.task.name || ''
+  const nameWidth = Math.max(nameText.length * 7, 40)
+  const progressWidth = 35
+
+  // 计算名称和进度在默认居中状态下的位置
+  const nameLeftPos = taskCenterX - nameWidth / 2
+  const nameRightPos = taskCenterX + nameWidth / 2
+  const progressLeftPos = taskCenterX - progressWidth / 2
+  const progressRightPos = taskCenterX + progressWidth / 2
+
+  // 左侧边界粘性逻辑
+  const nameNeedsLeftSticky =
+    nameLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+
+  // 右侧边界粘性逻辑
+  const nameNeedsRightSticky =
+    nameRightPos > rightBoundary && taskLeft < rightBoundary && taskCenterX > rightBoundary
+
+  // 名称粘性处理
+  if (nameNeedsLeftSticky) {
+    const offset = leftBoundary - taskLeft
+    nameLeft = `${offset + 8}px`
+    namePosition = 'absolute'
+    nameTop = '6px'
+  } else if (nameNeedsRightSticky) {
+    const offset = rightBoundary - taskLeft - nameWidth
+    nameLeft = `${offset - 8}px`
+    namePosition = 'absolute'
+    nameTop = '6px'
+  }
+
+  // 进度左侧边界粘性逻辑
+  const progressNeedsLeftSticky =
+    progressLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+
+  // 进度右侧边界粘性逻辑
+  const progressNeedsRightSticky =
+    progressRightPos > rightBoundary && taskLeft < rightBoundary && taskCenterX > rightBoundary
+
+  // 进度粘性处理
+  if (progressNeedsLeftSticky) {
+    const offset = leftBoundary - taskLeft
+    progressLeft = `${offset + 8}px`
+    progressPosition = 'absolute'
+    progressTop = '24px'
+  } else if (progressNeedsRightSticky) {
+    const offset = rightBoundary - taskLeft - progressWidth
+    progressLeft = `${offset - 8}px`
+    progressPosition = 'absolute'
+    progressTop = '24px'
+  }
+
+  return {
+    nameLeft,
+    namePosition,
+    nameTop,
+    progressLeft,
+    progressPosition,
+    progressTop,
+  }
+})
+
+// 计算气泡指示器的显示状态和位置
+const bubbleIndicator = computed(() => {
+  const scrollLeft = props.scrollLeft || 0
+  const containerWidth = props.containerWidth || 0
+
+  // 如果没有有效的滚动信息，不显示气泡
+  if (!containerWidth || containerWidth <= 0) {
+    return {
+      show: false,
+      left: '0px',
+      side: 'left',
+      color: '#409eff',
+      animationType: 'none',
+    }
+  }
+
+  // 如果正在初始化、强制隐藏状态或外部要求隐藏，不显示气泡
+  if (isInitializing.value || bubbleHidden.value || props.hideBubbles) {
+    return {
+      show: false,
+      left: '0px',
+      side: 'left',
+      color: taskStatus.value.color,
+      animationType: 'none',
+    }
+  }
+
+  // 获取实际的DOM位置（考虑缩放等因素）
+  const taskLeft = parseInt(taskBarStyle.value.left)
+  const taskWidth = parseInt(taskBarStyle.value.width)
+  const taskRight = taskLeft + taskWidth
+  const leftBoundary = scrollLeft
+  const rightBoundary = scrollLeft + containerWidth
+
+  // 检查边界状态
+  const isCompletelyOutOfLeft = taskRight <= leftBoundary
+  const isCompletelyOutOfRight = taskLeft >= rightBoundary
+
+  // 只有完全超出边界时才显示半圆
+  if (isCompletelyOutOfLeft) {
+    return {
+      show: true,
+      left: `${leftBoundary - taskLeft - 4}px`, // 圆心在边界上，向左偏移半径(4px)
+      side: 'left',
+      color: taskStatus.value.color,
+      animationType: 'morphToSemiCircle',
+    }
+  }
+
+  if (isCompletelyOutOfRight) {
+    return {
+      show: true,
+      left: `${rightBoundary - taskLeft - 8}px`, // 右侧半圆位置调整，减少偏移量
+      side: 'right',
+      color: taskStatus.value.color,
+      animationType: 'morphToSemiCircle',
+    }
+  }
+
+  // 部分可见或完全可见时不显示
+  return {
+    show: false,
+    left: '0px',
+    side: 'left',
+    color: taskStatus.value.color,
+    animationType: 'none',
+  }
+})
+
+// 气泡 tooltip 状态
+const showTooltip = ref(false)
+const tooltipPosition = ref({ x: 0, y: 0 })
+
+// 跟踪滚动状态，避免非滚动时的动画
+const isScrollingContext = ref(false)
+const scrollTimeout = ref<number | null>(null)
+const hasManualResize = ref(false) // 跟踪是否有手动resize事件
+const isInitializing = ref(true) // 跟踪初始化状态
+const isAutoScrolling = ref(false) // 跟踪自动滚动状态（如定位到今日、点击半圆定位等）
+const bubbleHidden = ref(false) // 控制半圆的强制隐藏状态
+
+// 气泡点击事件 - 将TaskBar定位到Timeline中间
+const handleBubbleClick = () => {
+  const scrollLeft = props.scrollLeft || 0
+  const containerWidth = props.containerWidth || 0
+
+  if (!scrollLeft && !containerWidth) return
+
+  const taskLeft = parseInt(taskBarStyle.value.left)
+  const taskWidth = parseInt(taskBarStyle.value.width)
+  const taskCenterX = taskLeft + taskWidth / 2
+
+  // 计算将TaskBar中心定位到Timeline中心所需的滚动位置
+  const targetScrollLeft = taskCenterX - containerWidth / 2
+
+  // 标记为自动滚动状态，隐藏所有半圆
+  isAutoScrolling.value = true
+  bubbleHidden.value = true
+
+  // 立即隐藏tooltip
+  showTooltip.value = false
+
+  // 通过事件向Timeline发送滚动请求
+  emit('scroll-to-position', targetScrollLeft)
+}
+
+// 监听滚动相关的props变化，判断是否在滚动
+watch(
+  () => [props.scrollLeft, props.containerWidth],
+  (newValues, oldValues) => {
+    // 检查是否是真实的滚动变化（而非初始化或resize）
+    const [newScrollLeft, newContainerWidth] = newValues
+    const [oldScrollLeft, oldContainerWidth] = oldValues || [0, 0]
+
+    // 确保数值有效
+    const safeNewScrollLeft = newScrollLeft || 0
+    const safeNewContainerWidth = newContainerWidth || 0
+    const safeOldScrollLeft = oldScrollLeft || 0
+    const safeOldContainerWidth = oldContainerWidth || 0
+
+    // 如果容器宽度发生变化（包括Splitter拖拽、TaskList展开收起、窗口resize等）
+    if (Math.abs(safeNewContainerWidth - safeOldContainerWidth) > 1 && safeOldContainerWidth > 0) {
+      hasManualResize.value = true
+
+      // 容器宽度变化时，强制重新计算气泡显示状态
+      // 立即触发bubbleIndicator重新计算
+      nextTick(() => {
+        // computed会自动重新计算
+      })
+
+      // 延长禁用动画的时间，确保各种resize操作稳定
+      setTimeout(() => {
+        hasManualResize.value = false
+      }, 500) // 给容器变化留足够时间稳定
+      return
+    }
+
+    // 首次接收到有效的滚动数据，标记初始化完成
+    if (isInitializing.value && safeNewScrollLeft >= 0 && safeNewContainerWidth > 0) {
+      // 延迟标记初始化完成，等待初始滚动动画结束
+      setTimeout(() => {
+        isInitializing.value = false
+      }, 1000) // 给初始化滚动留足够时间
+    }
+
+    // 只有在scrollLeft变化且没有resize时才认为是滚动
+    if (safeNewScrollLeft !== safeOldScrollLeft && !hasManualResize.value) {
+      isScrollingContext.value = true
+
+      // 清除之前的超时
+      if (scrollTimeout.value) {
+        clearTimeout(scrollTimeout.value)
+      }
+
+      // 滚动结束后的处理
+      scrollTimeout.value = setTimeout(() => {
+        isScrollingContext.value = false
+
+        // 如果是自动滚动结束，恢复半圆显示
+        if (isAutoScrolling.value) {
+          isAutoScrolling.value = false
+          // 延迟一点时间再显示半圆，确保滚动完全停止
+          setTimeout(() => {
+            bubbleHidden.value = false
+          }, 300)
+        }
+      }, 200)
+    }
+  },
+)
+
+// 监听外部hideBubbles属性变化，确保Timeline的容器变化能及时反应
+watch(
+  () => props.hideBubbles,
+  (newHidden, oldHidden) => {
+    // 当Timeline设置hideBubbles从true变为false时，强制重新计算半圆状态
+    if (oldHidden && !newHidden) {
+      nextTick(() => {
+        // 强制重新计算bubbleIndicator，确保容器宽度变化后正确显示半圆
+      })
+    }
+  },
+)
+
+// 监听TaskBar可见性变化，只在滚动时实现重新出现动画
+watch(
+  () => bubbleIndicator.value.show,
+  () => {
+    // TaskBar重新出现时，不需要动画效果
+    // 半圆会自然消失，TaskBar会立即显示
+  },
+)
+
+// 监听页面缩放和大小变化，重新计算气泡位置
+const handleResize = () => {
+  // timeline区域resize时，立即重新计算半圆显示状态
+  hasManualResize.value = true
+
+  // 强制重新计算bubbleIndicator
+  nextTick(() => {
+    // computed会自动重新计算
+  })
+
+  // 短时间后恢复正常状态，允许动画
+  setTimeout(() => {
+    hasManualResize.value = false
+  }, 300) // 缩短时间，快速恢复
+}
+
+onMounted(() => {
+  // 监听窗口大小变化和缩放
+  window.addEventListener('resize', handleResize)
+  window.addEventListener('zoom', handleResize) // 某些浏览器支持
+})
+
 onUnmounted(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
+  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('zoom', handleResize)
 })
+
+// 处理气泡悬停
+const handleBubbleMouseEnter = (event: MouseEvent) => {
+  showTooltip.value = true
+
+  // 智能定位：右侧气泡在左侧显示tooltip，左侧气泡在右侧显示
+  const isRightBubble = bubbleIndicator.value.side === 'right'
+  const offsetX = isRightBubble ? -180 : 15 // 右侧气泡向左偏移距离调整，与左侧距离一致
+
+  tooltipPosition.value = {
+    x: event.clientX + offsetX,
+    y: event.clientY - 10,
+  }
+}
+
+const handleBubbleMouseLeave = () => {
+  showTooltip.value = false
+}
+
+// 处理气泡点击事件 - 点击时隐藏tooltip，但不影响定位功能
+const handleBubbleMouseDown = (event: MouseEvent) => {
+  // 阻止mousedown事件冒泡，防止影响其他功能
+  event.stopPropagation()
+  // 点击时隐藏tooltip
+  showTooltip.value = false
+}
+
+// 格式化日期显示
+const formatDisplayDate = (dateStr: string | undefined): string => {
+  if (!dateStr) return '未设置'
+  const date = createLocalDate(dateStr)
+  if (!date) return '未设置'
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// 计算工时信息
+const workHourInfo = computed(() => {
+  // 这里可以根据实际的数据结构调整
+  const startDate = createLocalDate(props.task.startDate)
+  const endDate = createLocalDate(props.task.endDate)
+
+  let totalHours = 0
+  if (startDate && endDate) {
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    totalHours = diffDays * 8 // 假设每天8小时
+  }
+
+  const progress = props.task.progress || 0
+  const usedHours = Math.round((totalHours * progress) / 100)
+
+  return {
+    total: totalHours,
+    used: usedHours,
+  }
+})
+
+// Helper functions to create type-safe style objects
+const getNameStyles = () => {
+  const styles = stickyStyles.value
+  const result: Record<string, string> = {}
+
+  if (styles.nameLeft) result.left = styles.nameLeft
+  if (styles.namePosition) result.position = styles.namePosition
+  if (styles.nameTop) result.top = styles.nameTop
+
+  return result
+}
+
+const getProgressStyles = () => {
+  const styles = stickyStyles.value
+  const result: Record<string, string> = {}
+
+  if (styles.progressLeft) result.left = styles.progressLeft
+  if (styles.progressPosition) result.position = styles.progressPosition
+  if (styles.progressTop) result.top = styles.progressTop
+
+  return result
+}
 </script>
 
 <template>
@@ -343,6 +743,7 @@ onUnmounted(() => {
       borderColor: taskStatus.borderColor,
       color: taskStatus.color,
       cursor: isCompleted || isParent ? 'default' : 'move',
+      '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
     }"
     :class="{
       dragging: isDragging,
@@ -374,8 +775,15 @@ onUnmounted(() => {
 
     <!-- 任务条主体（非父级任务） -->
     <div v-if="!isParent" class="task-bar-content" @mousedown="e => handleMouseDown(e, 'drag')">
-      <div class="task-name">{{ task.name }}</div>
-      <div v-if="task.progress !== undefined" class="task-progress">{{ task.progress }}%</div>
+      <!-- 任务名称 -->
+      <div class="task-name" :style="getNameStyles()">
+        {{ task.name }}
+      </div>
+
+      <!-- 进度百分比 -->
+      <div v-if="task.progress !== undefined" class="task-progress" :style="getProgressStyles()">
+        {{ task.progress }}%
+      </div>
     </div>
 
     <!-- 右侧调整把手 -->
@@ -384,7 +792,63 @@ onUnmounted(() => {
       class="resize-handle resize-handle-right"
       @mousedown="e => handleMouseDown(e, 'resize-right')"
     ></div>
+
+    <!-- 半圆气泡指示器 - 只在 TaskBar 完全消失时显示 -->
+    <div
+      v-if="bubbleIndicator.show && !isParent"
+      class="bubble-indicator"
+      :class="[
+        `bubble-${bubbleIndicator.side}`,
+        `bubble-animation-${bubbleIndicator.animationType}`,
+      ]"
+      :style="{
+        left: bubbleIndicator.left,
+        backgroundColor: bubbleIndicator.color,
+        borderColor: bubbleIndicator.color,
+      }"
+      @mouseenter="handleBubbleMouseEnter"
+      @mouseleave="handleBubbleMouseLeave"
+      @mousedown="handleBubbleMouseDown"
+      @click="handleBubbleClick"
+    ></div>
   </div>
+
+  <!-- Tooltip 弹窗 -->
+  <Teleport to="body">
+    <div
+      v-if="showTooltip"
+      class="task-tooltip"
+      :style="{
+        left: `${tooltipPosition.x}px`,
+        top: `${tooltipPosition.y}px`,
+      }"
+    >
+      <div class="tooltip-arrow"></div>
+      <div class="tooltip-title">{{ task.name }}</div>
+      <div class="tooltip-content">
+        <div class="tooltip-row">
+          <span class="tooltip-label">计划开始:</span>
+          <span class="tooltip-value">{{ formatDisplayDate(task.startDate) }}</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="tooltip-label">计划结束:</span>
+          <span class="tooltip-value">{{ formatDisplayDate(task.endDate) }}</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="tooltip-label">计划工时:</span>
+          <span class="tooltip-value">{{ workHourInfo.total }}h</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="tooltip-label">已用工时:</span>
+          <span class="tooltip-value">{{ workHourInfo.used }}h</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="tooltip-label">完成率:</span>
+          <span class="tooltip-value">{{ task.progress || 0 }}%</span>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -397,7 +861,7 @@ onUnmounted(() => {
   min-width: 60px;
   z-index: 100;
   border: 2px solid;
-  overflow: hidden;
+  overflow: visible; /* 允许内容超出 TaskBar */
 }
 
 .task-bar:hover {
@@ -498,22 +962,27 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 500;
   text-align: center;
-  overflow: hidden;
+  overflow: visible; /* 允许内容超出 */
   position: relative;
   z-index: 1;
 }
 
 .task-name {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  overflow: visible;
   line-height: 1.2;
+  font-size: 12px;
+  font-weight: 700; /* 加粗显示 */
+  z-index: 10;
+  /* 移除背景样式，保持原始状态 */
 }
 
 .task-progress {
   opacity: 0.9;
-  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700; /* 加粗显示 */
+  z-index: 10;
+  /* 移除背景样式，保持原始状态 */
 }
 
 .resize-handle {
@@ -538,6 +1007,276 @@ onUnmounted(() => {
 
 .resize-handle-right {
   right: 0;
+}
+
+/* === 半圆气泡指示器样式 === */
+.bubble-indicator {
+  position: absolute;
+  top: 50%;
+  width: 8px; /* 半圆宽度 */
+  height: 16px; /* 半圆高度 */
+  z-index: 15;
+  cursor: pointer;
+  border: 2px solid;
+  transform: translateY(-50%);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 左侧半圆 - 圆心在边界上，只显示右半部分 */
+.bubble-left {
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+  transform: translateY(-50%); /* 不需要额外偏移，圆心已在边界 */
+}
+
+/* 右侧半圆 - 圆心在边界上，只显示左半部分 */
+.bubble-right {
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+  transform: translateY(-50%); /* 不需要额外偏移，圆心已在边界 */
+}
+
+/* 悬停效果 */
+.bubble-indicator:hover {
+  transform: translateY(-50%) scale(1.2);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.bubble-left:hover {
+  transform: translateY(-50%) scale(1.2);
+}
+
+.bubble-right:hover {
+  transform: translateY(-50%) scale(1.2);
+}
+
+/* === 半圆气泡动画效果 === */
+
+/* TaskBar 边缘变成左侧半圆的动画 */
+@keyframes morphToLeftSemiCircle {
+  0% {
+    width: 60px;
+    height: 30px;
+    border-radius: 4px 0 0 4px;
+    border-right: 2px solid;
+    border-left: none;
+    opacity: 0.8;
+    transform: translateY(-50%);
+  }
+
+  30% {
+    width: 30px;
+    height: 28px;
+    border-radius: 6px 0 0 6px;
+    opacity: 0.9;
+    transform: translateY(-50%);
+  }
+
+  70% {
+    width: 12px;
+    height: 20px;
+    border-radius: 0 10px 10px 0;
+    border-right: 2px solid;
+    border-left: none;
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+
+  100% {
+    width: 8px;
+    height: 16px;
+    border-radius: 0 8px 8px 0;
+    border-right: 2px solid;
+    border-left: none;
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}
+
+/* TaskBar 边缘变成右侧半圆的动画 */
+@keyframes morphToRightSemiCircle {
+  0% {
+    width: 60px;
+    height: 30px;
+    border-radius: 0 4px 4px 0;
+    border-left: 2px solid;
+    border-right: none;
+    opacity: 0.8;
+    transform: translateY(-50%);
+  }
+
+  30% {
+    width: 30px;
+    height: 28px;
+    border-radius: 0 6px 6px 0;
+    opacity: 0.9;
+    transform: translateY(-50%);
+  }
+
+  70% {
+    width: 12px;
+    height: 20px;
+    border-radius: 10px 0 0 10px;
+    border-left: 2px solid;
+    border-right: none;
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+
+  100% {
+    width: 8px;
+    height: 16px;
+    border-radius: 8px 0 0 8px;
+    border-left: 2px solid;
+    border-right: none;
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}
+
+/* 半圆的脉动效果 */
+@keyframes semiCirclePulse {
+  0% {
+    opacity: 0.8;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    opacity: 0.8;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* 左侧半圆脉动 */
+@keyframes leftSemiCirclePulse {
+  0% {
+    opacity: 0.8;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    opacity: 0.8;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* 右侧半圆脉动 */
+@keyframes rightSemiCirclePulse {
+  0% {
+    opacity: 0.8;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    opacity: 0.8;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* 应用动画类 */
+.bubble-animation-morphToSemiCircle {
+  animation: semiCirclePulse 2s ease-in-out infinite;
+}
+
+/* 左侧半圆的变换动画 */
+.bubble-left.bubble-animation-morphToSemiCircle {
+  animation:
+    morphToLeftSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
+    leftSemiCirclePulse 2s ease-in-out 0.8s infinite;
+}
+
+/* 右侧半圆的变换动画 */
+.bubble-right.bubble-animation-morphToSemiCircle {
+  animation:
+    morphToRightSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
+    rightSemiCirclePulse 2s ease-in-out 0.8s infinite;
+}
+
+/* TaskBar 重新出现动画已移除，保持简洁 */
+
+/* === Tooltip 样式 === */
+.task-tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 10000; /* 确保在最上层 */
+  max-width: 250px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  backdrop-filter: blur(4px); /* 增加模糊背景效果 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 18px;
+}
+
+.tooltip-label {
+  opacity: 0.8;
+  min-width: 60px;
+  color: #e5e5e5;
+}
+
+.tooltip-value {
+  font-weight: 600;
+  text-align: right;
+  color: #ffffff;
+}
+
+.sticky-text {
+  position: absolute;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.2;
+  z-index: 10;
 }
 
 /* 暗色主题支持 */

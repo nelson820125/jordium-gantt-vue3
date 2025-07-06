@@ -2,7 +2,7 @@
 export interface Task {
   id: number
   name: string
-  predecessor?: string
+  predecessor?: number[] // 前置任务ID数组
   assignee?: string
   startDate?: string
   endDate?: string

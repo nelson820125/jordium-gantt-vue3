@@ -6,7 +6,11 @@
   font-weight: 500;
   cursor: pointer;
   border: 1px solid;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 6px;

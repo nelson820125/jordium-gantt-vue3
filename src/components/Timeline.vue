@@ -5,9 +5,10 @@ import MilestonePoint from './MilestonePoint.vue'
 import TaskDrawer from './TaskDrawer.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
 import { useI18n } from '../composables/useI18n'
+import { getPredecessorIds } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
-import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import type { Milestone } from '../models/classes/Milestone'
+import type { TimelineConfig } from '../models/configs/TimelineConfig'
 
 // 定义Props接口
 interface Props {
@@ -18,7 +19,7 @@ interface Props {
   // TaskBar双击事件处理器API
   onTaskDoubleClick?: (task: Task) => void
   // 自定义编辑组件
-  editComponent?: any
+  editComponent?: unknown
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
   // 自定义删除处理器
@@ -93,7 +94,7 @@ const isEditMode = ref(false)
 
 // 里程碑对话框状态管理
 const milestoneDialogVisible = ref(false)
-const currentMilestone = ref(null)
+const currentMilestone = ref<Milestone | null>(null)
 
 // 悬停状态管理
 const hoveredTaskId = ref<number | null>(null)
@@ -108,9 +109,137 @@ const scrollProgress = ref(0)
 const isScrolling = ref(false)
 let scrollTimeout: number | null = null
 
+// 粘性效果所需的滚动位置信息
+const timelineScrollLeft = ref(0)
+const timelineContainerWidth = ref(0)
+
+// 半圆气泡控制状态
+const hideBubbles = ref(true) // 初始时隐藏半圆，等待初始滚动完成
+const isInitialScrolling = ref(true) // 跟踪初始滚动状态
+
 // 容器高度状态管理
 const timelineBodyHeight = ref(0)
 let resizeObserver: ResizeObserver | null = null
+
+// 里程碑位置信息管理（用于推挤效果）
+const milestonePositions = ref<
+  Map<
+    string | number,
+    {
+      left: number
+      originalLeft: number // 原始位置（不考虑停靠）
+      isSticky: boolean
+      stickyPosition: 'left' | 'right' | 'none'
+    }
+  >
+>(new Map())
+
+// 计算当前所有里程碑的位置信息
+const computeAllMilestonesPositions = () => {
+  const positions = new Map()
+
+  // 遍历所有里程碑分组
+  tasks.value.forEach(task => {
+    if (task.type === 'milestone-group' && task.children) {
+      task.children.forEach(milestone => {
+        const milestoneDate = new Date(milestone.startDate || '')
+        if (!isNaN(milestoneDate.getTime())) {
+          const startDiff = Math.floor(
+            (milestoneDate.getTime() - timelineConfig.value.startDate.getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
+          const left = startDiff * 30 + 30 / 2 - 12 // 30是dayWidth，12是图标半径
+
+          // 计算边界粘性状态
+          const iconLeft = left - 12
+          const iconRight = left + 12
+          const leftBoundary = timelineScrollLeft.value
+          const rightBoundary = timelineScrollLeft.value + timelineContainerWidth.value
+
+          let isSticky = false
+          let stickyPosition: 'left' | 'right' | 'none' = 'none'
+
+          if (iconRight <= leftBoundary + 12) {
+            isSticky = true
+            stickyPosition = 'left'
+          } else if (iconLeft >= rightBoundary - 12) {
+            isSticky = true
+            stickyPosition = 'right'
+          }
+
+          positions.set(milestone.id, {
+            left,
+            originalLeft: left, // 保存原始位置
+            isSticky,
+            stickyPosition,
+          })
+        }
+      })
+    } else if (task.type === 'milestone') {
+      const milestoneDate = new Date(task.startDate || '')
+      if (!isNaN(milestoneDate.getTime())) {
+        const startDiff = Math.floor(
+          (milestoneDate.getTime() - timelineConfig.value.startDate.getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+        const left = startDiff * 30 + 30 / 2 - 12
+
+        // 计算边界粘性状态
+        const iconLeft = left - 12
+        const iconRight = left + 12
+        const leftBoundary = timelineScrollLeft.value
+        const rightBoundary = timelineScrollLeft.value + timelineContainerWidth.value
+
+        let isSticky = false
+        let stickyPosition: 'left' | 'right' | 'none' = 'none'
+
+        if (iconRight <= leftBoundary + 12) {
+          isSticky = true
+          stickyPosition = 'left'
+        } else if (iconLeft >= rightBoundary - 12) {
+          isSticky = true
+          stickyPosition = 'right'
+        }
+
+        positions.set(task.id, {
+          left,
+          originalLeft: left, // 保存原始位置
+          isSticky,
+          stickyPosition,
+        })
+      }
+    }
+  })
+
+  milestonePositions.value = positions
+}
+
+// 获取其他里程碑的位置信息（排除当前里程碑）
+const getOtherMilestonesInfo = (currentId: string | number) => {
+  const result: Array<{
+    id: string | number
+    left: number
+    originalLeft: number // 新增：原始位置（不考虑停靠）
+    isSticky: boolean
+    stickyPosition: 'left' | 'right' | 'none'
+    priority: number // 新增：推挤优先级（基于原始位置）
+  }> = []
+
+  milestonePositions.value.forEach((position, id) => {
+    if (id !== currentId) {
+      result.push({
+        id,
+        left: position.left,
+        originalLeft: position.originalLeft, // 使用保存的原始位置
+        isSticky: position.isSticky,
+        stickyPosition: position.stickyPosition,
+        priority: position.originalLeft, // 使用原始位置作为优先级
+      })
+    }
+  })
+
+  return result
+}
 
 // 处理拖拽开始事件
 const handleSplitterDragStart = () => {
@@ -120,6 +249,26 @@ const handleSplitterDragStart = () => {
 // 处理拖拽结束事件
 const handleSplitterDragEnd = () => {
   isSplitterDragging.value = false
+
+  // Splitter拖拽结束后，强制重新计算半圆显示状态
+  // 因为Timeline容器宽度可能发生了变化
+  hideBubbles.value = true
+  setTimeout(() => {
+    hideBubbles.value = false
+  }, 300) // 300ms后恢复半圆显示
+}
+
+// 处理Timeline容器resize事件（如TaskList切换等）
+const handleTimelineContainerResized = () => {
+  // Timeline容器大小发生变化，需要强制重新计算半圆显示状态
+
+  // 立即隐藏半圆，让TaskBar重新计算边界
+  hideBubbles.value = true
+
+  // 延迟恢复显示，确保容器变化完全生效
+  setTimeout(() => {
+    hideBubbles.value = false
+  }, 300)
 }
 
 // 处理任务行悬停事件
@@ -169,7 +318,7 @@ const handleLocaleChange = () => {
 }
 
 // 处理里程碑双击事件
-const handleMilestoneDoubleClick = (milestone: any) => {
+const handleMilestoneDoubleClick = (milestone: Milestone) => {
   currentMilestone.value = milestone
   milestoneDialogVisible.value = true
 }
@@ -191,10 +340,10 @@ const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
 }
 
 // 处理里程碑保存事件
-const handleMilestoneSave = (updatedMilestone: any) => {
+const handleMilestoneSave = (updatedMilestone: Milestone) => {
   // 通知父组件里程碑数据已更新
   if (props.onMilestoneSave && typeof props.onMilestoneSave === 'function') {
-    props.onMilestoneSave(updatedMilestone)
+    props.onMilestoneSave(updatedMilestone as Task) // Type conversion for backward compatibility
   }
 
   // 关闭对话框
@@ -229,10 +378,10 @@ const handleMilestoneDelete = (milestoneId: number) => {
 }
 
 // 处理里程碑拖拽更新事件
-const handleMilestoneUpdate = (updatedMilestone: any) => {
+const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
   // 通知父组件里程碑数据已更新
   if (props.onMilestoneSave && typeof props.onMilestoneSave === 'function') {
-    props.onMilestoneSave(updatedMilestone)
+    props.onMilestoneSave(updatedMilestone as Task) // Type conversion for backward compatibility
   }
 
   // 广播里程碑更新事件，通知其他组件数据变化
@@ -321,6 +470,10 @@ watch(
 
 // 将今日定位到时间线中间位置
 const scrollToTodayCenter = (retry = 0) => {
+  // 开始滚动时隐藏半圆
+  hideBubbles.value = true
+  isInitialScrolling.value = true
+
   const today = new Date()
   const timelineStart = timelineConfig.value.startDate
 
@@ -356,6 +509,14 @@ const scrollToTodayCenter = (retry = 0) => {
   } else {
     scrollContainer.scrollLeft = Math.max(0, centeredScrollPosition)
   }
+
+  // 滚动结束后延迟显示半圆
+  setTimeout(() => {
+    isInitialScrolling.value = false
+    setTimeout(() => {
+      hideBubbles.value = false
+    }, 300) // 再等300ms确保滚动完全停止
+  }, 1500) // 给滚动动画留1.5秒时间
 }
 
 const scrollToTasks = () => {
@@ -551,35 +712,67 @@ const handleTaskBarDragEnd = (updatedTask: Task) => {
 const handleTaskBarResizeEnd = (updatedTask: Task) => {
   window.dispatchEvent(new CustomEvent('taskbar-resize-end', { detail: updatedTask }))
 }
+
+// 处理TaskBar的滚动定位请求
+const handleScrollToPosition = (targetScrollLeft: number) => {
+  if (timelineContainer.value) {
+    // 开始自动滚动时隐藏半圆
+    hideBubbles.value = true
+
+    // 确保滚动位置在有效范围内
+    const maxScrollLeft = timelineContainer.value.scrollWidth - timelineContainer.value.clientWidth
+    const clampedScrollLeft = Math.max(0, Math.min(targetScrollLeft, maxScrollLeft))
+
+    // 平滑滚动到目标位置
+    timelineContainer.value.scrollTo({
+      left: clampedScrollLeft,
+      behavior: 'smooth',
+    })
+
+    // 滚动结束后延迟显示半圆
+    setTimeout(() => {
+      hideBubbles.value = false
+    }, 1000) // 给滚动动画留1秒时间
+  }
+}
 // 向上传递 MilestonePoint 拖拽事件
-const handleMilestoneDragEnd = (updatedMilestone: any) => {
+const handleMilestoneDragEnd = (updatedMilestone: Milestone) => {
   window.dispatchEvent(new CustomEvent('milestone-drag-end', { detail: updatedMilestone }))
 }
 
 // 计算所有连线
 const links = computed(() => {
   const result: { from: number; to: number; path: string }[] = []
+
+  // 获取当前渲染的任务ID集合，用于过滤关系线
+  const currentTaskIds = new Set(tasks.value.map(task => task.id))
+
   for (const task of tasks.value) {
-    if (
-      task.predecessor &&
-      taskBarPositions.value[task.id] &&
-      taskBarPositions.value[Number(task.predecessor)]
-    ) {
-      const fromBar = taskBarPositions.value[Number(task.predecessor)]
-      const toBar = taskBarPositions.value[task.id]
-      // 起点为前置TaskBar右侧中点，终点为当前TaskBar左侧中点
-      const x1 = fromBar.left + fromBar.width
-      const y1 = fromBar.top + fromBar.height / 2
-      const x2 = toBar.left
-      const y2 = toBar.top + toBar.height / 2
-      // 控制点：横向中点，纵向分别为起点和终点
-      const c1x = x1 + 40
-      const c1y = y1
-      const c2x = x2 - 40
-      const c2y = y2
-      // 三次贝塞尔曲线
-      const path = `M${x1},${y1} C${c1x},${c1y} ${c2x},${c2y} ${x2},${y2}`
-      result.push({ from: Number(task.predecessor), to: task.id, path })
+    if (task.predecessor && taskBarPositions.value[task.id]) {
+      // 获取所有前置任务ID
+      const predecessorIds = getPredecessorIds(task.predecessor)
+
+      // 为每个前置任务创建连线
+      for (const predecessorId of predecessorIds) {
+        // 只有当前置任务也在当前渲染列表中时，才绘制关系线
+        if (taskBarPositions.value[predecessorId] && currentTaskIds.has(predecessorId)) {
+          const fromBar = taskBarPositions.value[predecessorId]
+          const toBar = taskBarPositions.value[task.id]
+          // 起点为前置TaskBar右侧中点，终点为当前TaskBar左侧中点
+          const x1 = fromBar.left + fromBar.width
+          const y1 = fromBar.top + fromBar.height / 2
+          const x2 = toBar.left
+          const y2 = toBar.top + toBar.height / 2
+          // 控制点：横向中点，纵向分别为起点和终点
+          const c1x = x1 + 40
+          const c1y = y1
+          const c2x = x2 - 40
+          const c2y = y2
+          // 三次贝塞尔曲线
+          const path = `M${x1},${y1} C${c1x},${c1y} ${c2x},${c2y} ${x2},${y2}`
+          result.push({ from: predecessorId, to: task.id, path })
+        }
+      }
     }
   }
   return result
@@ -606,10 +799,19 @@ onMounted(() => {
   // 监听Splitter拖拽事件
   window.addEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
   window.addEventListener('splitter-drag-end', handleSplitterDragEnd as EventListener)
+  // 监听Timeline容器resize事件（TaskList切换等）
+  window.addEventListener(
+    'timeline-container-resized',
+    handleTimelineContainerResized as EventListener,
+  )
+
+  // 监听里程碑点击定位事件
+  window.addEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
 
   // 设置ResizeObserver监听timeline-body的尺寸变化
   nextTick(() => {
     const timelineBody = document.querySelector('.timeline-body') as HTMLElement
+    const timelineContainer = document.querySelector('.timeline') as HTMLElement
     if (timelineBody) {
       timelineBodyHeight.value = timelineBody.clientHeight
 
@@ -620,6 +822,38 @@ onMounted(() => {
       })
 
       resizeObserver.observe(timelineBody)
+    }
+
+    // 初始化滚动位置信息，使用正确的滚动容器
+    if (timelineContainer) {
+      timelineScrollLeft.value = timelineContainer.scrollLeft
+      timelineContainerWidth.value = timelineContainer.clientWidth
+
+      // 为容器宽度变化创建独立的ResizeObserver
+      const containerResizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const newWidth = entry.contentRect.width
+          // 当容器宽度发生变化时，立即更新宽度并重新计算半圆显示
+          if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
+            timelineContainerWidth.value = newWidth
+
+            // 对于容器宽度变化，我们需要立即重新计算半圆状态
+            // 短时间隐藏后重新显示，让TaskBar重新计算边界
+            hideBubbles.value = true
+
+            // 延迟恢复显示，确保宽度变化完全生效
+            setTimeout(() => {
+              hideBubbles.value = false
+            }, 300) // 增加到300ms，确保resize完全结束
+          }
+        }
+      })
+      containerResizeObserver.observe(timelineContainer)
+
+      // 将容器ResizeObserver也存储起来，用于清理
+      if (!resizeObserver) {
+        resizeObserver = containerResizeObserver
+      }
     }
   })
 
@@ -750,6 +984,13 @@ const handleTimelineScroll = (event: Event) => {
   const clientWidth = target.clientWidth
   const maxScroll = scrollWidth - clientWidth
 
+  // 更新粘性效果所需的滚动位置信息
+  timelineScrollLeft.value = scrollLeft
+  timelineContainerWidth.value = clientWidth
+
+  // 滚动时重新计算里程碑位置信息，支持推挤效果
+  computeAllMilestonesPositions()
+
   // 计算滚动进度 (0-1)
   scrollProgress.value = maxScroll > 0 ? scrollLeft / maxScroll : 0
 
@@ -800,6 +1041,11 @@ onUnmounted(() => {
   window.removeEventListener('locale-changed', handleLocaleChange as EventListener)
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
   window.removeEventListener('splitter-drag-end', handleSplitterDragEnd as EventListener)
+  window.removeEventListener(
+    'timeline-container-resized',
+    handleTimelineContainerResized as EventListener,
+  )
+  window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
   window.removeEventListener('resize', updateSvgSize)
   window.removeEventListener('scroll', handleTimelineScroll as EventListener)
 
@@ -857,10 +1103,72 @@ const convertTaskToMilestone = (task: Task): Milestone => {
     endDate: task.startDate || task.endDate,
   }
 }
+
+// 监听tasks变化，重新计算里程碑位置
+watch(tasks, computeAllMilestonesPositions, { immediate: true, deep: true })
+
+// 监听滚动变化，重新计算里程碑位置
+watch([timelineScrollLeft, timelineContainerWidth], computeAllMilestonesPositions)
+
+// 监听tasks变化，清理不再存在的任务的位置信息
+watch(
+  () => tasks.value,
+  newTasks => {
+    const currentTaskIds = new Set(newTasks.map(task => task.id))
+
+    // 清理不再存在的任务的位置信息
+    Object.keys(taskBarPositions.value).forEach(taskIdStr => {
+      const taskId = parseInt(taskIdStr)
+      if (!currentTaskIds.has(taskId)) {
+        delete taskBarPositions.value[taskId]
+      }
+    })
+  },
+  { deep: true },
+)
+
+// 处理里程碑点击定位事件
+const handleMilestoneClickLocate = (event: CustomEvent) => {
+  const { scrollLeft, smooth } = event.detail
+
+  // 获取Timeline容器 - 尝试两个可能的滚动容器
+  const timelineMain = document.querySelector('.timeline') as HTMLElement
+  const timelineBody = document.querySelector('.timeline-body') as HTMLElement
+
+  // 选择有滚动能力的容器
+  let scrollContainer: HTMLElement | null = null
+  if (timelineMain && timelineMain.scrollWidth > timelineMain.clientWidth) {
+    scrollContainer = timelineMain
+  } else if (timelineBody && timelineBody.scrollWidth > timelineBody.clientWidth) {
+    scrollContainer = timelineBody
+  }
+
+  if (scrollContainer) {
+    // 确保滚动位置在有效范围内
+    const maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth
+    const targetScrollLeft = Math.min(Math.max(0, scrollLeft), maxScrollLeft)
+
+    if (smooth) {
+      // 平滑滚动
+      scrollContainer.scrollTo({
+        left: targetScrollLeft,
+        behavior: 'smooth',
+      })
+    } else {
+      // 立即滚动
+      scrollContainer.scrollLeft = targetScrollLeft
+    }
+  }
+}
 </script>
 
 <template>
-  <div ref="timelineContainer" class="timeline" @mousedown="handleMouseDown">
+  <div
+    ref="timelineContainer"
+    class="timeline"
+    @mousedown="handleMouseDown"
+    @scroll="handleTimelineScroll"
+  >
     <!-- Timeline Header -->
     <div class="timeline-header">
       <!-- 第一行：年月 -->
@@ -899,7 +1207,7 @@ const convertTaskToMilestone = (task: Task): Milestone => {
     </div>
 
     <!-- Timeline Body (Task Bar Area) -->
-    <div class="timeline-body" @scroll="handleTimelineScroll">
+    <div class="timeline-body">
       <div ref="bodyContentRef" class="timeline-body-content">
         <!-- SVG关系线层 -->
         <svg
@@ -980,6 +1288,29 @@ const convertTaskToMilestone = (task: Task): Milestone => {
                   :start-date="timelineConfig.startDate"
                   :name="milestone.name"
                   :milestone="convertTaskToMilestone(milestone)"
+                  :scroll-left="timelineScrollLeft"
+                  :container-width="timelineContainerWidth"
+                  :milestone-id="milestone.id"
+                  :other-milestones="getOtherMilestonesInfo(milestone.id)"
+                  @milestone-double-click="handleMilestoneDoubleClick"
+                  @update:milestone="handleMilestoneUpdate"
+                  @drag-end="handleMilestoneDragEnd"
+                />
+              </template>
+              <!-- 独立里程碑 -->
+              <template v-else-if="task.type === 'milestone'">
+                <MilestonePoint
+                  :key="task.id"
+                  :date="task.startDate || ''"
+                  :row-height="50"
+                  :day-width="30"
+                  :start-date="timelineConfig.startDate"
+                  :name="task.name"
+                  :milestone="convertTaskToMilestone(task)"
+                  :scroll-left="timelineScrollLeft"
+                  :container-width="timelineContainerWidth"
+                  :milestone-id="task.id"
+                  :other-milestones="getOtherMilestonesInfo(task.id)"
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
@@ -994,12 +1325,15 @@ const convertTaskToMilestone = (task: Task): Milestone => {
                 :start-date="timelineConfig.startDate"
                 :is-parent="task.isParent"
                 :on-double-click="props.onTaskDoubleClick"
-                :edit-component="props.editComponent"
+                :scroll-left="timelineScrollLeft"
+                :container-width="timelineContainerWidth"
+                :hide-bubbles="hideBubbles"
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"
                 @dblclick="handleTaskBarDoubleClick(task)"
                 @drag-end="handleTaskBarDragEnd"
                 @resize-end="handleTaskBarResizeEnd"
+                @scroll-to-position="handleScrollToPosition"
               />
             </div>
           </div>
