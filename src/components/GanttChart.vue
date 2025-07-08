@@ -9,6 +9,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
+import { TimelineScale } from '../models/types/TimelineScale'
 import { useMessage } from '../composables/useMessage'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -90,6 +91,9 @@ const leftPanelWidth = ref(320)
 
 // Timeline组件的引用
 const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
+
+// 时间刻度状态
+const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
 // 列宽: 300+120+120+140+140+100+100+100 = 1120px
@@ -615,9 +619,18 @@ const timelineDateRange = computed(() => {
   const minDate = new Date(Math.min(...startDates.map(d => d.getTime())))
   const maxDate = new Date(Math.max(...endDates.map(d => d.getTime())))
 
-  // 前后各延伸6个月
-  const min = new Date(minDate.getFullYear(), minDate.getMonth() - 6, 1)
-  const max = new Date(maxDate.getFullYear(), maxDate.getMonth() + 6 + 1, 0)
+  // 日视图前后各延伸6个月
+  let min = new Date(minDate.getFullYear(), minDate.getMonth() - 6, 1)
+  let max = new Date(maxDate.getFullYear(), maxDate.getMonth() + 6 + 1, 0)
+  if (currentTimeScale.value === TimelineScale.WEEK) {
+    // 月视图Timeline周期为往前1年~往后1年
+    min = new Date(minDate.getFullYear() - 1, minDate.getMonth(), 1)
+    max = new Date(maxDate.getFullYear() + 1, maxDate.getMonth() + 1, 0)
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    // 月视图Timeline周期为往前2年~往后2年
+    min = new Date(minDate.getFullYear() - 2, minDate.getMonth(), 1)
+    max = new Date(maxDate.getFullYear() + 2, maxDate.getMonth() + 1, 0)
+  }
   return { min, max }
 })
 
@@ -636,6 +649,25 @@ const csvExportHandler = () => {
 
   // 使用默认导出实现
   defaultExportCsv()
+}
+
+// 时间刻度变化处理函数
+const handleTimeScaleChange = (scale: TimelineScale) => {
+  currentTimeScale.value = scale
+  // 通知 Timeline 组件更新时间刻度
+  if (timelineRef.value) {
+    timelineRef.value.updateTimeScale(scale)
+  }
+}
+
+// Timeline组件时间刻度变化完成后的处理函数
+const handleTimelineScaleChanged = (scale: TimelineScale) => {
+  // 强制重新渲染所有TaskBar，触发位置重新计算
+  nextTick(() => {
+    // 触发强制更新，让所有TaskBar重新计算位置
+    const event = new CustomEvent('timeline-scale-updated', { detail: scale })
+    window.dispatchEvent(event)
+  })
 }
 
 // 默认CSV导出功能
@@ -1156,6 +1188,7 @@ watch(
       :on-language-change="props.onLanguageChange"
       :on-theme-change="props.onThemeChange"
       :on-fullscreen-change="props.onFullscreenChange"
+      :on-time-scale-change="handleTimeScaleChange"
     />
 
     <!-- 甘特图主体 -->
@@ -1212,6 +1245,7 @@ watch(
           :use-default-drawer="props.useDefaultDrawer"
           :on-task-delete="props.onTaskDelete"
           :on-milestone-save="handleMilestoneSave"
+          @timeline-scale-changed="handleTimelineScaleChanged"
         />
       </div>
     </div>

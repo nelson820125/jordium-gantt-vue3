@@ -135,5 +135,10 @@
       "Timeline中sub-task隐藏后，关系线也随之隐藏",
       "增强TaskBar可以存在多个前置任务"
     ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2025-07-08",
+    "notes": ["TaskBar拖拽触发Timeline水平滑动", "增加日|周|月视图切换", "问题修复"]
   }
 ]

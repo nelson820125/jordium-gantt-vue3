@@ -35,6 +35,8 @@ const messages = {
     // 日期格式
     yearMonthFormat: (year: number, month: number) =>
       `${year}年${String(month).padStart(2, '0')}月`,
+    // 月份格式
+    monthFormat: (month: number) => `${month}月`,
 
     // 其他
     milestone: '里程碑',
@@ -71,6 +73,11 @@ const messages = {
     exitFullscreen: '退出全屏',
     githubDocs: '查看Github文档',
     giteeDocs: '查看Gitee文档',
+    // 时间刻度按钮
+    timeScaleMonth: '月',
+    timeScaleWeek: '周',
+    timeScaleDay: '日',
+    timeScaleTooltip: '切换时间刻度',
     // 确认对话框
     confirmDialogMessage: '是否需要保留该设置?',
     // 新建任务对话框
@@ -178,6 +185,8 @@ const messages = {
 
     // 日期格式
     yearMonthFormat: (year: number, month: number) => `${year}/${String(month).padStart(2, '0')}`,
+    // 月份格式
+    monthFormat: (month: number) => `M${String(month).padStart(2, '0')}`,
 
     // 其他
     milestone: 'Milestone',
@@ -215,6 +224,11 @@ const messages = {
     exitFullscreen: 'Exit Fullscreen',
     githubDocs: 'GitHub Docs',
     giteeDocs: 'Gitee Docs',
+    // 时间刻度按钮
+    timeScaleMonth: 'Month',
+    timeScaleWeek: 'Week',
+    timeScaleDay: 'Day',
+    timeScaleTooltip: 'Switch Time Scale',
     // Confirm dialog
     confirmDialogMessage: 'Do you want to save this setting?',
     taskNamePlaceholder: 'Enter task name',
@@ -363,6 +377,11 @@ export function useI18n() {
     return t.value.yearMonthFormat(year, month)
   }
 
+  // 格式化月份
+  const formatMonth = (month: number) => {
+    return t.value.monthFormat(month)
+  }
+
   return {
     t,
     getTranslation,
@@ -370,6 +389,7 @@ export function useI18n() {
     locale,
     setLocale,
     formatYearMonth,
+    formatMonth,
   }
 }
 

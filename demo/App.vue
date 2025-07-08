@@ -41,6 +41,7 @@ const toolbarConfig = {
   showLanguage: true,
   showTheme: true,
   showFullscreen: true,
+  showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
 }
 
 // 自定义CSV导出处理器（可选）

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted, onMounted, nextTick, watch } from 'vue'
 import type { Task } from '../models/classes/Task'
+import { TimelineScale } from '../models/types/TimelineScale'
 
 interface Props {
   task: Task
@@ -14,6 +15,17 @@ interface Props {
   containerWidth?: number
   // 新增：外部控制半圆隐藏状态（用于Timeline初始化等场景）
   hideBubbles?: boolean
+  // 新增：时间线数据，用于精确计算subDays定位
+  timelineData?: Array<{
+    year: number
+    month: number
+    startDate: Date
+    endDate: Date
+    subDays?: Array<{ date: Date; dayOfWeek?: number }>
+    monthData?: { dayCount: number }
+  }>
+  // 新增：当前时间刻度
+  currentTimeScale?: TimelineScale
 }
 
 const props = defineProps<Props>()
@@ -70,6 +82,9 @@ const resizeStartX = ref(0)
 const resizeStartWidth = ref(0)
 const resizeStartLeft = ref(0)
 
+// 相对位置拖拽方案：记录鼠标相对于TaskBar的位置
+const mouseOffsetX = ref(0) // 鼠标在TaskBar内的相对位置
+
 // 缓存拖拽/拉伸过程中的临时数据，只在鼠标抬起时提交更新
 const tempTaskData = ref<{
   startDate?: string
@@ -94,12 +109,60 @@ const taskBarStyle = computed(() => {
       top: '4px',
     }
   }
-  const startDiff = Math.floor((startDate.getTime() - baseStart.getTime()) / (1000 * 60 * 60 * 24))
-  const duration = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+  let left = 0
+  let width = 0
+
+  // 优先使用基于timelineData的精确定位（适用于周视图和月视图）
+  if (
+    props.timelineData &&
+    props.currentTimeScale &&
+    (props.currentTimeScale === TimelineScale.WEEK ||
+      props.currentTimeScale === TimelineScale.MONTH)
+  ) {
+    // 计算开始位置
+    const startPosition = calculatePositionFromTimelineData(
+      startDate,
+      props.timelineData,
+      props.currentTimeScale,
+    )
+    // 计算结束位置：为结束日期添加一天来获取正确的结束位置
+    const nextDay = new Date(endDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+    let endPosition = calculatePositionFromTimelineData(
+      nextDay,
+      props.timelineData,
+      props.currentTimeScale,
+    )
+
+    // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
+    if (endPosition === startPosition) {
+      const dayWidth = props.currentTimeScale === TimelineScale.WEEK ? 60 / 7 : 60 / 30
+      endPosition =
+        calculatePositionFromTimelineData(endDate, props.timelineData, props.currentTimeScale) +
+        dayWidth
+    }
+
+    left = startPosition
+    width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
+  } else {
+    // 日视图：保持原有逻辑
+    const startDiff = Math.floor(
+      (startDate.getTime() - baseStart.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    // 重新计算duration，确保包含结束日期当天
+    const timeDiffMs = endDate.getTime() - startDate.getTime()
+    const daysDiff = timeDiffMs / (1000 * 60 * 60 * 24)
+    // 对于跨天的任务，需要包含开始和结束两天
+    const duration = Math.floor(daysDiff) + 1
+
+    left = startDiff * props.dayWidth
+    width = duration * props.dayWidth
+  }
 
   return {
-    left: `${startDiff * props.dayWidth}px`,
-    width: `${duration * props.dayWidth}px`,
+    left: `${left}px`,
+    width: `${width}px`,
     height: `${props.rowHeight - 10}px`,
     top: '4px',
   }
@@ -172,7 +235,19 @@ const progressWidth = computed(() => {
   return `${(progress / 100) * totalWidth}px`
 })
 
-// 鼠标事件处理
+// 判断是否为周视图（dayWidth小于等于9为周视图）
+const isWeekView = computed(() => props.dayWidth <= 9)
+
+// 判断是否为短TaskBar（宽度小于80px）
+const isShortTaskBar = computed(() => {
+  const width = parseFloat(taskBarStyle.value.width || '0')
+  return width < 80
+})
+
+// 判断是否需要溢出效果（周视图且短TaskBar）
+const needsOverflowEffect = computed(() => isWeekView.value && isShortTaskBar.value)
+
+// 鼠标事件处理 - 使用相对位置拖拽方案
 const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-right') => {
   // 如果已完成或是父级任务，禁用所有交互
   if (isCompleted.value || props.isParent) {
@@ -184,6 +259,15 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
 
   // 清空之前的临时数据
   tempTaskData.value = null
+
+  // 获取TaskBar相对于Timeline容器的位置
+  const timelineContainer = document.querySelector('.timeline') as HTMLElement
+  if (!timelineContainer || !barRef.value) return
+
+  const barRect = barRef.value.getBoundingClientRect()
+
+  // 计算鼠标相对于TaskBar的位置
+  mouseOffsetX.value = e.clientX - barRect.left
 
   if (type === 'drag') {
     isDragging.value = true
@@ -202,8 +286,23 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
     resizeStartLeft.value = parseInt(taskBarStyle.value.left)
   }
 
+  // 监听自动滚动事件
+  window.addEventListener('timeline-auto-scroll', handleAutoScroll as EventListener)
+
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
+}
+
+// 处理自动滚动事件
+const handleAutoScroll = (event: CustomEvent) => {
+  const { scrollDelta } = event.detail
+
+  // 当Timeline滚动时，调整鼠标起始位置以保持相对位置
+  if (isDragging.value) {
+    dragStartX.value -= scrollDelta
+  } else if (isResizingLeft.value || isResizingRight.value) {
+    resizeStartX.value -= scrollDelta
+  }
 }
 
 function reportBarPosition() {
@@ -220,6 +319,16 @@ function reportBarPosition() {
 }
 
 const handleMouseMove = (e: MouseEvent) => {
+  // 发送边界检测事件给Timeline
+  window.dispatchEvent(
+    new CustomEvent('drag-boundary-check', {
+      detail: {
+        mouseX: e.clientX,
+        isDragging: isDragging.value || isResizingLeft.value || isResizingRight.value,
+      },
+    }),
+  )
+
   if (isDragging.value) {
     const deltaX = e.clientX - dragStartX.value
     const newLeft = Math.max(0, dragStartLeft.value + deltaX)
@@ -260,6 +369,16 @@ const handleMouseMove = (e: MouseEvent) => {
 }
 
 const handleMouseUp = () => {
+  // 停止边界检测
+  window.dispatchEvent(
+    new CustomEvent('drag-boundary-check', {
+      detail: {
+        mouseX: 0,
+        isDragging: false,
+      },
+    }),
+  )
+
   // 如果有临时数据，说明发生了拖拽或拉伸，提交数据更新
   if (tempTaskData.value) {
     const updatedTask = {
@@ -284,6 +403,9 @@ const handleMouseUp = () => {
     })
   }
 
+  // 清理自动滚动监听器
+  window.removeEventListener('timeline-auto-scroll', handleAutoScroll as EventListener)
+
   isDragging.value = false
   isResizingLeft.value = false
   isResizingRight.value = false
@@ -294,6 +416,32 @@ const handleMouseUp = () => {
 onMounted(() => {
   nextTick(() => {
     reportBarPosition()
+  })
+
+  // 监听时间刻度变化事件，重新计算位置
+  const handleTimelineScaleUpdate = () => {
+    nextTick(() => {
+      reportBarPosition()
+    })
+  }
+
+  // 监听强制重新计算事件
+  const handleForceRecalculate = () => {
+    // 延迟稍长一点，确保DOM完全更新
+    nextTick(() => {
+      setTimeout(() => {
+        reportBarPosition()
+      }, 10)
+    })
+  }
+
+  window.addEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
+  window.addEventListener('timeline-force-recalculate', handleForceRecalculate)
+
+  // 清理函数
+  onUnmounted(() => {
+    window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
+    window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
   })
 })
 
@@ -709,6 +857,12 @@ const workHourInfo = computed(() => {
   }
 })
 
+// 判断是否应该显示进度百分比
+const shouldShowProgress = computed(() => {
+  // 任何情况下都显示完成率（包括0%和undefined），确保始终展示
+  return true
+})
+
 // Helper functions to create type-safe style objects
 const getNameStyles = () => {
   const styles = stickyStyles.value
@@ -731,6 +885,87 @@ const getProgressStyles = () => {
 
   return result
 }
+
+// 基于timelineData和subDays精确计算日期位置的函数
+const calculatePositionFromTimelineData = (
+  targetDate: Date,
+  timelineData: Array<{
+    year: number
+    month: number
+    startDate: Date
+    endDate: Date
+    subDays?: Array<{ date: Date; dayOfWeek?: number }>
+    monthData?: { dayCount: number }
+    weeks?: Array<{
+      weekStart: Date
+      weekEnd: Date
+      subDays: Array<{ date: Date; dayOfWeek?: number }>
+    }>
+  }>,
+  timeScale: TimelineScale,
+) => {
+  let cumulativePosition = 0
+
+  for (const periodData of timelineData) {
+    if (timeScale === TimelineScale.WEEK) {
+      // 周视图：处理嵌套的weeks结构
+      const weeks = periodData.weeks || []
+
+      for (const week of weeks) {
+        const weekStart = new Date(week.weekStart)
+        const weekEnd = new Date(week.weekEnd)
+
+        if (targetDate >= weekStart && targetDate <= weekEnd) {
+          // 找到目标日期所在的周
+          const weekWidth = 60
+          const subDays = week.subDays || []
+          const dayWidth = weekWidth / 7
+
+          // 在subDays中查找目标日期的位置
+          for (let i = 0; i < subDays.length; i++) {
+            const subDay = subDays[i]
+            const subDayDate = new Date(subDay.date)
+            // 比较日期（忽略时分秒）
+            if (
+              subDayDate.getFullYear() === targetDate.getFullYear() &&
+              subDayDate.getMonth() === targetDate.getMonth() &&
+              subDayDate.getDate() === targetDate.getDate()
+            ) {
+              return cumulativePosition + i * dayWidth
+            }
+          }
+
+          // 如果没找到精确匹配，回退到dayOfWeek计算
+          const dayOfWeek = targetDate.getDay()
+          return cumulativePosition + dayOfWeek * dayWidth
+        }
+
+        // 累加每周的宽度
+        cumulativePosition += 60
+      }
+    } else if (timeScale === TimelineScale.MONTH) {
+      // 月视图：处理扁平化的subDays结构
+      const periodStart = new Date(periodData.startDate)
+      const periodEnd = new Date(periodData.endDate)
+
+      if (targetDate >= periodStart && targetDate <= periodEnd) {
+        // 找到目标日期所在的时间段
+        const monthWidth = 60
+        const daysInMonth = periodData.monthData?.dayCount || 30
+        const dayWidth = monthWidth / daysInMonth
+        const dayInMonth = targetDate.getDate()
+        return cumulativePosition + (dayInMonth - 1) * dayWidth
+      }
+
+      // 累加每月的宽度
+      cumulativePosition += 60
+    }
+  }
+
+  return cumulativePosition // 如果没找到，返回累计位置
+}
+
+// ...existing code...
 </script>
 
 <template>
@@ -750,6 +985,9 @@ const getProgressStyles = () => {
       resizing: isResizingLeft || isResizingRight,
       completed: isCompleted,
       'parent-task': isParent,
+      'week-view': isWeekView,
+      'short-task-bar': isShortTaskBar,
+      'overflow-effect': needsOverflowEffect,
     }"
     @dblclick="handleTaskBarDoubleClick"
   >
@@ -781,8 +1019,8 @@ const getProgressStyles = () => {
       </div>
 
       <!-- 进度百分比 -->
-      <div v-if="task.progress !== undefined" class="task-progress" :style="getProgressStyles()">
-        {{ task.progress }}%
+      <div v-if="shouldShowProgress" class="task-progress" :style="getProgressStyles()">
+        {{ task.progress || 0 }}%
       </div>
     </div>
 
@@ -1006,6 +1244,26 @@ const getProgressStyles = () => {
 }
 
 .resize-handle-right {
+  right: 0;
+}
+
+/* 溢出效果下的拉伸handle优化 */
+.task-bar.overflow-effect .resize-handle {
+  z-index: 20; /* 确保handle在溢出内容之上 */
+  background: rgba(0, 0, 0, 0.15); /* 稍微加深以提高可见性 */
+}
+
+.task-bar.overflow-effect .resize-handle:hover {
+  background: rgba(0, 0, 0, 0.3);
+  width: 8px; /* 悬停时稍微加宽 */
+}
+
+/* 溢出模式下左右handle的位置调整 */
+.task-bar.overflow-effect .resize-handle-left {
+  left: 0;
+}
+
+.task-bar.overflow-effect .resize-handle-right {
   right: 0;
 }
 
@@ -1348,5 +1606,81 @@ const getProgressStyles = () => {
 
 :global(html[data-theme='dark']) .resize-handle:hover {
   background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 周视图下的短TaskBar样式优化 */
+.task-bar.week-view.short-task-bar {
+  position: relative;
+  overflow: visible;
+}
+
+/* 周视图下短TaskBar的内容溢出效果 */
+.task-bar.overflow-effect .task-bar-content {
+  /* 保持与日视图一致的布局 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  overflow: visible;
+  position: relative;
+  z-index: 10;
+  /* 确保主体内容区域仍可拖拽 */
+  pointer-events: auto;
+}
+
+.task-bar.overflow-effect .task-name {
+  /* 保持与日视图一致的样式 */
+  white-space: nowrap;
+  overflow: visible;
+  line-height: 1.2;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 15;
+  pointer-events: none;
+  /* 允许溢出显示，但保持原始样式 */
+  min-width: max-content;
+}
+
+/* 周视图下进度百分比保持与日视图一致 */
+.task-bar.overflow-effect .task-progress {
+  /* 保持与日视图一致的基础样式 */
+  opacity: 0.9;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 16;
+  pointer-events: none;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+/* 周视图下的TaskBar基础样式调整 */
+.task-bar.week-view {
+  min-width: 4px; /* 确保即使很短的任务也有最小可见宽度 */
+  border-width: 1px;
+  border-radius: 2px;
+}
+
+/* 暗色主题下的短TaskBar溢出效果 */
+:global(html[data-theme='dark']) .task-bar.overflow-effect .resize-handle {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:global(html[data-theme='dark']) .task-bar.overflow-effect .resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 暗色主题下的进度百分比样式 */
+:global(html[data-theme='dark']) .task-bar.overflow-effect .task-progress {
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+}
+
+:global(html[data-theme='dark']) .task-bar.week-view {
+  border-color: var(--gantt-border-light, #555555);
 }
 </style>

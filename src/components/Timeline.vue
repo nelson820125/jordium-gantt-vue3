@@ -9,6 +9,7 @@ import { getPredecessorIds } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
+import { TimelineScale } from '../models/types/TimelineScale'
 
 // 定义Props接口
 interface Props {
@@ -43,8 +44,13 @@ const props = withDefaults(defineProps<Props>(), {
   endDate: undefined, // 明确给默认值
 })
 
+// 定义emits
+const emit = defineEmits<{
+  'timeline-scale-changed': [scale: TimelineScale]
+}>()
+
 // 多语言
-const { formatYearMonth } = useI18n()
+const { formatYearMonth, formatMonth } = useI18n()
 
 // 获取以今天为中心的时间线范围
 const getTodayCenteredRange = () => {
@@ -78,6 +84,9 @@ const timelineConfig = ref<TimelineConfig>({
   zoomLevel: 1,
 })
 
+// 当前时间刻度
+const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
+
 // 响应外部props变化，动态更新timelineConfig
 watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
   timelineConfig.value.startDate = newStart
@@ -86,6 +95,86 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
 
 // 使用props传入的任务和里程碑数据
 const tasks = computed(() => props.tasks || [])
+
+// 根据时间刻度计算每日宽度
+const dayWidth = computed(() => {
+  if (currentTimeScale.value === TimelineScale.WEEK) {
+    // 周视图：每周60px，分7天，每天约8.57px
+    return 60 / 7
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    // 月视图：动态计算，基于当前月的实际天数
+    // 这里返回一个平均值，具体定位时会根据每个月的实际天数重新计算
+    return 2 // 月视图下每天约2px（60px/30天的平均值）
+  } else {
+    // 日视图：每天30px
+    return 30
+  }
+})
+
+// 获取任务数据的日期范围（用于月度视图时间轴范围计算）
+const getTasksDateRange = () => {
+  if (!tasks.value || tasks.value.length === 0) {
+    return null
+  }
+
+  const dates: Date[] = []
+
+  // 收集所有任务的开始和结束日期
+  const collectDatesFromTask = (task: Task) => {
+    if (task.startDate) {
+      dates.push(new Date(task.startDate))
+    }
+    if (task.endDate) {
+      dates.push(new Date(task.endDate))
+    }
+
+    // 递归处理子任务
+    if (task.children && task.children.length > 0) {
+      task.children.forEach(collectDatesFromTask)
+    }
+  }
+
+  tasks.value.forEach(collectDatesFromTask)
+
+  if (dates.length === 0) {
+    return null
+  }
+
+  // 过滤有效日期
+  const validDates = dates.filter(date => !isNaN(date.getTime()))
+
+  if (validDates.length === 0) {
+    return null
+  }
+
+  const minDate = new Date(Math.min(...validDates.map(date => date.getTime())))
+  const maxDate = new Date(Math.max(...validDates.map(date => date.getTime())))
+
+  return { minDate, maxDate }
+}
+
+// 获取月度视图的时间范围（任务最小开始日期-2年 ~ 任务最大结束日期+2年）
+const getMonthTimelineRange = () => {
+  const taskRange = getTasksDateRange()
+
+  if (!taskRange) {
+    // 如果没有任务，使用当前日期为中心的范围
+    const today = new Date()
+    const startDate = new Date(today.getFullYear() - 2, 0, 1) // 当前年-2年的1月1日
+    const endDate = new Date(today.getFullYear() + 2, 11, 31) // 当前年+2年的12月31日
+    return { startDate, endDate }
+  }
+
+  const { minDate, maxDate } = taskRange
+
+  // 开始日期：任务最小开始日期-2年，月初
+  const startDate = new Date(minDate.getFullYear() - 2, 0, 1)
+
+  // 结束日期：任务最大结束日期+2年，月末
+  const endDate = new Date(maxDate.getFullYear() + 2, 11, 31)
+
+  return { startDate, endDate }
+}
 
 // 抽屉状态管理
 const drawerVisible = ref(false)
@@ -394,6 +483,18 @@ const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
 
 // 生成时间轴数据
 const generateTimelineData = () => {
+  if (currentTimeScale.value === TimelineScale.WEEK) {
+    return generateWeekTimelineData()
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    return generateMonthTimelineData()
+  } else {
+    // 默认日视图逻辑保持不变
+    return generateDayTimelineData()
+  }
+}
+
+// 生成日视图时间轴数据 (原有逻辑)
+const generateDayTimelineData = () => {
   const months = []
   const currentDate = new Date(timelineConfig.value.startDate)
 
@@ -433,6 +534,132 @@ const generateTimelineData = () => {
   return months
 }
 
+// 生成周视图时间轴数据
+const generateWeekTimelineData = () => {
+  const allWeeks = []
+
+  // 首先生成所有周
+  const startDate = new Date(timelineConfig.value.startDate)
+  const endDate = new Date(timelineConfig.value.endDate)
+
+  // 找到起始日期所在周的周一
+  const weekStart = new Date(startDate)
+  const dayOfWeek = weekStart.getDay() || 7 // 调整周日为7
+  weekStart.setDate(weekStart.getDate() - (dayOfWeek - 1))
+
+  const currentWeekStart = new Date(weekStart)
+
+  // 生成所有周
+  while (currentWeekStart <= endDate) {
+    const currentWeekEnd = new Date(currentWeekStart)
+    currentWeekEnd.setDate(currentWeekEnd.getDate() + 6)
+
+    // 只要周开始日期在范围内就添加
+    if (currentWeekStart >= startDate || currentWeekEnd >= startDate) {
+      allWeeks.push({
+        weekStart: new Date(currentWeekStart),
+        weekEnd: new Date(currentWeekEnd),
+        label: `${currentWeekStart.getDate()}`,
+        isToday: isWeekContainsToday(currentWeekStart, currentWeekEnd),
+        subDays: generateSubDaysForWeek(currentWeekStart),
+        // 根据周的第一天所在月份归属
+        belongsToYear: currentWeekStart.getFullYear(),
+        belongsToMonth: currentWeekStart.getMonth() + 1,
+      })
+    }
+
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+  }
+
+  // 按月份分组
+  const monthsMap = new Map()
+
+  allWeeks.forEach(week => {
+    const key = `${week.belongsToYear}-${week.belongsToMonth}`
+    if (!monthsMap.has(key)) {
+      monthsMap.set(key, {
+        year: week.belongsToYear,
+        month: week.belongsToMonth,
+        yearMonthLabel: formatYearMonth(week.belongsToYear, week.belongsToMonth),
+        startDate: new Date(week.belongsToYear, week.belongsToMonth - 1, 1),
+        endDate: new Date(week.belongsToYear, week.belongsToMonth, 0),
+        weeks: [],
+        isWeekView: true,
+      })
+    }
+    monthsMap.get(key).weeks.push(week)
+  })
+
+  // 转换为数组并排序
+  const sortedMonths = Array.from(monthsMap.values()).sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year
+    return a.month - b.month
+  })
+
+  return sortedMonths
+}
+
+// 生成一周内的7个子列（用于精确定位）
+const generateSubDaysForWeek = (weekStart: Date) => {
+  const subDays = []
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(weekStart)
+    date.setDate(date.getDate() + i)
+    subDays.push({
+      date: new Date(date),
+      dayOfWeek: date.getDay(),
+    })
+  }
+  return subDays
+}
+
+// 判断周是否包含今天
+const isWeekContainsToday = (weekStart: Date, weekEnd: Date) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today >= weekStart && today <= weekEnd
+}
+
+// 更新时间刻度方法 - 供外部调用
+const updateTimeScale = (scale: TimelineScale) => {
+  currentTimeScale.value = scale
+
+  // 如果是月度视图，更新时间线配置
+  if (scale === TimelineScale.MONTH) {
+    const monthRange = getMonthTimelineRange()
+    // 设置防护标志，避免递归更新
+    isUpdatingTimelineConfig = true
+    timelineConfig.value = {
+      ...timelineConfig.value,
+      startDate: monthRange.startDate,
+      endDate: monthRange.endDate,
+    }
+    isUpdatingTimelineConfig = false
+  }
+
+  // 重新生成时间线数据
+  timelineData.value = generateTimelineData()
+
+  // 等待DOM更新后触发多个重新计算事件
+  nextTick(() => {
+    // 1. 通知父组件时间刻度已变化
+    emit('timeline-scale-changed', scale)
+
+    // 2. 触发TaskBar重新计算位置事件
+    window.dispatchEvent(new CustomEvent('timeline-scale-updated'))
+
+    // 3. 延迟一点再次触发，确保所有组件都已更新
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('timeline-force-recalculate'))
+
+      // 4. 视图切换完成后，定位到今日
+      setTimeout(() => {
+        scrollToTodayCenter()
+      }, 100)
+    }, 50)
+  })
+}
+
 // 判断是否为今天
 const isToday = (date: Date) => {
   const today = new Date()
@@ -445,11 +672,17 @@ const isToday = (date: Date) => {
 
 const timelineData = ref(generateTimelineData())
 
+// 防止递归更新的标志
+let isUpdatingTimelineConfig = false
+
 // 保证timelineData响应式跟随timelineConfig变化
 watch(
   () => [timelineConfig.value.startDate, timelineConfig.value.endDate],
   () => {
-    timelineData.value = generateTimelineData()
+    // 避免在更新timelineConfig时触发递归
+    if (!isUpdatingTimelineConfig) {
+      timelineData.value = generateTimelineData()
+    }
   },
 )
 
@@ -489,8 +722,8 @@ const scrollToTodayCenter = (retry = 0) => {
   const timeDiff = todayNormalized.getTime() - startNormalized.getTime()
   const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
 
-  // 计算今天在时间线中的像素位置（每天30px宽度）
-  const todayPosition = daysDiff * 30
+  // 计算今天在时间线中的像素位置（根据当前时间刻度）
+  const todayPosition = daysDiff * dayWidth.value
 
   // 优先查找 .timeline-body 作为滚动容器，否则回退到 .timeline
   const scrollContainer = document.querySelector('.timeline') as HTMLElement
@@ -808,6 +1041,9 @@ onMounted(() => {
   // 监听里程碑点击定位事件
   window.addEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
 
+  // 监听拖拽边界检测事件
+  window.addEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
+
   // 设置ResizeObserver监听timeline-body的尺寸变化
   nextTick(() => {
     const timelineBody = document.querySelector('.timeline-body') as HTMLElement
@@ -910,6 +1146,12 @@ const isDragging = ref(false)
 const startX = ref(0)
 const startScrollLeft = ref(0)
 const timelineContainer = ref<HTMLElement | null>(null)
+
+// 边界滚动相关状态
+const isAutoScrolling = ref(false)
+let autoScrollTimer: number | null = null
+const EDGE_SCROLL_ZONE = 50 // 边界滚动触发区域宽度
+const EDGE_SCROLL_SPEED = 5 // 每次滚动的像素数
 
 // 鼠标按下开始拖拽（在时间轴表头和body区域）
 const handleMouseDown = (event: MouseEvent) => {
@@ -1033,11 +1275,87 @@ const handleTimelineScroll = (event: Event) => {
   }, 500)
 }
 
+// 边界自动滚动功能
+const startAutoScroll = (direction: 'left' | 'right') => {
+  if (isAutoScrolling.value || !timelineContainer.value) return
+
+  isAutoScrolling.value = true
+
+  const scroll = () => {
+    if (!timelineContainer.value || !isAutoScrolling.value) return
+
+    const currentScrollLeft = timelineContainer.value.scrollLeft
+    const maxScrollLeft = timelineContainer.value.scrollWidth - timelineContainer.value.clientWidth
+
+    let newScrollLeft
+    if (direction === 'left') {
+      newScrollLeft = Math.max(0, currentScrollLeft - EDGE_SCROLL_SPEED)
+    } else {
+      newScrollLeft = Math.min(maxScrollLeft, currentScrollLeft + EDGE_SCROLL_SPEED)
+    }
+
+    // 如果已经到达边界，停止滚动
+    if (newScrollLeft === currentScrollLeft) {
+      stopAutoScroll()
+      return
+    }
+
+    timelineContainer.value.scrollLeft = newScrollLeft
+
+    // 通知拖拽组件滚动已发生
+    window.dispatchEvent(
+      new CustomEvent('timeline-auto-scroll', {
+        detail: { scrollDelta: newScrollLeft - currentScrollLeft },
+      }),
+    )
+
+    autoScrollTimer = window.setTimeout(scroll, 16) // 约60fps
+  }
+
+  scroll()
+}
+
+const stopAutoScroll = () => {
+  isAutoScrolling.value = false
+  if (autoScrollTimer) {
+    clearTimeout(autoScrollTimer)
+    autoScrollTimer = null
+  }
+}
+
+// 处理拖拽边界检测事件
+const handleDragBoundaryCheck = (event: CustomEvent) => {
+  const { mouseX, isDragging: dragState } = event.detail
+
+  if (!dragState || !timelineContainer.value) {
+    stopAutoScroll()
+    return
+  }
+
+  const containerRect = timelineContainer.value.getBoundingClientRect()
+  const relativeX = mouseX - containerRect.left
+
+  // 检查是否在左边界滚动区域
+  if (relativeX <= EDGE_SCROLL_ZONE && timelineContainer.value.scrollLeft > 0) {
+    startAutoScroll('left')
+  } else if (
+    relativeX >= containerRect.width - EDGE_SCROLL_ZONE &&
+    timelineContainer.value.scrollLeft <
+      timelineContainer.value.scrollWidth - timelineContainer.value.clientWidth
+  ) {
+    // 检查是否在右边界滚动区域
+    startAutoScroll('right')
+  } else {
+    // 不在边界区域，停止自动滚动
+    stopAutoScroll()
+  }
+}
+
 onUnmounted(() => {
+  // 停止自动滚动
+  stopAutoScroll()
+
   // 清理事件监听器
-  document.removeEventListener('mousemove', handleMouseMove)
-  document.removeEventListener('mouseup', handleMouseUp)
-  // window.removeEventListener('tasks-changed', handleTasksChanged as EventListener) // 不再需要
   window.removeEventListener('task-row-double-click', handleTaskListDoubleClick as EventListener)
   window.removeEventListener('task-list-hover', handleTaskListHover as EventListener)
   window.removeEventListener(
@@ -1052,14 +1370,20 @@ onUnmounted(() => {
     handleTimelineContainerResized as EventListener,
   )
   window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
-  window.removeEventListener('resize', updateSvgSize)
-  // 注意：Timeline滚动事件通过模板@scroll绑定，会自动清理
+  window.removeEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
 
   // 清理ResizeObserver
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
   }
+
+  // 清理window事件监听器
+  window.removeEventListener('resize', updateSvgSize)
+
+  // 清理可能残留的鼠标事件监听器
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
 })
 
 const handleTaskDelete = (taskId: number, deleteChildren?: boolean) => {
@@ -1089,6 +1413,24 @@ const handleDrawerTaskDelete = (task: Task, deleteChildren?: boolean) => {
   handleTaskDelete(task.id, deleteChildren)
 }
 
+// 月度视图中按年份分组的计算属性
+const groupMonthsByYear = computed(() => {
+  if (currentTimeScale.value !== TimelineScale.MONTH) {
+    return {}
+  }
+
+  const groups: Record<number, typeof timelineData.value> = {}
+
+  timelineData.value.forEach(month => {
+    if (!groups[month.year]) {
+      groups[month.year] = []
+    }
+    groups[month.year].push(month)
+  })
+
+  return groups
+})
+
 // 暴露公共API
 defineExpose({
   // 基础滚动功能
@@ -1097,6 +1439,8 @@ defineExpose({
   scrollToTodayCenter,
   // 时间线配置
   timelineConfig,
+  // 时间刻度更新
+  updateTimeScale,
 })
 // Task类型转换成Milestone类型, 需要返回一个Milestone对象
 const convertTaskToMilestone = (task: Task): Milestone => {
@@ -1166,6 +1510,123 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
     }
   }
 }
+
+// 生成月度视图时间轴数据
+const generateMonthTimelineData = () => {
+  // 根据时间刻度动态调整时间范围
+  let startDate: Date, endDate: Date
+
+  if (currentTimeScale.value === TimelineScale.MONTH) {
+    // 月度视图使用任务范围+2年
+    const monthRange = getMonthTimelineRange()
+    startDate = monthRange.startDate
+    endDate = monthRange.endDate
+  } else {
+    // 使用当前配置的范围
+    startDate = new Date(timelineConfig.value.startDate)
+    endDate = new Date(timelineConfig.value.endDate)
+  }
+
+  const years: Record<
+    number,
+    {
+      year: number
+      yearLabel: string
+      months: {
+        year: number
+        month: number
+        monthLabel: string
+        startDate: Date
+        endDate: Date
+        isToday: boolean
+        dayCount: number
+      }[]
+    }
+  > = {}
+
+  const currentDate = new Date(startDate)
+  currentDate.setDate(1) // 从月初开始
+
+  while (currentDate <= endDate) {
+    const year = currentDate.getFullYear()
+    const month = currentDate.getMonth() + 1
+
+    // 获取当月天数
+    const monthEndDate = new Date(year, month, 0)
+    const dayCount = monthEndDate.getDate()
+
+    // 检查是否包含今天
+    const today = new Date()
+    const isToday = year === today.getFullYear() && month === today.getMonth() + 1
+
+    if (!years[year]) {
+      years[year] = {
+        year,
+        yearLabel: `${year}年`,
+        months: [],
+      }
+    }
+
+    years[year].months.push({
+      year,
+      month,
+      monthLabel: formatMonth(month),
+      startDate: new Date(year, month - 1, 1),
+      endDate: new Date(year, month, 0),
+      isToday,
+      dayCount,
+    })
+
+    // 移动到下一个月
+    currentDate.setMonth(currentDate.getMonth() + 1)
+  }
+
+  // 转换为数组格式，保持与日/周视图兼容的结构
+  const result = []
+
+  for (const yearData of Object.values(years)) {
+    for (const monthData of yearData.months) {
+      // 为月度视图生成每一天的subDays数组
+      const subDays = []
+      for (let day = 1; day <= monthData.dayCount; day++) {
+        const date = new Date(monthData.year, monthData.month - 1, day)
+        subDays.push({
+          day,
+          date: new Date(date),
+          dayOfWeek: date.getDay(),
+          isToday: isToday(date),
+          isWeekend: date.getDay() === 0 || date.getDay() === 6,
+        })
+      }
+
+      result.push({
+        year: monthData.year,
+        month: monthData.month,
+        yearMonthLabel: formatYearMonth(monthData.year, monthData.month),
+        startDate: monthData.startDate,
+        endDate: monthData.endDate,
+        isMonthView: true,
+        monthData: {
+          monthLabel: monthData.monthLabel,
+          isToday: monthData.isToday,
+          dayCount: monthData.dayCount,
+        },
+        // 添加每一天的子列数据
+        subDays,
+        // 为了兼容性，保留days数组，映射subDays的数据
+        days: subDays.map(subDay => ({
+          day: subDay.day,
+          date: subDay.date,
+          label: String(subDay.day).padStart(2, '0'),
+          isToday: subDay.isToday,
+          isWeekend: subDay.isWeekend,
+        })),
+      })
+    }
+  }
+
+  return result
+}
 </script>
 
 <template>
@@ -1177,39 +1638,103 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
   >
     <!-- Timeline Header -->
     <div class="timeline-header">
-      <!-- 第一行：年月 -->
-      <div class="timeline-header-row year-month-row">
-        <div
-          v-for="month in timelineData"
-          :key="`year-month-${month.year}-${month.month}`"
-          class="timeline-month"
-          :style="{ width: `${month.days.length * 30}px` }"
-        >
-          <div class="year-month-label">{{ month.yearMonthLabel }}</div>
-        </div>
-      </div>
-
-      <!-- 第二行：日期 -->
-      <div class="timeline-header-row days-row">
-        <div
-          v-for="month in timelineData"
-          :key="`days-${month.year}-${month.month}`"
-          class="timeline-month-days"
-          :style="{ width: `${month.days.length * 30}px` }"
-        >
+      <!-- 月度视图的header：第一行=年份，第二行=月份 -->
+      <template v-if="currentTimeScale === TimelineScale.MONTH">
+        <!-- 第一行：年份 -->
+        <div class="timeline-header-row year-row">
           <div
-            v-for="day in month.days"
-            :key="`day-${month.year}-${month.month}-${day.day}`"
-            class="timeline-day"
-            :class="{
-              today: day.isToday,
-              weekend: day.isWeekend && !day.isToday,
-            }"
+            v-for="(_, yearValue) in groupMonthsByYear"
+            :key="`year-${yearValue}`"
+            class="timeline-year"
+            :style="{ width: '719px' }"
           >
-            <div class="day-label">{{ day.label }}</div>
+            <div class="year-label">{{ yearValue }}年</div>
           </div>
         </div>
-      </div>
+
+        <!-- 第二行：月份 -->
+        <div class="timeline-header-row months-row">
+          <div
+            v-for="month in timelineData"
+            :key="`month-${month.year}-${month.month}`"
+            class="timeline-month-item"
+            :class="{ today: month.monthData?.isToday }"
+            :style="{ width: '59px' }"
+          >
+            <div class="month-label">{{ month.monthData?.monthLabel }}</div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 日视图和周视图的header（保持原有逻辑） -->
+      <template v-else>
+        <!-- 第一行：年月 -->
+        <div class="timeline-header-row year-month-row">
+          <div
+            v-for="month in timelineData"
+            :key="`year-month-${month.year}-${month.month}`"
+            class="timeline-month"
+            :style="{
+              width: month.isWeekView
+                ? `${(month.weeks || []).length * 60}px`
+                : `${(month.days || []).length * 30}px`,
+            }"
+          >
+            <div class="year-month-label">{{ month.yearMonthLabel }}</div>
+          </div>
+        </div>
+
+        <!-- 第二行：周/日期 -->
+        <div class="timeline-header-row days-row">
+          <!-- 周视图和日视图渲染 -->
+          <template v-for="month in timelineData" :key="`timeline-${month.year}-${month.month}`">
+            <!-- 周视图 -->
+            <div
+              v-if="month.isWeekView && month.weeks"
+              class="timeline-month-weeks"
+              :style="{ width: `${(month.weeks || []).length * 60}px` }"
+            >
+              <div
+                v-for="week in month.weeks || []"
+                :key="`week-${month.year}-${month.month}-${week.label}`"
+                class="timeline-week"
+                :class="{
+                  today: week.isToday,
+                }"
+              >
+                <div class="week-label">{{ week.label }}</div>
+                <!-- 7个子列，用于精确定位，不显示边框 -->
+                <div class="week-sub-days">
+                  <div
+                    v-for="(_, index) in week.subDays || []"
+                    :key="`subday-${index}`"
+                    class="week-sub-day"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 日视图 -->
+            <div
+              v-else
+              class="timeline-month-days"
+              :style="{ width: `${month.days.length * 30}px` }"
+            >
+              <div
+                v-for="day in month.days"
+                :key="`day-${month.year}-${month.month}-${day.day}`"
+                class="timeline-day"
+                :class="{
+                  today: day.isToday,
+                  weekend: day.isWeekend && !day.isToday,
+                }"
+              >
+                <div class="day-label">{{ day.label }}</div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- Timeline Body (Task Bar Area) -->
@@ -1248,25 +1773,67 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
             />
           </g>
         </svg>
-        <!-- 周末背景列 -->
+        <!-- 背景列 -->
         <div class="day-columns" :style="{ height: `${contentHeight}px` }">
-          <div
-            v-for="month in timelineData"
-            :key="`day-col-${month.year}-${month.month}`"
-            class="month-day-columns"
-            :style="{ width: `${month.days.length * 30}px`, height: `${contentHeight}px` }"
-          >
+          <template v-for="month in timelineData" :key="`day-col-${month.year}-${month.month}`">
+            <!-- 月度视图背景列 -->
             <div
-              v-for="day in month.days"
-              :key="`day-col-${month.year}-${month.month}-${day.day}`"
-              class="day-column"
-              :class="{
-                weekend: day.isWeekend,
-                today: day.isToday,
-              }"
-              :style="{ height: `${contentHeight}px` }"
+              v-if="month.isMonthView"
+              class="month-column"
+              :class="{ today: month.monthData?.isToday }"
+              :style="{ width: '59px', height: `${contentHeight}px` }"
             ></div>
-          </div>
+
+            <!-- 周视图背景列 -->
+            <div
+              v-else-if="month.isWeekView && month.weeks"
+              class="month-week-columns"
+              :style="{
+                width: `${(month.weeks || []).length * 60}px`,
+                height: `${contentHeight}px`,
+              }"
+            >
+              <div
+                v-for="week in month.weeks || []"
+                :key="`week-col-${month.year}-${month.month}-${week.label}`"
+                class="week-column"
+                :class="{
+                  today: week.isToday,
+                }"
+                :style="{ height: `${contentHeight}px`, width: '60px' }"
+              >
+                <!-- 周内的7个子列 -->
+                <div
+                  v-for="(subDay, dayIndex) in week.subDays || []"
+                  :key="`subday-col-${dayIndex}`"
+                  class="sub-day-column"
+                  :class="{
+                    weekend: subDay.dayOfWeek === 0 || subDay.dayOfWeek === 6,
+                    today: isToday(subDay.date),
+                  }"
+                  :style="{ height: `${contentHeight}px`, width: '8.57px' }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 日视图背景列 -->
+            <div
+              v-else
+              class="month-day-columns"
+              :style="{ width: `${month.days.length * 30}px`, height: `${contentHeight}px` }"
+            >
+              <div
+                v-for="day in month.days"
+                :key="`day-col-${month.year}-${month.month}-${day.day}`"
+                class="day-column"
+                :class="{
+                  weekend: day.isWeekend,
+                  today: day.isToday,
+                }"
+                :style="{ height: `${contentHeight}px` }"
+              ></div>
+            </div>
+          </template>
         </div>
 
         <!-- Task Bar 组件 -->
@@ -1290,7 +1857,7 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
                   :key="milestone.id"
                   :date="milestone.startDate || ''"
                   :row-height="50"
-                  :day-width="30"
+                  :day-width="dayWidth"
                   :start-date="timelineConfig.startDate"
                   :name="milestone.name"
                   :milestone="convertTaskToMilestone(milestone)"
@@ -1298,6 +1865,8 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
                   :container-width="timelineContainerWidth"
                   :milestone-id="milestone.id"
                   :other-milestones="getOtherMilestonesInfo(milestone.id)"
+                  :timeline-data="timelineData"
+                  :current-time-scale="currentTimeScale"
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
@@ -1309,7 +1878,7 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
                   :key="task.id"
                   :date="task.startDate || ''"
                   :row-height="50"
-                  :day-width="30"
+                  :day-width="dayWidth"
                   :start-date="timelineConfig.startDate"
                   :name="task.name"
                   :milestone="convertTaskToMilestone(task)"
@@ -1317,6 +1886,8 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
                   :container-width="timelineContainerWidth"
                   :milestone-id="task.id"
                   :other-milestones="getOtherMilestonesInfo(task.id)"
+                  :timeline-data="timelineData"
+                  :current-time-scale="currentTimeScale"
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
@@ -1327,13 +1898,15 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
                 v-else-if="task.type !== 'milestone-group' && task.type !== 'milestone'"
                 :task="task"
                 :row-height="50"
-                :day-width="30"
+                :day-width="dayWidth"
                 :start-date="timelineConfig.startDate"
                 :is-parent="task.isParent"
                 :on-double-click="props.onTaskDoubleClick"
                 :scroll-left="timelineScrollLeft"
                 :container-width="timelineContainerWidth"
                 :hide-bubbles="hideBubbles"
+                :timeline-data="timelineData"
+                :current-time-scale="currentTimeScale"
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"
                 @dblclick="handleTaskBarDoubleClick(task)"
@@ -1512,6 +2085,108 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
   font-size: 12px;
   color: var(--gantt-text-header);
   text-align: center;
+}
+
+/* 周视图样式 */
+.timeline-month-weeks {
+  display: flex;
+  height: 100%;
+  border-right: 1px solid var(--gantt-border-medium);
+  box-sizing: border-box;
+  min-width: 60px;
+}
+
+.timeline-month-weeks:last-child {
+  border-right: none;
+}
+
+.timeline-week {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--gantt-border-light);
+  width: 60px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--gantt-border-medium);
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.timeline-week:last-child {
+  border-right: none;
+}
+
+.timeline-week.today {
+  background-color: var(--gantt-primary);
+  color: var(--gantt-text-white);
+}
+
+.timeline-week.today .week-label {
+  color: var(--gantt-text-white);
+  font-weight: 600;
+}
+
+.week-label {
+  font-size: 12px;
+  color: var(--gantt-text-header);
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.week-sub-days {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.week-sub-day {
+  flex: 1;
+  height: 100%;
+  box-sizing: border-box;
+  /* 每个子天的宽度为 60px / 7 ≈ 8.57px */
+  width: 8.57px;
+  /* 不显示边框，仅用于定位计算 */
+}
+
+/* 周视图背景列样式 */
+.month-week-columns {
+  display: flex;
+  position: relative;
+}
+
+.week-column {
+  position: relative;
+  border-right: 1px solid var(--gantt-border-light, #e4e7ed);
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+}
+
+.week-column:last-child {
+  border-right: none;
+}
+
+.week-column.today {
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+.sub-day-column {
+  position: relative;
+  box-sizing: border-box;
+  /* 子列不显示边框，仅用于定位 */
+}
+
+.sub-day-column.weekend {
+  background-color: var(--gantt-bg-secondary, #f5f7fa);
+  opacity: 0.6;
+}
+
+.sub-day-column.today {
+  background-color: var(--gantt-primary-light, rgba(64, 158, 255, 0.2));
 }
 
 .timeline-body {
@@ -1768,11 +2443,11 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
 }
 
 :global(html[data-theme='dark']) .timeline-body {
-  background: var(--gantt-bg-primary, #3a3a3a) !important;
+  background: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
 :global(html[data-theme='dark']) .timeline-body-content {
-  background: var(--gantt-bg-primary, #3a3a3a) !important;
+  background: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
 :global(html[data-theme='dark']) .day-columns {
@@ -1785,15 +2460,12 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
 
 :global(html[data-theme='dark']) .day-column {
   border-right-color: var(--gantt-border-light, #555555) !important;
-}
-
-:global(html[data-theme='dark']) .day-column.weekend {
-  background-color: var(--gantt-bg-secondary, #1a1a1a) !important;
+  /* 非周末列：透明背景，继承timeline-body的背景色 */
 }
 
 :global(html[data-theme='dark']) .day-column.today {
-  border-left-color: var(--gantt-primary-color, #409eff) !important;
-  background-color: var(--gantt-primary-color, #409eff) !important;
+  border-left-color: var(--gantt-primary, #409eff) !important;
+  background-color: var(--gantt-primary, #409eff) !important;
 }
 
 :global(html[data-theme='dark']) .day-column.today::before {
@@ -1834,5 +2506,107 @@ const handleMilestoneClickLocate = (event: CustomEvent) => {
 /* 确保暗黑模式下子元素能继续响应事件 */
 :global(html[data-theme='dark']) .timeline-body .task-row-hovered > * {
   pointer-events: auto !important;
+}
+
+/* 月度视图专用样式 */
+.year-row {
+  min-height: 36px;
+  border-bottom: 1px solid var(--gantt-border-medium, #e1e4e8);
+}
+
+.timeline-year {
+  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+}
+
+.year-label {
+  color: var(--gantt-text-header, #24292e);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.months-row {
+  min-height: 36px;
+  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
+}
+
+.timeline-month-item {
+  border-right: 1px solid var(--gantt-border-light, #d1d5da);
+  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  transition: background-color 0.2s ease;
+}
+
+.timeline-month-item.today {
+  background-color: var(--gantt-primary);
+}
+
+.month-label {
+  color: var(--gantt-text-primary, #24292e);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.month-column {
+  border-right: 1px solid var(--gantt-border-light, #d1d5da);
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.month-column.today {
+  background-color: var(--gantt-primary-color, #409eff);
+  opacity: 0.15;
+}
+
+/* 月度视图暗色主题样式 */
+:global(html[data-theme='dark']) .year-row {
+  background: var(--gantt-bg-secondary, #1a1a1a) !important;
+  border-bottom-color: var(--gantt-border-medium, #333333) !important;
+}
+
+:global(html[data-theme='dark']) .timeline-year {
+  border-right-color: var(--gantt-border-medium, #333333) !important;
+}
+
+:global(html[data-theme='dark']) .year-label {
+  color: var(--gantt-text-header, #ffffff) !important;
+}
+
+:global(html[data-theme='dark']) .months-row {
+  background: var(--gantt-bg-secondary, #1a1a1a) !important;
+  border-bottom-color: var(--gantt-border-medium, #333333) !important;
+}
+
+:global(html[data-theme='dark']) .timeline-month-item {
+  border-right-color: var(--gantt-border-light, #555555) !important;
+  border-bottom-color: var(--gantt-border-light, #555555) !important;
+}
+
+:global(html[data-theme='dark']) .timeline-month-item.today {
+  background-color: var(--gantt-primary);
+  border-left-color: var(--gantt-primary, #409eff) !important;
+}
+
+:global(html[data-theme='dark']) .month-label {
+  color: var(--gantt-text-header, #ffffff) !important;
+}
+
+:global(html[data-theme='dark']) .month-column {
+  border-right-color: var(--gantt-border-light, #555555) !important;
+}
+
+:global(html[data-theme='dark']) .month-column.today {
+  background-color: var(--gantt-primary-color, #409eff);
+  border-left-color: var(--gantt-primary-color, #409eff) !important;
 }
 </style>

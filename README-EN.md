@@ -188,6 +188,7 @@ interface ToolbarConfig {
   showLanguage?: boolean       // Show language switch button
   showTheme?: boolean          // Show theme switch button
   showFullscreen?: boolean     // Show fullscreen toggle button
+  showTimeScale?: boolean      // Show time scale toggle buttons (Day|Week|Month)
 }
 ```
 
@@ -327,7 +328,8 @@ const toolbarConfig = {
   showTodayLocate: true,
   showExportCsv: true,
   showExportPdf: true,
-  showFullscreen: true
+  showFullscreen: true,
+  showTimeScale: true  // Control visibility of Day|Week|Month time scale toggle buttons
 }
 
 // Custom locale messages

@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
+import { TimelineScale } from '../models/types/TimelineScale'
 import '../styles/app.css'
 
 // 语言定义 - 使用多语言系统的类型
@@ -18,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   onThemeChange: undefined,
   onFullscreenChange: undefined,
   onSettingsConfirm: undefined,
+  onTimeScaleChange: undefined,
 })
 
 const emit = defineEmits<{
@@ -29,6 +31,7 @@ const emit = defineEmits<{
   'language-change': [lang: 'zh-CN' | 'en-US']
   'theme-change': [isDark: boolean]
   'fullscreen-change': [isFullscreen: boolean]
+  'time-scale-change': [scale: TimelineScale]
 }>()
 
 // LocalStorage keys
@@ -52,6 +55,7 @@ interface Props {
   onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
+  onTimeScaleChange?: (scale: TimelineScale) => void
   // 外部确认接口
   onSettingsConfirm?: (
     type: 'theme' | 'language',
@@ -78,6 +82,7 @@ const currentLanguage = ref<Language>('zh')
 const isDarkMode = ref(getInitialTheme())
 const isFullscreen = ref(false)
 const showLanguageDropdown = ref(false)
+const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
 // 翻译函数 - 使用 useI18n 提供的 getTranslation 函数
 const t = (key: string): string => {
@@ -261,6 +266,33 @@ const handleFullscreenToggle = () => {
   }
 }
 
+// 时间刻度切换处理
+const handleTimeScaleChange = (scale: TimelineScale) => {
+  currentTimeScale.value = scale
+
+  if (props.onTimeScaleChange && typeof props.onTimeScaleChange === 'function') {
+    props.onTimeScaleChange(scale)
+  } else {
+    emit('time-scale-change', scale)
+  }
+}
+
+// 计算分段控制器滑块位置
+const getThumbStyle = () => {
+  const scaleIndex = {
+    [TimelineScale.MONTH]: 0,
+    [TimelineScale.WEEK]: 1,
+    [TimelineScale.DAY]: 2,
+  }
+
+  const index = scaleIndex[currentTimeScale.value] || 0
+  const translateX = index * 100 // 每个选项占33.33%，所以移动100%的倍数
+
+  return {
+    transform: `translateX(${translateX}%)`,
+  }
+}
+
 // 点击外部关闭下拉菜单
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
@@ -413,6 +445,36 @@ onUnmounted(() => {
 
     <!-- 右侧设置区 -->
     <div class="toolbar-right">
+      <!-- 时间刻度分段控制器 (Segmented) -->
+      <div v-if="config.showTimeScale !== false" class="segmented-control time-scale-segmented">
+        <div class="segmented-track">
+          <div class="segmented-thumb" :style="getThumbStyle()"></div>
+        </div>
+        <button
+          class="segmented-item"
+          :class="{ active: currentTimeScale === 'month' }"
+          :title="t('timeScaleTooltip')"
+          @click="handleTimeScaleChange(TimelineScale.MONTH)"
+        >
+          {{ t('timeScaleMonth') }}
+        </button>
+        <button
+          class="segmented-item"
+          :class="{ active: currentTimeScale === 'week' }"
+          :title="t('timeScaleTooltip')"
+          @click="handleTimeScaleChange(TimelineScale.WEEK)"
+        >
+          {{ t('timeScaleWeek') }}
+        </button>
+        <button
+          class="segmented-item"
+          :class="{ active: currentTimeScale === 'day' }"
+          :title="t('timeScaleTooltip')"
+          @click="handleTimeScaleChange(TimelineScale.DAY)"
+        >
+          {{ t('timeScaleDay') }}
+        </button>
+      </div>
       <!-- 语言选择下拉菜单 -->
       <div v-if="config.showLanguage !== false" class="language-dropdown">
         <button
@@ -587,7 +649,6 @@ onUnmounted(() => {
   background: var(--gantt-bg-toolbar, #f8f9fa);
   border-bottom: 1px solid var(--gantt-border-color, #ebeef5);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  /*transition: all 0.2s ease;*/
 }
 
 .toolbar-left {
@@ -616,7 +677,6 @@ onUnmounted(() => {
   background: transparent;
   color: var(--gantt-text-primary, #606266);
   cursor: pointer;
-  /*transition: all 0.2s ease;*/
   outline: none;
 }
 
@@ -682,7 +742,6 @@ onUnmounted(() => {
   border: 1px solid var(--gantt-border-color, #dcdfe6);
   color: var(--gantt-text-primary, #606266);
   cursor: pointer;
-  /*transition: all 0.2s ease;*/
   outline: none;
   font-size: 14px;
   white-space: nowrap;
@@ -1085,9 +1144,128 @@ onUnmounted(() => {
   color: #e5e5e5;
 }
 
-:global(html[data-theme='dark']) .btn-group:not(.add-btn-group) .btn-group-item:hover {
-  background: #404040;
-  border-color: #66b1ff;
-  color: #66b1ff;
+/* 分段控制器样式 - Element Plus Segmented 风格 */
+.segmented-control {
+  position: relative;
+  display: inline-flex;
+  background: var(--gantt-bg-primary, #ffffff);
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  border-radius: 6px;
+  padding: 1px;
+  margin-right: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+  height: 36px;
+}
+
+.segmented-control:hover {
+  border-color: var(--gantt-primary-light, #79bbff);
+}
+
+.segmented-track {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  pointer-events: none;
+}
+
+.segmented-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 33.333333%;
+  height: 100%;
+  background: var(--gantt-primary, #409eff);
+  border-radius: 5px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 1px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.segmented-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 40px;
+  z-index: 1;
+  border-radius: 5px;
+  user-select: none;
+}
+
+.segmented-item:hover:not(.active) {
+  color: var(--gantt-primary, #409eff);
+  background: var(--gantt-bg-hover, rgba(64, 158, 255, 0.06));
+}
+
+.segmented-item:active:not(.active) {
+  background: var(--gantt-bg-active, rgba(64, 158, 255, 0.12));
+}
+
+.segmented-item.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.time-scale-segmented {
+  height: 36px;
+}
+
+.time-scale-segmented .segmented-item {
+  height: 34px;
+  font-size: 13px;
+  min-width: 36px;
+}
+
+/* 暗黑模式下的分段控制器样式 */
+:global(html[data-theme='dark']) .segmented-control {
+  background: var(--gantt-bg-secondary, #4b4b4b);
+  border-color: var(--gantt-border-color, #808080);
+}
+
+:global(html[data-theme='dark']) .segmented-control:hover {
+  border-color: var(--gantt-primary, #3399ff);
+}
+
+:global(html[data-theme='dark']) .segmented-thumb {
+  background: var(--gantt-primary, #3399ff);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 1px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+:global(html[data-theme='dark']) .segmented-item {
+  color: #ffffff !important; /* 强制使用纯白色，更加突出 */
+}
+
+/* 特别针对时间刻度分段控制器的暗黑模式样式 */
+:global(html[data-theme='dark']) .time-scale-segmented .segmented-item {
+  color: #ffffff !important; /* 确保时间刻度按钮也使用纯白色 */
+}
+
+:global(html[data-theme='dark']) .segmented-item:hover:not(.active) {
+  color: var(--gantt-primary, #3399ff); /* 使用主色调，更加鲜艳 */
+  background: rgba(51, 153, 255, 0.12); /* 调整背景透明度，与主色调匹配 */
+}
+
+:global(html[data-theme='dark']) .segmented-item:active:not(.active) {
+  background: rgba(51, 153, 255, 0.2); /* 调整背景透明度，与主色调匹配 */
+}
+
+:global(html[data-theme='dark']) .segmented-item.active {
+  color: #ffffff;
 }
 </style>

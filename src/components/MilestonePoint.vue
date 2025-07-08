@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
+import { TimelineScale } from '../models/types/TimelineScale'
 
 interface Props {
   date: string // 里程碑日期
@@ -22,6 +23,17 @@ interface Props {
     stickyPosition: 'left' | 'right' | 'none'
     priority: number // 推挤优先级
   }> // 其他里程碑的位置信息
+  // 新增：时间线数据，用于精确计算subDays定位
+  timelineData?: Array<{
+    year: number
+    month: number
+    startDate: Date
+    endDate: Date
+    subDays?: Array<{ date: Date; dayOfWeek?: number }>
+    monthData?: { dayCount: number }
+  }>
+  // 新增：当前时间刻度
+  currentTimeScale?: TimelineScale
 }
 
 const props = defineProps<Props>()
@@ -89,7 +101,7 @@ const formatDateToLocalString = (date: Date): string => {
   return `${year}-${month}-${day}`
 }
 
-// 拖拽事件处理
+// 拖拽事件处理 - 使用相对位置拖拽方案
 const handleMouseDown = (e: MouseEvent) => {
   // 如果是停靠状态或被推出边界，禁止拖拽
   if (
@@ -104,17 +116,44 @@ const handleMouseDown = (e: MouseEvent) => {
   e.preventDefault()
   e.stopPropagation()
 
+  // 获取当前里程碑相对位置
+  const timelineContainer = document.querySelector('.timeline') as HTMLElement
+  if (!timelineContainer) return
+
   // 设置拖拽状态，但不立即开始拖拽
   dragStartX.value = e.clientX
   dragStartLeft.value = parseInt(milestoneStyle.value.left)
   tempMilestoneData.value = null
+
+  // 监听自动滚动事件
+  window.addEventListener('timeline-auto-scroll', handleAutoScroll as EventListener)
 
   // 添加全局事件监听器
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
 }
 
+// 处理自动滚动事件
+const handleAutoScroll = (event: CustomEvent) => {
+  const { scrollDelta } = event.detail
+
+  // 当Timeline滚动时，调整鼠标起始位置以保持相对位置
+  if (isDragging.value) {
+    dragStartX.value -= scrollDelta
+  }
+}
+
 const handleMouseMove = (e: MouseEvent) => {
+  // 发送边界检测事件给Timeline
+  window.dispatchEvent(
+    new CustomEvent('drag-boundary-check', {
+      detail: {
+        mouseX: e.clientX,
+        isDragging: isDragging.value,
+      },
+    }),
+  )
+
   const deltaX = e.clientX - dragStartX.value
 
   // 只有在真正移动了一定距离后才开始拖拽（避免意外触发）
@@ -132,6 +171,16 @@ const handleMouseMove = (e: MouseEvent) => {
 }
 
 const handleMouseUp = () => {
+  // 停止边界检测
+  window.dispatchEvent(
+    new CustomEvent('drag-boundary-check', {
+      detail: {
+        mouseX: 0,
+        isDragging: false,
+      },
+    }),
+  )
+
   // 只有在真正拖拽了（有临时数据）且状态为拖拽中时才触发更新
   if (isDragging.value && tempMilestoneData.value && props.milestone) {
     const updatedMilestone = {
@@ -141,6 +190,9 @@ const handleMouseUp = () => {
     emit('update:milestone', updatedMilestone)
     emit('drag-end', updatedMilestone)
   }
+
+  // 清理自动滚动监听器
+  window.removeEventListener('timeline-auto-scroll', handleAutoScroll as EventListener)
 
   // 重置所有拖拽状态
   isDragging.value = false
@@ -209,12 +261,32 @@ const milestoneStyle = computed(() => {
     }
   }
 
-  const startDiff = Math.floor(
-    (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
-  )
+  let left = 0
   const size = Math.min(props.rowHeight, props.dayWidth * 1.2, 24)
+
+  // 优先使用基于timelineData的精确定位（适用于周视图和月视图）
+  if (
+    props.timelineData &&
+    props.currentTimeScale &&
+    (props.currentTimeScale === TimelineScale.WEEK ||
+      props.currentTimeScale === TimelineScale.MONTH)
+  ) {
+    const centerPosition = calculateMilestonePositionFromTimelineData(
+      milestoneDate,
+      props.timelineData,
+      props.currentTimeScale,
+    )
+    left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
+  } else {
+    // 日视图：保持原有逻辑
+    const startDiff = Math.floor(
+      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    left = startDiff * props.dayWidth + props.dayWidth / 2 - size / 2
+  }
+
   return {
-    left: `${startDiff * props.dayWidth + props.dayWidth / 2 - size / 2}px`,
+    left: `${left}px`,
     top: `${(props.rowHeight - size) / 2}px`,
     width: 'auto',
     height: 'auto',
@@ -438,6 +510,87 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 })
+
+// 基于timelineData和subDays精确计算里程碑位置的函数
+const calculateMilestonePositionFromTimelineData = (
+  targetDate: Date,
+  timelineData: Array<{
+    year: number
+    month: number
+    startDate: Date
+    endDate: Date
+    subDays?: Array<{ date: Date; dayOfWeek?: number }>
+    monthData?: { dayCount: number }
+    weeks?: Array<{
+      weekStart: Date
+      weekEnd: Date
+      subDays: Array<{ date: Date; dayOfWeek?: number }>
+    }>
+  }>,
+  timeScale: TimelineScale,
+) => {
+  let cumulativePosition = 0
+
+  for (const periodData of timelineData) {
+    if (timeScale === TimelineScale.WEEK) {
+      // 周视图：处理嵌套的weeks结构，返回中心位置
+      const weeks = periodData.weeks || []
+
+      for (const week of weeks) {
+        const weekStart = new Date(week.weekStart)
+        const weekEnd = new Date(week.weekEnd)
+
+        if (targetDate >= weekStart && targetDate <= weekEnd) {
+          // 找到目标日期所在的周
+          const weekWidth = 60
+          const subDays = week.subDays || []
+          const dayWidth = weekWidth / 7
+
+          // 在subDays中查找目标日期的位置
+          for (let i = 0; i < subDays.length; i++) {
+            const subDay = subDays[i]
+            const subDayDate = new Date(subDay.date)
+            // 比较日期（忽略时分秒）
+            if (
+              subDayDate.getFullYear() === targetDate.getFullYear() &&
+              subDayDate.getMonth() === targetDate.getMonth() &&
+              subDayDate.getDate() === targetDate.getDate()
+            ) {
+              return cumulativePosition + i * dayWidth + dayWidth / 2
+            }
+          }
+
+          // 如果没找到精确匹配，回退到dayOfWeek计算
+          const dayOfWeek = targetDate.getDay()
+          return cumulativePosition + dayOfWeek * dayWidth + dayWidth / 2
+        }
+
+        // 累加每周的宽度
+        cumulativePosition += 60
+      }
+    } else if (timeScale === TimelineScale.MONTH) {
+      // 月视图：处理扁平化的subDays结构，返回中心位置
+      const periodStart = new Date(periodData.startDate)
+      const periodEnd = new Date(periodData.endDate)
+
+      if (targetDate >= periodStart && targetDate <= periodEnd) {
+        // 找到目标日期所在的时间段
+        const monthWidth = 60
+        const daysInMonth = periodData.monthData?.dayCount || 30
+        const dayWidth = monthWidth / daysInMonth
+        const dayInMonth = targetDate.getDate()
+        return cumulativePosition + (dayInMonth - 1) * dayWidth + dayWidth / 2
+      }
+
+      // 累加每月的宽度
+      cumulativePosition += 60
+    }
+  }
+
+  return cumulativePosition // 如果没找到，返回累计位置
+}
+
+// ...existing code...
 </script>
 
 <template>

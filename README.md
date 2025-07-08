@@ -189,6 +189,7 @@ interface ToolbarConfig {
   showLanguage?: boolean       // 是否显示语言切换按钮
   showTheme?: boolean          // 是否显示主题切换按钮
   showFullscreen?: boolean     // 是否显示全屏切换按钮
+  showTimeScale?: boolean      // 是否显示时间刻度切换按钮组(日|周|月)
 }
 ```
 
@@ -328,7 +329,8 @@ const toolbarConfig = {
   showTodayLocate: true,
   showExportCsv: true,
   showExportPdf: true,
-  showFullscreen: true
+  showFullscreen: true,
+  showTimeScale: true  // 控制日|周|月时间刻度按钮组的可见性
 }
 
 // 自定义多语言配置

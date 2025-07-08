@@ -8,4 +8,5 @@ export interface ToolbarConfig {
   showLanguage?: boolean
   showTheme?: boolean
   showFullscreen?: boolean
+  showTimeScale?: boolean // 显示时间刻度按钮组
 }
