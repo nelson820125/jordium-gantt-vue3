@@ -5,6 +5,7 @@ import { useMessage } from '../composables/useMessage'
 import DatePicker from './DatePicker.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
 import MultiSelectPredecessor from './MultiSelectPredecessor.vue'
+import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
 import type { Task } from '../models/classes/Task'
 import '../styles/app.css'
 
@@ -27,6 +28,8 @@ const emit = defineEmits<{
   submit: [task: Task]
   close: []
   delete: [task: Task, deleteChildren?: boolean]
+  'start-timer': [task: Task]
+  'stop-timer': [task: Task]
 }>()
 
 const { t } = useI18n()
@@ -35,6 +38,78 @@ const { showMessage } = useMessage()
 const submitting = ref(false)
 const isVisible = ref(props.visible)
 const showDeleteConfirm = ref(false)
+
+// 计时器相关
+const timerElapsed = ref(0)
+const timerInterval = ref<number | null>(null)
+
+const isTimerRunning = computed(() => props.task?.isTimerRunning)
+const timerStartTime = computed(() => props.task?.timerStartTime)
+const timerElapsedTime = computed(() => props.task?.timerElapsedTime || 0)
+
+const formattedTimer = computed(() => {
+  const totalSeconds = Math.floor(timerElapsed.value / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
+
+const updateTimer = () => {
+  if (isTimerRunning.value && timerStartTime.value) {
+    timerElapsed.value = Date.now() - timerStartTime.value + timerElapsedTime.value
+  } else {
+    timerElapsed.value = timerElapsedTime.value
+  }
+}
+
+// 新增：监听 props.task 的 isTimerRunning、timerStartTime、timerElapsedTime 变化，确保 header 区域按钮和计时器展示实时同步
+watch(
+  () => [props.task?.isTimerRunning, props.task?.timerStartTime, props.task?.timerElapsedTime],
+  () => {
+    updateTimer()
+  },
+)
+
+// 计时器本地状态，保证点击后UI立即切换
+const localTimerRunning = ref(false)
+
+// 只要 props.task 变化或全局事件变化，立即同步本地状态
+watch(
+  () => props.task?.isTimerRunning,
+  val => {
+    localTimerRunning.value = !!val
+    if (!val && timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+  },
+  { immediate: true },
+)
+
+// 修正计时器每秒递增逻辑，保证计时器正常跳动
+watch(
+  [localTimerRunning, timerStartTime, timerElapsedTime],
+  () => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+    if (localTimerRunning.value && timerStartTime.value) {
+      updateTimer()
+      timerInterval.value = window.setInterval(updateTimer, 1000)
+    } else {
+      updateTimer()
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  if (timerInterval.value) {
+    clearInterval(timerInterval.value)
+  }
+})
 
 // 根据任务类型确定dialog类型
 const dialogType = computed(() => {
@@ -195,6 +270,11 @@ watch(
       if (props.task && props.isEdit) {
         // 编辑模式，填充表单数据
         Object.assign(formData, props.task)
+      } else if (props.task && !props.isEdit) {
+        // 新建模式，自动绑定上级任务
+        formData.parentId = props.task.parentId ?? undefined
+        // 新建模式，自动绑定前置任务
+        formData.predecessor = props.task.predecessor ?? []
       }
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
@@ -206,6 +286,18 @@ watch(
 watch(isVisible, newVal => {
   emit('update:visible', newVal)
 })
+
+// 监听 task 变化，同步更新 parentId
+watch(
+  () => props.task,
+  newTask => {
+    if (newTask && !props.isEdit) {
+      // 新建时，确保 parentId 与传入的 parentId 同步
+      formData.parentId = newTask.parentId ?? undefined
+    }
+  },
+  { immediate: true },
+)
 
 // 重置表单
 const resetForm = () => {
@@ -283,11 +375,9 @@ const handleSubmit = async () => {
       id: props.isEdit && props.task ? props.task.id : Date.now(),
     }
     emit('submit', taskData)
-    showMessage(props.isEdit ? t.value.taskUpdateSuccess : t.value.taskCreateSuccess, 'success')
     handleClose()
   } catch (error) {
     // 处理错误但不在控制台输出
-    showMessage(t.value.operationFailed, 'error')
   } finally {
     submitting.value = false
   }
@@ -298,6 +388,21 @@ const handleDelete = () => {
   showDeleteConfirm.value = true
 }
 
+const handleError = (error: unknown) => {
+  let msg = ''
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    msg = (error as { message: string }).message
+  } else {
+    msg = String(error)
+  }
+  showMessage(msg, 'error', { closable: true })
+}
+
 const confirmDelete = () => {
   showDeleteConfirm.value = false
   if (props.task && props.isEdit) {
@@ -306,7 +411,7 @@ const confirmDelete = () => {
       emit('delete', props.task)
       handleClose()
     } catch (error) {
-      showMessage(t.value.taskDeleteFailed, 'error')
+      handleError(error)
     } finally {
       submitting.value = false
     }
@@ -326,14 +431,13 @@ const handleDeleteYes = () => {
       emit('delete', props.task, true) // 传递true表示删除所有子任务
       handleClose()
     } catch (error) {
-      showMessage(t.value.taskDeleteFailed, 'error')
+      handleError(error)
     } finally {
       submitting.value = false
     }
   }
 }
 
-// Story删除：选择"否" - 仅删除story，保留子任务
 // Story删除：选择"否" - 仅删除story，保留子任务
 const handleDeleteNo = () => {
   showDeleteConfirm.value = false
@@ -343,7 +447,7 @@ const handleDeleteNo = () => {
       emit('delete', props.task, false) // 传递false表示仅删除story
       handleClose()
     } catch (error) {
-      showMessage(t.value.taskDeleteFailed, 'error')
+      handleError(error)
     } finally {
       submitting.value = false
     }
@@ -375,16 +479,225 @@ watch(
   },
   { immediate: true },
 )
+
+// 计时器本地状态，保证点击后UI立即切换
+// !!! 只保留一处 localTimerRunning 定义，彻底移除重复声明 !!!
+
+// 只要 props.task 变化或全局事件变化，立即同步本地状态
+watch(
+  () => props.task?.isTimerRunning,
+  val => {
+    localTimerRunning.value = !!val
+    if (!val && timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+  },
+  { immediate: true },
+)
+
+// 修正计时器每秒递增逻辑，保证计时器正常跳动
+watch(
+  [localTimerRunning, timerStartTime, timerElapsedTime],
+  () => {
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+    if (localTimerRunning.value && timerStartTime.value) {
+      updateTimer()
+      timerInterval.value = window.setInterval(updateTimer, 1000)
+    } else {
+      updateTimer()
+    }
+  },
+  { immediate: true },
+)
+
+// 修正计时器首次启动不跳动问题：每次打开抽屉时重置 timerElapsed，且 timerStartTime 为空时立即赋值
+watch(
+  () => props.visible,
+  visible => {
+    if (visible && props.task && props.task.type !== 'story') {
+      timerElapsed.value = props.task.timerElapsedTime || 0
+      // 若计时器未启动，重置本地interval
+      if (!props.task.isTimerRunning) {
+        if (timerInterval.value) {
+          clearInterval(timerInterval.value)
+          timerInterval.value = null
+        }
+      }
+    }
+  },
+  { immediate: true },
+)
+
+const handleStartTimer = (desc?: string) => {
+  const now = Date.now()
+  if (props.task && typeof props.task === 'object') {
+    Object.assign(props.task, {
+      timerStartTime: now,
+      isTimerRunning: true,
+      timerElapsedTime: 0, // 每次从0秒开始
+      timerStartDesc: desc || '',
+    })
+    emit('start-timer', props.task)
+  }
+  timerElapsed.value = 0 // 启动时重置本地计时器
+  localTimerRunning.value = true
+  updateTimer()
+  if (timerInterval.value) {
+    clearInterval(timerInterval.value)
+    timerInterval.value = null
+  }
+  window.dispatchEvent(new CustomEvent('start-timer', { detail: props.task }))
+}
+const handleStopTimer = () => {
+  if (props.task && typeof props.task === 'object') {
+    emit('stop-timer', props.task)
+  }
+  localTimerRunning.value = false
+  if (timerInterval.value) {
+    clearInterval(timerInterval.value)
+    timerInterval.value = null
+  }
+  updateTimer()
+  window.dispatchEvent(new CustomEvent('stop-timer', { detail: props.task }))
+}
+
+// 计时器确认弹窗
+const showTimerConfirm = ref(false)
+const timerDesc = ref('')
+
+function openTimerConfirm() {
+  timerDesc.value = props.task?.name || ''
+  showTimerConfirm.value = true
+}
+function cancelTimerConfirm() {
+  showTimerConfirm.value = false
+}
+function confirmTimer(desc: string) {
+  showTimerConfirm.value = false
+  // desc 可用于后续业务
+  handleStartTimer(desc)
+}
 </script>
 
 <template>
   <div v-if="isVisible" class="drawer-overlay" @click="handleOverlayClick">
     <div class="drawer-container" @click.stop>
       <!-- Drawer Header -->
-      <div class="drawer-header">
-        <h3 class="drawer-title">{{ isEdit ? t.editTask : t.newTask }}</h3>
+      <div
+        class="drawer-header"
+        style="display: flex; align-items: center; justify-content: flex-start; gap: 8px"
+      >
+        <h3 class="drawer-title" style="margin: 0">{{ isEdit ? t.editTask : t.newTask }}</h3>
+        <div
+          v-if="props.task?.type !== 'story' && isEdit"
+          class="drawer-timer"
+          style="display: flex; align-items: center; gap: 6px; margin-left: 8px"
+        >
+          <button
+            v-if="!localTimerRunning"
+            class="timer-btn start minimal"
+            title="开始计时"
+            style="
+              width: 24px;
+              height: 24px;
+              background: #4caf50;
+              border: none;
+              padding: 0;
+              margin: 0;
+              box-shadow: none;
+              cursor: pointer;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: background 0.2s;
+            "
+            @click.stop="openTimerConfirm"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              style="display: block; margin: 0 auto"
+            >
+              <circle cx="12" cy="12" r="11" stroke="#4caf50" stroke-width="2" fill="#4caf50" />
+              <polygon points="9,7 18,12 9,17" fill="#fff" />
+            </svg>
+          </button>
+          <button
+            v-else
+            class="timer-btn stop minimal"
+            title="停止计时"
+            style="
+              width: 24px;
+              height: 24px;
+              background: #f44336;
+              border: none;
+              padding: 0;
+              margin: 0;
+              box-shadow: none;
+              cursor: pointer;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: background 0.2s;
+            "
+            @click.stop="handleStopTimer"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="11" stroke="#f44336" stroke-width="2" fill="#f44336" />
+              <rect x="7" y="7" width="10" height="10" fill="#fff" rx="1.5" />
+            </svg>
+          </button>
+          <span
+            v-if="localTimerRunning"
+            class="timer-badge"
+            :class="{ 'timer-active': localTimerRunning }"
+            style="
+              margin-left: 8px;
+              font-size: 13px;
+              font-weight: 700;
+              padding: 2px 10px;
+              border-radius: 10px;
+              background: #fffbe6;
+              color: #e6a23c;
+              box-shadow: 0 0 0 1px #ffe58f;
+              display: inline-flex;
+              align-items: center;
+              min-width: 80px;
+              justify-content: center;
+            "
+          >
+            <span
+              v-if="localTimerRunning"
+              class="timer-dot"
+              style="
+                background: #67c23a;
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                margin-right: 5px;
+                animation: pulse 1s infinite;
+              "
+            ></span>
+            {{ formattedTimer }}
+          </span>
+        </div>
+        <div style="flex: 1"></div>
         <button class="drawer-close-btn" type="button" @click="handleClose">
-          <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <svg
+            class="close-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            style="vertical-align: middle"
+          >
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -606,6 +919,17 @@ watch(
       </div>
     </div>
   </div>
+
+  <!-- 计时器确认弹窗 -->
+  <ConfirmTimerDialog
+    v-if="showTimerConfirm"
+    :visible="showTimerConfirm"
+    :title="'确认开始计时'"
+    :message="`即将为任务${props.task?.name}计时，若有特殊说明请完善下面的描述`"
+    :default-desc="props.task?.name || ''"
+    @confirm="confirmTimer"
+    @cancel="cancelTimerConfirm"
+  />
 </template>
 
 <style scoped>

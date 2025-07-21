@@ -17,4 +17,10 @@ export interface Task {
   description?: string
   icon?: string
   level?: number
+  // 计时相关字段
+  isTimerRunning?: boolean
+  timerStartTime?: number
+  timerEndTime?: number // 结束计时时间
+  timerStartDesc?: string // 计时开始时填写的描述
+  timerElapsedTime?: number
 }

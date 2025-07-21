@@ -14,7 +14,18 @@ interface Props {
 const props = defineProps<Props>()
 
 // 定义emit事件
-const emit = defineEmits(['task-collapse-change'])
+// const emit = defineEmits(['task-collapse-change', 'start-timer', 'stop-timer'])
+// +'add-predecessor': [task: Task] // 新增：添加前置任务事件
+//   'add-successor': [task: Task] // 新增：添加后置任务事件
+
+const emit = defineEmits<{
+  'task-collapse-change': [task: Task]
+  'start-timer': [task: Task]
+  'stop-timer': [task: Task]
+  'add-predecessor': [task: Task] // 新增：添加前置任务事件
+  'add-successor': [task: Task] // 新增：添加后置任务事件
+  delete: [task: Task, deleteChildren?: boolean]
+}>()
 
 // 多语言支持
 const { t } = useI18n()
@@ -300,6 +311,44 @@ const handleTimelineVerticalScroll = (event: CustomEvent) => {
   }
 }
 
+// 处理任务行右键菜单事件
+const handleTaskRowContextMenu = (event: { task: Task; position: { x: number; y: number } }) => {
+  // 直接从TaskRow触发全局事件，跳过TaskList中转
+  // 将事件转发为全局事件，让GanttChart组件处理
+  try {
+    window.dispatchEvent(
+      new CustomEvent('context-menu', {
+        detail: event,
+      }),
+    )
+  } catch (error) {
+    console.error('TaskList - Failed to dispatch context-menu event', error)
+  }
+}
+
+// 处理TaskRow计时事件向上传递
+const handleStartTimer = (task: Task) => {
+  emit('start-timer', task)
+}
+const handleStopTimer = (task: Task) => {
+  emit('stop-timer', task)
+}
+
+// 处理添加前置任务事件
+const handleAddPredecessor = (task: Task) => {
+  emit('add-predecessor', task)
+}
+
+// 处理添加后置任务事件
+const handleAddSuccessor = (task: Task) => {
+  emit('add-successor', task)
+}
+
+const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
+  // 触发删除事件
+  emit('delete', task, deleteChildren)
+}
+
 onMounted(async () => {
   window.addEventListener('task-updated', handleTaskUpdated as EventListener)
   window.addEventListener('task-added', handleTaskAdded as EventListener)
@@ -354,6 +403,12 @@ onUnmounted(() => {
         :on-hover="handleTaskRowHover"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
+        @contextmenu="handleTaskRowContextMenu"
+        @start-timer="handleStartTimer"
+        @stop-timer="handleStopTimer"
+        @add-predecessor="handleAddPredecessor"
+        @add-successor="handleAddSuccessor"
+        @delete="handleTaskDelete"
       />
     </div>
   </div>

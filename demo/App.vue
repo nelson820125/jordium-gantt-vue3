@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import GanttChart from '../src/components/GanttChart.vue'
-import TaskDrawer from '../src/components/TaskDrawer.vue'
+// import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import demoData from './data.json'
 import packageInfo from '../package.json'
@@ -18,11 +18,6 @@ const { t, formatTranslation } = useI18n()
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
-
-// TaskDrawer状态管理
-const showTaskDrawer = ref(false)
-const currentTask = ref<Task | null>(null)
-const isEditMode = ref(false)
 
 // MilestoneDialog状态管理
 const showMilestoneDialog = ref(false)
@@ -140,6 +135,12 @@ const handleMilestoneDelete = async (milestoneId: number) => {
 
 // 任务更新处理器
 const handleTaskUpdate = (updatedTask: Task) => {
+  // 计时信息展示（无论来源于 TaskBar/TaskRow 还是 TaskDrawer header）
+  if (updatedTask.timerStartTime) {
+    const msg = `任务【${updatedTask.name}】已更新`
+    showMessage(msg, 'success', { closable: true })
+  }
+
   // 先找到原任务，检查parentId是否改变了
   const findOriginalTask = (taskArray: Task[]): Task | null => {
     for (const task of taskArray) {
@@ -460,24 +461,6 @@ const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
   }
 }
 
-// TaskDrawer事件处理器
-const handleTaskDrawerSubmit = (task: Task) => {
-  if (isEditMode.value) {
-    // 编辑模式：更新任务
-    handleTaskUpdate(task)
-  } else {
-    // 新建模式：添加任务
-    handleTaskAdd(task)
-  }
-  showTaskDrawer.value = false
-}
-
-const handleTaskDrawerClose = () => {
-  showTaskDrawer.value = false
-  currentTask.value = null
-  isEditMode.value = false
-}
-
 const handleTaskDrawerDelete = (task: Task, deleteChildren?: boolean) => {
   if (task.type === 'story' && deleteChildren === true) {
     // 删除story及其所有子任务
@@ -586,6 +569,26 @@ const collectAllTaskIds = (task: Task): number[] => {
   }
   return ids
 }
+
+// Timer事件处理
+function onTimerStarted(task: Task) {
+  showMessage(
+    `Demo 任务【${task.name}】\n开始计时：${new Date(task.timerStartTime).toLocaleString()}${task.timerStartDesc ? `\n计时说明：${task.timerStartDesc}` : ''}`,
+    'info',
+    { closable: true },
+  )
+}
+function onTimerStopped(task: Task) {
+  let msg = `Demo 任务【${task.name}】`
+  if (task.timerStartTime) {
+    msg += `\n开始计时：${new Date(task.timerStartTime).toLocaleString()}`
+    msg += `\n结束计时：${new Date().toLocaleString()}`
+    if (task.timerStartDesc) msg += `\n计时说明：${task.timerStartDesc}`
+  } else {
+    msg += `\n结束计时：${new Date().toLocaleString()}`
+  }
+  showMessage(msg, 'info', { closable: true })
+}
 </script>
 
 <template>
@@ -639,21 +642,26 @@ const collectAllTaskIds = (task: Task): number[] => {
         @taskbar-drag-end="handleTaskbarDragOrResizeEnd"
         @taskbar-resize-end="handleTaskbarDragOrResizeEnd"
         @milestone-drag-end="handleMilestoneDragEnd"
+        @edit-task="task => showMessage(`进入任务编辑：${task.name}`)"
+        @close="() => showMessage('已关闭任务编辑', 'info')"
+        @timer-started="onTimerStarted"
+        @timer-stopped="onTimerStopped"
+        @predecessor-added="
+          e =>
+            showMessage(`Demo 任务[${e.targetTask.name}] 添加前置任务 [${e.newTask.name}]`, 'info')
+        "
+        @successor-added="
+          e =>
+            showMessage(`Demo 任务[${e.targetTask.name}] 添加后置任务 [${e.newTask.name}]`, 'info')
+        "
+        @task-deleted="e => showMessage(`Demo 任务[${e.task.name}] 已删除`, 'info')"
+        @task-added="e => showMessage(`Demo 任务[${e.task.name}] 已创建`, 'info')"
+        @task-updated="e => showMessage(`Demo 任务[${e.task.name}] 已更新`, 'info')"
       />
     </div>
     <div class="license-info">
       <p>MIT License @JORDIUM.COM</p>
     </div>
-
-    <!-- TaskDrawer用于新建/编辑任务 -->
-    <TaskDrawer
-      v-model:visible="showTaskDrawer"
-      :task="currentTask"
-      :is-edit="isEditMode"
-      @submit="handleTaskDrawerSubmit"
-      @close="handleTaskDrawerClose"
-      @delete="handleTaskDrawerDelete"
-    />
 
     <!-- MilestoneDialog用于新建/编辑里程碑 -->
     <MilestoneDialog

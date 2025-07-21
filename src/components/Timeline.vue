@@ -2,7 +2,6 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
-import TaskDrawer from './TaskDrawer.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
 import { useI18n } from '../composables/useI18n'
 import { getPredecessorIds } from '../utils/predecessorUtils'
@@ -47,6 +46,12 @@ const props = withDefaults(defineProps<Props>(), {
 // 定义emits
 const emit = defineEmits<{
   'timeline-scale-changed': [scale: TimelineScale]
+  'edit-task': [task: Task]
+  'start-timer': [task: Task]
+  'stop-timer': [task: Task]
+  'add-predecessor': [task: Task] // 新增：添加前置任务事件
+  'add-successor': [task: Task] // 新增：添加后置任务事件
+  delete: [task: Task, deleteChildren?: boolean]
 }>()
 
 // 多语言
@@ -175,11 +180,6 @@ const getMonthTimelineRange = () => {
 
   return { startDate, endDate }
 }
-
-// 抽屉状态管理
-const drawerVisible = ref(false)
-const currentTask = ref<Task | null>(null)
-const isEditMode = ref(false)
 
 // 里程碑对话框状态管理
 const milestoneDialogVisible = ref(false)
@@ -861,44 +861,9 @@ const updateTask = (updatedTask: Task) => {
   )
 }
 
-// 处理TaskBar双击事件 - 支持API和默认行为
+// 处理TaskBar双击事件 - 只emit事件
 const handleTaskBarDoubleClick = (task: Task) => {
-  // 优先调用外部传入的双击处理器
-  if (props.onTaskDoubleClick && typeof props.onTaskDoubleClick === 'function') {
-    props.onTaskDoubleClick(task)
-  } else if (props.useDefaultDrawer) {
-    // 默认行为：打开内置的TaskDrawer
-    currentTask.value = task
-    isEditMode.value = true
-    drawerVisible.value = true
-  }
-
-  // 如果有自定义编辑组件，也需要处理
-  // 这里可以根据需要扩展
-}
-
-// 处理抽屉提交事件
-const handleDrawerSubmit = (task: Task) => {
-  if (isEditMode.value) {
-    // 编辑模式 - 更新现有任务
-    updateTask(task)
-  } else {
-    // 新增模式 - 添加新任务，通过事件通知父组件
-    window.dispatchEvent(
-      new CustomEvent('task-added', {
-        detail: task,
-      }),
-    )
-  }
-
-  // 关闭抽屉
-  drawerVisible.value = false
-}
-
-// 处理抽屉关闭事件
-const handleDrawerClose = () => {
-  currentTask.value = null
-  isEditMode.value = false
+  emit('edit-task', task)
 }
 
 // 存储所有TaskBar的位置信息
@@ -944,6 +909,16 @@ const handleTaskBarDragEnd = (updatedTask: Task) => {
 }
 const handleTaskBarResizeEnd = (updatedTask: Task) => {
   window.dispatchEvent(new CustomEvent('taskbar-resize-end', { detail: updatedTask }))
+}
+
+// 处理TaskBar右键菜单事件 - 将事件转发给父组件
+const handleTaskBarContextMenu = (event: { task: Task; position: { x: number; y: number } }) => {
+  // 将事件转发为全局事件，让GanttChart组件处理
+  window.dispatchEvent(
+    new CustomEvent('context-menu', {
+      detail: event,
+    }),
+  )
 }
 
 // 处理TaskBar的滚动定位请求
@@ -1386,31 +1361,8 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', handleMouseUp)
 })
 
-const handleTaskDelete = (taskId: number, deleteChildren?: boolean) => {
-  // 调用父组件传入的删除处理器
-  if (props.onTaskDelete && typeof props.onTaskDelete === 'function') {
-    const taskToDelete = tasks.value.find(task => task.id === taskId)
-    if (taskToDelete) {
-      props.onTaskDelete(taskToDelete, deleteChildren)
-    }
-  }
-
-  // 触发全局事件，通知其他组件任务已删除
-  window.dispatchEvent(
-    new CustomEvent('task-deleted', {
-      detail: taskId,
-    }),
-  )
-
-  // 关闭抽屉
-  drawerVisible.value = false
-  currentTask.value = null
-  isEditMode.value = false
-}
-
-// TaskDrawer删除事件适配器
-const handleDrawerTaskDelete = (task: Task, deleteChildren?: boolean) => {
-  handleTaskDelete(task.id, deleteChildren)
+const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
+  emit('delete', task, deleteChildren)
 }
 
 // 月度视图中按年份分组的计算属性
@@ -1442,6 +1394,16 @@ defineExpose({
   // 时间刻度更新
   updateTimeScale,
 })
+
+// 处理开始计时事件
+const handleStartTimer = (task: Task) => {
+  emit('start-timer', task)
+}
+// 处理停止计时事件
+const handleStopTimer = (task: Task) => {
+  emit('stop-timer', task)
+}
+
 // Task类型转换成Milestone类型, 需要返回一个Milestone对象
 const convertTaskToMilestone = (task: Task): Milestone => {
   // 保证 startDate 一定为 string，避免 undefined
@@ -1626,6 +1588,16 @@ const generateMonthTimelineData = () => {
   }
 
   return result
+}
+
+// 添加前置任务事件
+const handleAddPredecessor = (task: Task) => {
+  emit('add-predecessor', task)
+}
+
+// 添加后置任务事件
+const handleAddSuccessor = (task: Task) => {
+  emit('add-successor', task)
 }
 </script>
 
@@ -1913,22 +1885,18 @@ const generateMonthTimelineData = () => {
                 @drag-end="handleTaskBarDragEnd"
                 @resize-end="handleTaskBarResizeEnd"
                 @scroll-to-position="handleScrollToPosition"
+                @context-menu="handleTaskBarContextMenu"
+                @start-timer="handleStartTimer"
+                @stop-timer="handleStopTimer"
+                @add-predecessor="handleAddPredecessor"
+                @add-successor="handleAddSuccessor"
+                @delete="handleTaskDelete"
               />
             </div>
           </div>
         </div>
       </div>
     </div>
-    <!-- Task Drawer 抽屉组件 - 仅在使用默认Drawer时显示 -->
-    <TaskDrawer
-      v-if="props.useDefaultDrawer"
-      v-model:visible="drawerVisible"
-      :task="currentTask"
-      :is-edit="isEditMode"
-      @submit="handleDrawerSubmit"
-      @close="handleDrawerClose"
-      @delete="handleDrawerTaskDelete"
-    />
     <!-- Milestone Dialog 里程碑对话框组件 -->
     <MilestoneDialog
       v-model:visible="milestoneDialogVisible"

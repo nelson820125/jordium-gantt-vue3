@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-07-21
+
+### Added
+- 增加TaskRow/TaskBar的右键菜单
+- 增加Task的执行定时
+- 增加添加前置任务功能
+- 增加添加后置任务功能
+- 增加TaskRow/TaskBar的删除功能
+- GanttChart增加@predecessor-added(添加前置任务完成)事件
+- GanttChart增加@successor-added(添加后置任务完成)事件
+- GanttChart增加@task-deleted(删除任务完成)事件
+- GanttChart增加@task-added(添加任务完成)事件
+- GanttChart增加@task-updated(编辑任务完成)事件
+
+### Changed
+- 升级TaskDrawer统一在GanttChart中管理
+
 ## [1.1.0] - 2025-07-08
 
 ### Added

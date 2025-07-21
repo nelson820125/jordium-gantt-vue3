@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
+import TaskContextMenu from './TaskContextMenu.vue'
 
 interface Props {
   task: Task
@@ -13,7 +14,16 @@ interface Props {
   onHover?: (taskId: number | null) => void
 }
 const props = defineProps<Props>()
-const emit = defineEmits(['toggle', 'dblclick'])
+const emit = defineEmits([
+  'toggle',
+  'dblclick',
+  'contextmenu',
+  'start-timer',
+  'stop-timer',
+  'add-predecessor',
+  'add-successor',
+  'delete',
+])
 const { t } = useI18n()
 const overtimeText = computed(() => t.value?.overtime ?? '')
 const overdueText = computed(() => t.value?.overdue ?? '')
@@ -129,15 +139,101 @@ const handleSplitterDragEnd = () => {
   isSplitterDragging.value = false
 }
 
+// 任务计时器状态
+const timerElapsed = ref(0)
+const timerInterval = ref<number | null>(null)
+
+// 格式化计时器显示：转换为 HH:MM:SS 格式
+const formattedTimer = computed(() => {
+  const totalSeconds = Math.floor(timerElapsed.value / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
+
+// 更新计时器显示
+const updateTimer = () => {
+  if (props.task.isTimerRunning && props.task.timerStartTime) {
+    // 计算已经运行的时间 = 当前时间 - 开始时间 + 之前累积的时间
+    const previousElapsed = props.task.timerElapsedTime || 0
+    timerElapsed.value = Date.now() - props.task.timerStartTime + previousElapsed
+  } else if (props.task.timerElapsedTime) {
+    // 如果任务不在运行中，但有累计时间，显示累计时间
+    timerElapsed.value = props.task.timerElapsedTime
+  } else {
+    // 默认情况下，计时器为0
+    timerElapsed.value = 0
+  }
+}
+
+// 监听任务的计时状态变化
+watch(
+  () => [props.task.isTimerRunning, props.task.timerStartTime, props.task.timerElapsedTime],
+  () => {
+    // 清除之前的计时器
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value)
+      timerInterval.value = null
+    }
+
+    // 如果任务正在计时，开始计时器
+    if (props.task.isTimerRunning) {
+      updateTimer()
+      timerInterval.value = window.setInterval(updateTimer, 1000)
+    } else {
+      // 更新一次最终值
+      updateTimer()
+    }
+  },
+  { immediate: true },
+)
+
+// 右键菜单相关状态
+const contextMenuVisible = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuTask = computed(() => props.task)
+
+// 处理右键菜单显示
+function handleContextMenu(event: MouseEvent) {
+  // 先广播关闭所有TaskRow菜单
+  window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
+  if (props.task.type !== 'task' && props.task.type !== 'story') {
+    // 为了排除里程碑类型
+    event.preventDefault()
+    contextMenuVisible.value = false
+    return
+  }
+  event.preventDefault()
+  contextMenuVisible.value = true
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+}
+
+// 关闭右键菜单
+function closeContextMenu() {
+  contextMenuVisible.value = false
+}
+
+const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
+  // 触发删除事件
+  emit('delete', task, deleteChildren)
+  closeContextMenu()
+}
+
 // 生命周期钩子 - 注册事件监听器
 onMounted(() => {
   window.addEventListener('splitter-drag-start', handleSplitterDragStart)
   window.addEventListener('splitter-drag-end', handleSplitterDragEnd)
+  window.addEventListener('close-all-taskbar-menus', closeContextMenu)
 })
 
 onUnmounted(() => {
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart)
   window.removeEventListener('splitter-drag-end', handleSplitterDragEnd)
+  window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+  if (timerInterval.value) {
+    clearInterval(timerInterval.value)
+  }
 })
 </script>
 
@@ -160,6 +256,7 @@ onUnmounted(() => {
       @dblclick="handleTaskRowDoubleClick"
       @mouseenter="handleMouseEnter"
       @mouseleave="handleMouseLeave"
+      @contextmenu="handleContextMenu"
     >
       <div class="col col-name" :style="{ paddingLeft: indent }">
         <span
@@ -245,6 +342,15 @@ onUnmounted(() => {
           :title="props.task.name"
         >
           {{ props.task.name }}
+          <!-- 计时器显示 -->
+          <span
+            v-if="props.task.isTimerRunning || props.task.timerElapsedTime"
+            class="timer-badge"
+            :class="{ 'timer-active': props.task.isTimerRunning }"
+          >
+            <span v-if="props.task.isTimerRunning" class="timer-dot"></span>
+            {{ formattedTimer }}
+          </span>
           <span v-if="isOvertime()" class="status-badge overtime">{{ overtimeText }}</span>
           <span v-if="overdueDays() > 0" class="status-badge overdue">
             {{ overdueText }}{{ overdueDays() > 0 ? overdueDays() + daysText : '' }}
@@ -299,8 +405,25 @@ onUnmounted(() => {
         :on-hover="props.onHover"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
+        @start-timer="emit('start-timer', $event)"
+        @stop-timer="emit('stop-timer', $event)"
+        @add-predecessor="emit('add-predecessor', $event)"
+        @add-successor="emit('add-successor', $event)"
+        @delete="handleTaskDelete"
       />
     </template>
+
+    <TaskContextMenu
+      :visible="contextMenuVisible"
+      :task="contextMenuTask"
+      :position="contextMenuPosition"
+      @close="closeContextMenu"
+      @start-timer="$emit('start-timer', props.task)"
+      @stop-timer="$emit('stop-timer', props.task)"
+      @add-predecessor="$emit('add-predecessor', props.task)"
+      @add-successor="$emit('add-successor', props.task)"
+      @delete="handleTaskDelete"
+    />
   </div>
 </template>
 
@@ -719,5 +842,59 @@ onUnmounted(() => {
   box-shadow:
     0 6px 16px rgba(246, 124, 124, 0.4),
     0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+/* 计时器样式 */
+.timer-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-color-secondary);
+}
+
+.timer-badge.timer-active {
+  color: #e6a23c;
+}
+
+.timer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #67c23a; /* 绿色 */
+  margin-right: 4px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+:global(html[data-theme='dark']) .timer-badge {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color-secondary-dark);
+}
+
+:global(html[data-theme='dark']) .timer-badge.timer-active {
+  color: #e6c07b;
+}
+
+:global(html[data-theme='dark']) .timer-dot {
+  background-color: #85ce61; /* 暗色主题下的绿色 */
 }
 </style>

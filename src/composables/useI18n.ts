@@ -97,6 +97,13 @@ const messages = {
     newMilestone: '新建里程碑',
     editMilestone: '编辑里程碑',
     cancel: '取消',
+    // 右键菜单
+    startTimer: '开始计时',
+    stopTimer: '停止计时',
+    timerStarted: '任务计时已开始',
+    timerStopped: '任务计时已停止',
+    addPredecessor: '添加前置任务',
+    addSuccessor: '添加后置任务',
 
     // PDF导出相关
     pdfExportLoading: '正在生成PDF，请稍候...',
@@ -156,6 +163,10 @@ const messages = {
     overtime: '超',
     overdue: '逾期',
     days: '天',
+    // 计时确认弹窗
+    timerConfirmPrefix: '即将为任务',
+    timerConfirmSuffix: '计时，若有特殊说明请完善下面的描述',
+    timerConfirmPlaceholder: '请输入计时说明',
   },
   'en-US': {
     // TaskList Header
@@ -246,6 +257,13 @@ const messages = {
     newMilestone: 'New Milestone',
     editMilestone: 'Edit Milestone',
     cancel: 'Cancel',
+    // Context menu
+    timerStarted: 'Timer Started',
+    timerStopped: 'Timer Stopped',
+    startTimer: 'Start Timer',
+    stopTimer: 'Stop Timer',
+    addPredecessor: 'Add Predecessor',
+    addSuccessor: 'Add Successor',
 
     // PDF export
     pdfExportLoading: 'Generating PDF, please wait...',
@@ -309,6 +327,10 @@ const messages = {
     overtime: 'Over',
     overdue: 'Overdue',
     days: ' days',
+    // 计时确认弹窗
+    timerConfirmPrefix: 'About to start timing for',
+    timerConfirmSuffix: '. If there are special notes, please complete the description below.',
+    timerConfirmPlaceholder: 'Please enter timer description',
   },
 }
 

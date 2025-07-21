@@ -3,6 +3,7 @@ import { ref, onUnmounted, onMounted, computed, watch, nextTick, defineEmits } f
 import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
+import TaskDrawer from './TaskDrawer.vue'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import jsPDF from 'jspdf'
@@ -37,7 +38,18 @@ const props = withDefaults(defineProps<Props>(), {
   localeMessages: undefined,
 })
 
-const emit = defineEmits(['taskbar-drag-end', 'taskbar-resize-end', 'milestone-drag-end'])
+const emit = defineEmits([
+  'taskbar-drag-end',
+  'taskbar-resize-end',
+  'milestone-drag-end',
+  'timer-started',
+  'timer-stopped',
+  'predecessor-added',
+  'successor-added',
+  'task-deleted',
+  'task-added',
+  'task-updated',
+])
 
 const { showMessage } = useMessage()
 
@@ -268,6 +280,7 @@ function handleTaskBarResizeEnd(event: CustomEvent) {
 function handleMilestoneDragEnd(event: CustomEvent) {
   emit('milestone-drag-end', event.detail)
 }
+
 onMounted(() => {
   window.addEventListener('taskbar-drag-end', handleTaskBarDragEnd as EventListener)
   window.addEventListener('taskbar-resize-end', handleTaskBarResizeEnd as EventListener)
@@ -375,6 +388,8 @@ onMounted(() => {
   window.addEventListener('request-task-list', handleRequestTaskList as EventListener)
   // 监听窗口大小变化
   window.addEventListener('resize', handleWindowResize)
+  // 监听TaskBar的右键菜单事件
+  window.addEventListener('context-menu', handleTaskContextMenu as EventListener)
 
   nextTick(() => {
     if (timelineRef.value && typeof timelineRef.value.scrollToTodayCenter === 'function') {
@@ -398,6 +413,7 @@ onUnmounted(() => {
   window.removeEventListener('milestone-data-changed', handleMilestoneDataChanged as EventListener)
   window.removeEventListener('request-task-list', handleRequestTaskList as EventListener)
   window.removeEventListener('resize', handleWindowResize)
+  window.removeEventListener('context-menu', handleTaskContextMenu as EventListener)
 })
 
 // 全屏状态管理
@@ -1169,6 +1185,279 @@ watch(
   },
   { deep: true },
 )
+
+// 右键菜单状态管理
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuVisible = ref(false)
+const contextMenuTask = ref<Task | null>(null)
+
+// TaskDrawer 相关变量
+const taskDrawerVisible = ref(false)
+const taskDrawerTask = ref<Task | null>(null)
+const taskDrawerEditMode = ref(false)
+
+// 添加前置任务功能相关变量
+const taskToAddPredecessorTo = ref<Task | null>(null) // 要添加前置任务的目标任务
+// 添加后置任务功能相关变量
+const taskToAddSuccessorTo = ref<Task | null>(null) // 要添加后置任务的目标任务
+
+// 处理任务条的右键菜单事件
+const handleTaskContextMenu = (event: CustomEvent) => {
+  // 显示右键菜单
+  const { task, position } = event.detail
+
+  // 显示右键菜单
+  contextMenuTask.value = task
+  contextMenuPosition.value = position
+  contextMenuVisible.value = true
+}
+
+// 关闭右键菜单
+const closeContextMenu = () => {
+  contextMenuVisible.value = false
+}
+
+// 工具栏新建任务事件处理
+function handleToolbarAddTask() {
+  // 构造一个空的新任务对象
+  const newTask: Task = {
+    id: Date.now(), // 临时id，实际保存时应由后端分配
+    name: '',
+    type: 'task',
+    assignee: '',
+    startDate: '',
+    endDate: '',
+    predecessor: [],
+    estimatedHours: 0,
+    actualHours: 0,
+    progress: 0,
+    description: '',
+    parentId: undefined,
+    children: [],
+  }
+  taskDrawerTask.value = newTask
+  taskDrawerEditMode.value = false
+  taskDrawerVisible.value = true
+}
+
+// 监听TaskDrawer、TaskList、Timeline的计时事件，统一处理
+const handleStartTimer = (task: Task) => {
+  // 任务树内状态同步
+  if (props.tasks) {
+    const updateTask = (tasks: Task[]): boolean => {
+      for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === task.id) {
+          tasks[i].isTimerRunning = true
+          tasks[i].timerStartTime = task.timerStartTime || Date.now()
+          tasks[i].timerEndTime = undefined
+          tasks[i].timerElapsedTime = 0
+          return true
+        }
+        if (tasks[i].children?.length) {
+          if (updateTask(tasks[i].children as Task[])) return true
+        }
+      }
+      return false
+    }
+    updateTask(props.tasks)
+  }
+  closeContextMenu()
+  emit('timer-started', task)
+}
+
+const handleStopTimer = (task: Task) => {
+  // 任务树内状态同步
+  if (props.tasks) {
+    const updateTask = (tasks: Task[]): boolean => {
+      for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === task.id) {
+          if (tasks[i].isTimerRunning && tasks[i].timerStartTime !== undefined) {
+            const elapsed = tasks[i].timerElapsedTime || 0
+            tasks[i].timerElapsedTime = elapsed + (Date.now() - tasks[i].timerStartTime!)
+            tasks[i].timerEndTime = Date.now()
+          }
+          tasks[i].isTimerRunning = false
+          if (
+            taskDrawerVisible.value &&
+            taskDrawerTask.value &&
+            taskDrawerTask.value.id === task.id
+          ) {
+            taskDrawerTask.value.isTimerRunning = false
+            taskDrawerTask.value.timerEndTime = Date.now()
+          }
+          return true
+        }
+        if (tasks[i].children?.length) {
+          if (updateTask(tasks[i].children as Task[])) return true
+        }
+      }
+      return false
+    }
+    updateTask(props.tasks)
+  }
+  closeContextMenu()
+  emit('timer-stopped', task)
+}
+
+// 监听来自Timeline的任务编辑事件
+function handleTimelineEditTask(task: Task) {
+  taskDrawerTask.value = task
+  taskDrawerEditMode.value = true
+  taskDrawerVisible.value = true
+}
+
+// 处理添加前置任务事件
+function handleAddPredecessor(targetTask: Task) {
+  if (!targetTask) return
+
+  // 1. 记录要添加前置任务的目标任务
+  taskToAddPredecessorTo.value = targetTask
+
+  // 2. 打开TaskDrawer，进入新增模式
+  // 新建任务，parentId与目标任务一致
+  const newTask: Task = {
+    id: Date.now(), // 临时id，实际保存时应由后端分配
+    name: '',
+    type: 'task',
+    assignee: '',
+    startDate: '',
+    endDate: '',
+    predecessor: [],
+    estimatedHours: 0,
+    actualHours: 0,
+    progress: 0,
+    description: '',
+    parentId: targetTask.parentId,
+    children: [],
+  }
+  taskDrawerTask.value = newTask
+  taskDrawerEditMode.value = false
+  taskDrawerVisible.value = true
+}
+
+// 处理添加后置任务事件
+function handleAddSuccessor(targetTask: Task) {
+  if (!targetTask) return
+  // 记录要添加后置任务的目标任务
+  taskToAddSuccessorTo.value = targetTask
+  // 构造新任务，parentId 与目标任务一致，predecessor 仅包含目标任务 id
+  const newTask: Task = {
+    id: Date.now(), // 临时id，实际保存时应由后端分配
+    name: '',
+    type: 'task',
+    assignee: '',
+    startDate: '',
+    endDate: '',
+    predecessor: [targetTask.id],
+    estimatedHours: 0,
+    actualHours: 0,
+    progress: 0,
+    description: '',
+    parentId: targetTask.parentId,
+    children: [],
+  }
+  taskDrawerTask.value = newTask
+  taskDrawerEditMode.value = false
+  taskDrawerVisible.value = true
+}
+
+// 新增Task插入到任务树中
+// 插入新任务到任务树（parentId 已在打开 TaskDrawer 时预设好）
+const insertTask = (tasks: Task[], newTask: Task) => {
+  if (!newTask.parentId) {
+    tasks.push(newTask)
+    return true
+  }
+  for (const t of tasks) {
+    if (t.id === newTask.parentId) {
+      if (!t.children) t.children = []
+      t.children.push(newTask)
+      return true
+    }
+    if (t.children && t.children.length > 0) {
+      if (insertTask(t.children, newTask)) return true
+    }
+  }
+  return false
+}
+
+// 编辑模式：递归查找并更新任务树节点
+const updateTaskInTree = (tasks: Task[], updatedTask: Task): boolean => {
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].id === updatedTask.id) {
+      tasks[i] = { ...tasks[i], ...updatedTask }
+      return true
+    }
+    if (tasks[i].children && (tasks[i].children as Task[]).length > 0) {
+      if (updateTaskInTree(tasks[i].children as Task[], updatedTask)) return true
+    }
+  }
+  return false
+}
+
+// 在 handleTaskDrawerSubmit 里补充：如果是添加前置任务，自动将新任务id加入目标任务的 predecessor
+function handleTaskDrawerSubmit(task: Task) {
+  if (!taskDrawerEditMode.value) {
+    if (props.tasks) {
+      insertTask(props.tasks, task)
+    }
+    // emit 新增任务事件
+    emit('task-added', { task })
+    if (taskToAddPredecessorTo.value) {
+      if (!taskToAddPredecessorTo.value.predecessor) {
+        taskToAddPredecessorTo.value.predecessor = []
+      }
+      taskToAddPredecessorTo.value.predecessor.push(task.id)
+      // emit 添加前置任务事件
+      emit('predecessor-added', { targetTask: taskToAddPredecessorTo.value, newTask: task })
+      taskToAddPredecessorTo.value = null
+    }
+    if (taskToAddSuccessorTo.value) {
+      // emit 添加后置任务事件
+      emit('successor-added', { targetTask: taskToAddSuccessorTo.value, newTask: task })
+      taskToAddSuccessorTo.value = null
+    }
+  } else {
+    if (props.tasks) {
+      updateTaskInTree(props.tasks, task)
+    }
+    updateTaskTrigger.value++
+    // emit 任务更新事件
+    emit('task-updated', { task })
+  }
+}
+
+// 删除任务的递归工具函数，支持 deleteChildren 逻辑
+function removeTaskFromTree(tasks: Task[], taskId: number, deleteChildren?: boolean): boolean {
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].id === taskId) {
+      if (deleteChildren) {
+        // 递归删除该节点及所有子节点（直接 splice 即可）
+        tasks.splice(i, 1)
+      } else {
+        // 只删除该节点，把 children 提升到同级
+        const children = tasks[i].children || []
+        tasks.splice(i, 1, ...children)
+      }
+      return true
+    }
+    if (tasks[i].children && (tasks[i].children as Task[]).length > 0) {
+      if (removeTaskFromTree(tasks[i].children as Task[], taskId, deleteChildren)) return true
+    }
+  }
+  return false
+}
+
+// 处理 Task 的删除事件
+function handleTaskDelete(task: Task, deleteChildren?: boolean) {
+  if (props.tasks) {
+    removeTaskFromTree(props.tasks, task.id, deleteChildren)
+  }
+  taskDrawerVisible.value = false
+  taskDrawerTask.value = null
+  // emit 删除事件
+  emit('task-deleted', { task })
+}
 </script>
 
 <template>
@@ -1189,6 +1478,7 @@ watch(
       :on-theme-change="props.onThemeChange"
       :on-fullscreen-change="props.onFullscreenChange"
       :on-time-scale-change="handleTimeScaleChange"
+      @add-task="handleToolbarAddTask"
     />
 
     <!-- 甘特图主体 -->
@@ -1204,6 +1494,11 @@ watch(
           :edit-component="props.editComponent"
           :use-default-drawer="props.useDefaultDrawer"
           @task-collapse-change="handleTaskCollapseChange"
+          @start-timer="handleStartTimer"
+          @stop-timer="handleStopTimer"
+          @add-predecessor="handleAddPredecessor"
+          @add-successor="handleAddSuccessor"
+          @delete="handleTaskDelete"
         />
       </div>
       <div class="gantt-splitter" @mousedown="onMouseDown">
@@ -1243,12 +1538,30 @@ watch(
           :on-task-double-click="props.onTaskDoubleClick"
           :edit-component="props.editComponent"
           :use-default-drawer="props.useDefaultDrawer"
-          :on-task-delete="props.onTaskDelete"
           :on-milestone-save="handleMilestoneSave"
           @timeline-scale-changed="handleTimelineScaleChanged"
+          @edit-task="handleTimelineEditTask"
+          @start-timer="handleStartTimer"
+          @stop-timer="handleStopTimer"
+          @add-predecessor="handleAddPredecessor"
+          @add-successor="handleAddSuccessor"
+          @delete="handleTaskDelete"
         />
       </div>
     </div>
+
+    <!-- 任务抽屉组件 - 用于添加前置任务 -->
+    <TaskDrawer
+      v-if="props.useDefaultDrawer"
+      v-model:visible="taskDrawerVisible"
+      :task="taskDrawerTask"
+      :is-edit="taskDrawerEditMode"
+      @submit="handleTaskDrawerSubmit"
+      @close="taskDrawerVisible = false"
+      @start-timer="handleStartTimer"
+      @stop-timer="handleStopTimer"
+      @delete="handleTaskDelete"
+    />
   </div>
 </template>
 
@@ -1535,8 +1848,8 @@ watch(
 }
 
 .gantt-root.splitter-dragging .gantt-panel-right {
-  /* 拖拽期间禁用Timeline区域的指针事件 */
-  pointer-events: none;
+  /* 拖拽时高亮右侧面板 */
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .gantt-root.splitter-dragging * {
