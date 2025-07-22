@@ -68,7 +68,7 @@ watch(
   () => [props.task?.isTimerRunning, props.task?.timerStartTime, props.task?.timerElapsedTime],
   () => {
     updateTimer()
-  },
+  }
 )
 
 // 计时器本地状态，保证点击后UI立即切换
@@ -84,7 +84,7 @@ watch(
       timerInterval.value = null
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 修正计时器每秒递增逻辑，保证计时器正常跳动
@@ -102,7 +102,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 onUnmounted(() => {
@@ -138,6 +138,10 @@ const formData = reactive<Task>({
   progress: 0,
   description: '',
   parentId: undefined, // 上级任务ID
+  isTimerRunning: false, // 是否正在计时
+  timerStartTime: undefined, // 计时器开始时间
+  timerEndTime: undefined, // 计时器结束时间
+  timerElapsedTime: 0, // 计时器已用时间
 })
 
 // 任务列表数据
@@ -149,7 +153,7 @@ const availableParentTasks = computed(() => {
     .filter(
       task =>
         task.id !== props.task?.id && // 排除当前任务自己
-        (task.type === 'story' || task.type === 'task'), // 只显示story和task类型
+        (task.type === 'story' || task.type === 'task') // 只显示story和task类型
     )
     .map(task => ({
       ...task,
@@ -279,7 +283,7 @@ watch(
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
     }
-  },
+  }
 )
 
 // 监听 isVisible 变化，同步到父组件
@@ -296,7 +300,7 @@ watch(
       formData.parentId = newTask.parentId ?? undefined
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 重置表单
@@ -313,6 +317,10 @@ const resetForm = () => {
     progress: 0,
     description: '',
     parentId: undefined,
+    isTimerRunning: false,
+    timerStartTime: undefined,
+    timerEndTime: undefined,
+    timerElapsedTime: 0,
   })
 
   // 清除错误信息
@@ -477,41 +485,7 @@ watch(
   newValue => {
     progressDisplayValue.value = (newValue || 0).toString()
   },
-  { immediate: true },
-)
-
-// 计时器本地状态，保证点击后UI立即切换
-// !!! 只保留一处 localTimerRunning 定义，彻底移除重复声明 !!!
-
-// 只要 props.task 变化或全局事件变化，立即同步本地状态
-watch(
-  () => props.task?.isTimerRunning,
-  val => {
-    localTimerRunning.value = !!val
-    if (!val && timerInterval.value) {
-      clearInterval(timerInterval.value)
-      timerInterval.value = null
-    }
-  },
-  { immediate: true },
-)
-
-// 修正计时器每秒递增逻辑，保证计时器正常跳动
-watch(
-  [localTimerRunning, timerStartTime, timerElapsedTime],
-  () => {
-    if (timerInterval.value) {
-      clearInterval(timerInterval.value)
-      timerInterval.value = null
-    }
-    if (localTimerRunning.value && timerStartTime.value) {
-      updateTimer()
-      timerInterval.value = window.setInterval(updateTimer, 1000)
-    } else {
-      updateTimer()
-    }
-  },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 修正计时器首次启动不跳动问题：每次打开抽屉时重置 timerElapsed，且 timerStartTime 为空时立即赋值
@@ -529,7 +503,7 @@ watch(
       }
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 const handleStartTimer = (desc?: string) => {

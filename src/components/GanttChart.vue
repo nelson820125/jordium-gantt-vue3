@@ -249,7 +249,7 @@ const toggleTaskList = () => {
       window.dispatchEvent(
         new CustomEvent('timeline-container-resized', {
           detail: { source: 'manual-task-list-toggle' },
-        }),
+        })
       )
     })
   }, 400)
@@ -265,7 +265,7 @@ const handleToggleTaskList = (event: CustomEvent) => {
     window.dispatchEvent(
       new CustomEvent('timeline-container-resized', {
         detail: { source: 'task-list-toggle' },
-      }),
+      })
     )
   })
 }
@@ -298,7 +298,7 @@ const handleTaskCollapseChange = (task: Task) => {
   const updateTaskCollapsedState = (
     tasks: Task[],
     targetId: number,
-    collapsed: boolean,
+    collapsed: boolean
   ): boolean => {
     for (const t of tasks) {
       if (t.id === targetId) {
@@ -369,7 +369,7 @@ watch(
       notifyTaskListUpdated()
     })
   },
-  { deep: true, immediate: true },
+  { deep: true, immediate: true }
 )
 
 onMounted(() => {
@@ -407,7 +407,7 @@ onUnmounted(() => {
   window.removeEventListener('task-added', handleTaskAdd as EventListener)
   window.removeEventListener(
     'milestone-icon-changed',
-    handleMilestoneIconChangeEvent as EventListener,
+    handleMilestoneIconChangeEvent as EventListener
   )
   window.removeEventListener('milestone-deleted', handleMilestoneDeleted as EventListener)
   window.removeEventListener('milestone-data-changed', handleMilestoneDataChanged as EventListener)
@@ -1183,7 +1183,7 @@ watch(
   val => {
     if (val) setCustomMessages(locale.value, val)
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 右键菜单状态管理
@@ -1329,6 +1329,10 @@ function handleAddPredecessor(targetTask: Task) {
     description: '',
     parentId: targetTask.parentId,
     children: [],
+    isTimerRunning: false,
+    timerStartTime: undefined,
+    timerEndTime: undefined,
+    timerElapsedTime: 0,
   }
   taskDrawerTask.value = newTask
   taskDrawerEditMode.value = false
@@ -1355,6 +1359,10 @@ function handleAddSuccessor(targetTask: Task) {
     description: '',
     parentId: targetTask.parentId,
     children: [],
+    isTimerRunning: false,
+    timerStartTime: undefined,
+    timerEndTime: undefined,
+    timerElapsedTime: 0,
   }
   taskDrawerTask.value = newTask
   taskDrawerEditMode.value = false
