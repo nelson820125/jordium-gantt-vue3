@@ -1117,10 +1117,6 @@ function confirmTimer(desc: string) {
   background: var(--gantt-primary, #409eff);
 }
 
-.progress-slider::-moz-range-track {
-  background: var(--gantt-border-light, #e4e7ed);
-}
-
 /* 为更好的兼容性，添加一个伪元素来显示已完成部分 */
 .progress-slider::before {
   content: '';

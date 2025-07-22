@@ -157,5 +157,10 @@
       "GanttChart增加@task-updated(编辑任务完成)事件",
       "升级TaskDrawer统一在GanttChart中管理"
     ]
+  },
+  {
+    "version": "1.2.1",
+    "date": "2025-07-22",
+    "notes": ["SonarQube代码质量检查问题修改"]
   }
 ]
