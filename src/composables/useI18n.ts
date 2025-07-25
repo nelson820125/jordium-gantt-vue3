@@ -6,6 +6,7 @@ export type Locale = 'zh-CN' | 'en-US'
 // 多语言配置
 const messages = {
   'zh-CN': {
+    dateNotSet: '未设置',
     // TaskList Header
     taskName: '任务名称',
     predecessor: '前置任务',
@@ -158,6 +159,7 @@ const messages = {
     days: '天',
   },
   'en-US': {
+    dateNotSet:'Not set',
     // TaskList Header
     taskName: 'Task Name',
     predecessor: 'Predecessor',
