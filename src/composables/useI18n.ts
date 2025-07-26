@@ -41,6 +41,7 @@ const messages = {
 
     // 其他
     milestone: '里程碑',
+    targetDate: '目标日期',
     today: '今天',
     // 里程碑对话框
     milestoneDetails: '里程碑详情',
@@ -192,6 +193,7 @@ const messages = {
 
     // 其他
     milestone: 'Milestone',
+    targetDate: 'Target Date',
     today: 'Today',
     // 里程碑对话框
     milestoneDetails: 'Milestone Details',

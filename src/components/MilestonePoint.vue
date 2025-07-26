@@ -2,6 +2,13 @@
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
+import { useI18n } from '../composables/useI18n'
+
+const { setLocale, getTranslation } = useI18n()
+
+const t = (key: string): string => {
+  return getTranslation(key)
+}
 
 interface Props {
   date: string // 里程碑日期
@@ -478,26 +485,26 @@ const handleMilestoneMouseLeave = () => {
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string): string => {
-  if (!dateStr) return '未设置'
+  if (!dateStr) return t('dateNotSet') //Not Set
 
   try {
     const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return '未设置'
+    if (isNaN(date.getTime())) return t('dateNotSet')
 
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   } catch {
-    return '未设置'
+    return t('dateNotSet')
   }
 }
 
-// Tooltip内容
+// Tooltip内容  Target date
 const tooltipContent = computed(() => {
-  const milestoneName = props.name || props.milestone?.name || '里程碑'
+  const milestoneName = props.name || props.milestone?.name || t('milestone')
   const targetDate = formatDisplayDate(props.date || props.milestone?.startDate || '')
-  return `里程碑：${milestoneName} - 目标日期：${targetDate}`
+  return `${t('milestone')}：${milestoneName} - ${t('targetDate')}：${targetDate}`
 })
 
 // 组件销毁时清理事件监听器
