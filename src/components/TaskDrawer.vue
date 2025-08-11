@@ -713,15 +713,15 @@ function confirmTimer(desc: string) {
             <span v-if="errors.type" class="error-text">{{ errors.type }}</span>
           </div>
 
-         <div class="form-group">
+          <div class="form-group">
             <label class="form-label" for="task-assignee">{{ t.assignee }}</label>
             <select id="task-assignee" v-model="formData.assignee" class="form-select">
-             <option value="">{{ t.selectAssignee }}</option>
-             <!--  <option value="张三">张三</option>
+              <option value="">{{ t.selectAssignee }}</option>
+              <option value="张三">张三</option>
               <option value="李四">李四</option>
               <option value="王五">王五</option>
               <option value="赵六">赵六</option>
-              <option value="钱七">钱七</option>-->
+              <option value="钱七">钱七</option>
             </select>
           </div>
 

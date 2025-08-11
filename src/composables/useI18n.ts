@@ -6,7 +6,6 @@ export type Locale = 'zh-CN' | 'en-US'
 // 多语言配置
 const messages = {
   'zh-CN': {
-    dateNotSet: '未设置',
     // TaskList Header
     taskName: '任务名称',
     predecessor: '前置任务',
@@ -39,26 +38,8 @@ const messages = {
     // 月份格式
     monthFormat: (month: number) => `${month}月`,
 
-    // 月份名称
-    monthNames: [
-      '一月',
-      '二月',
-      '三月',
-      '四月',
-      '五月',
-      '六月',
-      '七月',
-      '八月',
-      '九月',
-      '十月',
-      '十一月',
-      '十二月',
-    ],
-    weekDays:['日', '一', '二', '三', '四', '五', '六'],
-
     // 其他
     milestone: '里程碑',
-    targetDate: '目标日期',
     today: '今天',
     // 里程碑对话框
     milestoneDetails: '里程碑详情',
@@ -188,7 +169,6 @@ const messages = {
     timerConfirmPlaceholder: '请输入计时说明',
   },
   'en-US': {
-    dateNotSet:'Not set',
     // TaskList Header
     taskName: 'Task Name',
     predecessor: 'Predecessor',
@@ -219,25 +199,8 @@ const messages = {
     // 月份格式
     monthFormat: (month: number) => `M${String(month).padStart(2, '0')}`,
 
-    // Month name
-    monthNames: [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-    ],
-    weekDays:['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     // 其他
     milestone: 'Milestone',
-    targetDate: 'Target Date',
     today: 'Today',
     // 里程碑对话框
     milestoneDetails: 'Milestone Details',

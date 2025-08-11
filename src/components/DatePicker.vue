@@ -1,10 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useI18n } from '../composables/useI18n'
-
-
-const { locale, setLocale, getTranslation ,t} = useI18n()
-
 
 interface Props {
   modelValue?: string | [string, string]
@@ -71,10 +66,6 @@ const formatDisplayDate = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-const getMonth = (key: string): string => {
-  return getTranslation(key)
 }
 
 // 显示值
@@ -473,7 +464,6 @@ const yearList = computed(() => {
   return years
 })
 
-/*
 // 月份名称
 const monthNames = [
   '一月',
@@ -490,7 +480,6 @@ const monthNames = [
   '十二月',
 ]
 const weekDays = ['日', '一', '二', '三', '四', '五', '六']
-*/
 
 // 生命周期
 onMounted(() => {
@@ -747,7 +736,7 @@ const panelStyle = computed(() => {
                 &lt;&lt;
               </button>
               <span class="el-month-picker__header-label" @click="showYearSelector($event)">
-                {{ currentYear }}
+                {{ currentYear }}年
               </span>
               <button type="button" class="el-picker-panel__icon-btn" @click="nextYear">
                 &gt;&gt;
@@ -755,7 +744,7 @@ const panelStyle = computed(() => {
             </div>
             <div class="el-month-picker__content">
               <div
-                v-for="(monthName, index) in t.monthNames"
+                v-for="(monthName, index) in monthNames"
                 :key="index"
                 class="el-month-picker__item"
                 :class="{ 'is-current': index === currentMonth }"
@@ -777,10 +766,10 @@ const panelStyle = computed(() => {
               </button>
               <span class="el-date-picker__header-label">
                 <span class="el-date-picker__header-year" @click="showYearSelector($event)">
-                  {{ currentYear }}
+                  {{ currentYear }}年
                 </span>
                 <span class="el-date-picker__header-month" @click="showMonthSelector($event)">
-                  {{ t.monthNames[currentMonth] }}
+                  {{ monthNames[currentMonth] }}
                 </span>
               </span>
               <button type="button" class="el-picker-panel__icon-btn" @click="nextMonth">
@@ -794,7 +783,7 @@ const panelStyle = computed(() => {
             <div class="el-date-picker__content">
               <!-- 星期标题 -->
               <div class="el-date-table__header">
-                <div v-for="day in t.weekDays" :key="day" class="el-date-table__header-cell">
+                <div v-for="day in weekDays" :key="day" class="el-date-table__header-cell">
                   {{ day }}
                 </div>
               </div>
