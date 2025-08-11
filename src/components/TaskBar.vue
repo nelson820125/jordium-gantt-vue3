@@ -4,10 +4,6 @@ import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
 
-
-import { useI18n } from '../composables/useI18n'
-
-
 interface Props {
   task: Task
   rowHeight: number
@@ -34,12 +30,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const { setLocale, getTranslation } = useI18n()
-
-const t = (key: string): string => {
-  return getTranslation(key)
-}
 
 const emit = defineEmits([
   'update:task',
@@ -843,9 +833,9 @@ const handleBubbleMouseDown = (event: MouseEvent) => {
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return t('dateNotSet')
+  if (!dateStr) return '未设置'
   const date = createLocalDate(dateStr)
-  if (!date) return t('dateNotSet')
+  if (!date) return '未设置'
 
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -1130,23 +1120,23 @@ onUnmounted(() => {
       <div class="tooltip-title">{{ task.name }}</div>
       <div class="tooltip-content">
         <div class="tooltip-row">
-          <span class="tooltip-label"> {{ t('startDate') }}:</span>
+          <span class="tooltip-label">计划开始:</span>
           <span class="tooltip-value">{{ formatDisplayDate(task.startDate) }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label">{{ t('endDate') }}:</span>
+          <span class="tooltip-label">计划结束:</span>
           <span class="tooltip-value">{{ formatDisplayDate(task.endDate) }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label">{{ t('estimatedHours') }}:</span>
+          <span class="tooltip-label">计划工时:</span>
           <span class="tooltip-value">{{ workHourInfo.total }}h</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label"> {{ t('actualHours') }}:</span>
+          <span class="tooltip-label">已用工时:</span>
           <span class="tooltip-value">{{ workHourInfo.used }}h</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label"> {{ t('progress') }}:</span>
+          <span class="tooltip-label">完成率:</span>
           <span class="tooltip-value">{{ task.progress || 0 }}%</span>
         </div>
       </div>

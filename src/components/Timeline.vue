@@ -1620,7 +1620,7 @@ const handleAddSuccessor = (task: Task) => {
             class="timeline-year"
             :style="{ width: '719px' }"
           >
-            <div class="year-label">{{ yearValue }}</div>
+            <div class="year-label">{{ yearValue }}年</div>
           </div>
         </div>
 
