@@ -34,7 +34,7 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const { setLocale, getTranslation } = useI18n()
+const {  getTranslation } = useI18n()
 
 const t = (key: string): string => {
   return getTranslation(key)

@@ -4,7 +4,7 @@ import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
 import { useI18n } from '../composables/useI18n'
 
-const { setLocale, getTranslation } = useI18n()
+const {  getTranslation } = useI18n()
 
 const t = (key: string): string => {
   return getTranslation(key)

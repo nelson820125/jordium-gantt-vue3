@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 
 
-const { locale, setLocale, getTranslation ,t} = useI18n()
+const { t} = useI18n()
 
 
 interface Props {
@@ -73,9 +73,7 @@ const formatDisplayDate = (dateStr: string) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-const getMonth = (key: string): string => {
-  return getTranslation(key)
-}
+
 
 // 显示值
 const displayValue = computed(() => {
