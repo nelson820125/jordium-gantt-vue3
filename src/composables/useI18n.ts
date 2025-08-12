@@ -6,7 +6,6 @@ export type Locale = 'zh-CN' | 'en-US'
 // 多语言配置
 const messages = {
   'zh-CN': {
-    dateNotSet: '未设置',
     // TaskList Header
     taskName: '任务名称',
     predecessor: '前置任务',
@@ -39,26 +38,8 @@ const messages = {
     // 月份格式
     monthFormat: (month: number) => `${month}月`,
 
-    // 月份名称
-    monthNames: [
-      '一月',
-      '二月',
-      '三月',
-      '四月',
-      '五月',
-      '六月',
-      '七月',
-      '八月',
-      '九月',
-      '十月',
-      '十一月',
-      '十二月',
-    ],
-    weekDays:['日', '一', '二', '三', '四', '五', '六'],
-
     // 其他
     milestone: '里程碑',
-    targetDate: '目标日期',
     today: '今天',
     // 里程碑对话框
     milestoneDetails: '里程碑详情',
@@ -116,6 +97,13 @@ const messages = {
     newMilestone: '新建里程碑',
     editMilestone: '编辑里程碑',
     cancel: '取消',
+    // 右键菜单
+    startTimer: '开始计时',
+    stopTimer: '停止计时',
+    timerStarted: '任务计时已开始',
+    timerStopped: '任务计时已停止',
+    addPredecessor: '添加前置任务',
+    addSuccessor: '添加后置任务',
 
     // PDF导出相关
     pdfExportLoading: '正在生成PDF，请稍候...',
@@ -175,9 +163,12 @@ const messages = {
     overtime: '超',
     overdue: '逾期',
     days: '天',
+    // 计时确认弹窗
+    timerConfirmPrefix: '即将为任务',
+    timerConfirmSuffix: '计时，若有特殊说明请完善下面的描述',
+    timerConfirmPlaceholder: '请输入计时说明',
   },
   'en-US': {
-    dateNotSet:'Not set',
     // TaskList Header
     taskName: 'Task Name',
     predecessor: 'Predecessor',
@@ -208,25 +199,8 @@ const messages = {
     // 月份格式
     monthFormat: (month: number) => `M${String(month).padStart(2, '0')}`,
 
-    // Month name
-    monthNames: [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-    ],
-    weekDays:['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     // 其他
     milestone: 'Milestone',
-    targetDate: 'Target Date',
     today: 'Today',
     // 里程碑对话框
     milestoneDetails: 'Milestone Details',
@@ -283,6 +257,13 @@ const messages = {
     newMilestone: 'New Milestone',
     editMilestone: 'Edit Milestone',
     cancel: 'Cancel',
+    // Context menu
+    timerStarted: 'Timer Started',
+    timerStopped: 'Timer Stopped',
+    startTimer: 'Start Timer',
+    stopTimer: 'Stop Timer',
+    addPredecessor: 'Add Predecessor',
+    addSuccessor: 'Add Successor',
 
     // PDF export
     pdfExportLoading: 'Generating PDF, please wait...',
@@ -346,6 +327,10 @@ const messages = {
     overtime: 'Over',
     overdue: 'Overdue',
     days: ' days',
+    // 计时确认弹窗
+    timerConfirmPrefix: 'About to start timing for',
+    timerConfirmSuffix: '. If there are special notes, please complete the description below.',
+    timerConfirmPlaceholder: 'Please enter timer description',
   },
 }
 

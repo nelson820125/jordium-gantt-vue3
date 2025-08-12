@@ -41,7 +41,7 @@ const availableTasks = computed(() => {
     task =>
       task.type === 'task' &&
       task.id !== props.currentTaskId &&
-      !selectedPredecessorIds.value.includes(task.id),
+      !selectedPredecessorIds.value.includes(task.id)
   )
 })
 
@@ -69,13 +69,13 @@ watch(
   () => {
     selectedValue.value = ''
   },
-  { immediate: true },
+  { immediate: true }
 )
 </script>
 
 <template>
   <div class="multi-select-predecessor">
-    <label class="form-label">{{ label }}</label>
+    <label class="form-label" for="predecessor-select">{{ label }}</label>
     <div class="predecessor-selector">
       <!-- 已选择的前置任务标签 -->
       <div v-if="selectedPredecessors.length > 0" class="selected-tags">
@@ -89,7 +89,12 @@ watch(
 
       <!-- 下拉选择器 -->
       <div class="select-wrapper">
-        <select v-model="selectedValue" class="form-select" @change="addPredecessor">
+        <select
+          id="predecessor-select"
+          v-model="selectedValue"
+          class="form-select"
+          @change="addPredecessor"
+        >
           <option value="">{{ placeholder }}</option>
           <option v-for="task in availableTasks" :key="task.id" :value="task.id">
             {{ task.name }} (ID: {{ task.id }})

@@ -485,26 +485,26 @@ const handleMilestoneMouseLeave = () => {
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string): string => {
-  if (!dateStr) return t('dateNotSet') //Not Set
+  if (!dateStr) return '未设置'
 
   try {
     const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return t('dateNotSet')
+    if (isNaN(date.getTime())) return '未设置'
 
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   } catch {
-    return t('dateNotSet')
+    return '未设置'
   }
 }
 
-// Tooltip内容  Target date
+// Tooltip内容
 const tooltipContent = computed(() => {
-  const milestoneName = props.name || props.milestone?.name || t('milestone')
+  const milestoneName = props.name || props.milestone?.name || '里程碑'
   const targetDate = formatDisplayDate(props.date || props.milestone?.startDate || '')
-  return `${t('milestone')}：${milestoneName} <br> ${t('targetDate')}：${targetDate}`
+  return `里程碑：${milestoneName} - 目标日期：${targetDate}`
 })
 
 // 组件销毁时清理事件监听器
@@ -688,7 +688,8 @@ const calculateMilestonePositionFromTimelineData = (
         top: `${tooltipPosition.y}px`,
       }"
     >
-      <div class="tooltip-content" v-html="tooltipContent">
+      <div class="tooltip-content">
+        {{ tooltipContent }}
       </div>
     </div>
   </Teleport>

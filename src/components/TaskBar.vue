@@ -2,10 +2,7 @@
 import { ref, computed, onUnmounted, onMounted, nextTick, watch } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
-
-
-import { useI18n } from '../composables/useI18n'
-
+import TaskContextMenu from './TaskContextMenu.vue'
 
 interface Props {
   task: Task
@@ -44,9 +41,14 @@ const emit = defineEmits([
   'update:task',
   'bar-mounted',
   'dblclick',
-  'drag-end', // 新增
-  'resize-end', // 新增
-  'scroll-to-position', // 新增：半圆点击定位事件
+  'drag-end',
+  'resize-end',
+  'scroll-to-position',
+  'start-timer',
+  'stop-timer',
+  'add-predecessor',
+  'add-successor',
+  'delete',
 ])
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
@@ -234,9 +236,7 @@ const taskStatus = computed(() => {
 })
 
 // 判断是否已完成
-const isCompleted = computed(() => {
-  return (props.task.progress || 0) >= 100
-})
+const isCompleted = computed(() => (props.task.progress || 0) >= 100)
 
 // 计算完成部分的宽度
 const progressWidth = computed(() => {
@@ -448,10 +448,14 @@ onMounted(() => {
   window.addEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
   window.addEventListener('timeline-force-recalculate', handleForceRecalculate)
 
+  // 监听全局关闭菜单事件
+  window.addEventListener('close-all-taskbar-menus', closeContextMenu)
+
   // 清理函数
   onUnmounted(() => {
     window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
     window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
+    window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
   })
 })
 
@@ -835,9 +839,9 @@ const handleBubbleMouseDown = (event: MouseEvent) => {
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return t('dateNotSet')
+  if (!dateStr) return '未设置'
   const date = createLocalDate(dateStr)
-  if (!date) return t('dateNotSet')
+  if (!date) return '未设置'
 
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -975,7 +979,41 @@ const calculatePositionFromTimelineData = (
   return cumulativePosition // 如果没找到，返回累计位置
 }
 
-// ...existing code...
+// 处理右键菜单
+const contextMenuVisible = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuTask = computed(() => props.task)
+
+function handleContextMenu(event: MouseEvent) {
+  // 先广播关闭所有TaskBar菜单
+  window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
+  if (props.task.type !== 'task' && props.task.type !== 'story') {
+    // 为了排除里程碑类型
+    event.preventDefault()
+    contextMenuVisible.value = false
+    return
+  }
+  event.preventDefault()
+  contextMenuVisible.value = true
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+}
+function closeContextMenu() {
+  contextMenuVisible.value = false
+}
+
+const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
+  // 触发删除事件
+  emit('delete', task, deleteChildren)
+  closeContextMenu()
+}
+
+// 监听全局关闭菜单事件
+onMounted(() => {
+  window.addEventListener('close-all-taskbar-menus', closeContextMenu)
+})
+onUnmounted(() => {
+  window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+})
 </script>
 
 <template>
@@ -999,6 +1037,7 @@ const calculatePositionFromTimelineData = (
       'short-task-bar': isShortTaskBar,
       'overflow-effect': needsOverflowEffect,
     }"
+    @contextmenu="handleContextMenu"
     @dblclick="handleTaskBarDoubleClick"
   >
     <!-- 父级任务的标签 -->
@@ -1059,6 +1098,18 @@ const calculatePositionFromTimelineData = (
       @mousedown="handleBubbleMouseDown"
       @click="handleBubbleClick"
     ></div>
+
+    <TaskContextMenu
+      :visible="contextMenuVisible"
+      :task="contextMenuTask"
+      :position="contextMenuPosition"
+      @close="closeContextMenu"
+      @start-timer="$emit('start-timer', props.task)"
+      @stop-timer="$emit('stop-timer', props.task)"
+      @add-predecessor="$emit('add-predecessor', props.task)"
+      @add-successor="$emit('add-successor', props.task)"
+      @delete="handleTaskDelete"
+    />
   </div>
 
   <!-- Tooltip 弹窗 -->
@@ -1075,23 +1126,23 @@ const calculatePositionFromTimelineData = (
       <div class="tooltip-title">{{ task.name }}</div>
       <div class="tooltip-content">
         <div class="tooltip-row">
-          <span class="tooltip-label"> {{ t('startDate') }}:</span>
+          <span class="tooltip-label">计划开始:</span>
           <span class="tooltip-value">{{ formatDisplayDate(task.startDate) }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label">{{ t('endDate') }}:</span>
+          <span class="tooltip-label">计划结束:</span>
           <span class="tooltip-value">{{ formatDisplayDate(task.endDate) }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label">{{ t('estimatedHours') }}:</span>
+          <span class="tooltip-label">计划工时:</span>
           <span class="tooltip-value">{{ workHourInfo.total }}h</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label"> {{ t('actualHours') }}:</span>
+          <span class="tooltip-label">已用工时:</span>
           <span class="tooltip-value">{{ workHourInfo.used }}h</span>
         </div>
         <div class="tooltip-row">
-          <span class="tooltip-label"> {{ t('progress') }}:</span>
+          <span class="tooltip-label">完成率:</span>
           <span class="tooltip-value">{{ task.progress || 0 }}%</span>
         </div>
       </div>

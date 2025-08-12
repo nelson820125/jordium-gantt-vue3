@@ -55,12 +55,6 @@ pnpm add jordium-gantt-vue3
 
 ---
 
-> 💡 **Badge Downloads**：
-> - npm version badge：https://img.shields.io/npm/v/jordium-gantt-vue3.svg
-> - MIT license badge：https://img.shields.io/badge/license-MIT-blue.svg
-> - Vue version badge：https://img.shields.io/badge/vue-3.x-green.svg
-> - TypeScript badge：https://img.shields.io/badge/typescript-5.x-blue.svg
-
 ## 📁 Project Structure
 
 ```
@@ -116,11 +110,72 @@ jordium-gantt-vue3/
 
 ### GanttChart Events
 
-| Event | Parameters | Description |
-|-------|------------|-------------|
+| Event              | Parameters                  | Description                        |
+|--------------------|----------------------------|------------------------------------|
 | `taskbar-drag-end` | `task: Task` | Task bar drag end |
 | `taskbar-resize-end` | `task: Task` | Task bar resize end |
 | `milestone-drag-end` | `milestone: Task` | Milestone drag end |
+| `predecessor-added`| `{ targetTask, newTask }`   | Triggered after adding predecessor.<br>Parameters:<br>• `targetTask`: The task to which a predecessor was added (Task object)<br>• `newTask`: The newly added predecessor task (Task object) |
+| `successor-added`  | `{ targetTask, newTask }`   | Triggered after adding successor.<br>Parameters:<br>• `targetTask`: The task to which a successor was added (Task object)<br>• `newTask`: The newly added successor task (Task object) |
+| `task-deleted`     | `{ task }`                  | Triggered after deleting a task    |
+| `task-added`       | `{ task }`                  | Triggered after creating a task    |
+| `task-updated`     | `{ task }`                  | Triggered after updating a task    |
+
+#### Timer Event Usage Example
+
+```vue
+<GanttChart
+  ...
+  @timer-started="onTimerStarted"
+  @timer-stopped="onTimerStopped"
+/>
+
+<script setup>
+function onTimerStarted(task) {
+  // Custom notification, logging, or business logic
+  alert(`Task [${task.name}] started at: ${new Date(task.timerStartTime).toLocaleString()}`)
+}
+function onTimerStopped(task) {
+  alert(`Task [${task.name}] stopped`)
+}
+</script>
+```
+
+#### Task Event Usage Example
+
+```vue
+<GanttChart
+  ...
+  @predecessor-added="onPredecessorAdded"
+  @successor-added="onSuccessorAdded"
+  @task-deleted="onTaskDeleted"
+  @task-added="onTaskAdded"
+  @task-updated="onTaskUpdated"
+/>
+
+<script setup>
+function onPredecessorAdded(e) {
+  // e: { targetTask: Task, newTask: Task }
+  alert(`Task [${e.targetTask.name}] predecessor added [${e.newTask.name}]`)
+}
+function onSuccessorAdded(e) {
+  // e: { targetTask: Task, newTask: Task }
+  alert(`Task [${e.targetTask.name}] successor added [${e.newTask.name}]`)
+}
+function onTaskDeleted(e) {
+  // e: { task: Task }
+  alert(`Task [${e.task.name}] deleted`)
+}
+function onTaskAdded(e) {
+  // e: { task: Task }
+  alert(`Task [${e.task.name}] created`)
+}
+function onTaskUpdated(e) {
+  // e: { task: Task }
+  alert(`Task [${e.task.name}] updated`)
+}
+</script>
+```
 
 ### Data Types
 
@@ -128,24 +183,30 @@ jordium-gantt-vue3/
 
 **Task Type**
 ```typescript
-interface Task {
-  id: number                    // Unique task identifier
-  name: string                  // Task name
-  predecessor?: string          // Predecessor task ID
-  assignee?: string            // Assignee
-  startDate?: string           // Start date (YYYY-MM-DD format)
-  endDate?: string             // End date (YYYY-MM-DD format)
-  progress?: number            // Completion progress (0-100)
-  estimatedHours?: number      // Estimated hours
-  actualHours?: number         // Actual hours
-  parentId?: number            // Parent task ID
-  children?: Task[]            // Child tasks array (supports nested structure)
-  collapsed?: boolean          // Whether child tasks are collapsed
-  isParent?: boolean           // Whether it's a parent task
-  type?: string               // Task type (task/story/bug/milestone)
-  description?: string         // Task description
-  icon?: string               // Task icon
-  level?: number              // Task level
+export interface Task {
+  id: number // Unique task ID
+  name: string // Task name
+  predecessor?: number[] // Predecessor task ID array
+  assignee?: string // Assignee
+  startDate?: string // Start date (ISO string)
+  endDate?: string // End date (ISO string)
+  progress?: number // Progress percentage 0-100
+  estimatedHours?: number // Estimated hours
+  actualHours?: number // Actual hours
+  parentId?: number // Parent task ID
+  children?: Task[] // Subtask array
+  collapsed?: boolean // Collapsed state
+  isParent?: boolean // Is parent task
+  type?: string // Task type (e.g. task, story, milestone)
+  description?: string // Task description
+  icon?: string // Icon
+  level?: number // Level
+  // Timer related fields
+  isTimerRunning?: boolean // Is timer running
+  timerStartTime?: number // Timer start timestamp
+  timerEndTime?: number // Timer end timestamp
+  timerStartDesc?: string // Timer start description
+  timerElapsedTime?: number // Accumulated timer duration (seconds)
 }
 ```
 

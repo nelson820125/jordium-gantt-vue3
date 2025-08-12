@@ -56,35 +56,32 @@ pnpm add jordium-gantt-vue3
 
 ---
 
-> 💡 **徽章下载**：
-> - npm 版本徽章：https://img.shields.io/npm/v/jordium-gantt-vue3.svg
-> - MIT 许可证徽章：https://img.shields.io/badge/license-MIT-blue.svg
-> - Vue 版本徽章：https://img.shields.io/badge/vue-3.x-green.svg
-> - TypeScript 徽章：https://img.shields.io/badge/typescript-5.x-blue.svg
-
 ## 📁 项目结构
 
 ```
 jordium-gantt-vue3/
-├── src/                      # 源码目录
-│   ├── components/           # 核心组件
-│   │   ├── GanttChart.vue   # 主入口组件
-│   │   ├── TaskList.vue     # 任务列表
-│   │   ├── Timeline.vue     # 时间轴
-│   │   ├── TaskBar.vue      # 任务条
-│   │   ├── MilestonePoint.vue # 里程碑
-│   │   └── ...              # 其他组件
-│   ├── models/              # 数据模型
-│   │   ├── classes/         # 类定义
-│   │   └── configs/         # 配置接口
-│   ├── composables/         # 组合式函数
-│   ├── styles/              # 样式文件
-│   └── index.ts             # 导出入口
-├── demo/                    # 开发演示
-├── dist/                    # 构建产物
-├── docs/                    # 文档
-└── package.json
+├── src/             # 组件源码与核心逻辑
+│   ├── components/  # 主要 Vue 组件
+│   ├── models/      # 数据类型与配置
+│   ├── composables/ # 组合式函数
+│   ├── styles/      # 样式文件
+│   └── index.ts     # 入口导出
+├── demo/            # 组件开发与交互演示（本地开发/预览用）
+├── packageDemo/     # npm 包集成演示（模拟外部项目集成效果）
+├── dist/            # 构建产物（发布/静态站点/打包输出）
+├── docs/            # 相关文档（如部署、API 说明等）
+├── design/          # 设计资源与截图
+├── public/          # 公共静态资源
+├── README.md        # 中文说明文档
+├── README-EN.md     # 英文说明文档
+└── ...              # 其他配置、脚本与元数据
 ```
+
+- `demo/`：用于本地开发和功能演示，包含完整的交互页面。
+- `packageDemo/`：用于模拟 npm 包在外部项目中的集成与使用场景。
+- `dist/`：构建输出目录，包含发布到 npm 或静态站点的产物。
+- `docs/`：项目相关文档，如部署说明、API 参考等。
+- 其余目录请参考注释。
 
 ## 🔧 API 参考
 
@@ -117,11 +114,72 @@ jordium-gantt-vue3/
 
 ### GanttChart 事件
 
-| 事件名 | 参数 | 说明 |
-|--------|------|------|
+| 事件名                | 参数                        | 说明                         |
+|----------------------|----------------------------|------------------------------|
 | `taskbar-drag-end` | `task: Task` | 任务条拖拽结束 |
 | `taskbar-resize-end` | `task: Task` | 任务条大小调整结束 |
 | `milestone-drag-end` | `milestone: Task` | 里程碑拖拽结束 |
+| `predecessor-added`  | `{ targetTask, newTask }`   | 添加前置任务后触发。<br>参数说明：<br>• `targetTask`：被添加前置任务的目标任务（Task对象）<br>• `newTask`：新添加的前置任务（Task对象） |
+| `successor-added`    | `{ targetTask, newTask }`   | 添加后置任务后触发。<br>参数说明：<br>• `targetTask`：被添加后置任务的目标任务（Task对象）<br>• `newTask`：新添加的后置任务（Task对象） |
+| `task-deleted`       | `{ task }`                  | 删除任务后触发               |
+| `task-added`         | `{ task }`                  | 新建任务后触发               |
+| `task-updated`       | `{ task }`                  | 更新任务后触发               |
+
+#### 计时事件用法示例
+
+```vue
+<GanttChart
+  ...
+  @timer-started="onTimerStarted"
+  @timer-stopped="onTimerStopped"
+/>
+
+<script setup>
+function onTimerStarted(task) {
+  // 这里可以自定义提示、日志或业务逻辑
+  alert(`任务【${task.name}】开始计时：${new Date(task.timerStartTime).toLocaleString()}`)
+}
+function onTimerStopped(task) {
+  alert(`任务【${task.name}】停止计时`)
+}
+</script>
+```
+
+#### 任务事件用法示例
+
+```vue
+<GanttChart
+  ...
+  @predecessor-added="onPredecessorAdded"
+  @successor-added="onSuccessorAdded"
+  @task-deleted="onTaskDeleted"
+  @task-added="onTaskAdded"
+  @task-updated="onTaskUpdated"
+/>
+
+<script setup>
+function onPredecessorAdded(e) {
+  // e: { targetTask: Task, newTask: Task }
+  alert(`任务【${e.targetTask.name}】添加前置任务【${e.newTask.name}】`)
+}
+function onSuccessorAdded(e) {
+  // e: { targetTask: Task, newTask: Task }
+  alert(`任务【${e.targetTask.name}】添加后置任务【${e.newTask.name}】`)
+}
+function onTaskDeleted(e) {
+  // e: { task: Task }
+  alert(`任务【${e.task.name}】已删除`)
+}
+function onTaskAdded(e) {
+  // e: { task: Task }
+  alert(`任务【${e.task.name}】已创建`)
+}
+function onTaskUpdated(e) {
+  // e: { task: Task }
+  alert(`任务【${e.task.name}】已更新`)
+}
+</script>
+```
 
 ### 数据类型
 
@@ -129,24 +187,30 @@ jordium-gantt-vue3/
 
 **Task 任务类型**
 ```typescript
-interface Task {
-  id: number                    // 任务唯一标识
-  name: string                  // 任务名称
-  predecessor?: string          // 前置任务ID
-  assignee?: string            // 负责人
-  startDate?: string           // 开始日期 (YYYY-MM-DD格式)
-  endDate?: string             // 结束日期 (YYYY-MM-DD格式)
-  progress?: number            // 完成进度 (0-100)
-  estimatedHours?: number      // 预估工时
-  actualHours?: number         // 实际工时
-  parentId?: number            // 上级任务ID
-  children?: Task[]            // 子任务数组（支持嵌套结构）
-  collapsed?: boolean          // 是否折叠子任务
-  isParent?: boolean           // 是否为父级任务
-  type?: string               // 任务类型 (task/story/bug/milestone)
-  description?: string         // 任务描述
-  icon?: string               // 任务图标
-  level?: number              // 任务层级
+export interface Task {
+  id: number // 任务唯一ID
+  name: string // 任务名称
+  predecessor?: number[] // 前置任务ID数组
+  assignee?: string // 负责人
+  startDate?: string // 开始日期（ISO字符串）
+  endDate?: string // 结束日期（ISO字符串）
+  progress?: number // 进度百分比 0-100
+  estimatedHours?: number // 预估工时
+  actualHours?: number // 实际工时
+  parentId?: number // 上级任务ID
+  children?: Task[] // 子任务数组
+  collapsed?: boolean // 是否折叠
+  isParent?: boolean // 是否为父任务
+  type?: string // 任务类型（如 task、story、milestone 等）
+  description?: string // 任务描述
+  icon?: string // 图标
+  level?: number // 层级
+  // 计时相关字段
+  isTimerRunning?: boolean // 计时是否进行中
+  timerStartTime?: number // 计时开始时间（时间戳）
+  timerEndTime?: number // 计时结束时间（时间戳）
+  timerStartDesc?: string // 计时开始时的描述
+  timerElapsedTime?: number // 已累计计时时长（秒）
 }
 ```
 
