@@ -31,6 +31,12 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const {  getTranslation } = useI18n()
+
+const t = (key: string): string => {
+  return getTranslation(key)
+}
+
 const emit = defineEmits([
   'update:task',
   'bar-mounted',
