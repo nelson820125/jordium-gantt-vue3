@@ -503,7 +503,7 @@ const formatDisplayDate = (dateStr: string): string => {
 const tooltipContent = computed(() => {
   const milestoneName = props.name || props.milestone?.name || t('milestone')
   const targetDate = formatDisplayDate(props.date || props.milestone?.startDate || '')
-  return `${t('milestone')}：${milestoneName} <br> ${t('targetDate')}：${targetDate}`
+  return `${t('milestone')}：${milestoneName} - ${t('targetDate')}：${targetDate}`
 })
 
 // 组件销毁时清理事件监听器
