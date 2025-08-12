@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useI18n } from '../composables/useI18n'
-
-
-const { t} = useI18n()
 
 interface Props {
   modelValue?: string | [string, string]
@@ -71,6 +67,7 @@ const formatDisplayDate = (dateStr: string) => {
   const date = new Date(dateStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
+
 // 显示值
 const displayValue = computed(() => {
   if (props.type === 'daterange') {
