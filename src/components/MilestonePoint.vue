@@ -2,6 +2,12 @@
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
+import { useI18n } from '../composables/useI18n'
+const { getTranslation } = useI18n()
+
+const t = (key: string): string => {
+  return getTranslation(key)
+}
 
 interface Props {
   date: string // 里程碑日期
@@ -151,7 +157,7 @@ const handleMouseMove = (e: MouseEvent) => {
         mouseX: e.clientX,
         isDragging: isDragging.value,
       },
-    }),
+    })
   )
 
   const deltaX = e.clientX - dragStartX.value
@@ -178,7 +184,7 @@ const handleMouseUp = () => {
         mouseX: 0,
         isDragging: false,
       },
-    }),
+    })
   )
 
   // 只有在真正拖拽了（有临时数据）且状态为拖拽中时才触发更新
@@ -240,7 +246,7 @@ const handleMilestoneClick = (e: MouseEvent) => {
           scrollLeft: targetScrollLeft,
           smooth: true,
         },
-      }),
+      })
     )
   }
 }
@@ -274,13 +280,13 @@ const milestoneStyle = computed(() => {
     const centerPosition = calculateMilestonePositionFromTimelineData(
       milestoneDate,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
     left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
   } else {
     // 日视图：保持原有逻辑
     const startDiff = Math.floor(
-      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
+      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
     left = startDiff * props.dayWidth + props.dayWidth / 2 - size / 2
   }
@@ -346,7 +352,7 @@ const milestoneVisibility = computed(() => {
   if (iconRight <= leftBoundary + iconSize / 2) {
     // 检查左侧是否有其他停靠的里程碑，需要判断推挤优先级
     const leftStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky,
+      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky
     )
 
     // 如果有其他里程碑已经停靠在左侧，比较优先级决定推挤顺序
@@ -392,7 +398,7 @@ const milestoneVisibility = computed(() => {
   if (iconLeft >= rightBoundary - iconSize / 2) {
     // 检查右侧是否有其他停靠的里程碑，需要判断推挤优先级
     const rightStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky,
+      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky
     )
 
     // 如果有其他里程碑已经停靠在右侧，比较优先级决定推挤顺序
@@ -478,26 +484,26 @@ const handleMilestoneMouseLeave = () => {
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string): string => {
-  if (!dateStr) return '未设置'
+  if (!dateStr) return t('dateNotSet') //Not Set
 
   try {
     const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return '未设置'
+    if (isNaN(date.getTime())) return t('dateNotSet')
 
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   } catch {
-    return '未设置'
+    return t('dateNotSet')
   }
 }
 
 // Tooltip内容
 const tooltipContent = computed(() => {
-  const milestoneName = props.name || props.milestone?.name || '里程碑'
+  const milestoneName = props.name || props.milestone?.name || t('milestone')
   const targetDate = formatDisplayDate(props.date || props.milestone?.startDate || '')
-  return `里程碑：${milestoneName} - 目标日期：${targetDate}`
+  return `${t('milestone')}：${milestoneName} <br> ${t('targetDate')}：${targetDate}`
 })
 
 // 组件销毁时清理事件监听器
@@ -527,7 +533,7 @@ const calculateMilestonePositionFromTimelineData = (
       subDays: Array<{ date: Date; dayOfWeek?: number }>
     }>
   }>,
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ) => {
   let cumulativePosition = 0
 
