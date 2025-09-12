@@ -48,7 +48,7 @@
   "scripts": {
     "dev": "vite",
     "dev:demo": "vite",
-    "build": "vue-tsc --noEmit --skipLibCheck && vite build",
+    "build": "vue-tsc -b && vite build",
     "build:demo": "vue-tsc -b && vite build",
     "build:lib": "vite build --config vite.config.lib.ts",
     "preview": "vite preview",

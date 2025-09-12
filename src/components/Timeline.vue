@@ -340,29 +340,15 @@ const getCachedTimelineData = (): unknown => {
 
 // 获取虚拟滚动优化后的时间轴数据
 const optimizedTimelineData = computed(() => {
-  const cachedData = getCachedTimelineData()
+  const cachedData = getCachedTimelineData() as any
 
   // 只在小时视图中应用虚拟滚动
   if (currentTimeScale.value === TimelineScale.HOUR && Array.isArray(cachedData)) {
     const { startHour, endHour } = visibleHourRange.value
 
-    return cachedData
+    return (cachedData as any[])
       .map(
-        (day: {
-          year: number
-          month: number
-          day: number
-          hours: Array<{
-            hour: number
-            label: string
-            shortLabel: string
-            date: Date
-            isToday: boolean
-            isWorkingHour: boolean
-            isWeekend: boolean
-          }>
-          [key: string]: unknown
-        }) => {
+        (day: any) => {
           // 计算当前天相对于时间线开始的小时偏移
           const dayStart = new Date(timelineConfig.value.startDate)
           dayStart.setHours(0, 0, 0, 0)
@@ -394,7 +380,7 @@ const optimizedTimelineData = computed(() => {
           }
         },
       )
-      .filter((day: { hours: unknown[] }) => day.hours.length > 0)
+      .filter((day: any) => day.hours.length > 0)
   }
 
   return cachedData
@@ -402,12 +388,12 @@ const optimizedTimelineData = computed(() => {
 
 // 计算完整时间线的总宽度（用于虚拟滚动容器）
 const totalTimelineWidth = computed(() => {
-  const cachedData = getCachedTimelineData()
+  const cachedData = getCachedTimelineData() as any
 
   if (currentTimeScale.value === TimelineScale.HOUR) {
     if (Array.isArray(cachedData)) {
       // 计算总小时数
-      const totalHours = cachedData.reduce((total, day: { hours: unknown[] }) => {
+      const totalHours = (cachedData as any[]).reduce((total, day: any) => {
         return total + day.hours.length
       }, 0)
       return totalHours * HOUR_WIDTH
@@ -415,7 +401,7 @@ const totalTimelineWidth = computed(() => {
   } else if (currentTimeScale.value === TimelineScale.QUARTER) {
     if (Array.isArray(cachedData)) {
       // 计算总季度数：每年4个季度，每个季度60px
-      const totalQuarters = cachedData.reduce((total, year: { quarters: unknown[] }) => {
+      const totalQuarters = (cachedData as any[]).reduce((total, year: any) => {
         return total + year.quarters.length
       }, 0)
       return totalQuarters * 60
@@ -1890,7 +1876,7 @@ const yearTimelineData = computed(() => {
   }
 
   try {
-    const data = generateYearTimelineData()
+    const data = generateYearTimelineData() as any
     return Array.isArray(data) ? data : []
   } catch (error) {
     // 发生错误时返回空数组
@@ -2549,10 +2535,13 @@ const handleAddSuccessor = (task: Task) => {
 
           <!-- 年度视图背景列 -->
           <template v-if="currentTimeScale === TimelineScale.YEAR">
-            <template v-for="yearData in yearTimelineData" :key="`year-col-${yearData.year}`">
+            <template
+              v-for="yearData in yearTimelineData"
+              :key="`year-col-${(yearData as any).year}`"
+            >
               <div
-                v-for="halfYear in yearData.halfYears || []"
-                :key="`halfyear-col-${yearData.year}-${halfYear.label}`"
+                v-for="halfYear in (yearData as any).halfYears || []"
+                :key="`halfyear-col-${(yearData as any).year}-${(halfYear as any).label}`"
                 class="half-year-column"
                 :style="{ width: '180px', height: `${contentHeight}px` }"
               ></div>
