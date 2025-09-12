@@ -9,6 +9,7 @@ import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
+import type { Milestone } from '../models/classes/Milestone'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import { useMessage } from '../composables/useMessage'
@@ -602,6 +603,25 @@ const tasksForTimeline = computed(() => {
   }
 
   return result
+})
+
+// 将Task[]转换为Milestone[]的计算属性，确保类型兼容
+const milestonesForTimeline = computed((): Milestone[] => {
+  if (!props.milestones) return []
+  
+  // 过滤出有startDate的里程碑，并转换为Milestone类型
+  return props.milestones
+    .filter((task): task is Task & { startDate: string } => !!task.startDate)
+    .map(task => ({
+      id: task.id,
+      name: task.name,
+      startDate: task.startDate, // 此时已确保非空
+      endDate: task.endDate,
+      assignee: task.assignee,
+      type: task.type || 'milestone',
+      icon: task.icon,
+      description: task.description,
+    }))
 })
 
 // 计算所有任务和里程碑的最小开始时间和最大结束时间
@@ -1549,7 +1569,7 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
         <Timeline
           ref="timelineRef"
           :tasks="tasksForTimeline"
-          :milestones="props.milestones"
+          :milestones="milestonesForTimeline"
           :start-date="timelineDateRange.min"
           :end-date="timelineDateRange.max"
           :working-hours="props.workingHours"
