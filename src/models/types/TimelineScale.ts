@@ -1,13 +1,16 @@
 // 时间轴比例类型定义
 
 // 使用字符串字面量类型代替enum，兼容erasableSyntaxOnly
-export type TimelineScale = 'day' | 'week' | 'month'
+export type TimelineScale = 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
 
 // 导出常量值以便于使用
 export const TimelineScale = {
+  HOUR: 'hour' as TimelineScale, // 小时视图 - 每列显示一小时
   DAY: 'day' as TimelineScale, // 日视图 - 每列显示一天
   WEEK: 'week' as TimelineScale, // 周视图 - 每列显示一周
   MONTH: 'month' as TimelineScale, // 月视图 - 每列显示一个月
+  QUARTER: 'quarter' as TimelineScale, // 季度视图 - 每列显示一个季度
+  YEAR: 'year' as TimelineScale, // 年视图 - 每列显示一年
 }
 
 export interface TimelineScaleConfig {
@@ -22,6 +25,12 @@ export interface TimelineScaleConfig {
 
 // 预设配置
 export const SCALE_CONFIGS = {
+  hour: {
+    scale: TimelineScale.HOUR,
+    cellWidth: 40,
+    headerLevels: 2,
+    formatters: { primary: 'yyyy年MM月dd日', secondary: 'HH:mm' },
+  },
   day: {
     scale: TimelineScale.DAY,
     cellWidth: 30,
@@ -39,6 +48,12 @@ export const SCALE_CONFIGS = {
     cellWidth: 180,
     headerLevels: 2,
     formatters: { primary: 'yyyy年', secondary: 'MM月' },
+  },
+  year: {
+    scale: TimelineScale.YEAR,
+    cellWidth: 360,
+    headerLevels: 2,
+    formatters: { primary: 'yyyy年', secondary: '上半年|下半年' },
   },
 } as Record<TimelineScale, TimelineScaleConfig>
 
@@ -71,5 +86,17 @@ export interface TimelineData {
     startDate: Date
     endDate: Date
     units: TimelineUnit[]
+  }>
+  years?: Array<{
+    year: number
+    startDate: Date
+    endDate: Date
+    halfYears: Array<{
+      label: string
+      startDate: Date
+      endDate: Date
+      width: number
+    }>
+    width: number
   }>
 }

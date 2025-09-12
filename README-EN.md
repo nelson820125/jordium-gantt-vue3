@@ -59,25 +59,70 @@ pnpm add jordium-gantt-vue3
 
 ```
 jordium-gantt-vue3/
-├── src/                      # Source code directory
-│   ├── components/           # Core components
-│   │   ├── GanttChart.vue   # Main entry component
-│   │   ├── TaskList.vue     # Task list
-│   │   ├── Timeline.vue     # Timeline
-│   │   ├── TaskBar.vue      # Task bar
-│   │   ├── MilestonePoint.vue # Milestone
-│   │   └── ...              # Other components
-│   ├── models/              # Data models
-│   │   ├── classes/         # Class definitions
-│   │   └── configs/         # Configuration interfaces
-│   ├── composables/         # Composable functions
-│   ├── styles/              # Style files
-│   └── index.ts             # Export entry
-├── demo/                    # Development demo
-├── dist/                    # Build output
-├── docs/                    # Documentation
-└── package.json
+├── src/                      # Source code directory  
+│   ├── components/           # Core Vue components
+│   │   ├── GanttChart.vue    # Main entry component
+│   │   ├── TaskList.vue      # Task list component
+│   │   ├── Timeline.vue      # Timeline component
+│   │   ├── TaskBar.vue       # Task bar component
+│   │   ├── TaskDrawer.vue    # Task edit drawer
+│   │   ├── TaskContextMenu.vue # Task context menu
+│   │   ├── GanttToolbar.vue  # Toolbar component
+│   │   ├── MilestonePoint.vue # Milestone point
+│   │   ├── MilestoneDialog.vue # Milestone dialog
+│   │   ├── DatePicker.vue    # Date picker
+│   │   └── ...               # Other components
+│   ├── models/               # Data models and configurations
+│   │   ├── classes/          # Class definitions
+│   │   │   ├── Task.ts       # Task model
+│   │   │   ├── Milestone.ts  # Milestone model
+│   │   │   └── Language.ts   # Language configuration
+│   │   ├── configs/          # Configuration interfaces
+│   │   │   ├── TimelineConfig.ts # Timeline configuration
+│   │   │   └── ToolbarConfig.ts  # Toolbar configuration
+│   │   └── types/            # Type definitions
+│   │       └── TimelineScale.ts  # Timeline scale types
+│   ├── composables/          # Vue composable functions
+│   │   ├── useI18n.ts        # Internationalization utilities
+│   │   └── useMessage.ts     # Message utilities
+│   ├── styles/               # Style files
+│   │   ├── app.css           # Main styles
+│   │   └── theme-variables.css # Theme variables
+│   ├── utils/                # Utility functions
+│   │   └── predecessorUtils.ts # Predecessor utilities
+│   └── index.ts              # Export entry
+├── demo/                     # Development demo & interactive showcase
+│   ├── App.vue               # Demo application main component
+│   ├── data.json             # Demo data (includes clinical trial examples)
+│   ├── main.ts               # Demo application entry
+│   └── ...                   # Other demo files
+├── packageDemo/              # npm package integration demo
+├── dist/                     # Build output directory
+├── docs/                     # Documentation
+├── design/                   # Design resources and screenshots
+│   └── screenshots/          # Theme screenshots
+├── public/                   # Public static resources
+│   └── assets/               # Static asset files
+├── README.md                 # Chinese documentation
+├── README-EN.md              # English documentation
+├── package.json              # Project configuration
+├── vite.config.ts            # Vite development configuration
+├── vite.config.lib.ts        # Vite library build configuration
+├── tsconfig.json             # TypeScript configuration
+└── ...                       # Other configuration files and metadata
 ```
+
+### Directory Description
+
+- **`src/components/`**: Core Vue components containing all Gantt chart functionality
+- **`src/models/`**: Data models, type definitions and configuration interfaces  
+- **`src/composables/`**: Vue 3 composable functions providing reusable logic
+- **`src/styles/`**: Style files including theme system and CSS variables
+- **`src/utils/`**: Utility functions for business logic and data transformation
+- **`demo/`**: Local development and feature demonstration with complete interactive pages and clinical trial sample data
+- **`packageDemo/`**: Simulates npm package integration in external projects
+- **`dist/`**: Build output directory for npm publishing or static sites
+- **`docs/`**: Project documentation including deployment guides and API references
 
 ## 🔧 API Reference
 
@@ -92,8 +137,9 @@ jordium-gantt-vue3/
 | `showToolbar` | `boolean` | `true` | Show toolbar |
 | `toolbarConfig` | `ToolbarConfig` | `{}` | Toolbar configuration |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | - | Custom locale messages |
+| `workingHours` | `WorkingHours` | - | Working hours configuration |
 | `onTaskDoubleClick` | `(task: Task) => void` | - | Task double-click event callback |
-| `onTaskDelete` | `(task: Task) => void` | - | Task delete event callback |
+| `onTaskDelete` | `(task: Task, deleteChildren?: boolean) => void` | - | Task delete event callback |
 | `onTaskUpdate` | `(task: Task) => void` | - | Task update event callback |
 | `onTaskAdd` | `(task: Task) => void` | - | Task add event callback |
 | `onMilestoneSave` | `(milestone: Task) => void` | - | Milestone save event callback |
@@ -184,16 +230,16 @@ function onTaskUpdated(e) {
 **Task Type**
 ```typescript
 export interface Task {
-  id: number // Unique task ID
-  name: string // Task name
-  predecessor?: number[] // Predecessor task ID array
-  assignee?: string // Assignee
-  startDate?: string // Start date (ISO string)
-  endDate?: string // End date (ISO string)
-  progress?: number // Progress percentage 0-100
-  estimatedHours?: number // Estimated hours
-  actualHours?: number // Actual hours
-  parentId?: number // Parent task ID
+  id: number                  // Unique task ID
+  name: string               // Task name
+  predecessor?: number[]     // Predecessor task ID array
+  assignee?: string          // Assignee
+  startDate?: string         // Start date (ISO string)
+  endDate?: string           // End date (ISO string)
+  progress?: number          // Progress percentage 0-100
+  estimatedHours?: number    // Estimated hours (supports decimal, up to 2 decimal places)
+  actualHours?: number       // Actual hours (supports decimal, up to 2 decimal places)
+  parentId?: number          // Parent task ID
   children?: Task[] // Subtask array
   collapsed?: boolean // Collapsed state
   isParent?: boolean // Is parent task
@@ -251,6 +297,86 @@ interface ToolbarConfig {
   showFullscreen?: boolean     // Show fullscreen toggle button
   showTimeScale?: boolean      // Show time scale toggle buttons (Day|Week|Month)
 }
+```
+
+**WorkingHours Configuration**
+```typescript
+interface WorkingHours {
+  morning?: { start: number; end: number }    // Morning work hours, e.g. { start: 8, end: 11 }
+  afternoon?: { start: number; end: number }  // Afternoon work hours, e.g. { start: 13, end: 17 }
+}
+```
+
+**TimelineScale Types**
+```typescript
+// Timeline display scale types
+type TimelineScale = 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
+
+// Timeline scale constants
+export const TimelineScale = {
+  HOUR: 'hour',        // Hour view - each column displays one hour
+  DAY: 'day',          // Day view - each column displays one day
+  WEEK: 'week',        // Week view - each column displays one week  
+  MONTH: 'month',      // Month view - each column displays one month
+  QUARTER: 'quarter',  // Quarter view - each column displays one quarter
+  YEAR: 'year',        // Year view - each column displays one year
+}
+
+// Timeline scale configuration
+interface TimelineScaleConfig {
+  scale: TimelineScale    // Scale type
+  cellWidth: number       // Width of each time unit (px)
+  headerLevels: number    // Number of header levels
+  formatters: {
+    primary: string       // Primary time label format
+    secondary?: string    // Secondary time label format
+  }
+}
+```
+
+### 🕐 Timeline Scale Features
+
+The component supports multiple timeline scale displays. Users can switch timeline granularity through the Day/Week/Month button group in the toolbar or programmatically:
+
+#### Built-in Scale Configurations
+
+| Scale Type | Cell Width | Primary Format | Secondary Format | Use Case |
+|------------|------------|----------------|------------------|----------|
+| `hour` | 40px | yyyy/MM/dd | HH | Short-term projects with hourly precision, such as drug clinical trials |
+| `day` | 30px | yyyy/MM | dd | Standard view for daily project management |
+| `week` | 120px | yyyy/MM | W | Weekly planning view for medium-term projects |
+| `month` | 180px | yyyy | MM | Monthly view for long-term projects |
+| `quarter` | 360px | yyyy | Q | Quarterly view for strategic planning |
+| `year` | 360px | yyyy | First Half\|Second Half | Annual view for very long-term projects |
+
+#### Usage Example
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { GanttChart, TimelineScale } from 'jordium-gantt-vue3'
+
+const tasks = ref([/* task data */])
+
+// Toolbar configuration - enable timeline scale toggle buttons
+const toolbarConfig = {
+  showTimeScale: true  // Display Day|Week|Month button group
+}
+
+// Listen to scale changes (optional)
+const handleTimeScaleChange = (scale) => {
+  console.log('Timeline scale changed to:', scale)
+  // Business logic can be added here, such as saving user preferences
+}
+</script>
+
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :toolbar-config="toolbarConfig"
+    @timescale-changed="handleTimeScaleChange"
+  />
+</template>
 ```
 
 #### Composable Functions (src/composables)
@@ -398,6 +524,80 @@ const customLocaleMessages = {
   taskName: 'Custom Task Name',
   addTask: 'Custom Add Task'
 }
+
+// Handle toolbar events
+const handleLanguageChange = (lang) => {
+  console.log('Language switched to:', lang)
+}
+
+const handleThemeChange = (isDark) => {
+  console.log('Theme switched to:', isDark ? 'dark' : 'light')
+}
+
+// Listen to timeline scale changes
+const handleTimeScaleChange = (scale) => {
+  console.log('Timeline scale changed to:', scale)
+  // Adjust display logic based on scale
+  if (scale === 'day') {
+    // Special handling for day view
+  } else if (scale === 'week') {
+    // Special handling for week view  
+  }
+}
+</script>
+
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :milestones="milestones"
+    :toolbar-config="toolbarConfig"
+    :locale-messages="customLocaleMessages"
+    :on-language-change="handleLanguageChange"
+    :on-theme-change="handleThemeChange"
+    @timescale-changed="handleTimeScaleChange"
+  />
+</template>
+```
+
+### 🔧 Working Hours Configuration
+
+The component supports setting working hours, affecting task duration calculations and progress display:
+
+```vue
+<script setup lang="ts">
+// Configure working hours (24-hour format)
+const workingHours = {
+  morning: { start: 9, end: 12 },    // 9 AM - 12 PM
+  afternoon: { start: 14, end: 18 }  // 2 PM - 6 PM
+}
+</script>
+
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :working-hours="workingHours"
+  />
+</template>
+```
+
+### 📊 High-Precision Work Hours Management
+
+The component supports work hour recording precise to 2 decimal places, suitable for projects requiring precise billing:
+
+```vue
+<script setup lang="ts">
+const tasks = ref([
+  {
+    id: 1,
+    name: 'High-precision Task',
+    estimatedHours: 8.75,    // 8 hours 45 minutes
+    actualHours: 7.25,       // 7 hours 15 minutes
+    startDate: '2025-01-01',
+    endDate: '2025-01-02'
+  }
+])
+</script>
+```
 
 // Handle toolbar events
 const handleLanguageChange = (lang) => {

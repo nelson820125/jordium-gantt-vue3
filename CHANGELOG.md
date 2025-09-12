@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-09-12
+
+### Added
+- 增加年度视图
+- 增加季度视图
+- 增加小时视图
+- Add annual timeline view
+- Add a quarterly timeline view
+- Add hourly timeline view
+
+### Changed
+- 升级TaskDrawer中DatePicker组件，接受小时的设定
+- 升级TaskDrawer中预计时间和实际时间的控件，接受小数后两位的录入
+- Upgrade the DatePicker component in TaskDrawer to accept the setting of hours
+- Upgrade the control for estimated and actual time in TaskDrawer to accept entries with two decimal places
+
+### Fixed
+- SonarQube代码质量检查问题修改
+- Modification of SonarQube code quality inspection issues
+
 ## [1.2.1] - 2025-07-22
 
 ### Fixed

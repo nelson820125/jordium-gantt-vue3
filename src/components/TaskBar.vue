@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
 import { ref, computed, onUnmounted, onMounted, nextTick, watch } from 'vue'
 import type { Task } from '../models/classes/Task'
@@ -19,24 +20,12 @@ interface Props {
   // 新增：外部控制半圆隐藏状态（用于Timeline初始化等场景）
   hideBubbles?: boolean
   // 新增：时间线数据，用于精确计算subDays定位
-  timelineData?: Array<{
-    year: number
-    month: number
-    startDate: Date
-    endDate: Date
-    subDays?: Array<{ date: Date; dayOfWeek?: number }>
-    monthData?: { dayCount: number }
-  }>
+  timelineData?: any
   // 新增：当前时间刻度
   currentTimeScale?: TimelineScale
 }
 
 const props = defineProps<Props>()
-
-const { getTranslation } = useI18n()
-const t = (key: string): string => {
-  return getTranslation(key)
-}
 
 const emit = defineEmits([
   'update:task',
@@ -50,7 +39,12 @@ const emit = defineEmits([
   'add-predecessor',
   'add-successor',
   'delete',
+  'contextmenu', // 添加原生contextmenu事件声明
 ])
+const { getTranslation } = useI18n()
+const t = (key: string): string => {
+  return getTranslation(key)
+}
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -61,6 +55,13 @@ const createLocalDate = (dateString: string | Date | undefined | null): Date | n
   if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     const [year, month, day] = dateString.split('-').map(Number)
     return new Date(year, month - 1, day)
+  }
+  // 支持带时间的日期字符串 (yyyy-mm-dd hh:mm)
+  if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(dateString)) {
+    const [datePart, timePart] = dateString.split(' ')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute] = timePart.split(':').map(Number)
+    return new Date(year, month - 1, day, hour, minute)
   }
   const d = new Date(dateString)
   return isNaN(d.getTime()) ? null : d
@@ -75,6 +76,14 @@ const formatDateToLocalString = (date: Date): string => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
+
+  // 在小时视图中，格式化为包含时间的字符串
+  if (props.currentTimeScale === TimelineScale.HOUR) {
+    const hour = String(date.getHours()).padStart(2, '0')
+    const minute = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hour}:${minute}`
+  }
+
   return `${year}-${month}-${day}`
 }
 
@@ -83,6 +92,23 @@ const addDaysToLocalDate = (date: Date, days: number): Date => {
   result.setDate(result.getDate() + days)
   return result
 }
+
+// 新增：小时视图下的时间计算工具函数
+const addMinutesToDate = (date: Date, minutes: number): Date => {
+  const result = new Date(date)
+  result.setMinutes(result.getMinutes() + minutes)
+  return result
+}
+
+// 新增：计算两个日期之间的分钟差
+const getMinutesDiff = (startDate: Date, endDate: Date): number => {
+  return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+}
+
+// 计算是否应该禁用拖拽和调整大小（年度视图下禁用）
+const isInteractionDisabled = computed(() => {
+  return props.currentTimeScale === TimelineScale.YEAR
+})
 
 // 拖拽状态
 const isDragging = ref(false)
@@ -126,51 +152,125 @@ const taskBarStyle = computed(() => {
   let left = 0
   let width = 0
 
-  // 优先使用基于timelineData的精确定位（适用于周视图和月视图）
-  if (
-    props.timelineData &&
-    props.currentTimeScale &&
-    (props.currentTimeScale === TimelineScale.WEEK ||
-      props.currentTimeScale === TimelineScale.MONTH)
-  ) {
-    // 计算开始位置
-    const startPosition = calculatePositionFromTimelineData(
-      startDate,
-      props.timelineData,
-      props.currentTimeScale,
-    )
-    // 计算结束位置：为结束日期添加一天来获取正确的结束位置
-    const nextDay = new Date(endDate)
-    nextDay.setDate(nextDay.getDate() + 1)
-    let endPosition = calculatePositionFromTimelineData(
-      nextDay,
-      props.timelineData,
-      props.currentTimeScale,
-    )
+  // 小时视图：按分钟精确计算位置（需要考虑时间部分）
+  if (props.currentTimeScale === TimelineScale.HOUR) {
+    // 确保 baseStart 是当天的 00:00:00
+    const baseStartOfDay = new Date(baseStart)
+    baseStartOfDay.setHours(0, 0, 0, 0)
 
-    // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
-    if (endPosition === startPosition) {
-      const dayWidth = props.currentTimeScale === TimelineScale.WEEK ? 60 / 7 : 60 / 30
-      endPosition =
-        calculatePositionFromTimelineData(endDate, props.timelineData, props.currentTimeScale) +
-        dayWidth
+    // 处理没有时间部分的日期字符串
+    let adjustedStartDate = startDate
+    let adjustedEndDate = endDate
+
+    // 检查原始日期字符串是否包含时间部分
+    const originalStartStr = currentStartDate || props.task.startDate
+    const originalEndStr = currentEndDate || props.task.endDate
+
+    // 如果startDate没有时间部分（格式为YYYY-MM-DD），设置为当日00:00
+    if (
+      typeof originalStartStr === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(originalStartStr.trim())
+    ) {
+      adjustedStartDate = new Date(startDate)
+      adjustedStartDate.setHours(0, 0, 0, 0)
     }
 
-    left = startPosition
-    width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
-  } else {
-    // 日视图：保持原有逻辑
-    const startDiff = Math.floor(
-      (startDate.getTime() - baseStart.getTime()) / (1000 * 60 * 60 * 24),
-    )
-    // 重新计算duration，确保包含结束日期当天
-    const timeDiffMs = endDate.getTime() - startDate.getTime()
-    const daysDiff = timeDiffMs / (1000 * 60 * 60 * 24)
-    // 对于跨天的任务，需要包含开始和结束两天
-    const duration = Math.floor(daysDiff) + 1
+    // 如果endDate没有时间部分（格式为YYYY-MM-DD），设置为次日00:00
+    if (typeof originalEndStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(originalEndStr.trim())) {
+      adjustedEndDate = new Date(endDate)
+      adjustedEndDate.setDate(adjustedEndDate.getDate() + 1)
+      adjustedEndDate.setHours(0, 0, 0, 0)
+    }
 
-    left = startDiff * props.dayWidth
-    width = duration * props.dayWidth
+    // 计算从当天00:00到任务开始和结束的分钟数
+    const startMinutes = getMinutesDiff(baseStartOfDay, adjustedStartDate)
+    const endMinutes = getMinutesDiff(baseStartOfDay, adjustedEndDate)
+
+    // 每小时40px，每分钟40/60 = 2/3 px
+    const pixelPerMinute = 40 / 60
+
+    left = Math.max(0, startMinutes * pixelPerMinute)
+    width = Math.max(4, (endMinutes - startMinutes) * pixelPerMinute) // 确保最小4px宽度
+  } else {
+    // 日视图、周视图、月视图、年视图：只考虑日期部分，忽略时间部分
+
+    // 将日期标准化为当天的00:00:00，忽略时间部分
+    const startDateOnly = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(),
+    )
+    const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+    const baseStartOnly = new Date(
+      baseStart.getFullYear(),
+      baseStart.getMonth(),
+      baseStart.getDate(),
+    )
+
+    if (props.currentTimeScale === TimelineScale.YEAR) {
+      // 年度视图计算逻辑
+      const startPosition = calculateYearViewPosition(startDateOnly, baseStartOnly)
+      const endPosition = calculateYearViewPosition(endDateOnly, baseStartOnly)
+
+      left = startPosition
+      width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
+    } else if (
+      props.timelineData &&
+      props.currentTimeScale &&
+      (props.currentTimeScale === TimelineScale.WEEK ||
+        props.currentTimeScale === TimelineScale.MONTH ||
+        props.currentTimeScale === TimelineScale.QUARTER)
+    ) {
+      // 优先使用基于timelineData的精确定位（适用于周视图、月视图和季度视图）
+      // 计算开始位置
+      const startPosition = calculatePositionFromTimelineData(
+        startDateOnly,
+        props.timelineData,
+        props.currentTimeScale,
+      )
+      // 计算结束位置：为结束日期添加一天来获取正确的结束位置
+      const nextDay = new Date(endDateOnly)
+      nextDay.setDate(nextDay.getDate() + 1)
+      let endPosition = calculatePositionFromTimelineData(
+        nextDay,
+        props.timelineData,
+        props.currentTimeScale,
+      )
+
+      // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
+      if (endPosition === startPosition) {
+        let dayWidth = 60 / 30 // 默认月视图
+        if (props.currentTimeScale === TimelineScale.WEEK) {
+          dayWidth = 60 / 7
+        } else if (props.currentTimeScale === TimelineScale.QUARTER) {
+          dayWidth = 60 / 90 // 季度视图：每季度60px，约90天
+        }
+        endPosition =
+          calculatePositionFromTimelineData(
+            endDateOnly,
+            props.timelineData,
+            props.currentTimeScale,
+          ) + dayWidth
+      }
+
+      left = startPosition
+      width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
+    } else {
+      // 日视图：基于日期的简单计算
+      const startDiff = Math.floor(
+        (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24),
+      )
+
+      // 计算持续天数（基于日期，忽略时间）
+      const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
+      const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
+
+      // 如果开始和结束是同一天，duration = 1；否则是实际天数差 + 1（包含结束日期）
+      const duration = daysDiff === 0 ? 1 : daysDiff + 1
+
+      left = startDiff * props.dayWidth
+      width = duration * props.dayWidth
+    }
   }
 
   return {
@@ -260,8 +360,8 @@ const needsOverflowEffect = computed(() => isWeekView.value && isShortTaskBar.va
 
 // 鼠标事件处理 - 使用相对位置拖拽方案
 const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-right') => {
-  // 如果已完成或是父级任务，禁用所有交互
-  if (isCompleted.value || props.isParent) {
+  // 如果已完成或是父级任务或年度视图，禁用所有交互
+  if (isCompleted.value || props.isParent || isInteractionDisabled.value) {
     return
   }
 
@@ -342,39 +442,132 @@ const handleMouseMove = (e: MouseEvent) => {
 
   if (isDragging.value) {
     const deltaX = e.clientX - dragStartX.value
-    const newLeft = Math.max(0, dragStartLeft.value + deltaX)
-    const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
-    const duration = dragStartWidth.value / props.dayWidth
-    const newEndDate = addDaysToLocalDate(newStartDate, duration - 1)
 
-    // 只更新临时数据，不触发事件
-    tempTaskData.value = {
-      startDate: formatDateToLocalString(newStartDate),
-      endDate: formatDateToLocalString(newEndDate),
+    if (props.currentTimeScale === TimelineScale.HOUR) {
+      // 小时视图：15分钟刻度对齐
+      const pixelPerMinute = 40 / 60 // 每分钟的像素数
+      const pixelPer15Minutes = pixelPerMinute * 15 // 15分钟的像素数
+
+      // 计算新的左侧位置，对齐到15分钟刻度
+      const newLeftRaw = Math.max(0, dragStartLeft.value + deltaX)
+      const newLeft = Math.round(newLeftRaw / pixelPer15Minutes) * pixelPer15Minutes
+
+      // 计算新的开始时间（分钟精度）
+      const newStartMinutes = Math.round(newLeft / pixelPerMinute)
+      // 确保使用当天的00:00:00作为基准
+      const baseStartOfDay = new Date(props.startDate)
+      baseStartOfDay.setHours(0, 0, 0, 0)
+      const newStartDate = addMinutesToDate(baseStartOfDay, newStartMinutes)
+
+      // 保持任务的持续时间（计算原始任务的时长）
+      const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+      const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+
+      // 如果原始任务是日期格式，转换为当天的时间范围
+      let originalDurationMinutes: number
+      if (props.task.startDate && !props.task.startDate.includes(' ')) {
+        // 纯日期格式，默认按天计算（一天 = 1440 分钟）
+        const timeDiffMs = originalEndDate.getTime() - originalStartDate.getTime()
+        const daysDiff = Math.max(1, Math.round(timeDiffMs / (1000 * 60 * 60 * 24)) + 1)
+        originalDurationMinutes = daysDiff * 24 * 60 // 天数转分钟
+      } else {
+        // 包含时间格式，按实际时间差计算
+        originalDurationMinutes = getMinutesDiff(originalStartDate, originalEndDate)
+      }
+
+      const newEndDate = addMinutesToDate(newStartDate, originalDurationMinutes)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: formatDateToLocalString(newEndDate),
+      }
+    } else {
+      // 其他视图：保持原有逻辑
+      const newLeft = Math.max(0, dragStartLeft.value + deltaX)
+      const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+      const duration = dragStartWidth.value / props.dayWidth
+      const newEndDate = addDaysToLocalDate(newStartDate, duration - 1)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: formatDateToLocalString(newEndDate),
+      }
     }
   } else if (isResizingLeft.value) {
     const deltaX = e.clientX - resizeStartX.value
-    const newLeft = Math.max(0, resizeStartLeft.value + deltaX)
-    const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
 
-    // 只更新临时数据，不触发事件
-    tempTaskData.value = {
-      startDate: formatDateToLocalString(newStartDate),
-      endDate: props.task.endDate, // 保持原来的结束日期
+    if (props.currentTimeScale === TimelineScale.HOUR) {
+      // 小时视图：15分钟刻度对齐
+      const pixelPerMinute = 40 / 60
+      const pixelPer15Minutes = pixelPerMinute * 15
+
+      // 计算新的左侧位置，对齐到15分钟刻度
+      const newLeftRaw = Math.max(0, resizeStartLeft.value + deltaX)
+      const newLeft = Math.round(newLeftRaw / pixelPer15Minutes) * pixelPer15Minutes
+
+      // 计算新的开始时间
+      const newStartMinutes = Math.round(newLeft / pixelPerMinute)
+      // 确保使用当天的00:00:00作为基准
+      const baseStartOfDay = new Date(props.startDate)
+      baseStartOfDay.setHours(0, 0, 0, 0)
+      const newStartDate = addMinutesToDate(baseStartOfDay, newStartMinutes)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate, // 保持原来的结束日期
+      }
+    } else {
+      // 其他视图：保持原有逻辑
+      const newLeft = Math.max(0, resizeStartLeft.value + deltaX)
+      const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate, // 保持原来的结束日期
+      }
     }
   } else if (isResizingRight.value) {
     const deltaX = e.clientX - resizeStartX.value
-    const newWidth = Math.max(props.dayWidth, resizeStartWidth.value + deltaX)
-    const newDurationDays = newWidth / props.dayWidth
-    const newEndDate = addDaysToLocalDate(
-      props.startDate,
-      resizeStartLeft.value / props.dayWidth + newDurationDays - 1,
-    )
 
-    // 只更新临时数据，不触发事件
-    tempTaskData.value = {
-      startDate: props.task.startDate, // 保持原来的开始日期
-      endDate: formatDateToLocalString(newEndDate),
+    if (props.currentTimeScale === TimelineScale.HOUR) {
+      // 小时视图：15分钟刻度对齐
+      const pixelPerMinute = 40 / 60
+      const pixelPer15Minutes = pixelPerMinute * 15
+
+      // 计算新的宽度，对齐到15分钟刻度
+      const newWidthRaw = Math.max(pixelPer15Minutes, resizeStartWidth.value + deltaX)
+      const newWidth = Math.round(newWidthRaw / pixelPer15Minutes) * pixelPer15Minutes
+
+      // 计算新的持续时间（分钟）
+      const newDurationMinutes = Math.round(newWidth / pixelPerMinute)
+
+      // 计算新的结束时间
+      const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+      const newEndDate = addMinutesToDate(originalStartDate, newDurationMinutes)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: props.task.startDate, // 保持原来的开始日期
+        endDate: formatDateToLocalString(newEndDate),
+      }
+    } else {
+      // 其他视图：保持原有逻辑
+      const newWidth = Math.max(props.dayWidth, resizeStartWidth.value + deltaX)
+      const newDurationDays = newWidth / props.dayWidth
+      const newEndDate = addDaysToLocalDate(
+        props.startDate,
+        resizeStartLeft.value / props.dayWidth + newDurationDays - 1,
+      )
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: props.task.startDate, // 保持原来的开始日期
+        endDate: formatDateToLocalString(newEndDate),
+      }
     }
   }
 }
@@ -901,6 +1094,59 @@ const getProgressStyles = () => {
   return result
 }
 
+// 年度视图位置计算函数
+const calculateYearViewPosition = (targetDate: Date, baseStartDate: Date): number => {
+  const targetYear = targetDate.getFullYear()
+  const baseYear = baseStartDate.getFullYear()
+
+  // 每年的宽度是360px，每半年180px
+  const yearWidth = 360
+  const halfYearWidth = 180
+
+  // 计算目标年份相对于基准年份的偏移
+  const yearOffset = targetYear - baseYear
+  let position = yearOffset * yearWidth
+
+  // 判断是上半年还是下半年
+  const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
+
+  if (month > 6) {
+    // 下半年，添加半年偏移
+    position += halfYearWidth
+  }
+
+  // 在半年内的具体位置计算
+  let dayOffset = 0
+  let startOfHalfYear: Date
+
+  if (month <= 6) {
+    // 上半年：1-6月
+    startOfHalfYear = new Date(targetYear, 0, 1) // 1月1日
+  } else {
+    // 下半年：7-12月
+    startOfHalfYear = new Date(targetYear, 6, 1) // 7月1日
+  }
+
+  dayOffset = Math.floor((targetDate.getTime() - startOfHalfYear.getTime()) / (1000 * 60 * 60 * 24))
+
+  // 半年大约181-184天，将天数映射到180px的宽度
+  const daysInHalfYear =
+    month <= 6
+      ? Math.floor(
+        (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
+            (1000 * 60 * 60 * 24),
+      )
+      : Math.floor(
+        (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
+            (1000 * 60 * 60 * 24),
+      )
+
+  const dayPositionInHalfYear = (dayOffset / daysInHalfYear) * halfYearWidth
+  position += dayPositionInHalfYear
+
+  return position
+}
+
 // 基于timelineData和subDays精确计算日期位置的函数
 const calculatePositionFromTimelineData = (
   targetDate: Date,
@@ -922,7 +1168,32 @@ const calculatePositionFromTimelineData = (
   let cumulativePosition = 0
 
   for (const periodData of timelineData) {
-    if (timeScale === TimelineScale.WEEK) {
+    if (timeScale === TimelineScale.QUARTER) {
+      // 季度视图：处理quarters结构
+      const quarters = ((periodData as Record<string, unknown>).quarters as unknown[]) || []
+
+      for (const quarter of quarters) {
+        const quarterObj = quarter as Record<string, unknown>
+        const quarterStart = new Date(quarterObj.startDate as string)
+        const quarterEnd = new Date(quarterObj.endDate as string)
+
+        if (targetDate >= quarterStart && targetDate <= quarterEnd) {
+          // 找到目标日期所在的季度
+          const quarterWidth = 60
+          const daysInQuarter = Math.ceil(
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = quarterWidth / daysInQuarter
+          const dayInQuarter = Math.ceil(
+            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          return cumulativePosition + dayInQuarter * dayWidth
+        }
+
+        // 累加每季度的宽度
+        cumulativePosition += 60
+      }
+    } else if (timeScale === TimelineScale.WEEK) {
       // 周视图：处理嵌套的weeks结构
       const weeks = periodData.weeks || []
 
@@ -1056,13 +1327,18 @@ onUnmounted(() => {
 
     <!-- 左侧调整把手 -->
     <div
-      v-if="!isCompleted && !isParent"
+      v-if="!isCompleted && !isParent && !isInteractionDisabled"
       class="resize-handle resize-handle-left"
       @mousedown="e => handleMouseDown(e, 'resize-left')"
     ></div>
 
     <!-- 任务条主体（非父级任务） -->
-    <div v-if="!isParent" class="task-bar-content" @mousedown="e => handleMouseDown(e, 'drag')">
+    <div
+      v-if="!isParent"
+      class="task-bar-content"
+      :style="{ cursor: isInteractionDisabled ? 'default' : 'move' }"
+      @mousedown="e => (isInteractionDisabled ? null : handleMouseDown(e, 'drag'))"
+    >
       <!-- 任务名称 -->
       <div class="task-name" :style="getNameStyles()">
         {{ task.name }}
@@ -1076,7 +1352,7 @@ onUnmounted(() => {
 
     <!-- 右侧调整把手 -->
     <div
-      v-if="!isCompleted && !isParent"
+      v-if="!isCompleted && !isParent && !isInteractionDisabled"
       class="resize-handle resize-handle-right"
       @mousedown="e => handleMouseDown(e, 'resize-right')"
     ></div>
@@ -1158,7 +1434,7 @@ onUnmounted(() => {
   user-select: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.2s;
-  min-width: 60px;
+  /*min-width: 60px;*/
   z-index: 100;
   border: 2px solid;
   overflow: visible; /* 允许内容超出 TaskBar */

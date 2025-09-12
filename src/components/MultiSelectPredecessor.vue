@@ -41,7 +41,7 @@ const availableTasks = computed(() => {
     task =>
       task.type === 'task' &&
       task.id !== props.currentTaskId &&
-      !selectedPredecessorIds.value.includes(task.id)
+      !selectedPredecessorIds.value.includes(task.id),
   )
 })
 
@@ -69,7 +69,7 @@ watch(
   () => {
     selectedValue.value = ''
   },
-  { immediate: true }
+  { immediate: true },
 )
 </script>
 

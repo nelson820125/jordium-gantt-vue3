@@ -1,6 +1,249 @@
 {
   "tasks": [
     {
+      "id": 1000,
+      "name": "新药ADX-2024临床试验项目",
+      "assignee": "首席研究员 Dr. Chen",
+      "startDate": "2025-01-01",
+      "endDate": "2027-12-31",
+      "progress": 15,
+      "estimatedHours": 26280.5,
+      "actualHours": 3942.75,
+      "type": "story",
+      "description": "ADX-2024新药完整临床试验计划，从I期到III期临床试验",
+      "children": [
+        {
+          "id": 1100,
+          "name": "I期临床试验",
+          "assignee": "I期试验主任 Dr. Wang",
+          "startDate": "2025-01-01",
+          "endDate": "2025-08-31",
+          "progress": 65,
+          "estimatedHours": 5256,
+          "actualHours": 3417,
+          "type": "story",
+          "parentId": 1000,
+          "description": "评估ADX-2024在健康志愿者和患者中的安全性、耐受性和药代动力学特征",
+          "children": [
+            {
+              "id": 1101,
+              "name": "试验方案设计与伦理审查",
+              "assignee": "方案设计师 李明",
+              "startDate": "2025-01-01",
+              "endDate": "2025-02-28",
+              "progress": 100,
+              "estimatedHours": 464,
+              "actualHours": 480,
+              "type": "task",
+              "parentId": 1100,
+              "description": "完成I期试验方案设计、伦理委员会审批及监管部门申报"
+            },
+            {
+              "id": 1102,
+              "name": "受试者招募与筛选",
+              "assignee": "招募专员 张丽",
+              "startDate": "2025-03-01",
+              "endDate": "2025-04-30",
+              "progress": 90,
+              "estimatedHours": 1392.5,
+              "actualHours": 1250.25,
+              "type": "task",
+              "predecessor": [1101],
+              "parentId": 1100,
+              "description": "招募24名健康志愿者，完成医学筛选和入组评估"
+            },
+            {
+              "id": 1103,
+              "name": "药物给药与安全性监测",
+              "assignee": "临床医生 Dr. Liu",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-31",
+              "progress": 40,
+              "estimatedHours": 3400,
+              "actualHours": 1687,
+              "type": "task",
+              "predecessor": [1102],
+              "parentId": 1100,
+              "description": "按照剂量递增方案给药，密切监测不良反应和药代动力学参数"
+            }
+          ],
+          "collapsed": false
+        },
+        {
+          "id": 1200,
+          "name": "II期临床试验",
+          "assignee": "II期试验主任 Dr. Zhang",
+          "startDate": "2025-09-01",
+          "endDate": "2026-08-31",
+          "progress": 5,
+          "estimatedHours": 8760.75,
+          "actualHours": 438.25,
+          "type": "story",
+          "parentId": 1000,
+          "description": "在目标患者群体中评估ADX-2024的初步疗效和进一步的安全性",
+          "children": [
+            {
+              "id": 1201,
+              "name": "多中心试验启动",
+              "assignee": "项目经理 王芳",
+              "startDate": "2025-09-01",
+              "endDate": "2025-11-30",
+              "progress": 25,
+              "estimatedHours": 2160,
+              "actualHours": 324,
+              "type": "task",
+              "predecessor": [1103],
+              "parentId": 1200,
+              "description": "启动5个临床中心，完成研究者培训和质量体系建立"
+            },
+            {
+              "id": 1202,
+              "name": "患者入组与随机化",
+              "assignee": "数据管理员 陈静",
+              "startDate": "2025-12-01",
+              "endDate": "2026-03-31",
+              "progress": 0,
+              "estimatedHours": 2880,
+              "actualHours": 0,
+              "type": "task",
+              "predecessor": [1201],
+              "parentId": 1200,
+              "description": "计划入组120名患者，采用双盲随机对照设计"
+            },
+            {
+              "id": 1203,
+              "name": "疗效评估与数据收集",
+              "assignee": "统计师 赵磊",
+              "startDate": "2026-01-01",
+              "endDate": "2026-08-31",
+              "progress": 0,
+              "estimatedHours": 3720,
+              "actualHours": 0,
+              "type": "task",
+              "predecessor": [1202],
+              "parentId": 1200,
+              "description": "定期评估患者疗效指标，收集安全性数据，进行中期分析"
+            }
+          ],
+          "collapsed": false
+        },
+        {
+          "id": 1300,
+          "name": "III期临床试验",
+          "assignee": "III期试验主任 Dr. Li",
+          "startDate": "2026-09-01",
+          "endDate": "2027-12-31",
+          "progress": 0,
+          "estimatedHours": 12264,
+          "actualHours": 0,
+          "type": "story",
+          "parentId": 1000,
+          "description": "大规模多中心随机对照试验，确认ADX-2024的疗效和安全性",
+          "children": [
+            {
+              "id": 1301,
+              "name": "国际多中心试验准备",
+              "assignee": "国际事务专员 刘倩",
+              "startDate": "2026-09-01",
+              "endDate": "2026-12-31",
+              "progress": 0,
+              "estimatedHours": 2928,
+              "actualHours": 0,
+              "type": "task",
+              "predecessor": [1203],
+              "parentId": 1300,
+              "description": "启动15个国际临床中心，获得各国监管审批"
+            },
+            {
+              "id": 1302,
+              "name": "大规模患者招募",
+              "assignee": "多中心协调员 孙伟",
+              "startDate": "2027-01-01",
+              "endDate": "2027-06-30",
+              "progress": 0,
+              "estimatedHours": 4380,
+              "actualHours": 0,
+              "type": "task",
+              "predecessor": [1301],
+              "parentId": 1300,
+              "description": "计划入组500名患者，严格按照纳排标准执行"
+            },
+            {
+              "id": 1303,
+              "name": "最终疗效分析与报告",
+              "assignee": "首席统计师 马强",
+              "startDate": "2027-03-01",
+              "endDate": "2027-12-31",
+              "progress": 0,
+              "estimatedHours": 4956,
+              "actualHours": 0,
+              "type": "task",
+              "predecessor": [1302],
+              "parentId": 1300,
+              "description": "完成最终疗效分析，撰写临床研究报告，准备新药上市申请"
+            }
+          ],
+          "collapsed": false
+        }
+      ],
+      "collapsed": false
+    },
+    {
+      "id": 1001,
+      "name": "上午会议",
+      "assignee": "测试用户",
+      "startDate": "2025-09-10 09:00",
+      "endDate": "2025-09-10 10:30",
+      "progress": 50,
+      "estimatedHours": 1.5,
+      "actualHours": 0.75,
+      "type": "task"
+    },
+    {
+      "id": 1002,
+      "name": "午后开发",
+      "assignee": "开发者",
+      "startDate": "2025-09-10 14:00",
+      "endDate": "2025-09-10 16:15",
+      "progress": 30,
+      "estimatedHours": 2.25,
+      "actualHours": 1.33,
+      "type": "task"
+    },
+    {
+      "id": 1003,
+      "name": "测试任务",
+      "assignee": "测试员",
+      "startDate": "2025-09-10 16:30",
+      "endDate": "2025-09-10 17:45",
+      "progress": 0,
+      "estimatedHours": 1.25,
+      "actualHours": 0,
+      "type": "task"
+    },
+    {
+      "id": 1004,
+      "name": "当日整天任务",
+      "assignee": "项目经理",
+      "startDate": "2025-09-10",
+      "endDate": "2025-09-10",
+      "progress": 20,
+      "estimatedHours": 8.0,
+      "actualHours": 1.5,
+      "type": "task"
+    },
+    {
+      "id": 1005,
+      "name": "12点瞬间任务",
+      "assignee": "测试员",
+      "startDate": "2025-09-10 12:00",
+      "endDate": "2025-09-10 12:00",
+      "progress": 100,
+      "estimatedHours": 0,
+      "actualHours": 0,
+      "type": "task"
+    },
+    {
       "id": 1,
       "name": "项目启动",
       "assignee": "张三",
@@ -162,6 +405,36 @@
     }
   ],
   "milestones": [
+    {
+      "id": 1150,
+      "name": "I期临床试验完成",
+      "assignee": "I期试验主任 Dr. Wang",
+      "startDate": "2025-08-31",
+      "endDate": "2025-08-31",
+      "type": "milestone",
+      "icon": "shield-check",
+      "description": "完成I期临床试验，确认ADX-2024在人体的安全性和耐受性，为II期试验奠定基础。"
+    },
+    {
+      "id": 1250,
+      "name": "II期临床中期分析",
+      "assignee": "统计师 赵磊",
+      "startDate": "2026-04-30",
+      "endDate": "2026-04-30",
+      "type": "milestone",
+      "icon": "bar-chart",
+      "description": "完成II期临床试验中期疗效分析，评估是否继续进行III期试验。"
+    },
+    {
+      "id": 1350,
+      "name": "新药上市申请提交",
+      "assignee": "首席研究员 Dr. Chen",
+      "startDate": "2027-12-31",
+      "endDate": "2027-12-31",
+      "type": "milestone",
+      "icon": "trophy",
+      "description": "完成III期临床试验最终分析，向监管部门提交新药上市申请(NDA)。"
+    },
     {
       "id": 6,
       "name": "技术选型完成",

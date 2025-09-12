@@ -36,6 +36,10 @@ const props = withDefaults(defineProps<Props>(), {
   onThemeChange: undefined,
   onFullscreenChange: undefined,
   localeMessages: undefined,
+  workingHours: () => ({
+    morning: { start: 8, end: 11 },
+    afternoon: { start: 13, end: 17 },
+  }),
 })
 
 const emit = defineEmits([
@@ -97,6 +101,11 @@ interface Props {
    * 仅在组件初始化时合并，运行时变更会自动响应。
    */
   localeMessages?: Partial<import('../composables/useI18n').Messages['zh-CN']>
+  // 工作时间配置
+  workingHours?: {
+    morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
+    afternoon?: { start: number; end: number } // 下午工作时间，如 { start: 13, end: 17 }
+  }
 }
 
 const leftPanelWidth = ref(320)
@@ -249,7 +258,7 @@ const toggleTaskList = () => {
       window.dispatchEvent(
         new CustomEvent('timeline-container-resized', {
           detail: { source: 'manual-task-list-toggle' },
-        })
+        }),
       )
     })
   }, 400)
@@ -265,7 +274,7 @@ const handleToggleTaskList = (event: CustomEvent) => {
     window.dispatchEvent(
       new CustomEvent('timeline-container-resized', {
         detail: { source: 'task-list-toggle' },
-      })
+      }),
     )
   })
 }
@@ -298,7 +307,7 @@ const handleTaskCollapseChange = (task: Task) => {
   const updateTaskCollapsedState = (
     tasks: Task[],
     targetId: number,
-    collapsed: boolean
+    collapsed: boolean,
   ): boolean => {
     for (const t of tasks) {
       if (t.id === targetId) {
@@ -369,7 +378,7 @@ watch(
       notifyTaskListUpdated()
     })
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 )
 
 onMounted(() => {
@@ -407,7 +416,7 @@ onUnmounted(() => {
   window.removeEventListener('task-added', handleTaskAdd as EventListener)
   window.removeEventListener(
     'milestone-icon-changed',
-    handleMilestoneIconChangeEvent as EventListener
+    handleMilestoneIconChangeEvent as EventListener,
   )
   window.removeEventListener('milestone-deleted', handleMilestoneDeleted as EventListener)
   window.removeEventListener('milestone-data-changed', handleMilestoneDataChanged as EventListener)
@@ -1183,7 +1192,7 @@ watch(
   val => {
     if (val) setCustomMessages(locale.value, val)
   },
-  { deep: true }
+  { deep: true },
 )
 
 // 右键菜单状态管理
@@ -1543,6 +1552,7 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           :milestones="props.milestones"
           :start-date="timelineDateRange.min"
           :end-date="timelineDateRange.max"
+          :working-hours="props.workingHours"
           :on-task-double-click="props.onTaskDoubleClick"
           :edit-component="props.editComponent"
           :use-default-drawer="props.useDefaultDrawer"

@@ -3,6 +3,18 @@
  */
 
 /**
+ * 创建本地日期对象，避免时区问题
+ * @param dateString 日期字符串，格式为 YYYY-MM-DD
+ * @returns 本地日期对象
+ */
+export function createLocalDate(dateString: string): Date | null {
+  if (!dateString) return null
+
+  const [year, month, day] = dateString.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+/**
  * 获取任务的前置任务ID数组
  * @param predecessor 前置任务字段，可能是数组、字符串或空
  * @returns 前置任务ID数组

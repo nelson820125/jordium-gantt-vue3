@@ -68,7 +68,7 @@ watch(
   () => [props.task?.isTimerRunning, props.task?.timerStartTime, props.task?.timerElapsedTime],
   () => {
     updateTimer()
-  }
+  },
 )
 
 // 计时器本地状态，保证点击后UI立即切换
@@ -84,7 +84,7 @@ watch(
       timerInterval.value = null
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 修正计时器每秒递增逻辑，保证计时器正常跳动
@@ -102,7 +102,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 onUnmounted(() => {
@@ -153,7 +153,7 @@ const availableParentTasks = computed(() => {
     .filter(
       task =>
         task.id !== props.task?.id && // 排除当前任务自己
-        (task.type === 'story' || task.type === 'task') // 只显示story和task类型
+        (task.type === 'story' || task.type === 'task'), // 只显示story和task类型
     )
     .map(task => ({
       ...task,
@@ -209,6 +209,38 @@ const handleProgressInputBlur = () => {
   progressDisplayValue.value = progress.toString()
 }
 
+// 处理预计工时输入
+const handleEstimatedHoursInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  let value = parseFloat(target.value)
+
+  // 数据验证
+  if (isNaN(value) || value < 0) {
+    value = 0
+  } else if (value > 99999) {
+    value = 99999
+  }
+
+  // 保留两位小数
+  formData.estimatedHours = Math.round(value * 100) / 100
+}
+
+// 处理实际工时输入
+const handleActualHoursInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  let value = parseFloat(target.value)
+
+  // 数据验证
+  if (isNaN(value) || value < 0) {
+    value = 0
+  } else if (value > 99999) {
+    value = 99999
+  }
+
+  // 保留两位小数
+  formData.actualHours = Math.round(value * 100) / 100
+}
+
 // 处理进度输入框聚焦（选中全部文本）
 const handleProgressInputFocus = (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -256,6 +288,31 @@ const handleProgressKeydown = (event: KeyboardEvent) => {
   }
 }
 
+// 处理小时视图中的日期格式
+const processDateForHourView = (dateStr: string | undefined, type: 'start' | 'end'): string => {
+  if (!dateStr) return ''
+
+  // 检查是否只有日期部分（YYYY-MM-DD格式）
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+    // 如果是开始日期，设置为当日00:00
+    if (type === 'start') {
+      return `${dateStr} 00:00`
+    }
+    // 如果是结束日期，设置为次日00:00
+    if (type === 'end') {
+      const date = new Date(dateStr)
+      date.setDate(date.getDate() + 1)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day} 00:00`
+    }
+  }
+
+  // 已经包含时间部分或其他格式，直接返回
+  return dateStr
+}
+
 // 错误信息
 const errors = reactive({
   name: '',
@@ -273,7 +330,13 @@ watch(
       resetForm()
       if (props.task && props.isEdit) {
         // 编辑模式，填充表单数据
-        Object.assign(formData, props.task)
+        const taskData = { ...props.task }
+
+        // 处理日期格式：如果是只有日期部分的数据，在小时视图编辑时需要特殊处理
+        taskData.startDate = processDateForHourView(taskData.startDate, 'start')
+        taskData.endDate = processDateForHourView(taskData.endDate, 'end')
+
+        Object.assign(formData, taskData)
       } else if (props.task && !props.isEdit) {
         // 新建模式，自动绑定上级任务
         formData.parentId = props.task.parentId ?? undefined
@@ -283,7 +346,7 @@ watch(
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
     }
-  }
+  },
 )
 
 // 监听 isVisible 变化，同步到父组件
@@ -300,7 +363,7 @@ watch(
       formData.parentId = newTask.parentId ?? undefined
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 重置表单
@@ -485,7 +548,7 @@ watch(
   newValue => {
     progressDisplayValue.value = (newValue || 0).toString()
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 修正计时器首次启动不跳动问题：每次打开抽屉时重置 timerElapsed，且 timerStartTime 为空时立即赋值
@@ -503,7 +566,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const handleStartTimer = (desc?: string) => {
@@ -783,12 +846,14 @@ function confirmTimer(desc: string) {
               <label class="form-label" for="task-estimated-hours">{{ t.estimatedHours }}</label>
               <input
                 id="task-estimated-hours"
-                v-model.number="formData.estimatedHours"
+                v-model="formData.estimatedHours"
                 type="number"
                 class="form-input"
-                placeholder="0"
+                placeholder="0.00"
                 min="0"
-                max="999"
+                max="99999"
+                step="0.01"
+                @input="handleEstimatedHoursInput"
               />
             </div>
 
@@ -796,12 +861,14 @@ function confirmTimer(desc: string) {
               <label class="form-label" for="task-actual-hours">{{ t.actualHours }}</label>
               <input
                 id="task-actual-hours"
-                v-model.number="formData.actualHours"
+                v-model="formData.actualHours"
                 type="number"
                 class="form-input"
-                placeholder="0"
+                placeholder="0.00"
                 min="0"
-                max="999"
+                max="99999"
+                step="0.01"
+                @input="handleActualHoursInput"
               />
             </div>
           </div>

@@ -1,8 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
 import { useI18n } from '../composables/useI18n'
+import { createLocalDate } from '../utils/predecessorUtils'
+const props = defineProps<Props>()
+
+// 添加事件定义
+const emit = defineEmits<{
+  'milestone-double-click': [milestone: Milestone]
+  'update:milestone': [milestone: Milestone] // 新增里程碑更新事件
+  'drag-end': [milestone: Milestone] // 新增
+}>()
+
 const { getTranslation } = useI18n()
 
 const t = (key: string): string => {
@@ -30,26 +41,10 @@ interface Props {
     priority: number // 推挤优先级
   }> // 其他里程碑的位置信息
   // 新增：时间线数据，用于精确计算subDays定位
-  timelineData?: Array<{
-    year: number
-    month: number
-    startDate: Date
-    endDate: Date
-    subDays?: Array<{ date: Date; dayOfWeek?: number }>
-    monthData?: { dayCount: number }
-  }>
+  timelineData?: unknown[]
   // 新增：当前时间刻度
   currentTimeScale?: TimelineScale
 }
-
-const props = defineProps<Props>()
-
-// 添加事件定义
-const emit = defineEmits<{
-  'milestone-double-click': [milestone: Milestone]
-  'update:milestone': [milestone: Milestone] // 新增里程碑更新事件
-  'drag-end': [milestone: Milestone] // 新增
-}>()
 
 // 拖拽相关状态
 const isDragging = ref(false)
@@ -157,7 +152,7 @@ const handleMouseMove = (e: MouseEvent) => {
         mouseX: e.clientX,
         isDragging: isDragging.value,
       },
-    })
+    }),
   )
 
   const deltaX = e.clientX - dragStartX.value
@@ -184,7 +179,7 @@ const handleMouseUp = () => {
         mouseX: 0,
         isDragging: false,
       },
-    })
+    }),
   )
 
   // 只有在真正拖拽了（有临时数据）且状态为拖拽中时才触发更新
@@ -246,19 +241,18 @@ const handleMilestoneClick = (e: MouseEvent) => {
           scrollLeft: targetScrollLeft,
           smooth: true,
         },
-      })
+      }),
     )
   }
 }
 
 // 计算菱形位置 - 考虑拖拽临时数据
 const milestoneStyle = computed(() => {
-  const milestoneDate = tempMilestoneData.value?.startDate
-    ? new Date(tempMilestoneData.value.startDate)
-    : new Date(props.date)
+  const currentMilestoneDate = tempMilestoneData.value?.startDate || props.date
+  const milestoneDate = createLocalDate(currentMilestoneDate)
 
-  // 修正：props.startDate 可能为 undefined，需防御性处理
-  if (!props.startDate || isNaN(new Date(props.date).getTime())) {
+  // 修正：防御性处理日期和startDate
+  if (!props.startDate || !milestoneDate || isNaN(milestoneDate.getTime())) {
     return {
       left: '0px',
       top: '0px',
@@ -268,25 +262,56 @@ const milestoneStyle = computed(() => {
   }
 
   let left = 0
-  const size = Math.min(props.rowHeight, props.dayWidth * 1.2, 24)
+  // 修复：根据不同时间刻度使用合适的图标大小
+  let size = 24 // 默认图标大小
 
-  // 优先使用基于timelineData的精确定位（适用于周视图和月视图）
   if (
+    props.currentTimeScale === TimelineScale.YEAR ||
+    props.currentTimeScale === TimelineScale.QUARTER
+  ) {
+    // 年度视图：使用固定大小，不依赖dayWidth
+    size = Math.min(props.rowHeight, 24)
+  } else if (props.currentTimeScale === TimelineScale.MONTH) {
+    // 月度视图：使用固定大小，不依赖dayWidth（因为dayWidth太小）
+    size = Math.min(props.rowHeight, 20)
+  } else if (props.currentTimeScale === TimelineScale.WEEK) {
+    // 周视图：可以稍微依赖dayWidth，但有合理范围
+    size = Math.min(props.rowHeight, Math.max(props.dayWidth * 0.8, 16), 24)
+  } else {
+    // 日视图：保持原有逻辑
+    size = Math.min(props.rowHeight, props.dayWidth * 1.2, 24)
+  }
+
+  // 年度视图：使用专门的年度位置计算
+  if (props.currentTimeScale === TimelineScale.YEAR) {
+    const centerPosition = calculateYearViewMilestonePosition(milestoneDate, props.startDate)
+    left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
+  } else if (props.currentTimeScale === TimelineScale.QUARTER) {
+    // 季度视图：使用类似年度视图的简单计算方法
+    const centerPosition = calculateQuarterViewMilestonePosition(milestoneDate, props.startDate)
+    left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
+  } else if (props.currentTimeScale === TimelineScale.HOUR) {
+    // 小时视图：精确到小时和分钟的定位
+    const centerPosition = calculateHourViewMilestonePosition(milestoneDate, props.startDate)
+    left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
+  } else if (
     props.timelineData &&
     props.currentTimeScale &&
     (props.currentTimeScale === TimelineScale.WEEK ||
       props.currentTimeScale === TimelineScale.MONTH)
   ) {
+    // 优先使用基于timelineData的精确定位（适用于周视图和月视图）
     const centerPosition = calculateMilestonePositionFromTimelineData(
       milestoneDate,
       props.timelineData,
-      props.currentTimeScale
+      props.currentTimeScale,
     )
+
     left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
   } else {
     // 日视图：保持原有逻辑
     const startDiff = Math.floor(
-      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
     )
     left = startDiff * props.dayWidth + props.dayWidth / 2 - size / 2
   }
@@ -352,7 +377,7 @@ const milestoneVisibility = computed(() => {
   if (iconRight <= leftBoundary + iconSize / 2) {
     // 检查左侧是否有其他停靠的里程碑，需要判断推挤优先级
     const leftStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky
+      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky,
     )
 
     // 如果有其他里程碑已经停靠在左侧，比较优先级决定推挤顺序
@@ -398,7 +423,7 @@ const milestoneVisibility = computed(() => {
   if (iconLeft >= rightBoundary - iconSize / 2) {
     // 检查右侧是否有其他停靠的里程碑，需要判断推挤优先级
     const rightStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky
+      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky,
     )
 
     // 如果有其他里程碑已经停靠在右侧，比较优先级决定推挤顺序
@@ -517,24 +542,161 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', handleMouseUp)
 })
 
+// 年度视图里程碑位置计算函数
+const calculateYearViewMilestonePosition = (targetDate: Date, baseStartDate: Date): number => {
+  const targetYear = targetDate.getFullYear()
+  const baseYear = baseStartDate.getFullYear()
+
+  // 每年的宽度是360px，每半年180px
+  const yearWidth = 360
+  const halfYearWidth = 180
+
+  // 计算目标年份相对于基准年份的偏移
+  const yearOffset = targetYear - baseYear
+  let position = yearOffset * yearWidth
+
+  // 判断是上半年还是下半年
+  const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
+
+  if (month > 6) {
+    // 下半年，添加半年偏移
+    position += halfYearWidth
+  }
+
+  // 在半年内的具体位置计算
+  let dayOffset = 0
+  let startOfHalfYear: Date
+
+  if (month <= 6) {
+    // 上半年：1-6月
+    startOfHalfYear = new Date(targetYear, 0, 1) // 1月1日
+  } else {
+    // 下半年：7-12月
+    startOfHalfYear = new Date(targetYear, 6, 1) // 7月1日
+  }
+
+  dayOffset = Math.floor((targetDate.getTime() - startOfHalfYear.getTime()) / (1000 * 60 * 60 * 24))
+
+  // 半年大约181-184天，将天数映射到180px的宽度
+  const daysInHalfYear =
+    month <= 6
+      ? Math.floor(
+        (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
+            (1000 * 60 * 60 * 24),
+      )
+      : Math.floor(
+        (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
+            (1000 * 60 * 60 * 24),
+      )
+
+  const dayPositionInHalfYear = (dayOffset / daysInHalfYear) * halfYearWidth
+  position += dayPositionInHalfYear
+
+  return position
+}
+
+// 小时视图里程碑位置计算 - 精确到小时和分钟
+const calculateHourViewMilestonePosition = (targetDate: Date, baseStartDate: Date): number => {
+  // 计算基础天数差
+  const targetNormalized = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate(),
+  )
+  const baseNormalized = new Date(
+    baseStartDate.getFullYear(),
+    baseStartDate.getMonth(),
+    baseStartDate.getDate(),
+  )
+  const timeDiff = targetNormalized.getTime() - baseNormalized.getTime()
+  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+
+  // 每天960px (24小时 * 40px)
+  const dayWidth = 960
+  const baseDayPosition = daysDiff * dayWidth
+
+  // 小时偏移：每小时40px
+  const currentHour = targetDate.getHours()
+  const hourOffset = currentHour * 40
+
+  // 分钟偏移：在当前小时内的精确位置
+  const currentMinute = targetDate.getMinutes()
+  const minuteOffset = (currentMinute / 60) * 40
+
+  const totalPosition = baseDayPosition + hourOffset + minuteOffset
+
+  return totalPosition
+}
+
+// 季度视图里程碑位置计算 - 参考年度视图的简单算法
+const calculateQuarterViewMilestonePosition = (targetDate: Date, baseStartDate: Date): number => {
+  const targetYear = targetDate.getFullYear()
+  const baseYear = baseStartDate.getFullYear()
+
+  // 每年的宽度是240px (4季度 * 60px)，每季度60px
+  const yearWidth = 240
+  const quarterWidth = 60
+
+  // 计算目标年份相对于基准年份的偏移
+  const yearOffset = targetYear - baseYear
+  let position = yearOffset * yearWidth
+
+  // 判断是哪个季度
+  const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
+  let quarter = 1
+  if (month >= 1 && month <= 3) {
+    quarter = 1 // Q1: 1-3月
+  } else if (month >= 4 && month <= 6) {
+    quarter = 2 // Q2: 4-6月
+  } else if (month >= 7 && month <= 9) {
+    quarter = 3 // Q3: 7-9月
+  } else {
+    quarter = 4 // Q4: 10-12月
+  }
+
+  // 添加季度偏移 (Q1=0px, Q2=60px, Q3=120px, Q4=180px)
+  position += (quarter - 1) * quarterWidth
+
+  // 在季度内的具体位置计算
+  let dayOffset = 0
+  let startOfQuarter: Date
+  let endOfQuarter: Date
+
+  if (quarter === 1) {
+    startOfQuarter = new Date(targetYear, 0, 1) // 1月1日
+    endOfQuarter = new Date(targetYear, 2, 31) // 3月31日
+  } else if (quarter === 2) {
+    startOfQuarter = new Date(targetYear, 3, 1) // 4月1日
+    endOfQuarter = new Date(targetYear, 5, 30) // 6月30日
+  } else if (quarter === 3) {
+    startOfQuarter = new Date(targetYear, 6, 1) // 7月1日
+    endOfQuarter = new Date(targetYear, 8, 30) // 9月30日
+  } else {
+    startOfQuarter = new Date(targetYear, 9, 1) // 10月1日
+    endOfQuarter = new Date(targetYear, 11, 31) // 12月31日
+  }
+
+  dayOffset = Math.floor((targetDate.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24))
+
+  // 计算季度内的天数，将天数映射到60px的宽度
+  const endTime = endOfQuarter.getTime()
+  const startTime = startOfQuarter.getTime()
+  const daysInQuarter = Math.floor((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1 // 包含结束日期
+
+  const dayPositionInQuarter = (dayOffset / daysInQuarter) * quarterWidth
+
+  position += dayPositionInQuarter
+
+  return position
+}
+
 // 基于timelineData和subDays精确计算里程碑位置的函数
 const calculateMilestonePositionFromTimelineData = (
   targetDate: Date,
-  timelineData: Array<{
-    year: number
-    month: number
-    startDate: Date
-    endDate: Date
-    subDays?: Array<{ date: Date; dayOfWeek?: number }>
-    monthData?: { dayCount: number }
-    weeks?: Array<{
-      weekStart: Date
-      weekEnd: Date
-      subDays: Array<{ date: Date; dayOfWeek?: number }>
-    }>
-  }>,
-  timeScale: TimelineScale
+  timelineData: any,
+  timeScale: TimelineScale,
 ) => {
+  // 回退到原来的逻辑用于其他时间刻度
   let cumulativePosition = 0
 
   for (const periodData of timelineData) {
@@ -567,8 +729,11 @@ const calculateMilestonePositionFromTimelineData = (
           }
 
           // 如果没找到精确匹配，回退到dayOfWeek计算
+          // 注意：getDay()返回0=星期日，1=星期一...6=星期六
+          // 但subDays数组是从星期一开始：索引0=星期一，索引1=星期二...索引6=星期日
           const dayOfWeek = targetDate.getDay()
-          return cumulativePosition + dayOfWeek * dayWidth + dayWidth / 2
+          const adjustedDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // 转换为subDays数组索引
+          return cumulativePosition + adjustedDayIndex * dayWidth + dayWidth / 2
         }
 
         // 累加每周的宽度
@@ -585,7 +750,9 @@ const calculateMilestonePositionFromTimelineData = (
         const daysInMonth = periodData.monthData?.dayCount || 30
         const dayWidth = monthWidth / daysInMonth
         const dayInMonth = targetDate.getDate()
-        return cumulativePosition + (dayInMonth - 1) * dayWidth + dayWidth / 2
+        const finalPosition = cumulativePosition + (dayInMonth - 1) * dayWidth + dayWidth / 2
+
+        return finalPosition
       }
 
       // 累加每月的宽度

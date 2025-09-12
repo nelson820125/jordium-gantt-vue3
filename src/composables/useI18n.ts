@@ -93,10 +93,15 @@ const messages = {
     githubDocs: '查看Github文档',
     giteeDocs: '查看Gitee文档',
     // 时间刻度按钮
-    timeScaleMonth: '月',
-    timeScaleWeek: '周',
+    timeScaleHour: '时',
     timeScaleDay: '日',
+    timeScaleWeek: '周',
+    timeScaleMonth: '月',
+    timeScaleQuarter: '季',
+    timeScaleYear: '年',
     timeScaleTooltip: '切换时间刻度',
+    halfYearFirst: '上半年',
+    halfYearSecond: '下半年',
     // 确认对话框
     confirmDialogMessage: '是否需要保留该设置?',
     // 新建任务对话框
@@ -144,6 +149,12 @@ const messages = {
     },
     editTask: '编辑任务',
     parentTask: '上级任务',
+
+    // 时间选择器相关
+    time: '时间',
+    selectTime: '选择时间',
+    hour: '时',
+    minute: '分',
     noParentTask: '无上级任务',
     update: '更新',
     taskNameTooLong: '任务名称不能超过50个字符',
@@ -217,7 +228,7 @@ const messages = {
     // 日期格式
     yearMonthFormat: (year: number, month: number) => `${year}/${String(month).padStart(2, '0')}`,
     // 月份格式
-    monthFormat: (month: number) => `M${String(month).padStart(2, '0')}`,
+    monthFormat: (month: number) => `${String(month).padStart(2, '0')}`,
 
     // Month name
     monthNames: [
@@ -274,10 +285,15 @@ const messages = {
     githubDocs: 'GitHub Docs',
     giteeDocs: 'Gitee Docs',
     // 时间刻度按钮
-    timeScaleMonth: 'Month',
-    timeScaleWeek: 'Week',
+    timeScaleHour: 'Hour',
     timeScaleDay: 'Day',
+    timeScaleWeek: 'Week',
+    timeScaleMonth: 'Month',
+    timeScaleQuarter: 'Quarter',
+    timeScaleYear: 'Year',
     timeScaleTooltip: 'Switch Time Scale',
+    halfYearFirst: 'First Half',
+    halfYearSecond: 'Second Half',
     // Confirm dialog
     confirmDialogMessage: 'Do you want to save this setting?',
     taskNamePlaceholder: 'Enter task name',
@@ -324,6 +340,13 @@ const messages = {
     editTask: 'Edit Task',
     newTask: 'New Task',
     parentTask: 'Parent Task',
+
+    // 时间选择器相关
+    time: 'Time',
+    selectTime: 'Select Time',
+    hour: 'Hour',
+    minute: 'Minute',
+
     noParentTask: 'No Parent Task',
     update: 'Update',
     taskNameTooLong: 'Task name cannot exceed 50 characters',
@@ -425,7 +448,7 @@ export function useI18n() {
     window.dispatchEvent(
       new CustomEvent('locale-changed', {
         detail: { locale },
-      })
+      }),
     )
   }
 

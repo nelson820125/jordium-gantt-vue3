@@ -277,19 +277,52 @@ const handleTimeScaleChange = (scale: TimelineScale) => {
   }
 }
 
+// 获取可用的时间刻度维度
+const availableTimeScales = computed(() => {
+  const defaultScales = ['hour', 'day', 'week', 'month', 'year'] as const
+  return props.config?.timeScaleDimensions || defaultScales
+})
+
+// 时间刻度配置映射
+const timeScaleMap = {
+  hour: { value: TimelineScale.HOUR, label: () => t('timeScaleHour') },
+  day: { value: TimelineScale.DAY, label: () => t('timeScaleDay') },
+  week: { value: TimelineScale.WEEK, label: () => t('timeScaleWeek') },
+  month: { value: TimelineScale.MONTH, label: () => t('timeScaleMonth') },
+  quarter: { value: TimelineScale.QUARTER, label: () => t('timeScaleQuarter') },
+  year: { value: TimelineScale.YEAR, label: () => t('timeScaleYear') },
+}
+
+// 获取当前时间刻度对应的字符串键
+const currentTimeScaleKey = computed(() => {
+  const entry = Object.entries(timeScaleMap).find(
+    ([, config]) => config.value === currentTimeScale.value,
+  )
+  return entry ? entry[0] : 'day'
+})
+
 // 计算分段控制器滑块位置
 const getThumbStyle = () => {
-  const scaleIndex = {
-    [TimelineScale.MONTH]: 0,
-    [TimelineScale.WEEK]: 1,
-    [TimelineScale.DAY]: 2,
+  const currentIndex = availableTimeScales.value.findIndex(
+    scale => scale === currentTimeScaleKey.value,
+  )
+
+  const totalScales = availableTimeScales.value.length
+  if (totalScales === 0 || currentIndex < 0) {
+    return {
+      transform: 'translateX(0%)',
+      width: `${100 / totalScales || 25}%`,
+    }
   }
 
-  const index = scaleIndex[currentTimeScale.value] || 0
-  const translateX = index * 100 // 每个选项占33.33%，所以移动100%的倍数
+  // 每个按钮占据的百分比宽度
+  const itemWidth = 100 / totalScales
+  // 滑块的位置（左移的距离）
+  const translateX = currentIndex * 100
 
   return {
     transform: `translateX(${translateX}%)`,
+    width: `${itemWidth}%`,
   }
 }
 
@@ -451,28 +484,14 @@ onUnmounted(() => {
           <div class="segmented-thumb" :style="getThumbStyle()"></div>
         </div>
         <button
+          v-for="scale in availableTimeScales"
+          :key="scale"
           class="segmented-item"
-          :class="{ active: currentTimeScale === 'month' }"
+          :class="{ active: currentTimeScaleKey === scale }"
           :title="t('timeScaleTooltip')"
-          @click="handleTimeScaleChange(TimelineScale.MONTH)"
+          @click="handleTimeScaleChange(timeScaleMap[scale].value)"
         >
-          {{ t('timeScaleMonth') }}
-        </button>
-        <button
-          class="segmented-item"
-          :class="{ active: currentTimeScale === 'week' }"
-          :title="t('timeScaleTooltip')"
-          @click="handleTimeScaleChange(TimelineScale.WEEK)"
-        >
-          {{ t('timeScaleWeek') }}
-        </button>
-        <button
-          class="segmented-item"
-          :class="{ active: currentTimeScale === 'day' }"
-          :title="t('timeScaleTooltip')"
-          @click="handleTimeScaleChange(TimelineScale.DAY)"
-        >
-          {{ t('timeScaleDay') }}
+          {{ timeScaleMap[scale].label() }}
         </button>
       </div>
       <!-- 语言选择下拉菜单 -->
@@ -1175,7 +1194,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
-  width: 33.333333%;
+  width: 25%; /* 默认宽度，将通过内联样式动态设置 */
   height: 100%;
   background: var(--gantt-primary, #409eff);
   border-radius: 5px;

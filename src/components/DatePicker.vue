@@ -1,22 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
-const { t } = useI18n()
-
-interface Props {
-  modelValue?: string | [string, string]
-  type?: 'date' | 'daterange'
-  placeholder?: string
-  startPlaceholder?: string
-  endPlaceholder?: string
-  disabled?: boolean
-  clearable?: boolean
-  size?: 'small' | 'default' | 'large'
-  format?: string
-  valueFormat?: string
-  rangeSeparator?: string
-}
-
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   type: 'date',
@@ -38,14 +22,35 @@ const emit = defineEmits<{
   blur: [event: FocusEvent]
 }>()
 
+const { t } = useI18n()
+
+interface Props {
+  modelValue?: string | [string, string]
+  type?: 'date' | 'daterange'
+  placeholder?: string
+  startPlaceholder?: string
+  endPlaceholder?: string
+  disabled?: boolean
+  clearable?: boolean
+  size?: 'small' | 'default' | 'large'
+  format?: string
+  valueFormat?: string
+  rangeSeparator?: string
+}
+
 // 内部状态
 const isFocused = ref(false)
 const isHovered = ref(false)
 const showPicker = ref(false)
 const showYearPicker = ref(false)
 const showMonthPicker = ref(false)
+const showTimePicker = ref(false)
 const inputRef = ref<HTMLElement>()
 const pickerRef = ref<HTMLElement>()
+const timePickerRef = ref<HTMLElement>()
+const timeInputRef = ref<HTMLElement>()
+const hourListRef = ref<HTMLElement>()
+const minuteListRef = ref<HTMLElement>()
 const blurTimer = ref<number | null>(null)
 const positionUpdateKey = ref(0) // 用于强制重新计算位置
 
@@ -63,25 +68,78 @@ const startValue = ref('')
 const endValue = ref('')
 const rangeSelection = ref<'start' | 'end'>('start')
 
-// 格式化日期显示
-const formatDisplayDate = (dateStr: string) => {
+// 时间选择器的值
+const selectedTime = ref('12:00')
+const tempHour = ref(12)
+const tempMinute = ref(0)
+
+// 格式化显示日期时间
+const formatDisplayDateTime = (dateStr: string, timeStr: string) => {
   if (!dateStr) return ''
+
   const date = new Date(dateStr)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  if (isNaN(date.getTime())) return ''
+
+  const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+
+  // 总是显示时间部分
+  if (timeStr) {
+    return `${dateFormat} ${timeStr}`
+  }
+
+  return dateFormat
 }
 
 // 显示值
 const displayValue = computed(() => {
   if (props.type === 'daterange') {
-    const start = startValue.value ? formatDisplayDate(startValue.value) : ''
-    const end = endValue.value ? formatDisplayDate(endValue.value) : ''
+    const start = startValue.value
+      ? formatDisplayDateTime(startValue.value, selectedTime.value)
+      : ''
+    const end = endValue.value ? formatDisplayDateTime(endValue.value, selectedTime.value) : ''
     if (start && end) {
       return `${start} ${props.rangeSeparator} ${end}`
     }
     return start || end || ''
   }
-  return singleValue.value ? formatDisplayDate(singleValue.value) : ''
+  return singleValue.value ? formatDisplayDateTime(singleValue.value, selectedTime.value) : ''
 })
+
+// 解析日期时间字符串
+const parseDateTimeString = (dateTimeStr: string) => {
+  if (!dateTimeStr) return { dateStr: '', timeStr: '12:00' }
+
+  // 检查是否包含时间部分
+  const parts = dateTimeStr.trim().split(' ')
+  if (parts.length >= 2) {
+    // 包含时间部分
+    const dateStr = parts[0]
+    const timeStr = parts[1]
+
+    // 转换日期格式从 yyyy/MM/dd 到 yyyy-MM-dd
+    const dateParts = dateStr.split('/')
+    if (dateParts.length === 3) {
+      const formattedDate = `${dateParts[0]}-${dateParts[1].padStart(2, '0')}-${dateParts[2].padStart(2, '0')}`
+      return { dateStr: formattedDate, timeStr }
+    }
+
+    // 已经是 yyyy-MM-dd 格式，直接返回
+    return { dateStr, timeStr }
+  }
+
+  // 只有日期部分，或者已经是标准格式
+  const dateStr = parts[0]
+  if (dateStr.includes('/')) {
+    // 转换格式
+    const dateParts = dateStr.split('/')
+    if (dateParts.length === 3) {
+      const formattedDate = `${dateParts[0]}-${dateParts[1].padStart(2, '0')}-${dateParts[2].padStart(2, '0')}`
+      return { dateStr: formattedDate, timeStr: '12:00' }
+    }
+  }
+
+  return { dateStr, timeStr: '12:00' }
+}
 
 // 监听外部值变化
 watch(
@@ -89,17 +147,28 @@ watch(
   newValue => {
     if (props.type === 'daterange') {
       if (Array.isArray(newValue) && newValue.length === 2) {
-        startValue.value = newValue[0] || ''
-        endValue.value = newValue[1] || ''
+        const startParsed = parseDateTimeString(newValue[0] || '')
+        const endParsed = parseDateTimeString(newValue[1] || '')
+
+        startValue.value = startParsed.dateStr
+        endValue.value = endParsed.dateStr
+
+        // 如果有时间信息，使用第一个时间作为选择器的时间
+        if (startParsed.timeStr !== '12:00') {
+          selectedTime.value = startParsed.timeStr
+        }
       } else {
         startValue.value = ''
         endValue.value = ''
+        selectedTime.value = '12:00'
       }
     } else {
-      singleValue.value = (newValue as string) || ''
+      const parsed = parseDateTimeString((newValue as string) || '')
+      singleValue.value = parsed.dateStr
+      selectedTime.value = parsed.timeStr
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 处理单日期输入变化（预留，当前版本不使用）
@@ -158,12 +227,22 @@ const togglePicker = () => {
     // 设置当前年月为选中日期的年月
     let currentDate: Date
     if (props.type === 'daterange') {
-      currentDate = startValue.value ? new Date(startValue.value) : new Date()
+      // 对于日期范围，优先使用开始日期，如果没有则使用结束日期
+      const targetDateStr = startValue.value || endValue.value
+      currentDate = targetDateStr ? new Date(targetDateStr) : new Date()
     } else {
       currentDate = singleValue.value ? new Date(singleValue.value) : new Date()
     }
-    currentYear.value = currentDate.getFullYear()
-    currentMonth.value = currentDate.getMonth()
+
+    // 确保日期有效
+    if (!isNaN(currentDate.getTime())) {
+      currentYear.value = currentDate.getFullYear()
+      currentMonth.value = currentDate.getMonth()
+    } else {
+      currentDate = new Date()
+      currentYear.value = currentDate.getFullYear()
+      currentMonth.value = currentDate.getMonth()
+    }
   }
 }
 
@@ -172,6 +251,7 @@ const closePicker = () => {
   showPicker.value = false
   showYearPicker.value = false
   showMonthPicker.value = false
+  showTimePicker.value = false // 关闭日历时也关闭时间选择器
   isFocused.value = false
   // 清理失焦定时器
   if (blurTimer.value) {
@@ -180,11 +260,143 @@ const closePicker = () => {
   }
 }
 
+// 时间选择器相关函数
+const openTimePicker = (event?: MouseEvent) => {
+  if (event) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+  if (showTimePicker.value) return
+
+  // 阻止失焦关闭日历选择器
+  if (blurTimer.value) {
+    clearTimeout(blurTimer.value)
+    blurTimer.value = null
+  }
+
+  showTimePicker.value = true
+
+  // 解析当前时间
+  const [hour, minute] = selectedTime.value.split(':').map(Number)
+  tempHour.value = hour
+  tempMinute.value = minute
+
+  // 下一帧滚动到选中的时间位置
+  nextTick(() => {
+    scrollToSelectedTime()
+  })
+}
+
+// 滚动到选中的时间位置
+const scrollToSelectedTime = () => {
+  if (hourListRef.value) {
+    const hourItems = hourListRef.value.querySelectorAll('.el-time-item')
+    const selectedHourIndex = tempHour.value
+    if (hourItems[selectedHourIndex]) {
+      const itemHeight = 28 // el-time-item 的高度
+      const containerHeight = 160 // el-time-column-list 的高度
+      const scrollTop = Math.max(
+        0,
+        selectedHourIndex * itemHeight - containerHeight / 2 + itemHeight / 2,
+      )
+      hourListRef.value.scrollTop = scrollTop
+    }
+  }
+
+  if (minuteListRef.value) {
+    const minuteItems = minuteListRef.value.querySelectorAll('.el-time-item')
+    const minuteOptions = [0, 15, 30, 45]
+    const selectedMinuteIndex = minuteOptions.indexOf(tempMinute.value)
+    if (selectedMinuteIndex >= 0 && minuteItems[selectedMinuteIndex]) {
+      const itemHeight = 28
+      const containerHeight = 160
+      const scrollTop = Math.max(
+        0,
+        selectedMinuteIndex * itemHeight - containerHeight / 2 + itemHeight / 2,
+      )
+      minuteListRef.value.scrollTop = scrollTop
+    }
+  }
+}
+
+const closeTimePicker = () => {
+  showTimePicker.value = false
+}
+
+const confirmTime = () => {
+  selectedTime.value = `${String(tempHour.value).padStart(2, '0')}:${String(tempMinute.value).padStart(2, '0')}`
+  closeTimePicker()
+}
+
+// 生成小时选项（0-23）
+const hourOptions = computed(() => {
+  return Array.from({ length: 24 }, (_, i) => i)
+})
+
+// 生成分钟选项（15分间隔：0, 15, 30, 45）
+const minuteOptions = computed(() => {
+  return [0, 15, 30, 45]
+})
+
+// 滚动选择时间
+const selectHour = (hour: number) => {
+  tempHour.value = hour
+}
+
+const selectMinute = (minute: number) => {
+  tempMinute.value = minute
+}
+
+// 确认日期选择
+const confirmDate = () => {
+  if (props.type === 'daterange') {
+    if (startValue.value && endValue.value) {
+      // 格式化日期和时间
+      const formatDateTime = (dateStr: string) => {
+        const date = new Date(dateStr)
+        const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+        return selectedTime.value ? `${dateFormat} ${selectedTime.value}` : dateFormat
+      }
+
+      const startDateTime = formatDateTime(startValue.value)
+      const endDateTime = formatDateTime(endValue.value)
+      const newValue: [string, string] = [startDateTime, endDateTime]
+
+      emit('update:modelValue', newValue)
+      emit('change', newValue)
+    }
+  } else {
+    if (singleValue.value) {
+      // 格式化日期和时间
+      const date = new Date(singleValue.value)
+      const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+      const formattedDateTime = selectedTime.value
+        ? `${dateFormat} ${selectedTime.value}`
+        : dateFormat
+
+      emit('update:modelValue', formattedDateTime)
+      emit('change', formattedDateTime)
+    }
+  }
+
+  // 确认后关闭面板
+  setTimeout(() => {
+    closePicker()
+  }, 150)
+}
+
 // 处理点击外部区域
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as Element
-  if (!inputRef.value?.contains(target) && !pickerRef.value?.contains(target)) {
+  const isInsideInput = inputRef.value?.contains(target)
+  const isInsidePicker = pickerRef.value?.contains(target)
+  const isInsideTimePicker = timePickerRef.value?.contains(target)
+
+  if (!isInsideInput && !isInsidePicker && !isInsideTimePicker) {
     closePicker()
+  } else if (!isInsideTimePicker && showTimePicker.value && !isInsidePicker) {
+    // 如果点击了时间选择器外部但在日历选择器内部，只关闭时间选择器
+    closeTimePicker()
   }
 }
 
@@ -280,22 +492,11 @@ const selectDate = (dateStr: string) => {
         endValue.value = dateStr
       }
       rangeSelection.value = 'start'
-      const newValue: [string, string] = [startValue.value, endValue.value]
-      emit('update:modelValue', newValue)
-      emit('change', newValue)
-      // 选择完成后自动关闭面板
-      setTimeout(() => {
-        closePicker()
-      }, 150)
+      // 不再自动提交，等待用户点击确认按钮
     }
   } else {
     singleValue.value = dateStr
-    emit('update:modelValue', dateStr)
-    emit('change', dateStr)
-    // 单日期选择完成后自动关闭面板
-    setTimeout(() => {
-      closePicker()
-    }, 150)
+    // 不再自动提交，等待用户点击确认按钮
   }
 }
 
@@ -537,8 +738,26 @@ const handlePickerFocus = () => {
 
 // 面板失去焦点时关闭
 const handlePickerBlur = () => {
+  // 只有在时间选择器未打开时才关闭日历选择器
+  if (!showTimePicker.value) {
+    blurTimer.value = setTimeout(() => {
+      closePicker()
+    }, 150)
+  }
+}
+
+// 时间选择器获得焦点时取消关闭
+const handleTimePickerFocus = () => {
+  if (blurTimer.value) {
+    clearTimeout(blurTimer.value)
+    blurTimer.value = null
+  }
+}
+
+// 时间选择器失去焦点时关闭
+const handleTimePickerBlur = () => {
   blurTimer.value = setTimeout(() => {
-    closePicker()
+    closeTimePicker()
   }, 150)
 }
 
@@ -637,6 +856,53 @@ const panelStyle = computed(() => {
 
   return style
 })
+
+// 计算时间选择器位置
+const timePickerStyle = computed(() => {
+  if (!timeInputRef.value || !showTimePicker.value) return {}
+
+  const rect = timeInputRef.value.getBoundingClientRect()
+  const panelWidth = 180 // 减小宽度从280到180
+  const panelHeight = 300
+  const spacing = 4
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  const style: Record<string, string> = {
+    position: 'fixed',
+    zIndex: '10002', // 比日历选择器层级更高
+  }
+
+  // 水平位置：与时间输入框左对齐
+  const spaceRight = viewportWidth - rect.left
+  if (spaceRight >= panelWidth) {
+    // 左对齐
+    style.left = `${rect.left}px`
+  } else {
+    // 右对齐，确保不超出视窗
+    style.left = `${Math.max(spacing, viewportWidth - panelWidth - spacing)}px`
+  }
+
+  // 垂直位置：显示在输入框上方
+  const spaceAbove = rect.top
+  if (spaceAbove >= panelHeight + spacing) {
+    // 显示在上方
+    style.top = `${rect.top - panelHeight - spacing}px`
+  } else {
+    // 空间不足时显示在下方
+    style.top = `${rect.bottom + spacing}px`
+  }
+
+  // 确保面板完全在视窗内
+  const finalTop = parseFloat(style.top!)
+  if (finalTop < spacing) {
+    style.top = `${spacing}px`
+  } else if (finalTop + panelHeight > viewportHeight - spacing) {
+    style.top = `${viewportHeight - panelHeight - spacing}px`
+  }
+
+  return style
+})
 </script>
 
 <template>
@@ -694,6 +960,80 @@ const panelStyle = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- 时间选择器弹窗 -->
+    <Teleport to="body">
+      <Transition name="picker-fade">
+        <div
+          v-if="showTimePicker"
+          ref="timePickerRef"
+          class="el-time-picker-panel"
+          :style="timePickerStyle"
+          tabindex="-1"
+          @click.stop
+          @mousedown.prevent
+          @focus="handleTimePickerFocus"
+          @blur="handleTimePickerBlur"
+        >
+          <div class="el-time-picker-header">
+            <span class="el-time-picker-title">{{ t.selectTime }}</span>
+          </div>
+
+          <div class="el-time-picker-content">
+            <!-- 小时选择 -->
+            <div class="el-time-column">
+              <div class="el-time-column-header">{{ t.hour }}</div>
+              <div ref="hourListRef" class="el-time-column-list">
+                <div
+                  v-for="hour in hourOptions"
+                  :key="hour"
+                  class="el-time-item"
+                  :class="{ 'is-active': hour === tempHour }"
+                  @click.stop="selectHour(hour)"
+                  @mousedown.prevent
+                >
+                  {{ String(hour).padStart(2, '0') }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 分钟选择 -->
+            <div class="el-time-column">
+              <div class="el-time-column-header">{{ t.minute }}</div>
+              <div ref="minuteListRef" class="el-time-column-list">
+                <div
+                  v-for="minute in minuteOptions"
+                  :key="minute"
+                  class="el-time-item"
+                  :class="{ 'is-active': minute === tempMinute }"
+                  @click.stop="selectMinute(minute)"
+                  @mousedown.prevent
+                >
+                  {{ String(minute).padStart(2, '0') }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="el-time-picker-footer">
+            <button
+              class="el-time-picker-btn el-time-picker-btn--cancel"
+              @click.stop="closeTimePicker"
+              @mousedown.prevent
+            >
+              {{ t.cancel }}
+            </button>
+            <button
+              class="el-time-picker-btn el-time-picker-btn--confirm"
+              @click.stop="confirmTime"
+              @mousedown.prevent
+            >
+              {{ t.confirm }}
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- 日期选择器面板 -->
     <Teleport to="body">
@@ -813,6 +1153,32 @@ const panelStyle = computed(() => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- 时间选择器输入框 -->
+            <div class="el-time-picker-input">
+              <label class="el-time-picker-label">{{ t.time }}:</label>
+              <input
+                ref="timeInputRef"
+                type="text"
+                class="el-time-input"
+                :value="selectedTime"
+                :placeholder="t.selectTime"
+                readonly
+                @click="openTimePicker($event)"
+                @mousedown.prevent
+              />
+            </div>
+
+            <!-- 日期选择器确认按钮 -->
+            <div class="el-date-picker-footer">
+              <button
+                class="el-date-picker-btn el-date-picker-btn--confirm"
+                @click.stop="confirmDate"
+                @mousedown.prevent
+              >
+                {{ t.confirm }}
+              </button>
             </div>
           </div>
         </div>
@@ -1444,6 +1810,38 @@ const panelStyle = computed(() => {
   background: var(--gantt-primary-light, #ecf5ff);
 }
 
+/* 日期选择器确认按钮样式 */
+.el-date-picker-footer {
+  padding: 8px 0 0;
+  border-top: 1px solid var(--gantt-border-light, #ebeef5);
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.el-date-picker-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+  outline: none;
+  height: 24px;
+  line-height: 14px;
+}
+
+.el-date-picker-btn--confirm {
+  background: var(--gantt-primary, #409eff);
+  border-color: var(--gantt-primary, #409eff);
+  color: #ffffff;
+}
+
+.el-date-picker-btn--confirm:hover {
+  background: var(--gantt-primary-dark, #337ecc);
+  border-color: var(--gantt-primary-dark, #337ecc);
+}
+
 /* 暗黑模式下的日期选择器面板 */
 :global(html[data-theme='dark']) .el-picker-panel {
   background: var(--gantt-bg-secondary, #2c2c2c);
@@ -1486,6 +1884,11 @@ const panelStyle = computed(() => {
 
 :global(html[data-theme='dark']) .el-date-table__cell.is-in-range {
   background: rgba(64, 158, 255, 0.2);
+}
+
+/* 暗黑模式下的日期选择器确认按钮 */
+:global(html[data-theme='dark']) .el-date-picker-footer {
+  border-top-color: var(--gantt-border-dark, #414243);
 }
 
 /* 响应式适配 */
@@ -1547,5 +1950,251 @@ const panelStyle = computed(() => {
 .picker-fade-leave-from {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+/* 时间选择器样式 */
+.el-time-picker-input {
+  padding: 8px 0;
+  border-top: 1px solid var(--gantt-border-light, #ebeef5);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.el-time-picker-label {
+  font-size: 12px;
+  color: var(--gantt-text-regular, #909399);
+  font-weight: 500;
+  min-width: 30px;
+}
+
+.el-time-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--gantt-text-primary, #606266);
+  background: var(--gantt-bg-primary, #ffffff);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.el-time-input:hover {
+  border-color: var(--gantt-border-hover, #c0c4cc);
+}
+
+.el-time-input:focus {
+  outline: none;
+  border-color: var(--gantt-primary, #409eff);
+}
+
+.el-time-picker-panel {
+  position: fixed;
+  background: var(--gantt-bg-primary, #ffffff);
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10002;
+  width: 180px;
+  user-select: none;
+  padding: 8px;
+}
+
+.el-time-picker-header {
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--gantt-border-light, #ebeef5);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.el-time-picker-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gantt-text-primary, #303133);
+}
+
+.el-time-picker-content {
+  padding: 0;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.el-time-column {
+  flex: 0 0 50px;
+  text-align: center;
+}
+
+.el-time-column-header {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gantt-text-primary, #606266);
+  margin-bottom: 4px;
+}
+
+.el-time-column-list {
+  max-height: 160px;
+  overflow-y: auto;
+  border-radius: 4px;
+  /* 隐藏滚动条，但保持滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.el-time-column-list::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* 鼠标悬停时显示滚动条 */
+.el-time-column-list:hover {
+  scrollbar-width: thin;
+}
+
+.el-time-column-list:hover::-webkit-scrollbar {
+  width: 4px;
+}
+
+.el-time-column-list:hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.el-time-column-list:hover::-webkit-scrollbar-thumb {
+  background: var(--gantt-border-color, #dcdfe6);
+  border-radius: 2px;
+}
+
+.el-time-item {
+  height: 28px;
+  line-height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--gantt-text-primary, #606266);
+  transition: all 0.2s;
+}
+
+.el-time-item:hover {
+  background: var(--gantt-bg-hover, #f5f7fa);
+  color: var(--gantt-primary, #409eff);
+}
+
+.el-time-item.is-active {
+  background: var(--gantt-primary, #409eff);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.el-time-picker-footer {
+  padding: 8px 0 0;
+  border-top: 1px solid var(--gantt-border-light, #ebeef5);
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.el-time-picker-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+  outline: none;
+  height: 24px;
+  line-height: 14px;
+}
+
+.el-time-picker-btn--cancel {
+  background: var(--gantt-bg-primary, #ffffff);
+  border-color: var(--gantt-border-color, #dcdfe6);
+  color: var(--gantt-text-primary, #606266);
+}
+
+.el-time-picker-btn--cancel:hover {
+  background: var(--gantt-bg-hover, #f5f7fa);
+  border-color: var(--gantt-border-hover, #c0c4cc);
+}
+
+.el-time-picker-btn--confirm {
+  background: var(--gantt-primary, #409eff);
+  border-color: var(--gantt-primary, #409eff);
+  color: #ffffff;
+}
+
+.el-time-picker-btn--confirm:hover {
+  background: var(--gantt-primary-dark, #337ecc);
+  border-color: var(--gantt-primary-dark, #337ecc);
+}
+
+/* 暗黑模式下的时间选择器 */
+:global(html[data-theme='dark']) .el-time-picker-input {
+  border-top-color: var(--gantt-border-dark, #414243);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-label {
+  color: var(--gantt-text-secondary, #909399);
+}
+
+:global(html[data-theme='dark']) .el-time-input {
+  background: var(--gantt-bg-secondary, #2c2c2c);
+  border-color: var(--gantt-border-dark, #414243);
+  color: var(--gantt-text-white, #ffffff);
+}
+
+:global(html[data-theme='dark']) .el-time-input:hover {
+  border-color: var(--gantt-border-hover, #606266);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-panel {
+  background: var(--gantt-bg-secondary, #2c2c2c);
+  border-color: var(--gantt-border-dark, #414243);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-header {
+  border-bottom-color: var(--gantt-border-dark, #414243);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-title {
+  color: var(--gantt-text-white, #ffffff);
+}
+
+:global(html[data-theme='dark']) .el-time-column-header {
+  color: var(--gantt-text-white, #ffffff);
+}
+
+:global(html[data-theme='dark']) .el-time-column-list {
+  border-color: var(--gantt-border-dark, #414243);
+}
+
+:global(html[data-theme='dark']) .el-time-column-list:hover::-webkit-scrollbar-thumb {
+  background: var(--gantt-border-hover, #606266);
+}
+
+:global(html[data-theme='dark']) .el-time-item {
+  color: var(--gantt-text-white, #ffffff);
+}
+
+:global(html[data-theme='dark']) .el-time-item:hover {
+  background: var(--gantt-bg-hover-dark, #3c3e40);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-footer {
+  border-top-color: var(--gantt-border-dark, #414243);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-btn--cancel {
+  background: var(--gantt-bg-secondary, #2c2c2c);
+  border-color: var(--gantt-border-dark, #414243);
+  color: var(--gantt-text-white, #ffffff);
+}
+
+:global(html[data-theme='dark']) .el-time-picker-btn--cancel:hover {
+  background: var(--gantt-bg-hover-dark, #3c3e40);
+  border-color: var(--gantt-border-hover, #606266);
 }
 </style>

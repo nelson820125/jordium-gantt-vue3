@@ -9,4 +9,5 @@ export interface ToolbarConfig {
   showTheme?: boolean
   showFullscreen?: boolean
   showTimeScale?: boolean // 显示时间刻度按钮组
+  timeScaleDimensions?: ('hour' | 'day' | 'week' | 'month' | 'year')[] // 设置时间刻度按钮的展示维度
 }

@@ -60,28 +60,70 @@ pnpm add jordium-gantt-vue3
 
 ```
 jordium-gantt-vue3/
-├── src/             # 组件源码与核心逻辑
-│   ├── components/  # 主要 Vue 组件
-│   ├── models/      # 数据类型与配置
-│   ├── composables/ # 组合式函数
-│   ├── styles/      # 样式文件
-│   └── index.ts     # 入口导出
-├── demo/            # 组件开发与交互演示（本地开发/预览用）
-├── packageDemo/     # npm 包集成演示（模拟外部项目集成效果）
-├── dist/            # 构建产物（发布/静态站点/打包输出）
-├── docs/            # 相关文档（如部署、API 说明等）
-├── design/          # 设计资源与截图
-├── public/          # 公共静态资源
-├── README.md        # 中文说明文档
-├── README-EN.md     # 英文说明文档
-└── ...              # 其他配置、脚本与元数据
+├── src/                      # 组件源码与核心逻辑
+│   ├── components/           # 主要 Vue 组件
+│   │   ├── GanttChart.vue    # 主入口组件
+│   │   ├── TaskList.vue      # 任务列表
+│   │   ├── Timeline.vue      # 时间轴组件
+│   │   ├── TaskBar.vue       # 任务条
+│   │   ├── TaskDrawer.vue    # 任务编辑抽屉
+│   │   ├── TaskContextMenu.vue # 任务右键菜单
+│   │   ├── GanttToolbar.vue  # 工具栏
+│   │   ├── MilestonePoint.vue # 里程碑点
+│   │   ├── MilestoneDialog.vue # 里程碑对话框
+│   │   ├── DatePicker.vue    # 日期选择器
+│   │   └── ...               # 其他组件
+│   ├── models/               # 数据模型与配置
+│   │   ├── classes/          # 类定义
+│   │   │   ├── Task.ts       # 任务模型
+│   │   │   ├── Milestone.ts  # 里程碑模型
+│   │   │   └── Language.ts   # 语言配置
+│   │   ├── configs/          # 配置接口
+│   │   │   ├── TimelineConfig.ts # 时间轴配置
+│   │   │   └── ToolbarConfig.ts  # 工具栏配置
+│   │   └── types/            # 类型定义
+│   │       └── TimelineScale.ts  # 时间刻度类型
+│   ├── composables/          # 组合式函数
+│   │   ├── useI18n.ts        # 国际化工具
+│   │   └── useMessage.ts     # 消息提示工具
+│   ├── styles/               # 样式文件
+│   │   ├── app.css           # 主样式
+│   │   └── theme-variables.css # 主题变量
+│   ├── utils/                # 工具函数
+│   │   └── predecessorUtils.ts # 前置依赖工具
+│   └── index.ts              # 入口导出
+├── demo/                     # 组件开发与交互演示（本地开发/预览用）
+│   ├── App.vue               # 演示应用主组件
+│   ├── data.json             # 演示数据（包含药物临床试验案例）
+│   ├── main.ts               # 演示应用入口
+│   └── ...                   # 其他演示文件
+├── packageDemo/              # npm 包集成演示（模拟外部项目集成效果）
+├── dist/                     # 构建产物（发布/静态站点/打包输出）
+├── docs/                     # 相关文档（如部署、API 说明等）
+├── design/                   # 设计资源与截图
+│   └── screenshots/          # 主题截图
+├── public/                   # 公共静态资源
+│   └── assets/               # 静态资源文件
+├── README.md                 # 中文说明文档
+├── README-EN.md              # 英文说明文档
+├── package.json              # 项目配置
+├── vite.config.ts            # Vite开发配置
+├── vite.config.lib.ts        # Vite库构建配置
+├── tsconfig.json             # TypeScript配置
+└── ...                       # 其他配置、脚本与元数据
 ```
 
-- `demo/`：用于本地开发和功能演示，包含完整的交互页面。
-- `packageDemo/`：用于模拟 npm 包在外部项目中的集成与使用场景。
-- `dist/`：构建输出目录，包含发布到 npm 或静态站点的产物。
-- `docs/`：项目相关文档，如部署说明、API 参考等。
-- 其余目录请参考注释。
+### 目录说明
+
+- **`src/components/`**：核心Vue组件，包含甘特图的所有功能组件
+- **`src/models/`**：数据模型、类型定义和配置接口
+- **`src/composables/`**：Vue 3组合式函数，提供可复用的逻辑
+- **`src/styles/`**：样式文件，包含主题系统和CSS变量
+- **`src/utils/`**：工具函数，处理业务逻辑和数据转换
+- **`demo/`**：本地开发和功能演示，包含完整的交互页面和药物临床试验样例数据
+- **`packageDemo/`**：模拟npm包在外部项目中的集成与使用场景
+- **`dist/`**：构建输出目录，包含发布到npm或静态站点的产物
+- **`docs/`**：项目文档，包括部署说明、API参考等
 
 ## 🔧 API 参考
 
@@ -96,8 +138,22 @@ jordium-gantt-vue3/
 | `showToolbar` | `boolean` | `true` | 是否显示工具栏 |
 | `toolbarConfig` | `ToolbarConfig` | `{}` | 工具栏配置 |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | - | 自定义多语言配置 |
+| `workingHours` | `WorkingHours` | - | 工作时间配置 |
 | `onTaskDoubleClick` | `(task: Task) => void` | - | 任务双击事件回调 |
-| `onTaskDelete` | `(task: Task) => void` | - | 任务删除事件回调 |
+| `onTaskDelete` | `(task: Task, deleteChildren?: boolean) => void` | - | 任务删除事件回调 |
+| `onTaskUpdate` | `(task: Task) => void` | - | 任务更新事件回调 |
+| `onTaskAdd` | `(task: Task) => void` | - | 任务添加事件回调 |
+| `onMilestoneSave` | `(milestone: Task) => void` | - | 里程碑保存事件回调 |
+| `onMilestoneDelete` | `(milestoneId: number) => void` | - | 里程碑删除事件回调 |
+| `onMilestoneIconChange` | `(milestoneId: number, icon: string) => void` | - | 里程碑图标变更事件回调 |
+| `onAddTask` | `() => void` | - | 新增任务工具栏事件回调 |
+| `onAddMilestone` | `() => void` | - | 新增里程碑工具栏事件回调 |
+| `onTodayLocate` | `() => void` | - | 定位今天工具栏事件回调 |
+| `onExportCsv` | `() => boolean \| void` | - | 导出CSV工具栏事件回调 |
+| `onExportPdf` | `() => void` | - | 导出PDF工具栏事件回调 |
+| `onLanguageChange` | `(lang: 'zh-CN' \| 'en-US') => void` | - | 语言切换工具栏事件回调 |
+| `onThemeChange` | `(isDark: boolean) => void` | - | 主题切换工具栏事件回调 |
+| `onFullscreenChange` | `(isFullscreen: boolean) => void` | - | 全屏切换工具栏事件回调 |
 | `onTaskUpdate` | `(task: Task) => void` | - | 任务更新事件回调 |
 | `onTaskAdd` | `(task: Task) => void` | - | 任务添加事件回调 |
 | `onMilestoneSave` | `(milestone: Task) => void` | - | 里程碑保存事件回调 |
@@ -188,16 +244,16 @@ function onTaskUpdated(e) {
 **Task 任务类型**
 ```typescript
 export interface Task {
-  id: number // 任务唯一ID
-  name: string // 任务名称
-  predecessor?: number[] // 前置任务ID数组
-  assignee?: string // 负责人
-  startDate?: string // 开始日期（ISO字符串）
-  endDate?: string // 结束日期（ISO字符串）
-  progress?: number // 进度百分比 0-100
-  estimatedHours?: number // 预估工时
-  actualHours?: number // 实际工时
-  parentId?: number // 上级任务ID
+  id: number                  // 任务唯一ID
+  name: string               // 任务名称
+  predecessor?: number[]     // 前置任务ID数组
+  assignee?: string          // 负责人
+  startDate?: string         // 开始日期（ISO字符串）
+  endDate?: string           // 结束日期（ISO字符串）
+  progress?: number          // 进度百分比 0-100
+  estimatedHours?: number    // 预估工时（支持小数，最多2位）
+  actualHours?: number       // 实际工时（支持小数，最多2位）
+  parentId?: number          // 上级任务ID
   children?: Task[] // 子任务数组
   collapsed?: boolean // 是否折叠
   isParent?: boolean // 是否为父任务
@@ -255,6 +311,86 @@ interface ToolbarConfig {
   showFullscreen?: boolean     // 是否显示全屏切换按钮
   showTimeScale?: boolean      // 是否显示时间刻度切换按钮组(日|周|月)
 }
+```
+
+**WorkingHours 工作时间配置**
+```typescript
+interface WorkingHours {
+  morning?: { start: number; end: number }    // 上午工作时间，如 { start: 8, end: 11 }
+  afternoon?: { start: number; end: number }  // 下午工作时间，如 { start: 13, end: 17 }
+}
+```
+
+**TimelineScale 时间刻度类型**
+```typescript
+// 时间轴显示刻度类型
+type TimelineScale = 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
+
+// 时间刻度常量
+export const TimelineScale = {
+  HOUR: 'hour',        // 小时视图 - 每列显示一小时
+  DAY: 'day',          // 日视图 - 每列显示一天
+  WEEK: 'week',        // 周视图 - 每列显示一周  
+  MONTH: 'month',      // 月视图 - 每列显示一个月
+  QUARTER: 'quarter',  // 季度视图 - 每列显示一个季度
+  YEAR: 'year',        // 年视图 - 每列显示一年
+}
+
+// 时间刻度配置
+interface TimelineScaleConfig {
+  scale: TimelineScale    // 刻度类型
+  cellWidth: number       // 每个时间单元的宽度(px)
+  headerLevels: number    // 表头层级数
+  formatters: {
+    primary: string       // 主要时间标签格式
+    secondary?: string    // 次要时间标签格式
+  }
+}
+```
+
+### 🕐 时间刻度功能说明
+
+组件支持多种时间刻度显示，用户可以通过工具栏的日/周/月按钮组或者编程方式切换时间轴的显示粒度：
+
+#### 内置刻度配置
+
+| 刻度类型 | 单元宽度 | 主标签格式 | 副标签格式 | 适用场景 |
+|----------|----------|------------|------------|----------|
+| `hour` | 40px | yyyy/MM/dd | HH | 精确到小时的项目, 例如药物临床试验 |
+| `day` | 30px | yyyy年MM月 | dd | 日常项目管理的标准视图 |
+| `week` | 120px | yyyy年MM月 | W | 中期项目的周计划视图 |
+| `month` | 180px | yyyy | MM | 长期项目的月度视图 |
+| `quarter` | 360px | yyyy | Q | 战略规划的季度视图 |
+| `year` | 360px | yyyy | 上半年\|下半年 | 超长期项目年度视图 |
+
+#### 使用示例
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { GanttChart, TimelineScale } from 'jordium-gantt-vue3'
+
+const tasks = ref([/* 任务数据 */])
+
+// 工具栏配置 - 启用时间刻度切换按钮
+const toolbarConfig = {
+  showTimeScale: true  // 显示日|周|月按钮组
+}
+
+// 监听刻度切换（可选）
+const handleTimeScaleChange = (scale) => {
+  console.log('时间刻度切换至:', scale)
+  // 可以在这里做一些业务逻辑，如保存用户偏好设置
+}
+</script>
+
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :toolbar-config="toolbarConfig"
+    @timescale-changed="handleTimeScaleChange"
+  />
+</template>
 ```
 
 #### 组合式函数 (src/composables)
@@ -386,15 +522,15 @@ import { GanttChart } from 'jordium-gantt-vue3'
 
 // 工具栏配置
 const toolbarConfig = {
-  showLanguage: true,
-  showTheme: true,
-  showAddTask: true,
-  showAddMilestone: true,
-  showTodayLocate: true,
-  showExportCsv: true,
-  showExportPdf: true,
-  showFullscreen: true,
-  showTimeScale: true  // 控制日|周|月时间刻度按钮组的可见性
+  showLanguage: true,      // 语言切换
+  showTheme: true,         // 主题切换
+  showAddTask: true,       // 新增任务
+  showAddMilestone: true,  // 新增里程碑
+  showTodayLocate: true,   // 定位今天
+  showExportCsv: true,     // 导出CSV
+  showExportPdf: true,     // 导出PDF
+  showFullscreen: true,    // 全屏模式
+  showTimeScale: true      // 时间刻度切换（日|周|月按钮组）
 }
 
 // 自定义多语言配置
@@ -411,6 +547,17 @@ const handleLanguageChange = (lang) => {
 const handleThemeChange = (isDark) => {
   console.log('主题切换到:', isDark ? '暗色' : '亮色')
 }
+
+// 监听时间刻度变化
+const handleTimeScaleChange = (scale) => {
+  console.log('时间刻度切换至:', scale)
+  // 根据刻度调整显示逻辑
+  if (scale === 'day') {
+    // 日视图下的特殊处理
+  } else if (scale === 'week') {
+    // 周视图下的特殊处理  
+  }
+}
 </script>
 
 <template>
@@ -421,8 +568,49 @@ const handleThemeChange = (isDark) => {
     :locale-messages="customLocaleMessages"
     :on-language-change="handleLanguageChange"
     :on-theme-change="handleThemeChange"
+    @timescale-changed="handleTimeScaleChange"
   />
 </template>
+```
+
+### 🔧 工作时间配置
+
+组件支持设置工作时间，影响任务时长计算和进度显示：
+
+```vue
+<script setup lang="ts">
+// 配置工作时间（24小时制）
+const workingHours = {
+  morning: { start: 9, end: 12 },    // 上午9点-12点
+  afternoon: { start: 14, end: 18 }  // 下午2点-6点
+}
+</script>
+
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :working-hours="workingHours"
+  />
+</template>
+```
+
+### 📊 高精度工时管理
+
+组件支持精确到小数点后2位的工时记录，适合需要精确计费的项目：
+
+```vue
+<script setup lang="ts">
+const tasks = ref([
+  {
+    id: 1,
+    name: '高精度任务',
+    estimatedHours: 8.75,    // 8小时45分钟
+    actualHours: 7.25,       // 7小时15分钟
+    startDate: '2025-01-01',
+    endDate: '2025-01-02'
+  }
+])
+</script>
 ```
 
 ## 🤝 贡献与合作

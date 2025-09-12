@@ -37,6 +37,14 @@ const toolbarConfig = {
   showTheme: true,
   showFullscreen: true,
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
+  timeScaleDimensions: ['hour', 'day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+}
+
+// 工作时间配置示例
+const workingHoursConfig = {
+  morning: { start: 8, end: 11 }, // 上午8:00-11:59为工作时间
+  afternoon: { start: 13, end: 17 }, // 下午13:00-17:00为工作时间
+  // 其他时间（12:00-12:59, 18:00-07:59）为休息时间，显示为灰色背景
 }
 
 // 自定义CSV导出处理器（可选）
@@ -118,14 +126,14 @@ const handleMilestoneDelete = async (milestoneId: number) => {
     window.dispatchEvent(
       new CustomEvent('milestone-deleted', {
         detail: { milestoneId },
-      })
+      }),
     )
 
     // 触发强制更新事件，确保Timeline重新渲染
     window.dispatchEvent(
       new CustomEvent('milestone-data-changed', {
         detail: { milestones: milestones.value },
-      })
+      }),
     )
   }
 
@@ -219,7 +227,7 @@ const handleTaskUpdate = (updatedTask: Task) => {
         showMessage(
           formatTranslation('newParentTaskNotFound', { parentId: taskToAdd.parentId }),
           'warning',
-          { closable: true }
+          { closable: true },
         )
         tasks.value.push(taskToAdd)
       }
@@ -267,7 +275,7 @@ const handleTaskAdd = (newTask: Task) => {
     const maxId = Math.max(
       ...tasks.value.map(t => t.id || 0),
       ...milestones.value.map(m => m.id || 0),
-      0
+      0,
     )
     newTask.id = maxId + 1
   }
@@ -362,7 +370,7 @@ const handleStoryDeleteWithChildren = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          }
+          },
         )
         return true
       }
@@ -424,7 +432,7 @@ const handleStoryDeleteOnly = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          }
+          },
         )
         return true
       }
@@ -498,7 +506,7 @@ function handleTaskbarDragOrResizeEnd(newTask) {
       `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
       `结束: ${oldTask.endDate} → ${newTask.endDate}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
@@ -508,7 +516,7 @@ function handleMilestoneDragEnd(newMilestone) {
     `里程碑【${newMilestone.name}】\n` +
       `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 
@@ -575,7 +583,7 @@ function onTimerStarted(task: Task) {
   showMessage(
     `Demo 任务【${task.name}】\n开始计时：${new Date(task.timerStartTime).toLocaleString()}\n计时说明：${task.timerStartDesc ? task.timerStartDesc : ''}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 function onTimerStopped(task: Task) {
@@ -628,6 +636,7 @@ function onTimerStopped(task: Task) {
         :tasks="tasks"
         :milestones="milestones"
         :toolbar-config="toolbarConfig"
+        :working-hours="workingHoursConfig"
         :on-add-task="handleAddTask"
         :on-add-milestone="handleAddMilestone"
         :on-export-csv="handleCustomCsvExport"

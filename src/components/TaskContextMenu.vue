@@ -279,7 +279,7 @@ onUnmounted(() => {
       :style="{
         left: `${adjustedPosition.x}px`,
         top: `${adjustedPosition.y}px`,
-        zIndex: 3000,
+        zIndex: 10000,
         position: 'fixed',
       }"
     >
@@ -355,7 +355,7 @@ onUnmounted(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   padding: 4px 0;
   width: 180px; /* 调整固定宽度，确保文本不会被截断 */
-  z-index: 1000;
+  z-index: 10000; /* 确保在全屏模式(z-index: 9999)之上显示 */
   user-select: none;
   animation: fadeIn 0.15s ease-out;
   border: 1px solid #e4e7ed;
@@ -520,7 +520,7 @@ onUnmounted(() => {
   border-bottom: 8px solid #fff; /* 匹配菜单背景色 */
   transform-origin: center;
   filter: drop-shadow(0 -1px 2px rgba(0, 0, 0, 0.1)); /* 为箭头添加阴影效果 */
-  z-index: 1001;
+  z-index: 10001; /* 确保在全屏模式之上显示 */
   pointer-events: none; /* 确保箭头不会干扰鼠标事件 */
 }
 
