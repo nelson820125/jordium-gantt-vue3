@@ -347,39 +347,37 @@ const optimizedTimelineData = computed(() => {
     const { startHour, endHour } = visibleHourRange.value
 
     return (cachedData as any[])
-      .map(
-        (day: any) => {
-          // 计算当前天相对于时间线开始的小时偏移
-          const dayStart = new Date(timelineConfig.value.startDate)
-          dayStart.setHours(0, 0, 0, 0)
-          const currentDay = new Date(day.year, day.month - 1, day.day)
-          currentDay.setHours(0, 0, 0, 0)
-          const daysDiff = Math.floor(
-            (currentDay.getTime() - dayStart.getTime()) / (1000 * 60 * 60 * 24),
-          )
-          const totalHourOffset = daysDiff * 24
+      .map((day: any) => {
+        // 计算当前天相对于时间线开始的小时偏移
+        const dayStart = new Date(timelineConfig.value.startDate)
+        dayStart.setHours(0, 0, 0, 0)
+        const currentDay = new Date(day.year, day.month - 1, day.day)
+        currentDay.setHours(0, 0, 0, 0)
+        const daysDiff = Math.floor(
+          (currentDay.getTime() - dayStart.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        const totalHourOffset = daysDiff * 24
 
-          // 计算当前天应该显示的小时范围
-          const dayStartHour = Math.max(0, startHour - totalHourOffset)
-          const dayEndHour = Math.min(day.hours.length, endHour - totalHourOffset)
+        // 计算当前天应该显示的小时范围
+        const dayStartHour = Math.max(0, startHour - totalHourOffset)
+        const dayEndHour = Math.min(day.hours.length, endHour - totalHourOffset)
 
-          return {
-            ...day,
-            hours: dayStartHour < dayEndHour ? day.hours.slice(dayStartHour, dayEndHour) : [],
-            // 全局小时偏移（相对于时间线开始的绝对位置）
-            hourOffset: totalHourOffset + dayStartHour,
-            // 当前天内的小时偏移
-            visibleHourStart: dayStartHour,
-            // 调试信息
-            _debug: {
-              totalHourOffset,
-              dayStartHour,
-              dayEndHour,
-              visibleRange: { startHour, endHour },
-            },
-          }
-        },
-      )
+        return {
+          ...day,
+          hours: dayStartHour < dayEndHour ? day.hours.slice(dayStartHour, dayEndHour) : [],
+          // 全局小时偏移（相对于时间线开始的绝对位置）
+          hourOffset: totalHourOffset + dayStartHour,
+          // 当前天内的小时偏移
+          visibleHourStart: dayStartHour,
+          // 调试信息
+          _debug: {
+            totalHourOffset,
+            dayStartHour,
+            dayEndHour,
+            visibleRange: { startHour, endHour },
+          },
+        }
+      })
       .filter((day: any) => day.hours.length > 0)
   }
 
@@ -457,7 +455,7 @@ const computeAllMilestonesPositions = () => {
         if (!isNaN(milestoneDate.getTime())) {
           const startDiff = Math.floor(
             (milestoneDate.getTime() - timelineConfig.value.startDate.getTime()) /
-              (1000 * 60 * 60 * 24),
+              (1000 * 60 * 60 * 24)
           )
           const left = startDiff * 30 + 30 / 2 - 12 // 30是dayWidth，12是图标半径
 
@@ -491,7 +489,7 @@ const computeAllMilestonesPositions = () => {
       if (!isNaN(milestoneDate.getTime())) {
         const startDiff = Math.floor(
           (milestoneDate.getTime() - timelineConfig.value.startDate.getTime()) /
-            (1000 * 60 * 60 * 24),
+            (1000 * 60 * 60 * 24)
         )
         const left = startDiff * 30 + 30 / 2 - 12
 
@@ -594,7 +592,7 @@ const handleTaskRowHover = (taskId: number | null) => {
   window.dispatchEvent(
     new CustomEvent('timeline-task-hover', {
       detail: taskId,
-    }),
+    })
   )
 }
 
@@ -646,7 +644,7 @@ const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
   window.dispatchEvent(
     new CustomEvent('milestone-icon-changed', {
       detail: { milestoneId, icon },
-    }),
+    })
   )
 }
 
@@ -664,7 +662,7 @@ const handleMilestoneSave = (updatedMilestone: Milestone) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    }),
+    })
   )
 }
 
@@ -677,14 +675,14 @@ const handleMilestoneDelete = (milestoneId: number) => {
   window.dispatchEvent(
     new CustomEvent('milestone-deleted', {
       detail: { milestoneId },
-    }),
+    })
   )
 
   // 广播里程碑数据变化事件，确保Timeline重新渲染
   window.dispatchEvent(
     new CustomEvent('milestone-data-changed', {
       detail: { milestoneId },
-    }),
+    })
   )
 }
 
@@ -699,7 +697,7 @@ const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    }),
+    })
   )
 }
 
@@ -999,7 +997,7 @@ watch(
       clearTimelineCache()
       timelineData.value = generateTimelineData()
     }
-  },
+  }
 )
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
@@ -1014,7 +1012,7 @@ watch(
       })
     }
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 将今日定位到时间线中间位置
@@ -1036,7 +1034,7 @@ const scrollToTodayCenter = (retry = 0) => {
     startNormalized = new Date(
       yearRange.startDate.getFullYear(),
       yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
+      yearRange.startDate.getDate()
     )
   } else if (currentTimeScale.value === TimelineScale.QUARTER) {
     // 季度视图使用与年度视图相同的基准日期，确保坐标系统一致
@@ -1044,13 +1042,13 @@ const scrollToTodayCenter = (retry = 0) => {
     startNormalized = new Date(
       yearRange.startDate.getFullYear(),
       yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
+      yearRange.startDate.getDate()
     )
   } else {
     startNormalized = new Date(
       timelineStart.getFullYear(),
       timelineStart.getMonth(),
-      timelineStart.getDate(),
+      timelineStart.getDate()
     )
   }
 
@@ -1123,7 +1121,7 @@ const scrollToTodayCenter = (retry = 0) => {
     }
 
     const dayOffset = Math.floor(
-      (todayNormalized.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24),
+      (todayNormalized.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)
     )
     const daysInQuarter =
       Math.floor((endOfQuarter.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)) + 1
@@ -1180,7 +1178,7 @@ const getTodayLinePositionInYearView = computed(() => {
   const startNormalized = new Date(
     yearRange.startDate.getFullYear(),
     yearRange.startDate.getMonth(),
-    yearRange.startDate.getDate(),
+    yearRange.startDate.getDate()
   )
 
   const startYear = startNormalized.getFullYear()
@@ -1274,7 +1272,7 @@ const scrollToToday = () => {
   const startNormalized = new Date(
     timelineStart.getFullYear(),
     timelineStart.getMonth(),
-    timelineStart.getDate(),
+    timelineStart.getDate()
   )
 
   // 计算今天距离时间线开始日期的天数
@@ -1325,7 +1323,7 @@ const updateTask = (updatedTask: Task) => {
   window.dispatchEvent(
     new CustomEvent('task-updated', {
       detail: updatedTask,
-    }),
+    })
   )
 }
 
@@ -1385,7 +1383,7 @@ const handleTaskBarContextMenu = (event: { task: Task; position: { x: number; y:
   window.dispatchEvent(
     new CustomEvent('context-menu', {
       detail: event,
-    }),
+    })
   )
 }
 
@@ -1468,7 +1466,7 @@ onMounted(() => {
   // 监听TaskList的垂直滚动事件
   window.addEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener,
+    handleTaskListVerticalScroll as EventListener
   )
   // 监听语言变化
   window.addEventListener('locale-changed', handleLocaleChange as EventListener)
@@ -1478,7 +1476,7 @@ onMounted(() => {
   // 监听Timeline容器resize事件（TaskList切换等）
   window.addEventListener(
     'timeline-container-resized',
-    handleTimelineContainerResized as EventListener,
+    handleTimelineContainerResized as EventListener
   )
 
   // 监听里程碑点击定位事件
@@ -1568,7 +1566,7 @@ const handleTimelineBodyScroll = (event: Event) => {
     window.dispatchEvent(
       new CustomEvent('timeline-vertical-scroll', {
         detail: { scrollTop },
-      }),
+      })
     )
   }
 }
@@ -1581,7 +1579,7 @@ watch(
       updateSvgSize()
     })
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 拖拽滑动相关状态
@@ -1765,7 +1763,7 @@ const startAutoScroll = (direction: 'left' | 'right') => {
     window.dispatchEvent(
       new CustomEvent('timeline-auto-scroll', {
         detail: { scrollDelta: newScrollLeft - currentScrollLeft },
-      }),
+      })
     )
 
     autoScrollTimer = window.setTimeout(scroll, 16) // 约60fps
@@ -1819,14 +1817,14 @@ onUnmounted(() => {
   window.removeEventListener('task-list-hover', handleTaskListHover as EventListener)
   window.removeEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener,
+    handleTaskListVerticalScroll as EventListener
   )
   window.removeEventListener('locale-changed', handleLocaleChange as EventListener)
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
   window.removeEventListener('splitter-drag-end', handleSplitterDragEnd as EventListener)
   window.removeEventListener(
     'timeline-container-resized',
-    handleTimelineContainerResized as EventListener,
+    handleTimelineContainerResized as EventListener
   )
   window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
   window.removeEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
@@ -1937,7 +1935,7 @@ watch(
       }
     })
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 处理里程碑点击定位事件
