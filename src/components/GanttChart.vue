@@ -608,7 +608,7 @@ const tasksForTimeline = computed(() => {
 // 将Task[]转换为Milestone[]的计算属性，确保类型兼容
 const milestonesForTimeline = computed((): Milestone[] => {
   if (!props.milestones) return []
-  
+
   // 过滤出有startDate的里程碑，并转换为Milestone类型
   return props.milestones
     .filter((task): task is Task & { startDate: string } => !!task.startDate)
