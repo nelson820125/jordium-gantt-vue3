@@ -209,4 +209,5 @@
 **如果您为此项目做出了贡献但未在此列表中，请通过 [Github Issues](https://github.com/nelson820125/jordium-gantt-vue3/issues) / [Gitee Issues](https://gitee.com/jordium/jordium-gantt-vue3/issues/issues) 或 [Pull Request](https://github.com/nelson820125/jordium-gantt-vue3/pulls) 告知我们。**
 
 ---
+
 > 💡 **加入我们**: 我们始终欢迎新的贡献者！无论您是初学者还是专家，都有适合您的贡献方式。让我们一起让 jordium-gantt-vue3 变得更加优秀！🚀
