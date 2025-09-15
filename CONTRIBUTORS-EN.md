@@ -29,7 +29,10 @@ Example:
 - **Participation Period**: 2025-01
 -->
 
-*Currently awaiting your first contribution!*
+<img src="https://avatars.githubusercontent.com/u/12778673?v=4" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[gitmigor](https://github.com/gitmigor)
+- **Contribution Type**: Code
+- **Main Contributions**: added language support for task tooltip
+- **Participation Period**: 2025-08
 
 ## 📊 Contribution Statistics
 

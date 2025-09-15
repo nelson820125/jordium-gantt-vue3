@@ -28,8 +28,10 @@
 - **主要贡献**: 实现了时间轴缩放功能，修复了拖拽性能问题
 - **参与时间**: 2025-01
 -->
-
-*目前正在等待您的第一个贡献！*
+<img src="https://avatars.githubusercontent.com/u/12778673?v=4" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[gitmigor](https://github.com/gitmigor)
+- **贡献类型**: 代码开发
+- **主要贡献**: 任务Tooltip语言增强
+- **参与时间**: 2025-08
 
 ## 📊 贡献统计
 
