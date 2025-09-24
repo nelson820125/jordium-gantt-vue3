@@ -20,6 +20,8 @@ const props = withDefaults(defineProps<Props>(), {
   onFullscreenChange: undefined,
   onSettingsConfirm: undefined,
   onTimeScaleChange: undefined,
+  onExpandAll: undefined,
+  onCollapseAll: undefined,
 })
 
 const emit = defineEmits<{
@@ -32,6 +34,8 @@ const emit = defineEmits<{
   'theme-change': [isDark: boolean]
   'fullscreen-change': [isFullscreen: boolean]
   'time-scale-change': [scale: TimelineScale]
+  'expand-all': []
+  'collapse-all': []
 }>()
 
 // LocalStorage keys
@@ -56,6 +60,8 @@ interface Props {
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onTimeScaleChange?: (scale: TimelineScale) => void
+  onExpandAll?: () => void
+  onCollapseAll?: () => void
   // 外部确认接口
   onSettingsConfirm?: (
     type: 'theme' | 'language',
@@ -137,6 +143,23 @@ const handleExportPdf = () => {
     props.onExportPdf()
   } else {
     emit('export-pdf')
+  }
+}
+
+// 展开/折叠处理函数
+const handleExpandAll = () => {
+  if (props.onExpandAll && typeof props.onExpandAll === 'function') {
+    props.onExpandAll()
+  } else {
+    emit('expand-all')
+  }
+}
+
+const handleCollapseAll = () => {
+  if (props.onCollapseAll && typeof props.onCollapseAll === 'function') {
+    props.onCollapseAll()
+  } else {
+    emit('collapse-all')
   }
 }
 
@@ -458,6 +481,45 @@ onUnmounted(() => {
             <line x1="8" y1="12" x2="16" y2="12"></line>
           </svg>
           {{ t('addMilestone') }}
+        </button>
+      </div>
+
+      <!-- 展开/折叠按钮组 -->
+      <div
+        v-if="config.showExpandCollapse !== false"
+        class="btn-group expand-collapse-btn-group"
+      >
+        <button
+          class="btn-group-item"
+          :title="t('expandAll')"
+          @click="handleExpandAll"
+        >
+          <svg
+            class="btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          {{ t('expandAll') }}
+        </button>
+        <button
+          class="btn-group-item"
+          :title="t('collapseAll')"
+          @click="handleCollapseAll"
+        >
+          <svg
+            class="btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+          {{ t('collapseAll') }}
         </button>
       </div>
 

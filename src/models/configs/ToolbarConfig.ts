@@ -13,4 +13,5 @@ export interface ToolbarConfig {
   showTimeScale?: boolean // 显示时间刻度按钮组
   timeScaleDimensions?: TimelineScale[] // 设置时间刻度按钮的展示维度
   defaultTimeScale?: TimelineScale // 默认选中的时间刻度
+  showExpandCollapse?: boolean // 显示全部展开/折叠按钮
 }

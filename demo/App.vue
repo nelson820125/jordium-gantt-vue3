@@ -41,6 +41,7 @@ const toolbarConfig = {
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
   timeScaleDimensions: ['week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
   defaultTimeScale: 'week',
+  showExpandCollapse: true, // 显示全部展开/折叠按钮
 }
 
 // TaskList列配置

@@ -37,6 +37,8 @@ const props = withDefaults(defineProps<Props>(), {
   onLanguageChange: undefined,
   onThemeChange: undefined,
   onFullscreenChange: undefined,
+  onExpandAll: undefined,
+  onCollapseAll: undefined,
   localeMessages: undefined,
   workingHours: () => ({
     morning: { start: 8, end: 11 },
@@ -96,6 +98,8 @@ interface Props {
   onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
+  onExpandAll?: () => void
+  onCollapseAll?: () => void
   /**
    * 自定义多语言（国际化）配置，结构参考内置 messages['zh-CN']，只需传递需要覆盖的 key 即可。
    * 例如：
@@ -344,6 +348,52 @@ const handleTaskCollapseChange = (task: Task) => {
 
   // 触发Timeline重新计算
   updateTaskTrigger.value++
+}
+
+// 全部展开任务
+const handleExpandAll = () => {
+  if (props.onExpandAll && typeof props.onExpandAll === 'function') {
+    props.onExpandAll()
+  } else {
+    // 默认行为：递归展开所有任务
+    const expandAllTasks = (tasks: Task[]): void => {
+      tasks.forEach(task => {
+        if (task.children && task.children.length > 0) {
+          task.collapsed = false
+          expandAllTasks(task.children)
+        }
+      })
+    }
+
+    if (props.tasks) {
+      expandAllTasks(props.tasks)
+      // 触发Timeline重新计算
+      updateTaskTrigger.value++
+    }
+  }
+}
+
+// 全部折叠任务
+const handleCollapseAll = () => {
+  if (props.onCollapseAll && typeof props.onCollapseAll === 'function') {
+    props.onCollapseAll()
+  } else {
+    // 默认行为：递归折叠所有任务
+    const collapseAllTasks = (tasks: Task[]): void => {
+      tasks.forEach(task => {
+        if (task.children && task.children.length > 0) {
+          task.collapsed = true
+          collapseAllTasks(task.children)
+        }
+      })
+    }
+
+    if (props.tasks) {
+      collapseAllTasks(props.tasks)
+      // 触发Timeline重新计算
+      updateTaskTrigger.value++
+    }
+  }
 }
 
 // 用于强制触发Timeline重新计算的响应式值
@@ -1528,7 +1578,11 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
       :on-theme-change="props.onThemeChange"
       :on-fullscreen-change="props.onFullscreenChange"
       :on-time-scale-change="handleTimeScaleChange"
+      :on-expand-all="handleExpandAll"
+      :on-collapse-all="handleCollapseAll"
       @add-task="handleToolbarAddTask"
+      @expand-all="handleExpandAll"
+      @collapse-all="handleCollapseAll"
     />
 
     <!-- 甘特图主体 -->
