@@ -392,7 +392,7 @@ onUnmounted(() => {
         v-for="column in columns"
         :key="column.key"
         class="col"
-        :class="`col-${column.key}`"
+        :class="column.cssClass || `col-${column.key}`"
       >
         <!-- 里程碑分组显示空列 -->
         <template v-if="isMilestoneGroup">

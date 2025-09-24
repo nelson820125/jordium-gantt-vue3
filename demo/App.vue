@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import GanttChart from '../src/components/GanttChart.vue'
 // import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
@@ -39,7 +39,8 @@ const toolbarConfig = {
   showTheme: true,
   showFullscreen: true,
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
-  timeScaleDimensions: ['hour', 'day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+  timeScaleDimensions: ['week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+  defaultTimeScale: 'week',
 }
 
 // TaskList列配置
@@ -53,9 +54,9 @@ const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'progress', label: '进度', visible: true },
 ])
 
-const taskListConfig = ref<TaskListConfig>({
+const taskListConfig = computed<TaskListConfig>(() => ({
   columns: availableColumns.value,
-})
+}))
 
 // 切换列显示状态
 const toggleColumn = (columnKey: string, event: Event) => {
@@ -65,14 +66,8 @@ const toggleColumn = (columnKey: string, event: Event) => {
   const column = availableColumns.value.find(col => col.key === columnKey)
   if (column) {
     column.visible = visible
-    // 更新taskListConfig以触发响应式更新
-    taskListConfig.value = {
-      columns: [...availableColumns.value],
-    }
   }
-}
-
-// 工作时间配置示例
+}// 工作时间配置示例
 const workingHoursConfig = {
   morning: { start: 8, end: 11 }, // 上午8:00-11:59为工作时间
   afternoon: { start: 13, end: 17 }, // 下午13:00-17:00为工作时间

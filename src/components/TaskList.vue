@@ -39,13 +39,9 @@ const { t } = useI18n()
 // 计算可见的列配置
 const visibleColumns = computed(() => {
   const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
-  const showAllColumns = props.taskListConfig?.showAllColumns ?? true
 
-  if (!showAllColumns) {
-    return columns.filter(col => col.visible !== false)
-  }
-
-  return columns
+  // 过滤出可见的列（visible !== false）
+  return columns.filter(col => col.visible !== false)
 })
 
 // 内部响应式任务列表
@@ -400,14 +396,19 @@ onUnmounted(() => {
 <template>
   <div class="task-list">
     <div class="task-list-header">
+      <!-- 任务名称列，始终显示 -->
+      <div class="col col-name">
+        {{ (t as any).taskName || '任务名称' }}
+      </div>
+      <!-- 可配置的其他列 -->
       <div
         v-for="column in visibleColumns"
-        :key="column.type"
+        :key="column.key"
         class="col"
-        :class="column.cssClass"
+        :class="column.cssClass || `col-${column.key}`"
         :style="column.width ? { width: column.width + 'px' } : undefined"
       >
-        {{ (t as any)[column.key] }}
+        {{ column.label || (t as any)[column.key] }}
       </div>
     </div>
     <div class="task-list-body" @scroll="handleTaskListScroll">
