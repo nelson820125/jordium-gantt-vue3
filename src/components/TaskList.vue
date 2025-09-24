@@ -423,6 +423,7 @@ onUnmounted(() => {
 
 <style scoped>
 @import '../styles/theme-variables.css';
+@import '../styles/list.css';
 
 .task-list {
   width: 100%;
@@ -455,58 +456,12 @@ onUnmounted(() => {
   z-index: 10; /* 确保在滚动时保持在最上层 */
 }
 
-.col {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light);
-  box-sizing: border-box;
-  overflow: hidden;
-  font-weight: 400;
-}
-
 .task-list-header .col {
   justify-content: center;
   font-weight: 700;
   background: var(--gantt-bg-secondary);
   color: var(--gantt-text-header);
   border-right-color: var(--gantt-border-medium);
-}
-
-.col:last-child {
-  border-right: none;
-}
-
-.col-name {
-  flex: 2 0 300px;
-  min-width: 300px;
-  justify-content: flex-start;
-}
-
-.col-pre {
-  flex: 1 0 120px;
-  min-width: 120px;
-}
-
-.col-assignee {
-  flex: 1 0 120px;
-  min-width: 120px;
-}
-
-.col-date {
-  flex: 1.2 0 140px;
-  min-width: 140px;
-}
-
-.col-hours {
-  flex: 1 0 100px;
-  min-width: 100px;
-}
-
-.col-progress {
-  flex: 1 0 100px;
-  min-width: 100px;
 }
 
 .task-list-body {

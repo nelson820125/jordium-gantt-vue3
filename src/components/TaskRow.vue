@@ -460,6 +460,7 @@ onUnmounted(() => {
 
 <style scoped>
 @import '../styles/theme-variables.css';
+@import '../styles/list.css';
 
 .task-row {
   display: flex;
@@ -609,51 +610,6 @@ onUnmounted(() => {
   width: 18px;
   height: 18px;
   margin-right: 4px;
-}
-
-.col {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light);
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.col:last-child {
-  border-right: none;
-}
-
-.col-name {
-  flex: 2 0 300px;
-  min-width: 300px;
-  justify-content: flex-start;
-}
-
-.col-pre {
-  flex: 1 0 120px;
-  min-width: 120px;
-}
-
-.col-assignee {
-  flex: 1 0 120px;
-  min-width: 120px;
-}
-
-.col-date {
-  flex: 1.2 0 140px;
-  min-width: 140px;
-}
-
-.col-hours {
-  flex: 1 0 100px;
-  min-width: 100px;
-}
-
-.col-progress {
-  flex: 1 0 100px;
-  min-width: 100px;
 }
 
 .task-name-text {

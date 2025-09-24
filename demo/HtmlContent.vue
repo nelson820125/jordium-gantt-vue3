@@ -1,20 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { Task } from '../src/models/Task'
 
 interface Props {
   task: Task,
   type: 'task-row' | 'task-bar'
 }
-
 const props = withDefaults(defineProps<Props>(), {
   color: '#409eff',
   progress: 0,
 })
-console.error("props", props)
-function handleButtonClick() {
-  alert('hello')
-}
+// console.error('props', props)
 </script>
 
 <template>
