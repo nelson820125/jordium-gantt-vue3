@@ -1029,15 +1029,10 @@ const scrollToTodayCenter = (retry = 0) => {
 
   // 年度视图和季度视图需要使用实际的timeline绘制起始日期
   let startNormalized: Date
-  if (currentTimeScale.value === TimelineScale.YEAR) {
-    const yearRange = getYearTimelineRange()
-    startNormalized = new Date(
-      yearRange.startDate.getFullYear(),
-      yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
-    )
-  } else if (currentTimeScale.value === TimelineScale.QUARTER) {
-    // 季度视图使用与年度视图相同的基准日期，确保坐标系统一致
+  if (
+    currentTimeScale.value === TimelineScale.YEAR ||
+    currentTimeScale.value === TimelineScale.QUARTER
+  ) {
     const yearRange = getYearTimelineRange()
     startNormalized = new Date(
       yearRange.startDate.getFullYear(),
@@ -1091,7 +1086,7 @@ const scrollToTodayCenter = (retry = 0) => {
     const month = todayNormalized.getMonth() + 1
     let quarter = 1
     if (month >= 1 && month <= 3) {
-      quarter = 1 // Q1: 1-3月
+      // Q1: 1-3月
     } else if (month >= 4 && month <= 6) {
       quarter = 2 // Q2: 4-6月
     } else if (month >= 7 && month <= 9) {
@@ -3475,152 +3470,6 @@ const handleAddSuccessor = (task: Task) => {
   opacity: 0.15;
 }
 
-/* 小时视图专用样式 */
-.date-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-medium, #e1e4e8);
-  position: relative;
-  overflow: hidden;
-}
-
-.hours-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-}
-
-.timeline-day-item {
-  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
-  background-color: var(--gantt-bg-secondary, #f6f8fa);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  box-sizing: border-box;
-}
-
-/* 小时视图日期项专用样式 */
-.timeline-day-item.hour-view-day {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
-  background-color: var(--gantt-bg-secondary, #f6f8fa);
-}
-
-.timeline-hour-item {
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.hour-column {
-  position: absolute;
-  top: 0;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-}
-
-.date-label {
-  color: var(--gantt-text-header, #24292e);
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.hours-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-}
-
-.timeline-hour-item {
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.timeline-hour-item.today {
-  background-color: var(--gantt-primary);
-  color: var(--gantt-text-white);
-}
-
-.hour-label {
-  color: var(--gantt-text-primary, #24292e);
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 1.3;
-  text-align: center;
-  letter-spacing: 0px;
-}
-
-.timeline-hour-item.today .hour-label {
-  color: var(--gantt-text-white);
-}
-
-.hour-column {
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-}
-
-.hour-column.weekend {
-  background-color: var(--gantt-bg-secondary, #f5f7fa);
-  opacity: 0.6;
-}
-
-.hour-column.rest-hour {
-  background-color: var(--gantt-bg-secondary, #f5f7fa);
-  opacity: 0.6;
-}
-
-.hour-column.working-hour {
-  background-color: var(--gantt-bg-primary, #ffffff);
-}
-
-.hour-column.today {
-  background-color: var(--gantt-primary-color, #409eff);
-  opacity: 0.2;
-  border-left: 2px solid var(--gantt-primary-color, #409eff);
-}
-
-/* 15分钟刻度线样式 */
-.quarter-hour-lines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-.quarter-line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: var(--gantt-border-light, #d1d5da);
-  opacity: 0.5;
-}
-
 /* 年度视图样式 */
 .half-years-row {
   min-height: 36px;
@@ -3785,13 +3634,7 @@ const handleAddSuccessor = (task: Task) => {
   overflow: hidden;
 }
 
-.hours-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-}
-
+/*---------------*/
 .timeline-day-item {
   top: 0;
   height: 100%;
@@ -3804,6 +3647,60 @@ const handleAddSuccessor = (task: Task) => {
   box-sizing: border-box;
 }
 
+/* 小时视图日期项专用样式 */
+.timeline-day-item.hour-view-day {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
+  background-color: var(--gantt-bg-secondary, #f6f8fa);
+}
+
+.date-label {
+  color: var(--gantt-text-header, #24292e);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.hours-row {
+  min-height: 40px;
+  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.hour-label {
+  color: var(--gantt-text-primary, #24292e);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+  letter-spacing: 0px;
+}
+
+/* 15分钟刻度线样式 */
+.quarter-hour-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.quarter-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--gantt-border-light, #d1d5da);
+  opacity: 0.5;
+}
+/**------------------------ */
+
 .timeline-hour-item {
   top: 0;
   height: 100%;
@@ -3814,6 +3711,16 @@ const handleAddSuccessor = (task: Task) => {
   min-height: 40px;
   transition: background-color 0.2s ease;
   box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.timeline-hour-item.today {
+  background-color: var(--gantt-primary);
+  color: var(--gantt-text-white);
+}
+
+.timeline-hour-item.today .hour-label {
+  color: var(--gantt-text-white);
 }
 
 /* 小时视图非工作时间样式 - 参考日视图周末样式 */
@@ -3830,59 +3737,44 @@ const handleAddSuccessor = (task: Task) => {
   position: relative;
   min-width: 100%;
   min-height: 100px;
+  display: flex;
 }
 
 .hour-column {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  pointer-events: none;
-  background-color: transparent;
-  z-index: 1;
-}
-
-.hour-column:hover {
-  background-color: var(--gantt-hover-bg, rgba(0, 123, 255, 0.1));
-}
-.hour-columns-container {
-  position: relative;
-  display: flex;
-  min-width: 100%;
-}
-
-/* 小时视图header容器 */
-.hour-header-container {
-  position: relative;
-  min-width: 100%;
-}
-
-.date-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-}
-
-.hour-column {
   border-right: 1px solid var(--gantt-border-light, #e0e6ed);
   background-color: var(--gantt-bg-primary, #ffffff);
   transition: background-color 0.2s ease;
   box-sizing: border-box;
   flex-shrink: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.hour-column:hover {
-  background-color: var(--gantt-bg-hover, rgba(64, 158, 255, 0.05));
+.hour-column.weekend {
+  background-color: var(--gantt-bg-secondary, #f5f7fa);
+  opacity: 0.6;
 }
 
-.hour-column.today {
-  background-color: var(--gantt-primary-color, #f0f9ff);
-  border-left: 2px solid var(--gantt-primary-color, #409eff);
+.hour-column.rest-hour {
+  background-color: var(--gantt-bg-secondary, #f5f7fa);
+  opacity: 0.6;
 }
 
 .hour-column.working-hour {
   background-color: var(--gantt-bg-primary, #ffffff);
+}
+
+.hour-column.today {
+  background-color: var(--gantt-primary-color, #409eff);
+  opacity: 0.2;
+  border-left: 2px solid var(--gantt-primary-color, #409eff);
+}
+
+.hour-column:hover {
+  background-color: var(--gantt-bg-hover, rgba(64, 158, 255, 0.05));
 }
 
 /* 小时视图暗色主题样式 */

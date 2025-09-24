@@ -1468,7 +1468,6 @@ onUnmounted(() => {
   user-select: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.2s;
-  /*min-width: 60px;*/
   z-index: 100;
   border: 2px solid;
   overflow: visible; /* 允许内容超出 TaskBar */

@@ -645,7 +645,7 @@ const calculateQuarterViewMilestonePosition = (targetDate: Date, baseStartDate: 
   const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
   let quarter = 1
   if (month >= 1 && month <= 3) {
-    quarter = 1 // Q1: 1-3月
+    // Q1: 1-3月
   } else if (month >= 4 && month <= 6) {
     quarter = 2 // Q2: 4-6月
   } else if (month >= 7 && month <= 9) {
