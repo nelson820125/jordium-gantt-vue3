@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch, useSlots } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
+import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
 import TaskContextMenu from './TaskContextMenu.vue'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   isHovered?: boolean
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
+  columns: TaskListColumnConfig[]
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
@@ -385,38 +387,62 @@ onUnmounted(() => {
         </span>
       </div>
 
-      <!-- 里程碑分组不显示详细信息 -->
-      <template v-if="isMilestoneGroup">
-        <div class="col col-pre milestone-empty-col"></div>
-        <div class="col col-assignee milestone-empty-col"></div>
-        <div class="col col-date milestone-empty-col"></div>
-        <div class="col col-date milestone-empty-col"></div>
-        <div class="col col-hours milestone-empty-col"></div>
-        <div class="col col-hours milestone-empty-col"></div>
-        <div class="col col-progress milestone-empty-col"></div>
-      </template>
+      <!-- 动态渲染列 -->
+      <div
+        v-for="column in columns"
+        :key="column.key"
+        class="col"
+        :class="`col-${column.key}`"
+      >
+        <!-- 里程碑分组显示空列 -->
+        <template v-if="isMilestoneGroup">
+          <div class="milestone-empty-col"></div>
+        </template>
+        <!-- 普通任务显示具体内容 -->
+        <template v-else>
+          <!-- 前置任务列 -->
+          <template v-if="column.key === 'predecessor'">
+            {{ formatPredecessorDisplay(props.task.predecessor) }}
+          </template>
 
-      <!-- 普通任务显示详细信息 -->
-      <template v-else>
-        <div class="col col-pre">{{ formatPredecessorDisplay(props.task.predecessor) }}</div>
-        <div class="col col-assignee">
-          <div class="assignee-info">
-            <div class="avatar">
-              {{ props.task.assignee ? props.task.assignee.charAt(0) : '-' }}
+          <!-- 负责人列 -->
+          <template v-else-if="column.key === 'assignee'">
+            <div class="assignee-info">
+              <div class="avatar">
+                {{ props.task.assignee ? props.task.assignee.charAt(0) : '-' }}
+              </div>
+              <span class="assignee-name">{{ props.task.assignee || '-' }}</span>
             </div>
-            <span class="assignee-name">{{ props.task.assignee || '-' }}</span>
-          </div>
-        </div>
-        <div class="col col-date">{{ props.task.startDate || '-' }}</div>
-        <div class="col col-date">{{ props.task.endDate || '-' }}</div>
-        <div class="col col-hours">{{ props.task.estimatedHours || '-' }}</div>
-        <div class="col col-hours">{{ props.task.actualHours || '-' }}</div>
-        <div class="col col-progress">
-          <span class="progress-value" :class="progressClass">
-            {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
-          </span>
-        </div>
-      </template>
+          </template>
+
+          <!-- 开始日期列 -->
+          <template v-else-if="column.key === 'startDate'">
+            {{ props.task.startDate || '-' }}
+          </template>
+
+          <!-- 结束日期列 -->
+          <template v-else-if="column.key === 'endDate'">
+            {{ props.task.endDate || '-' }}
+          </template>
+
+          <!-- 预估工时列 -->
+          <template v-else-if="column.key === 'estimatedHours'">
+            {{ props.task.estimatedHours || '-' }}
+          </template>
+
+          <!-- 实际工时列 -->
+          <template v-else-if="column.key === 'actualHours'">
+            {{ props.task.actualHours || '-' }}
+          </template>
+
+          <!-- 进度列 -->
+          <template v-else-if="column.key === 'progress'">
+            <span class="progress-value" :class="progressClass">
+              {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
+            </span>
+          </template>
+        </template>
+      </div>
     </div>
     <template
       v-if="hasChildren && !props.task.collapsed && !isMilestoneGroup"
@@ -430,6 +456,7 @@ onUnmounted(() => {
         :hovered-task-id="props.hoveredTaskId"
         :on-double-click="props.onDoubleClick"
         :on-hover="props.onHover"
+        :columns="props.columns"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
         @start-timer="emit('start-timer', $event)"
@@ -438,7 +465,7 @@ onUnmounted(() => {
         @add-successor="emit('add-successor', $event)"
         @delete="handleTaskDelete"
       >
-        <template v-if="hasContentSlot" #custom-task-content="childScope: any">
+        <template v-if="hasContentSlot" #custom-task-content="childScope">
           <slot name="custom-task-content" v-bind="childScope" />
         </template>
       </TaskRow>

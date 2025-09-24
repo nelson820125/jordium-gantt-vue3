@@ -11,6 +11,7 @@ import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
+import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import { useMessage } from '../composables/useMessage'
 
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  taskListConfig: undefined,
 })
 
 const emit = defineEmits([
@@ -107,6 +109,8 @@ interface Props {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
     afternoon?: { start: number; end: number } // 下午工作时间，如 { start: 13, end: 17 }
   }
+  // 任务列表配置
+  taskListConfig?: TaskListConfig
 }
 
 const leftPanelWidth = ref(320)
@@ -1539,6 +1543,7 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           :on-task-double-click="props.onTaskDoubleClick"
           :edit-component="props.editComponent"
           :use-default-drawer="props.useDefaultDrawer"
+          :task-list-config="props.taskListConfig"
           @task-collapse-change="handleTaskCollapseChange"
           @start-timer="handleStartTimer"
           @stop-timer="handleStopTimer"

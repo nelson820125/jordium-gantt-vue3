@@ -4,12 +4,15 @@ import type { Component } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
+import type { TaskListConfig } from '../models/configs/TaskListConfig'
+import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 
 interface Props {
   tasks?: Task[]
   onTaskDoubleClick?: (task: Task) => void
   editComponent?: Component
   useDefaultDrawer?: boolean
+  taskListConfig?: TaskListConfig
 }
 
 const props = defineProps<Props>()
@@ -32,6 +35,18 @@ const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
 
 // 多语言支持
 const { t } = useI18n()
+
+// 计算可见的列配置
+const visibleColumns = computed(() => {
+  const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
+  const showAllColumns = props.taskListConfig?.showAllColumns ?? true
+
+  if (!showAllColumns) {
+    return columns.filter(col => col.visible !== false)
+  }
+
+  return columns
+})
 
 // 内部响应式任务列表
 const localTasks = ref<Task[]>([])
@@ -385,14 +400,15 @@ onUnmounted(() => {
 <template>
   <div class="task-list">
     <div class="task-list-header">
-      <div class="col col-name">{{ t.taskName }}</div>
-      <div class="col col-pre">{{ t.predecessor }}</div>
-      <div class="col col-assignee">{{ t.assignee }}</div>
-      <div class="col col-date">{{ t.startDate }}</div>
-      <div class="col col-date">{{ t.endDate }}</div>
-      <div class="col col-hours">{{ t.estimatedHours }}</div>
-      <div class="col col-hours">{{ t.actualHours }}</div>
-      <div class="col col-progress">{{ t.progress }}</div>
+      <div
+        v-for="column in visibleColumns"
+        :key="column.type"
+        class="col"
+        :class="column.cssClass"
+        :style="column.width ? { width: column.width + 'px' } : undefined"
+      >
+        {{ (t as any)[column.key] }}
+      </div>
     </div>
     <div class="task-list-body" @scroll="handleTaskListScroll">
       <TaskRow
@@ -404,6 +420,7 @@ onUnmounted(() => {
         :hovered-task-id="hoveredTaskId"
         :on-double-click="props.onTaskDoubleClick"
         :on-hover="handleTaskRowHover"
+        :columns="visibleColumns"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"

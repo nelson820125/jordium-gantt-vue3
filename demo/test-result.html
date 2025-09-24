@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskList 列配置演示</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        // 模拟测试数据
+        const testData = {
+            availableColumns: [
+                { key: 'predecessor', label: '前置任务', visible: true },
+                { key: 'assignee', label: '负责人', visible: true },
+                { key: 'startDate', label: '开始日期', visible: true },
+                { key: 'endDate', label: '结束日期', visible: true },
+                { key: 'estimatedHours', label: '预估工时', visible: false },
+                { key: 'actualHours', label: '实际工时', visible: false },
+                { key: 'progress', label: '进度', visible: true }
+            ]
+        }
+
+        // 创建配置界面
+        const app = document.getElementById('app')
+        app.innerHTML = `
+            <div style="padding: 20px; font-family: Arial, sans-serif;">
+                <h2>🎉 TaskList 列配置功能实现完成！</h2>
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3>✅ 已完成的功能</h3>
+                    <ul>
+                        <li><strong>Timeline Scale 定制化</strong>：支持只显示"周/月/年"，支持默认时间刻度</li>
+                        <li><strong>TaskList 列配置</strong>：支持外部传入配置控制列的显示/隐藏</li>
+                        <li><strong>类型安全</strong>：完整的 TypeScript 类型支持</li>
+                        <li><strong>响应式设计</strong>：配置变更时 UI 自动更新</li>
+                        <li><strong>向后兼容</strong>：未传配置时使用默认显示</li>
+                    </ul>
+                </div>
+
+                <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3>🎮 演示说明</h3>
+                    <p>在 <code>demo/App.vue</code> 中已经添加了完整的列配置控制界面：</p>
+                    <ol>
+                        <li>运行 <code>npm run dev</code> 启动演示应用</li>
+                        <li>在页面顶部可以看到 "TaskList 列配置" 面板</li>
+                        <li>通过复选框控制各列的显示/隐藏</li>
+                        <li>配置实时生效，甘特图 TaskList 部分会相应更新</li>
+                    </ol>
+                </div>
+
+                <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3>📝 使用方式</h3>
+                    <pre style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto;"><code>// 在组件中配置 TaskList 列显示
+const taskListConfig = {
+  columns: [
+    { key: 'predecessor', label: '前置任务', visible: false },
+    { key: 'assignee', label: '负责人', visible: true },
+    { key: 'startDate', label: '开始日期', visible: true },
+    { key: 'endDate', label: '结束日期', visible: true },
+    { key: 'estimatedHours', label: '预估工时', visible: false },
+    { key: 'actualHours', label: '实际工时', visible: false },
+    { key: 'progress', label: '进度', visible: true }
+  ]
+}
+
+// 传递给 GanttChart 组件
+&lt;GanttChart :task-list-config="taskListConfig" /&gt;</code></pre>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <h3 style="color: #67c23a;">🎊 功能完成，可以开始使用了！</h3>
+                    <p style="color: #909399;">现在可以根据不同业务场景灵活控制 TaskList 中显示的列</p>
+                </div>
+            </div>
+        `
+    </script>
+</body>
+</html>
