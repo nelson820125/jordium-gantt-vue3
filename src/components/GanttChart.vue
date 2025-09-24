@@ -117,6 +117,15 @@ const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
+watch(
+  () => timelineRef.value,
+  newTimeline => {
+    if (newTimeline) {
+      newTimeline.updateTimeScale(currentTimeScale.value)
+    }
+  },
+)
+
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
 // 列宽: 300+120+120+140+140+100+100+100 = 1120px
 // 边框: 7个列间边框 * 1px = 7px

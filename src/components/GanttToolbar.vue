@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
@@ -266,6 +266,44 @@ const handleFullscreenToggle = () => {
   }
 }
 
+// 时间刻度配置映射
+const timeScaleMap = {
+  hour: { value: TimelineScale.HOUR, label: () => t('timeScaleHour') },
+  day: { value: TimelineScale.DAY, label: () => t('timeScaleDay') },
+  week: { value: TimelineScale.WEEK, label: () => t('timeScaleWeek') },
+  month: { value: TimelineScale.MONTH, label: () => t('timeScaleMonth') },
+  quarter: { value: TimelineScale.QUARTER, label: () => t('timeScaleQuarter') },
+  year: { value: TimelineScale.YEAR, label: () => t('timeScaleYear') },
+}
+
+type TimeScaleKey = keyof typeof timeScaleMap
+const defaultScaleKeys: TimeScaleKey[] = ['hour', 'day', 'week', 'month', 'year']
+
+// 获取可用的时间刻度维度
+const availableTimeScales = computed<TimeScaleKey[]>(() => {
+  const configured = props.config?.timeScaleDimensions as TimeScaleKey[] | undefined
+  const normalized = (configured ?? defaultScaleKeys).filter(
+    (scale): scale is TimeScaleKey => scale in timeScaleMap,
+  )
+  return normalized.length > 0 ? normalized : [...defaultScaleKeys]
+})
+
+// 根据配置解析默认时间刻度
+const resolvedDefaultScaleKey = computed<TimeScaleKey>(() => {
+  const keys = availableTimeScales.value
+  const candidate = props.config?.defaultTimeScale as TimeScaleKey | undefined
+
+  if (candidate && keys.includes(candidate)) {
+    return candidate
+  }
+
+  if (keys.includes('day')) {
+    return 'day'
+  }
+
+  return keys[0] ?? 'day'
+})
+
 // 时间刻度切换处理
 const handleTimeScaleChange = (scale: TimelineScale) => {
   currentTimeScale.value = scale
@@ -277,28 +315,26 @@ const handleTimeScaleChange = (scale: TimelineScale) => {
   }
 }
 
-// 获取可用的时间刻度维度
-const availableTimeScales = computed(() => {
-  const defaultScales = ['hour', 'day', 'week', 'month', 'year'] as const
-  return props.config?.timeScaleDimensions || defaultScales
-})
-
-// 时间刻度配置映射
-const timeScaleMap = {
-  hour: { value: TimelineScale.HOUR, label: () => t('timeScaleHour') },
-  day: { value: TimelineScale.DAY, label: () => t('timeScaleDay') },
-  week: { value: TimelineScale.WEEK, label: () => t('timeScaleWeek') },
-  month: { value: TimelineScale.MONTH, label: () => t('timeScaleMonth') },
-  quarter: { value: TimelineScale.QUARTER, label: () => t('timeScaleQuarter') },
-  year: { value: TimelineScale.YEAR, label: () => t('timeScaleYear') },
-}
+// 监听配置变化并应用默认时间刻度
+let hasAppliedConfigScale = false
+watch(
+  () => resolvedDefaultScaleKey.value,
+  newKey => {
+    const targetScale = timeScaleMap[newKey].value
+    if (currentTimeScale.value !== targetScale || !hasAppliedConfigScale) {
+      hasAppliedConfigScale = true
+      handleTimeScaleChange(targetScale)
+    }
+  },
+  { immediate: true },
+)
 
 // 获取当前时间刻度对应的字符串键
-const currentTimeScaleKey = computed(() => {
-  const entry = Object.entries(timeScaleMap).find(
-    ([, config]) => config.value === currentTimeScale.value,
+const currentTimeScaleKey = computed<TimeScaleKey>(() => {
+  const matchedKey = availableTimeScales.value.find(
+    scaleKey => timeScaleMap[scaleKey].value === currentTimeScale.value,
   )
-  return entry ? entry[0] : 'day'
+  return matchedKey ?? resolvedDefaultScaleKey.value
 })
 
 // 计算分段控制器滑块位置
