@@ -61,7 +61,7 @@ const handleTaskRowHover = (taskId: number | null) => {
   window.dispatchEvent(
     new CustomEvent('task-list-hover', {
       detail: taskId,
-    }),
+    })
   )
 }
 
@@ -85,14 +85,14 @@ const handleTaskRowDoubleClick = (task: Task) => {
     window.dispatchEvent(
       new CustomEvent('task-row-double-click', {
         detail: task,
-      }),
+      })
     )
   }
 }
 
 // 计算父级任务的进度和日期范围
 const calculateParentTaskData = (
-  task: Task,
+  task: Task
 ): { progress: number; startDate: string; endDate: string } => {
   if (!task.children || task.children.length === 0) {
     return {
@@ -198,7 +198,7 @@ watch(
     // 更新父级任务数据
     updateParentTasksData()
   },
-  { immediate: true, deep: true },
+  { immediate: true, deep: true }
 )
 
 function toggleCollapse(task: Task) {
@@ -258,7 +258,7 @@ const handleRequestTaskList = () => {
   window.dispatchEvent(
     new CustomEvent('task-list-updated', {
       detail: allTasks,
-    }),
+    })
   )
 }
 
@@ -297,7 +297,7 @@ const handleTaskListScroll = (event: Event) => {
   window.dispatchEvent(
     new CustomEvent('task-list-vertical-scroll', {
       detail: { scrollTop },
-    }),
+    })
   )
 }
 
@@ -319,7 +319,7 @@ const handleTaskRowContextMenu = (event: { task: Task; position: { x: number; y:
     window.dispatchEvent(
       new CustomEvent('context-menu', {
         detail: event,
-      }),
+      })
     )
   } catch (error) {
     console.error('TaskList - Failed to dispatch context-menu event', error)
@@ -371,7 +371,7 @@ onUnmounted(() => {
   window.removeEventListener('timeline-task-hover', handleTimelineHover as EventListener)
   window.removeEventListener(
     'timeline-vertical-scroll',
-    handleTimelineVerticalScroll as EventListener,
+    handleTimelineVerticalScroll as EventListener
   )
   window.removeEventListener('milestone-icon-changed', handleMilestoneIconChange as EventListener)
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
@@ -473,33 +473,33 @@ onUnmounted(() => {
 
 .col-name {
   flex: 2 0 300px;
-  min-width: 300px;
+  max-width: 300px;
   justify-content: flex-start;
 }
 
 .col-pre {
   flex: 1 0 120px;
-  min-width: 120px;
+  max-width: 120px;
 }
 
 .col-assignee {
-  flex: 1 0 120px;
-  min-width: 120px;
+  flex: 1 0 200px;
+  max-width: 200px;
 }
 
 .col-date {
   flex: 1.2 0 140px;
-  min-width: 140px;
+  max-width: 140px;
 }
 
 .col-hours {
   flex: 1 0 100px;
-  min-width: 100px;
+  max-width: 100px;
 }
 
 .col-progress {
   flex: 1 0 100px;
-  min-width: 100px;
+  max-width: 100px;
 }
 
 .task-list-body {

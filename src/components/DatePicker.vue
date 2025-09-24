@@ -168,7 +168,7 @@ watch(
       selectedTime.value = parsed.timeStr
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 处理单日期输入变化（预留，当前版本不使用）
@@ -297,7 +297,7 @@ const scrollToSelectedTime = () => {
       const containerHeight = 160 // el-time-column-list 的高度
       const scrollTop = Math.max(
         0,
-        selectedHourIndex * itemHeight - containerHeight / 2 + itemHeight / 2,
+        selectedHourIndex * itemHeight - containerHeight / 2 + itemHeight / 2
       )
       hourListRef.value.scrollTop = scrollTop
     }
@@ -312,7 +312,7 @@ const scrollToSelectedTime = () => {
       const containerHeight = 160
       const scrollTop = Math.max(
         0,
-        selectedMinuteIndex * itemHeight - containerHeight / 2 + itemHeight / 2,
+        selectedMinuteIndex * itemHeight - containerHeight / 2 + itemHeight / 2
       )
       minuteListRef.value.scrollTop = scrollTop
     }
@@ -365,18 +365,16 @@ const confirmDate = () => {
       emit('update:modelValue', newValue)
       emit('change', newValue)
     }
-  } else {
-    if (singleValue.value) {
-      // 格式化日期和时间
-      const date = new Date(singleValue.value)
-      const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
-      const formattedDateTime = selectedTime.value
-        ? `${dateFormat} ${selectedTime.value}`
-        : dateFormat
+  } else if (singleValue.value) {
+    // 格式化日期和时间
+    const date = new Date(singleValue.value)
+    const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+    const formattedDateTime = selectedTime.value
+      ? `${dateFormat} ${selectedTime.value}`
+      : dateFormat
 
-      emit('update:modelValue', formattedDateTime)
-      emit('change', formattedDateTime)
-    }
+    emit('update:modelValue', formattedDateTime)
+    emit('change', formattedDateTime)
   }
 
   // 确认后关闭面板
@@ -746,14 +744,6 @@ const handlePickerBlur = () => {
   }
 }
 
-// 时间选择器获得焦点时取消关闭
-const handleTimePickerFocus = () => {
-  if (blurTimer.value) {
-    clearTimeout(blurTimer.value)
-    blurTimer.value = null
-  }
-}
-
 // 时间选择器失去焦点时关闭
 const handleTimePickerBlur = () => {
   blurTimer.value = setTimeout(() => {
@@ -972,7 +962,7 @@ const timePickerStyle = computed(() => {
           tabindex="-1"
           @click.stop
           @mousedown.prevent
-          @focus="handleTimePickerFocus"
+          @focus="handlePickerFocus"
           @blur="handleTimePickerBlur"
         >
           <div class="el-time-picker-header">
@@ -1157,8 +1147,9 @@ const timePickerStyle = computed(() => {
 
             <!-- 时间选择器输入框 -->
             <div class="el-time-picker-input">
-              <label class="el-time-picker-label">{{ t.time }}:</label>
+              <label class="el-time-picker-label" for="time-input">{{ t.time }}:</label>
               <input
+                id="time-input"
                 ref="timeInputRef"
                 type="text"
                 class="el-time-input"

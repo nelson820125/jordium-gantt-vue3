@@ -186,7 +186,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 右键菜单相关状态
@@ -596,33 +596,33 @@ onUnmounted(() => {
 
 .col-name {
   flex: 2 0 300px;
-  min-width: 300px;
+  max-width: 300px;
   justify-content: flex-start;
 }
 
 .col-pre {
   flex: 1 0 120px;
-  min-width: 120px;
+  max-width: 120px;
 }
 
 .col-assignee {
-  flex: 1 0 120px;
-  min-width: 120px;
+  flex: 1 0 200px;
+  max-width: 200px;
 }
 
 .col-date {
   flex: 1.2 0 140px;
-  min-width: 140px;
+  max-width: 140px;
 }
 
 .col-hours {
   flex: 1 0 100px;
-  min-width: 100px;
+  max-width: 100px;
 }
 
 .col-progress {
   flex: 1 0 100px;
-  min-width: 100px;
+  max-width: 100px;
 }
 
 .task-name-text {

@@ -354,7 +354,7 @@ const optimizedTimelineData = computed(() => {
         const currentDay = new Date(day.year, day.month - 1, day.day)
         currentDay.setHours(0, 0, 0, 0)
         const daysDiff = Math.floor(
-          (currentDay.getTime() - dayStart.getTime()) / (1000 * 60 * 60 * 24),
+          (currentDay.getTime() - dayStart.getTime()) / (1000 * 60 * 60 * 24)
         )
         const totalHourOffset = daysDiff * 24
 
@@ -455,7 +455,7 @@ const computeAllMilestonesPositions = () => {
         if (!isNaN(milestoneDate.getTime())) {
           const startDiff = Math.floor(
             (milestoneDate.getTime() - timelineConfig.value.startDate.getTime()) /
-              (1000 * 60 * 60 * 24),
+              (1000 * 60 * 60 * 24)
           )
           const left = startDiff * 30 + 30 / 2 - 12 // 30是dayWidth，12是图标半径
 
@@ -489,7 +489,7 @@ const computeAllMilestonesPositions = () => {
       if (!isNaN(milestoneDate.getTime())) {
         const startDiff = Math.floor(
           (milestoneDate.getTime() - timelineConfig.value.startDate.getTime()) /
-            (1000 * 60 * 60 * 24),
+            (1000 * 60 * 60 * 24)
         )
         const left = startDiff * 30 + 30 / 2 - 12
 
@@ -592,7 +592,7 @@ const handleTaskRowHover = (taskId: number | null) => {
   window.dispatchEvent(
     new CustomEvent('timeline-task-hover', {
       detail: taskId,
-    }),
+    })
   )
 }
 
@@ -644,7 +644,7 @@ const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
   window.dispatchEvent(
     new CustomEvent('milestone-icon-changed', {
       detail: { milestoneId, icon },
-    }),
+    })
   )
 }
 
@@ -662,7 +662,7 @@ const handleMilestoneSave = (updatedMilestone: Milestone) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    }),
+    })
   )
 }
 
@@ -675,14 +675,14 @@ const handleMilestoneDelete = (milestoneId: number) => {
   window.dispatchEvent(
     new CustomEvent('milestone-deleted', {
       detail: { milestoneId },
-    }),
+    })
   )
 
   // 广播里程碑数据变化事件，确保Timeline重新渲染
   window.dispatchEvent(
     new CustomEvent('milestone-data-changed', {
       detail: { milestoneId },
-    }),
+    })
   )
 }
 
@@ -697,7 +697,7 @@ const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    }),
+    })
   )
 }
 
@@ -997,7 +997,7 @@ watch(
       clearTimelineCache()
       timelineData.value = generateTimelineData()
     }
-  },
+  }
 )
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
@@ -1012,7 +1012,7 @@ watch(
       })
     }
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 将今日定位到时间线中间位置
@@ -1029,26 +1029,21 @@ const scrollToTodayCenter = (retry = 0) => {
 
   // 年度视图和季度视图需要使用实际的timeline绘制起始日期
   let startNormalized: Date
-  if (currentTimeScale.value === TimelineScale.YEAR) {
+  if (
+    currentTimeScale.value === TimelineScale.YEAR ||
+    currentTimeScale.value === TimelineScale.QUARTER
+  ) {
     const yearRange = getYearTimelineRange()
     startNormalized = new Date(
       yearRange.startDate.getFullYear(),
       yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
-    )
-  } else if (currentTimeScale.value === TimelineScale.QUARTER) {
-    // 季度视图使用与年度视图相同的基准日期，确保坐标系统一致
-    const yearRange = getYearTimelineRange()
-    startNormalized = new Date(
-      yearRange.startDate.getFullYear(),
-      yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
+      yearRange.startDate.getDate()
     )
   } else {
     startNormalized = new Date(
       timelineStart.getFullYear(),
       timelineStart.getMonth(),
-      timelineStart.getDate(),
+      timelineStart.getDate()
     )
   }
 
@@ -1091,7 +1086,7 @@ const scrollToTodayCenter = (retry = 0) => {
     const month = todayNormalized.getMonth() + 1
     let quarter = 1
     if (month >= 1 && month <= 3) {
-      quarter = 1 // Q1: 1-3月
+      // Q1: 1-3月
     } else if (month >= 4 && month <= 6) {
       quarter = 2 // Q2: 4-6月
     } else if (month >= 7 && month <= 9) {
@@ -1121,7 +1116,7 @@ const scrollToTodayCenter = (retry = 0) => {
     }
 
     const dayOffset = Math.floor(
-      (todayNormalized.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24),
+      (todayNormalized.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)
     )
     const daysInQuarter =
       Math.floor((endOfQuarter.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)) + 1
@@ -1178,7 +1173,7 @@ const getTodayLinePositionInYearView = computed(() => {
   const startNormalized = new Date(
     yearRange.startDate.getFullYear(),
     yearRange.startDate.getMonth(),
-    yearRange.startDate.getDate(),
+    yearRange.startDate.getDate()
   )
 
   const startYear = startNormalized.getFullYear()
@@ -1272,7 +1267,7 @@ const scrollToToday = () => {
   const startNormalized = new Date(
     timelineStart.getFullYear(),
     timelineStart.getMonth(),
-    timelineStart.getDate(),
+    timelineStart.getDate()
   )
 
   // 计算今天距离时间线开始日期的天数
@@ -1323,7 +1318,7 @@ const updateTask = (updatedTask: Task) => {
   window.dispatchEvent(
     new CustomEvent('task-updated', {
       detail: updatedTask,
-    }),
+    })
   )
 }
 
@@ -1383,7 +1378,7 @@ const handleTaskBarContextMenu = (event: { task: Task; position: { x: number; y:
   window.dispatchEvent(
     new CustomEvent('context-menu', {
       detail: event,
-    }),
+    })
   )
 }
 
@@ -1466,7 +1461,7 @@ onMounted(() => {
   // 监听TaskList的垂直滚动事件
   window.addEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener,
+    handleTaskListVerticalScroll as EventListener
   )
   // 监听语言变化
   window.addEventListener('locale-changed', handleLocaleChange as EventListener)
@@ -1476,7 +1471,7 @@ onMounted(() => {
   // 监听Timeline容器resize事件（TaskList切换等）
   window.addEventListener(
     'timeline-container-resized',
-    handleTimelineContainerResized as EventListener,
+    handleTimelineContainerResized as EventListener
   )
 
   // 监听里程碑点击定位事件
@@ -1566,7 +1561,7 @@ const handleTimelineBodyScroll = (event: Event) => {
     window.dispatchEvent(
       new CustomEvent('timeline-vertical-scroll', {
         detail: { scrollTop },
-      }),
+      })
     )
   }
 }
@@ -1579,7 +1574,7 @@ watch(
       updateSvgSize()
     })
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 拖拽滑动相关状态
@@ -1763,7 +1758,7 @@ const startAutoScroll = (direction: 'left' | 'right') => {
     window.dispatchEvent(
       new CustomEvent('timeline-auto-scroll', {
         detail: { scrollDelta: newScrollLeft - currentScrollLeft },
-      }),
+      })
     )
 
     autoScrollTimer = window.setTimeout(scroll, 16) // 约60fps
@@ -1817,14 +1812,14 @@ onUnmounted(() => {
   window.removeEventListener('task-list-hover', handleTaskListHover as EventListener)
   window.removeEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener,
+    handleTaskListVerticalScroll as EventListener
   )
   window.removeEventListener('locale-changed', handleLocaleChange as EventListener)
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
   window.removeEventListener('splitter-drag-end', handleSplitterDragEnd as EventListener)
   window.removeEventListener(
     'timeline-container-resized',
-    handleTimelineContainerResized as EventListener,
+    handleTimelineContainerResized as EventListener
   )
   window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
   window.removeEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
@@ -1935,7 +1930,7 @@ watch(
       }
     })
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 处理里程碑点击定位事件
@@ -3471,152 +3466,6 @@ const handleAddSuccessor = (task: Task) => {
   opacity: 0.15;
 }
 
-/* 小时视图专用样式 */
-.date-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-medium, #e1e4e8);
-  position: relative;
-  overflow: hidden;
-}
-
-.hours-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-}
-
-.timeline-day-item {
-  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
-  background-color: var(--gantt-bg-secondary, #f6f8fa);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  box-sizing: border-box;
-}
-
-/* 小时视图日期项专用样式 */
-.timeline-day-item.hour-view-day {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
-  background-color: var(--gantt-bg-secondary, #f6f8fa);
-}
-
-.timeline-hour-item {
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.hour-column {
-  position: absolute;
-  top: 0;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-}
-
-.date-label {
-  color: var(--gantt-text-header, #24292e);
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.hours-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-}
-
-.timeline-hour-item {
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.timeline-hour-item.today {
-  background-color: var(--gantt-primary);
-  color: var(--gantt-text-white);
-}
-
-.hour-label {
-  color: var(--gantt-text-primary, #24292e);
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 1.3;
-  text-align: center;
-  letter-spacing: 0px;
-}
-
-.timeline-hour-item.today .hour-label {
-  color: var(--gantt-text-white);
-}
-
-.hour-column {
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  transition: background-color 0.2s ease;
-  box-sizing: border-box;
-}
-
-.hour-column.weekend {
-  background-color: var(--gantt-bg-secondary, #f5f7fa);
-  opacity: 0.6;
-}
-
-.hour-column.rest-hour {
-  background-color: var(--gantt-bg-secondary, #f5f7fa);
-  opacity: 0.6;
-}
-
-.hour-column.working-hour {
-  background-color: var(--gantt-bg-primary, #ffffff);
-}
-
-.hour-column.today {
-  background-color: var(--gantt-primary-color, #409eff);
-  opacity: 0.2;
-  border-left: 2px solid var(--gantt-primary-color, #409eff);
-}
-
-/* 15分钟刻度线样式 */
-.quarter-hour-lines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-.quarter-line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: var(--gantt-border-light, #d1d5da);
-  opacity: 0.5;
-}
-
 /* 年度视图样式 */
 .half-years-row {
   min-height: 36px;
@@ -3781,13 +3630,7 @@ const handleAddSuccessor = (task: Task) => {
   overflow: hidden;
 }
 
-.hours-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-}
-
+/*---------------*/
 .timeline-day-item {
   top: 0;
   height: 100%;
@@ -3800,6 +3643,60 @@ const handleAddSuccessor = (task: Task) => {
   box-sizing: border-box;
 }
 
+/* 小时视图日期项专用样式 */
+.timeline-day-item.hour-view-day {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-right: 1px solid var(--gantt-border-medium, #e1e4e8);
+  background-color: var(--gantt-bg-secondary, #f6f8fa);
+}
+
+.date-label {
+  color: var(--gantt-text-header, #24292e);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.hours-row {
+  min-height: 40px;
+  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.hour-label {
+  color: var(--gantt-text-primary, #24292e);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+  letter-spacing: 0px;
+}
+
+/* 15分钟刻度线样式 */
+.quarter-hour-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.quarter-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--gantt-border-light, #d1d5da);
+  opacity: 0.5;
+}
+/**------------------------ */
+
 .timeline-hour-item {
   top: 0;
   height: 100%;
@@ -3810,6 +3707,16 @@ const handleAddSuccessor = (task: Task) => {
   min-height: 40px;
   transition: background-color 0.2s ease;
   box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.timeline-hour-item.today {
+  background-color: var(--gantt-primary);
+  color: var(--gantt-text-white);
+}
+
+.timeline-hour-item.today .hour-label {
+  color: var(--gantt-text-white);
 }
 
 /* 小时视图非工作时间样式 - 参考日视图周末样式 */
@@ -3826,59 +3733,44 @@ const handleAddSuccessor = (task: Task) => {
   position: relative;
   min-width: 100%;
   min-height: 100px;
+  display: flex;
 }
 
 .hour-column {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-right: 1px solid var(--gantt-border-light, #d1d5da);
-  pointer-events: none;
-  background-color: transparent;
-  z-index: 1;
-}
-
-.hour-column:hover {
-  background-color: var(--gantt-hover-bg, rgba(0, 123, 255, 0.1));
-}
-.hour-columns-container {
-  position: relative;
-  display: flex;
-  min-width: 100%;
-}
-
-/* 小时视图header容器 */
-.hour-header-container {
-  position: relative;
-  min-width: 100%;
-}
-
-.date-row {
-  min-height: 40px;
-  border-bottom: 1px solid var(--gantt-border-light, #d1d5da);
-  position: relative;
-  overflow: hidden;
-}
-
-.hour-column {
   border-right: 1px solid var(--gantt-border-light, #e0e6ed);
   background-color: var(--gantt-bg-primary, #ffffff);
   transition: background-color 0.2s ease;
   box-sizing: border-box;
   flex-shrink: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.hour-column:hover {
-  background-color: var(--gantt-bg-hover, rgba(64, 158, 255, 0.05));
+.hour-column.weekend {
+  background-color: var(--gantt-bg-secondary, #f5f7fa);
+  opacity: 0.6;
 }
 
-.hour-column.today {
-  background-color: var(--gantt-primary-color, #f0f9ff);
-  border-left: 2px solid var(--gantt-primary-color, #409eff);
+.hour-column.rest-hour {
+  background-color: var(--gantt-bg-secondary, #f5f7fa);
+  opacity: 0.6;
 }
 
 .hour-column.working-hour {
   background-color: var(--gantt-bg-primary, #ffffff);
+}
+
+.hour-column.today {
+  background-color: var(--gantt-primary-color, #409eff);
+  opacity: 0.2;
+  border-left: 2px solid var(--gantt-primary-color, #409eff);
+}
+
+.hour-column:hover {
+  background-color: var(--gantt-bg-hover, rgba(64, 158, 255, 0.05));
 }
 
 /* 小时视图暗色主题样式 */
