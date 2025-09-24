@@ -1617,7 +1617,7 @@ const handleMouseDown = (event: MouseEvent) => {
       'input',
       'select',
       'textarea',
-      '.task-bar-content',
+      '.custom-task-content',
       '.progress-bar',
       '.task-name',
       '.task-controls',
@@ -2754,7 +2754,11 @@ const handleAddSuccessor = (task: Task) => {
                 @add-predecessor="handleAddPredecessor"
                 @add-successor="handleAddSuccessor"
                 @delete="handleTaskDelete"
-              />
+              >
+                <template v-if="$slots['custom-task-content']" #content="barScope">
+                  <slot name="custom-task-content" v-bind="barScope" />
+                </template>
+              </TaskBar>
             </div>
           </div>
         </div>

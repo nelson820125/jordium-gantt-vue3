@@ -8,6 +8,7 @@ import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
+import HtmlContent from './HtmlContent.vue'
 import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
@@ -666,7 +667,11 @@ function onTimerStopped(task: Task) {
         @task-deleted="e => showMessage(`Demo 任务[${e.task.name}] 已删除`, 'info')"
         @task-added="e => showMessage(`Demo 任务[${e.task.name}] 已创建`, 'info')"
         @task-updated="e => showMessage(`Demo 任务[${e.task.name}] 已更新`, 'info')"
-      />
+      >
+        <template #custom-task-content="{ task, type }">
+          <HtmlContent :task="task" :type="type" />
+        </template>
+      </GanttChart>
     </div>
     <div class="license-info">
       <p>MIT License @JORDIUM.COM</p>

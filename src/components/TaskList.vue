@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, useSlots, computed } from 'vue'
+import type { Component } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
@@ -7,7 +8,7 @@ import type { Task } from '../models/classes/Task'
 interface Props {
   tasks?: Task[]
   onTaskDoubleClick?: (task: Task) => void
-  editComponent?: any
+  editComponent?: Component
   useDefaultDrawer?: boolean
 }
 
@@ -26,6 +27,8 @@ const emit = defineEmits<{
   'add-successor': [task: Task] // 新增：添加后置任务事件
   delete: [task: Task, deleteChildren?: boolean]
 }>()
+const slots = useSlots()
+const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
 
 // 多语言支持
 const { t } = useI18n()
@@ -409,7 +412,11 @@ onUnmounted(() => {
         @add-predecessor="handleAddPredecessor"
         @add-successor="handleAddSuccessor"
         @delete="handleTaskDelete"
-      />
+      >
+        <template v-if="hasRowSlot" #custom-task-content="rowScope">
+          <slot name="custom-task-content" v-bind="rowScope" />
+        </template>
+      </TaskRow>
     </div>
   </div>
 </template>

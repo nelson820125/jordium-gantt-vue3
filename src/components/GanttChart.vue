@@ -1536,7 +1536,11 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
           @delete="handleTaskDelete"
-        />
+        >
+          <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
+            <slot name="custom-task-content" v-bind="rowScope" />
+          </template>
+        </TaskList>
       </div>
       <div class="gantt-splitter" @mousedown="onMouseDown">
         <!-- TaskList切换按钮 - 贴合splitter右侧 -->
@@ -1584,7 +1588,11 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
           @delete="handleTaskDelete"
-        />
+        >
+          <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
+            <slot name="custom-task-content" v-bind="barScope" />
+          </template>
+        </Timeline>
       </div>
     </div>
 

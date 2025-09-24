@@ -19,4 +19,7 @@ export default defineConfig(({ command }) => ({
       '@': '../src',
     },
   },
+  server: {
+    port: 13000,
+  }
 }))

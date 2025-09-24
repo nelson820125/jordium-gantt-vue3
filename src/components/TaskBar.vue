@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
@@ -41,10 +41,14 @@ const emit = defineEmits([
   'delete',
   'contextmenu', // 添加原生contextmenu事件声明
 ])
+
+const slots = useSlots()
 const { getTranslation } = useI18n()
 const t = (key: string): string => {
   return getTranslation(key)
 }
+
+const hasContentSlot = computed(() => Boolean(slots.content))
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -1313,7 +1317,24 @@ onUnmounted(() => {
     @dblclick="handleTaskBarDoubleClick"
   >
     <!-- 父级任务的标签 -->
-    <div v-if="isParent" class="parent-label">{{ task.name }} ({{ task.progress || 0 }}%)</div>
+    <div v-if="isParent" class="parent-label">
+      <slot
+        v-if="hasContentSlot"
+        name="content"
+        type="task-bar"
+        :task="task"
+        :status="taskStatus"
+        :status-type="taskStatus.type"
+        :is-parent="isParent"
+        :progress="task.progress || 0"
+        :current-time-scale="currentTimeScale"
+        :row-height="rowHeight"
+        :day-width="dayWidth"
+      />
+      <block v-else>
+        {{ task.name }} ({{ task.progress || 0 }}%)
+      </block>
+    </div>
 
     <!-- 完成进度条（非父级任务） -->
     <div
@@ -1340,7 +1361,20 @@ onUnmounted(() => {
       @mousedown="e => (isInteractionDisabled ? null : handleMouseDown(e, 'drag'))"
     >
       <!-- 任务名称 -->
-      <div class="task-name" :style="getNameStyles()">
+      <slot
+        v-if="hasContentSlot"
+        name="content"
+        type="task-bar"
+        :task="task"
+        :status="taskStatus"
+        :status-type="taskStatus.type"
+        :is-parent="isParent"
+        :progress="task.progress || 0"
+        :current-time-scale="currentTimeScale"
+        :row-height="rowHeight"
+        :day-width="dayWidth"
+      />
+      <div v-else class="task-name" :style="getNameStyles()">
         {{ task.name }}
       </div>
 
