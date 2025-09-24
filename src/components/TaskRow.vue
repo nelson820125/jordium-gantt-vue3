@@ -186,7 +186,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 右键菜单相关状态

@@ -152,7 +152,7 @@ const handleMouseMove = (e: MouseEvent) => {
         mouseX: e.clientX,
         isDragging: isDragging.value,
       },
-    })
+    }),
   )
 
   const deltaX = e.clientX - dragStartX.value
@@ -179,7 +179,7 @@ const handleMouseUp = () => {
         mouseX: 0,
         isDragging: false,
       },
-    })
+    }),
   )
 
   // 只有在真正拖拽了（有临时数据）且状态为拖拽中时才触发更新
@@ -241,7 +241,7 @@ const handleMilestoneClick = (e: MouseEvent) => {
           scrollLeft: targetScrollLeft,
           smooth: true,
         },
-      })
+      }),
     )
   }
 }
@@ -304,14 +304,14 @@ const milestoneStyle = computed(() => {
     const centerPosition = calculateMilestonePositionFromTimelineData(
       milestoneDate,
       props.timelineData,
-      props.currentTimeScale
+      props.currentTimeScale,
     )
 
     left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
   } else {
     // 日视图：保持原有逻辑
     const startDiff = Math.floor(
-      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
     )
     left = startDiff * props.dayWidth + props.dayWidth / 2 - size / 2
   }
@@ -377,7 +377,7 @@ const milestoneVisibility = computed(() => {
   if (iconRight <= leftBoundary + iconSize / 2) {
     // 检查左侧是否有其他停靠的里程碑，需要判断推挤优先级
     const leftStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky
+      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky,
     )
 
     // 如果有其他里程碑已经停靠在左侧，比较优先级决定推挤顺序
@@ -423,7 +423,7 @@ const milestoneVisibility = computed(() => {
   if (iconLeft >= rightBoundary - iconSize / 2) {
     // 检查右侧是否有其他停靠的里程碑，需要判断推挤优先级
     const rightStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky
+      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky,
     )
 
     // 如果有其他里程碑已经停靠在右侧，比较优先级决定推挤顺序
@@ -581,13 +581,13 @@ const calculateYearViewMilestonePosition = (targetDate: Date, baseStartDate: Dat
   const daysInHalfYear =
     month <= 6
       ? Math.floor(
-          (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
+        (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
+            (1000 * 60 * 60 * 24),
+      )
       : Math.floor(
-          (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
+        (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
+            (1000 * 60 * 60 * 24),
+      )
 
   const dayPositionInHalfYear = (dayOffset / daysInHalfYear) * halfYearWidth
   position += dayPositionInHalfYear
@@ -601,12 +601,12 @@ const calculateHourViewMilestonePosition = (targetDate: Date, baseStartDate: Dat
   const targetNormalized = new Date(
     targetDate.getFullYear(),
     targetDate.getMonth(),
-    targetDate.getDate()
+    targetDate.getDate(),
   )
   const baseNormalized = new Date(
     baseStartDate.getFullYear(),
     baseStartDate.getMonth(),
-    baseStartDate.getDate()
+    baseStartDate.getDate(),
   )
   const timeDiff = targetNormalized.getTime() - baseNormalized.getTime()
   const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
@@ -694,7 +694,7 @@ const calculateQuarterViewMilestonePosition = (targetDate: Date, baseStartDate: 
 const calculateMilestonePositionFromTimelineData = (
   targetDate: Date,
   timelineData: any,
-  timeScale: TimelineScale
+  timeScale: TimelineScale,
 ) => {
   // 回退到原来的逻辑用于其他时间刻度
   let cumulativePosition = 0

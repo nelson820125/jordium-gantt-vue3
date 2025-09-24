@@ -168,7 +168,7 @@ watch(
       selectedTime.value = parsed.timeStr
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 处理单日期输入变化（预留，当前版本不使用）
@@ -297,7 +297,7 @@ const scrollToSelectedTime = () => {
       const containerHeight = 160 // el-time-column-list 的高度
       const scrollTop = Math.max(
         0,
-        selectedHourIndex * itemHeight - containerHeight / 2 + itemHeight / 2
+        selectedHourIndex * itemHeight - containerHeight / 2 + itemHeight / 2,
       )
       hourListRef.value.scrollTop = scrollTop
     }
@@ -312,7 +312,7 @@ const scrollToSelectedTime = () => {
       const containerHeight = 160
       const scrollTop = Math.max(
         0,
-        selectedMinuteIndex * itemHeight - containerHeight / 2 + itemHeight / 2
+        selectedMinuteIndex * itemHeight - containerHeight / 2 + itemHeight / 2,
       )
       minuteListRef.value.scrollTop = scrollTop
     }
