@@ -69,6 +69,14 @@ const taskListConfig = computed<TaskListConfig>(() => ({
   maxWidth: taskListWidth.value.maxWidth,
 }))
 
+// 配置面板折叠状态
+const isConfigPanelCollapsed = ref(false)
+
+// 切换配置面板折叠状态
+const toggleConfigPanel = () => {
+  isConfigPanelCollapsed.value = !isConfigPanelCollapsed.value
+}
+
 // 切换列显示状态
 const toggleColumn = (columnKey: string, event: Event) => {
   const target = event.target as HTMLInputElement
@@ -670,92 +678,103 @@ function onTimerStopped(task: Task) {
     </h1>
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
-    <!-- TaskList配置面板 -->
-    <div class="config-panel">
-      <h3 class="config-title">
-        <svg class="config-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 15l3-3H9l3 3z" fill="currentColor"/>
-          <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
-        </svg>
-        TaskList 配置
-      </h3>
-
-      <!-- 宽度配置区域 -->
-      <div class="config-section">
-        <h4 class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect
-              x="3"
-              y="6"
-              width="18"
-              height="12"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-            />
-            <path d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3" stroke="currentColor" stroke-width="1.5" fill="none"/>
-          </svg>
-          宽度设置
-        </h4>
-        <div class="width-controls">
-          <div class="width-control">
-            <label class="width-label">默认宽度:</label>
-            <input
-              v-model.number="taskListWidth.defaultWidth"
-              type="number"
-              :min="taskListWidth.minWidth"
-              :max="taskListWidth.maxWidth"
-              step="10"
-              class="width-input"
-            />
-            <span class="width-unit">px</span>
-          </div>
-          <div class="width-control">
-            <label class="width-label">最小宽度:</label>
-            <input
-              v-model.number="taskListWidth.minWidth"
-              type="number"
-              min="280"
-              :max="taskListWidth.defaultWidth"
-              step="10"
-              class="width-input"
-            />
-            <span class="width-unit">px</span>
-          </div>
-          <div class="width-control">
-            <label class="width-label">最大宽度:</label>
-            <input
-              v-model.number="taskListWidth.maxWidth"
-              type="number"
-              :min="taskListWidth.defaultWidth"
-              max="2000"
-              step="10"
-              class="width-input"
-            />
-            <span class="width-unit">px</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 列配置区域 -->
-      <div class="config-section">
-        <h4 class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- TaskList配置面板 - 可折叠 -->
+    <div class="config-panel" :class="{ 'collapsed': isConfigPanelCollapsed }">
+      <div class="config-header" @click="toggleConfigPanel">
+        <h3 class="config-title">
+          <svg class="config-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
           </svg>
-          列显示
-        </h4>
-        <div class="column-controls">
-          <label v-for="column in availableColumns" :key="column.key" class="column-control">
-            <input
-              type="checkbox"
-              :checked="column.visible"
-              @change="toggleColumn(column.key, $event)"
-            />
-            <span class="column-label">{{ column.label }}</span>
-          </label>
-        </div>
+          TaskList 配置
+        </h3>
+        <button class="collapse-button" :class="{ 'collapsed': isConfigPanelCollapsed }">
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
+
+      <!-- 可折叠内容区域 -->
+      <transition name="config-content">
+        <div v-show="!isConfigPanelCollapsed" class="config-content">
+          <!-- 宽度配置区域 -->
+          <div class="config-section">
+            <h4 class="section-title">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect
+                  x="3"
+                  y="6"
+                  width="18"
+                  height="12"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </svg>
+              宽度设置
+            </h4>
+            <div class="width-controls">
+              <div class="width-control">
+                <label class="width-label">默认宽度:</label>
+                <input
+                  v-model.number="taskListWidth.defaultWidth"
+                  type="number"
+                  :min="taskListWidth.minWidth"
+                  :max="taskListWidth.maxWidth"
+                  step="10"
+                  class="width-input"
+                />
+                <span class="width-unit">px</span>
+              </div>
+              <div class="width-control">
+                <label class="width-label">最小宽度:</label>
+                <input
+                  v-model.number="taskListWidth.minWidth"
+                  type="number"
+                  min="280"
+                  :max="taskListWidth.defaultWidth"
+                  step="10"
+                  class="width-input"
+                />
+                <span class="width-unit">px</span>
+              </div>
+              <div class="width-control">
+                <label class="width-label">最大宽度:</label>
+                <input
+                  v-model.number="taskListWidth.maxWidth"
+                  type="number"
+                  :min="taskListWidth.defaultWidth"
+                  max="2000"
+                  step="10"
+                  class="width-input"
+                />
+                <span class="width-unit">px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 列配置区域 -->
+          <div class="config-section">
+            <h4 class="section-title">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+              </svg>
+              列显示
+            </h4>
+            <div class="column-controls">
+              <label v-for="column in availableColumns" :key="column.key" class="column-control">
+                <input
+                  type="checkbox"
+                  :checked="column.visible"
+                  @change="toggleColumn(column.key, $event)"
+                />
+                <span class="column-label">{{ column.label }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
 
     <div class="gantt-wrapper">
@@ -827,23 +846,98 @@ function onTimerStopped(task: Task) {
   flex-direction: column;
 }
 
-/* TaskList列配置面板样式 */
+/* TaskList列配置面板样式 - 可折叠 */
 .config-panel {
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #e4e7ed);
   border-radius: 8px;
-  padding: 16px;
   margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 .config-panel:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.config-panel.collapsed {
+  border-radius: 8px;
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.config-panel.collapsed .config-header {
+  border-bottom: none;
+}
+
+.config-header:hover {
+  background-color: var(--gantt-hover-bg, #f8f9fa);
+}
+
+.config-content {
+  padding: 0 16px 16px;
+  overflow: hidden;
+}
+
+.collapse-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--gantt-text-secondary, #666);
+}
+
+.collapse-button:hover {
+  background-color: var(--gantt-hover-bg, #e8f4fd);
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.collapse-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+}
+
+.collapse-button.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+/* 过渡动画 */
+.config-content-enter-active,
+.config-content-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.config-content-enter-from,
+.config-content-leave-to {
+  height: 0;
+  opacity: 0;
+}
+
+.config-content-enter-to,
+.config-content-leave-from {
+  opacity: 1;
+}
+
 .config-title {
-  margin: 0 0 12px 0;
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--gantt-text-primary, #333);
@@ -882,7 +976,7 @@ function onTimerStopped(task: Task) {
 
 .width-controls {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 12px;
 }
 
@@ -1107,6 +1201,24 @@ function onTimerStopped(task: Task) {
 }
 
 :global(html[data-theme='dark']) .column-control:hover .column-label {
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+/* 暗色主题下的折叠面板样式 */
+:global(html[data-theme='dark']) .config-header {
+  border-bottom-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .config-header:hover {
+  background-color: var(--gantt-hover-bg, #2d3748);
+}
+
+:global(html[data-theme='dark']) .collapse-button {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .collapse-button:hover {
+  background-color: var(--gantt-hover-bg, #2d3748);
   color: var(--gantt-primary-color, #66b3ff);
 }
 

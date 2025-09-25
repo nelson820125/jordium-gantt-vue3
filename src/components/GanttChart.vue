@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted, onMounted, computed, watch, nextTick, defineEmits } from 'vue'
+import { ref, onUnmounted, onMounted, computed, watch, nextTick } from 'vue'
 import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'

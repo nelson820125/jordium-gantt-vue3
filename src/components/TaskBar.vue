@@ -39,7 +39,7 @@ const emit = defineEmits([
   'add-predecessor',
   'add-successor',
   'delete',
-  'contextmenu', // 添加原生contextmenu事件声明
+  'context-menu',
 ])
 
 const slots = useSlots()
@@ -1331,9 +1331,9 @@ onUnmounted(() => {
         :row-height="rowHeight"
         :day-width="dayWidth"
       />
-      <block v-else>
+      <template v-else>
         {{ task.name }} ({{ task.progress || 0 }}%)
-      </block>
+      </template>
     </div>
 
     <!-- 完成进度条（非父级任务） -->

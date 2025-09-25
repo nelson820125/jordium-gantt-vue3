@@ -6,14 +6,12 @@ interface Props {
   type: 'task-row' | 'task-bar'
 }
 const props = withDefaults(defineProps<Props>(), {
-  color: '#409eff',
-  progress: 0,
 })
 // console.error('props', props)
 </script>
 
 <template>
-  <div class="html-content-card" :style="{ borderColor: color }">
+  <div class="html-content-card">
     <div v-if="type==='task-row'" class="task-row" v-html="task.name" />
     <div v-else-if="type==='task-bar'" class="task-bar" v-html="task.name" />
   </div>
