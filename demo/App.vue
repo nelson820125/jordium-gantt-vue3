@@ -57,9 +57,9 @@ const availableColumns = ref<TaskListColumnConfig[]>([
 
 // TaskList宽度配置
 const taskListWidth = ref({
-  defaultWidth: 400,  // 默认宽度400px（比默认320px更宽）
-  minWidth: 300,      // 最小宽度300px（比默认280px略大）
-  maxWidth: 1200,     // 最大宽度1200px（比默认1160px略大）
+  defaultWidth: 400, // 默认宽度400px（比默认320px更宽）
+  minWidth: 300, // 最小宽度300px（比默认280px略大）
+  maxWidth: 1200, // 最大宽度1200px（比默认1160px略大）
 })
 
 const taskListConfig = computed<TaskListConfig>(() => ({
@@ -86,7 +86,7 @@ const toggleColumn = (columnKey: string, event: Event) => {
   if (column) {
     column.visible = visible
   }
-}// 工作时间配置示例
+} // 工作时间配置示例
 const workingHoursConfig = {
   morning: { start: 8, end: 11 }, // 上午8:00-11:59为工作时间
   afternoon: { start: 13, end: 17 }, // 下午13:00-17:00为工作时间
@@ -172,14 +172,14 @@ const handleMilestoneDelete = async (milestoneId: number) => {
     window.dispatchEvent(
       new CustomEvent('milestone-deleted', {
         detail: { milestoneId },
-      }),
+      })
     )
 
     // 触发强制更新事件，确保Timeline重新渲染
     window.dispatchEvent(
       new CustomEvent('milestone-data-changed', {
         detail: { milestones: milestones.value },
-      }),
+      })
     )
   }
 
@@ -273,7 +273,7 @@ const handleTaskUpdate = (updatedTask: Task) => {
         showMessage(
           formatTranslation('newParentTaskNotFound', { parentId: taskToAdd.parentId }),
           'warning',
-          { closable: true },
+          { closable: true }
         )
         tasks.value.push(taskToAdd)
       }
@@ -321,7 +321,7 @@ const handleTaskAdd = (newTask: Task) => {
     const maxId = Math.max(
       ...tasks.value.map(t => t.id || 0),
       ...milestones.value.map(m => m.id || 0),
-      0,
+      0
     )
     newTask.id = maxId + 1
   }
@@ -416,7 +416,7 @@ const handleStoryDeleteWithChildren = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          },
+          }
         )
         return true
       }
@@ -478,7 +478,7 @@ const handleStoryDeleteOnly = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          },
+          }
         )
         return true
       }
@@ -552,7 +552,7 @@ function handleTaskbarDragOrResizeEnd(newTask) {
       `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
       `结束: ${oldTask.endDate} → ${newTask.endDate}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
@@ -562,7 +562,7 @@ function handleMilestoneDragEnd(newMilestone) {
     `里程碑【${newMilestone.name}】\n` +
       `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 
@@ -629,7 +629,7 @@ function onTimerStarted(task: Task) {
   showMessage(
     `Demo 任务【${task.name}】\n开始计时：${new Date(task.timerStartTime).toLocaleString()}\n计时说明：${task.timerStartDesc ? task.timerStartDesc : ''}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 function onTimerStopped(task: Task) {
@@ -642,6 +642,10 @@ function onTimerStopped(task: Task) {
     msg += `\n结束计时：${new Date().toLocaleString()}`
   }
   showMessage(msg, 'info', { closable: true })
+}
+
+function taskDebug(item: any) {
+  console.log('Task Debug:', item)
 }
 </script>
 
@@ -679,17 +683,33 @@ function onTimerStopped(task: Task) {
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
     <!-- TaskList配置面板 - 可折叠 -->
-    <div class="config-panel" :class="{ 'collapsed': isConfigPanelCollapsed }">
+    <div class="config-panel" :class="{ collapsed: isConfigPanelCollapsed }">
       <div class="config-header" @click="toggleConfigPanel">
         <h3 class="config-title">
-          <svg class="config-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+          <svg
+            class="config-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
           </svg>
           TaskList 配置
         </h3>
-        <button class="collapse-button" :class="{ 'collapsed': isConfigPanelCollapsed }">
-          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <button class="collapse-button" :class="{ collapsed: isConfigPanelCollapsed }">
+          <svg
+            class="collapse-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7 10l5 5 5-5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
         </button>
       </div>
@@ -700,7 +720,12 @@ function onTimerStopped(task: Task) {
           <!-- 宽度配置区域 -->
           <div class="config-section">
             <h4 class="section-title">
-              <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                class="section-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <rect
                   x="3"
                   y="6"
@@ -710,7 +735,12 @@ function onTimerStopped(task: Task) {
                   stroke-width="2"
                   fill="none"
                 />
-                <path d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <path
+                  d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                />
               </svg>
               宽度设置
             </h4>
@@ -757,8 +787,13 @@ function onTimerStopped(task: Task) {
           <!-- 列配置区域 -->
           <div class="config-section">
             <h4 class="section-title">
-              <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+              <svg
+                class="section-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
               </svg>
               列显示
             </h4>
@@ -814,8 +849,8 @@ function onTimerStopped(task: Task) {
         @task-added="e => showMessage(`Demo 任务[${e.task.name}] 已创建`, 'info')"
         @task-updated="e => showMessage(`Demo 任务[${e.task.name}] 已更新`, 'info')"
       >
-        <template #custom-task-content="{ task, type }">
-          <HtmlContent :task="task" :type="type" />
+        <template #custom-task-content="item">
+          <HtmlContent :item="taskDebug(item)" :task="item.task" :type="item.type" />
         </template>
       </GanttChart>
     </div>
@@ -1038,7 +1073,7 @@ function onTimerStopped(task: Task) {
   border-color: var(--gantt-primary-color, #409eff);
 }
 
-.column-control input[type="checkbox"] {
+.column-control input[type='checkbox'] {
   width: 16px;
   height: 16px;
   cursor: pointer;

@@ -3,7 +3,7 @@ import type { Task } from '../src/models/Task'
 
 interface Props {
   task: Task,
-  type: 'task-row' | 'task-bar'
+  type: string, // 'task-row' | 'task-bar'
 }
 const props = withDefaults(defineProps<Props>(), {
 })
