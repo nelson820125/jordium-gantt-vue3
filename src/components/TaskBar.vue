@@ -25,6 +25,25 @@ interface Props {
   currentTimeScale?: TimelineScale
 }
 
+interface TaskStatus {
+  type: string
+  color: string
+  bgColor: string
+  borderColor: string
+}
+
+interface TaskBarSlotProps {
+  type: string
+  task: Task
+  status: TaskStatus
+  statusType: string
+  isParent?: boolean
+  progress: number
+  currentTimeScale?: TimelineScale
+  rowHeight: number
+  dayWidth: number
+}
+
 const props = defineProps<Props>()
 
 const emit = defineEmits([
@@ -42,13 +61,17 @@ const emit = defineEmits([
   'context-menu',
 ])
 
+defineSlots<{
+  'custom-task-content'(props: TaskBarSlotProps): unknown
+}>()
+
 const slots = useSlots()
 const { getTranslation } = useI18n()
 const t = (key: string): string => {
   return getTranslation(key)
 }
 
-const hasContentSlot = computed(() => Boolean(slots.content))
+const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -339,6 +362,19 @@ const taskStatus = computed(() => {
     borderColor: '#b3d8ff',
   }
 })
+
+// Slot payload for content slot - 使用 v-bind 方式传递所有属性
+const slotPayload = computed(() => ({
+  type: 'task-bar',
+  task: props.task,
+  status: taskStatus.value,
+  statusType: taskStatus.value.type,
+  isParent: props.isParent ?? false,
+  progress: props.task.progress || 0,
+  currentTimeScale: props.currentTimeScale,
+  rowHeight: props.rowHeight,
+  dayWidth: props.dayWidth,
+}))
 
 // 判断是否已完成
 const isCompleted = computed(() => (props.task.progress || 0) >= 100)
@@ -1320,16 +1356,8 @@ onUnmounted(() => {
     <div v-if="isParent" class="parent-label">
       <slot
         v-if="hasContentSlot"
-        name="content"
-        type="task-bar"
-        :task="task"
-        :status="taskStatus"
-        :status-type="taskStatus.type"
-        :is-parent="isParent"
-        :progress="task.progress || 0"
-        :current-time-scale="currentTimeScale"
-        :row-height="rowHeight"
-        :day-width="dayWidth"
+        name="custom-task-content"
+        v-bind="slotPayload"
       />
       <template v-else>
         {{ task.name }} ({{ task.progress || 0 }}%)
@@ -1363,16 +1391,8 @@ onUnmounted(() => {
       <!-- 任务名称 -->
       <slot
         v-if="hasContentSlot"
-        name="content"
-        type="task-bar"
-        :task="task"
-        :status="taskStatus"
-        :status-type="taskStatus.type"
-        :is-parent="isParent"
-        :progress="task.progress || 0"
-        :current-time-scale="currentTimeScale"
-        :row-height="rowHeight"
-        :day-width="dayWidth"
+        name="custom-task-content"
+        v-bind="slotPayload"
       />
       <div v-else class="task-name" :style="getNameStyles()">
         {{ task.name }}

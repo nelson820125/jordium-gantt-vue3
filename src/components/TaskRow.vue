@@ -6,6 +6,28 @@ import type { Task } from '../models/classes/Task'
 import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
 import TaskContextMenu from './TaskContextMenu.vue'
 
+interface TaskRowSlotProps {
+  isRowContent: boolean
+  task: Task
+  level: number
+  indent: string
+  isHovered: boolean
+  hoveredTaskId: number | null
+  isParent: boolean
+  hasChildren: boolean
+  collapsed: boolean
+  formattedTimer: string
+  timerRunning: boolean
+  timerElapsed: number
+  isOvertime: number | boolean | undefined
+  overdueDays: number
+  overtimeText: string
+  overdueText: string
+  daysText: string
+  progressClass: string
+  type?: string
+}
+
 interface Props {
   task: Task
   level: number
@@ -26,6 +48,10 @@ const emit = defineEmits([
   'add-successor',
   'delete',
 ])
+
+defineSlots<{
+  'custom-task-content'(props: TaskRowSlotProps): unknown
+}>()
 const { t } = useI18n()
 const overtimeText = computed(() => t.value?.overtime ?? '')
 const overdueText = computed(() => t.value?.overdue ?? '')
@@ -466,7 +492,7 @@ onUnmounted(() => {
         @delete="handleTaskDelete"
       >
         <template v-if="hasContentSlot" #custom-task-content="slotProps">
-          <slot name="custom-task-content" v-bind="slotProps" />
+          <slot name="custom-task-content" v-bind="(slotProps as TaskRowSlotProps)" />
         </template>
       </TaskRow>
     </template>

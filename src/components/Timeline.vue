@@ -2750,7 +2750,7 @@ const handleAddSuccessor = (task: Task) => {
                 @add-successor="handleAddSuccessor"
                 @delete="handleTaskDelete"
               >
-                <template v-if="$slots['custom-task-content']" #content="barScope">
+                <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
                   <slot name="custom-task-content" v-bind="barScope" />
                 </template>
               </TaskBar>
