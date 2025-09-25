@@ -22,7 +22,15 @@ export interface TaskListColumnConfig {
 export interface TaskListConfig {
   columns?: TaskListColumnConfig[]
   showAllColumns?: boolean // 是否显示所有列，默认true
+  defaultWidth?: number // 默认展开宽度，单位像素，默认320px
+  minWidth?: number // 最小宽度，单位像素，默认280px，不能小于280px
+  maxWidth?: number // 最大宽度，单位像素，默认1160px
 }
+
+// 默认宽度配置
+export const DEFAULT_TASK_LIST_WIDTH = 320 // 默认展开宽度
+export const DEFAULT_TASK_LIST_MIN_WIDTH = 280 // 最小宽度
+export const DEFAULT_TASK_LIST_MAX_WIDTH = 1160 // 最大宽度
 
 // 默认列配置
 export const DEFAULT_TASK_LIST_COLUMNS: TaskListColumnConfig[] = [

@@ -117,7 +117,35 @@ interface Props {
   taskListConfig?: TaskListConfig
 }
 
-const leftPanelWidth = ref(320)
+// 使用taskListConfig中的默认宽度，如果未配置则使用320px
+const leftPanelWidth = ref(props.taskListConfig?.defaultWidth || 320)
+
+// 监听taskListConfig变化，更新相关配置
+watch(
+  () => props.taskListConfig,
+  (newConfig) => {
+    if (newConfig) {
+      // 更新默认宽度
+      if (newConfig.defaultWidth !== undefined) {
+        leftPanelWidth.value = newConfig.defaultWidth
+      }
+
+      // 更新最小最大宽度限制
+      ganttPanelLeftMinWidth.value = getTaskListMinWidth()
+      taskListBodyWidth.value = getTaskListMaxWidth()
+      taskListBodyProposedWidth.value = getTaskListMaxWidth()
+      taskListBodyWidthLimit.value = getTaskListMaxWidth()
+      ganttPanelLeftCurrentWidth.value = getTaskListMinWidth()
+
+      // 确保当前宽度在新的限制范围内
+      const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
+      if (adjustedWidth !== leftPanelWidth.value) {
+        leftPanelWidth.value = adjustedWidth
+      }
+    }
+  },
+  { immediate: false, deep: true },
+)
 
 // Timeline组件的引用
 const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
@@ -139,14 +167,25 @@ watch(
 // 边框: 7个列间边框 * 1px = 7px
 // 滚动条预留: 20px
 // 额外边距: 13px (task-list-header的左边距3px + 其他10px预留)
-const TASK_LIST_MAX_WIDTH = 1120 + 7 + 20 + 13 // = 1160px
-const TASK_LIST_MIN_WIDTH = 320 // TaskList最小宽度
+const DEFAULT_TASK_LIST_MAX_WIDTH = 1120 + 7 + 20 + 13 // = 1160px
+const DEFAULT_TASK_LIST_MIN_WIDTH = 280 // 最小宽度不能小于280px
 
-const taskListBodyWidth = ref(TASK_LIST_MAX_WIDTH) // TaskList默认宽度
-const ganttPanelLeftMinWidth = ref(TASK_LIST_MIN_WIDTH) // 左侧面板最小宽度
-const ganttPanelLeftCurrentWidth = ref(TASK_LIST_MIN_WIDTH) // 当前左侧面板宽度
-const taskListBodyProposedWidth = ref(TASK_LIST_MAX_WIDTH)
-const taskListBodyWidthLimit = ref(TASK_LIST_MAX_WIDTH)
+// TaskList最小宽度，支持通过taskListConfig配置
+const getTaskListMinWidth = () => {
+  const configMinWidth = props.taskListConfig?.minWidth || DEFAULT_TASK_LIST_MIN_WIDTH
+  return Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH) // 确保不小于280px
+}
+
+// TaskList最大宽度，支持通过taskListConfig配置
+const getTaskListMaxWidth = () => {
+  return props.taskListConfig?.maxWidth || DEFAULT_TASK_LIST_MAX_WIDTH
+}
+
+const taskListBodyWidth = ref(getTaskListMaxWidth()) // TaskList默认宽度
+const ganttPanelLeftMinWidth = ref(getTaskListMinWidth()) // 左侧面板最小宽度
+const ganttPanelLeftCurrentWidth = ref(getTaskListMinWidth()) // 当前左侧面板宽度
+const taskListBodyProposedWidth = ref(getTaskListMaxWidth())
+const taskListBodyWidthLimit = ref(getTaskListMaxWidth())
 
 // 简化的限制检查函数：直接基于面板实际宽度判断
 const checkWidthLimits = (proposedLeftWidth: number): number => {
@@ -225,11 +264,11 @@ function onMouseDown(e: MouseEvent) {
     document.body.style.webkitUserSelect = ''
     document.body.style.cursor = ''
 
-    taskListBodyWidth.value = TASK_LIST_MAX_WIDTH // TaskList默认宽度
-    ganttPanelLeftMinWidth.value = TASK_LIST_MIN_WIDTH // 左侧面板最小宽度
-    taskListBodyProposedWidth.value = TASK_LIST_MAX_WIDTH
-    taskListBodyWidthLimit.value = TASK_LIST_MAX_WIDTH
-    ganttPanelLeftCurrentWidth.value = TASK_LIST_MIN_WIDTH // 当前左侧面板宽度
+    taskListBodyWidth.value = getTaskListMaxWidth() // TaskList默认宽度
+    ganttPanelLeftMinWidth.value = getTaskListMinWidth() // 左侧面板最小宽度
+    taskListBodyProposedWidth.value = getTaskListMaxWidth()
+    taskListBodyWidthLimit.value = getTaskListMaxWidth()
+    ganttPanelLeftCurrentWidth.value = getTaskListMinWidth() // 当前左侧面板宽度
 
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)

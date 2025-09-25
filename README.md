@@ -137,6 +137,7 @@ jordium-gantt-vue3/
 | `useDefaultDrawer` | `boolean` | `true` | 是否使用默认编辑抽屉 |
 | `showToolbar` | `boolean` | `true` | 是否显示工具栏 |
 | `toolbarConfig` | `ToolbarConfig` | `{}` | 工具栏配置 |
+| `taskListConfig` | `TaskListConfig` | `{}` | 任务列表配置（包括默认宽度、最小最大宽度限制等） |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | - | 自定义多语言配置 |
 | `workingHours` | `WorkingHours` | - | 工作时间配置 |
 | `onTaskDoubleClick` | `(task: Task) => void` | - | 任务双击事件回调 |
@@ -313,6 +314,31 @@ interface ToolbarConfig {
 }
 ```
 
+**TaskListConfig 任务列表配置**
+```typescript
+interface TaskListConfig {
+  columns?: TaskListColumnConfig[]  // 列配置数组
+  showAllColumns?: boolean         // 是否显示所有列，默认true
+  defaultWidth?: number           // 默认展开宽度，单位像素，默认320px
+  minWidth?: number              // 最小宽度，单位像素，默认280px，不能小于280px
+  maxWidth?: number              // 最大宽度，单位像素，默认1160px
+}
+
+interface TaskListColumnConfig {
+  type?: TaskListColumnType       // 列类型
+  key: string                    // 用于国际化的key，也可以作为识别符
+  label?: string                 // 显示标签
+  cssClass?: string              // CSS类名
+  width?: number                 // 可选的列宽度
+  visible?: boolean              // 是否显示，默认true
+}
+
+type TaskListColumnType = 
+  | 'name' | 'predecessor' | 'assignee' 
+  | 'startDate' | 'endDate' | 'estimatedHours' 
+  | 'actualHours' | 'progress'
+```
+
 **WorkingHours 工作时间配置**
 ```typescript
 interface WorkingHours {
@@ -459,6 +485,13 @@ const milestones = ref([
     type: 'milestone'
   }
 ])
+
+// TaskList宽度配置示例
+const taskListConfig = {
+  defaultWidth: 400,  // 默认展开宽度400px（默认320px）
+  minWidth: 300,      // 最小宽度300px（默认280px） 
+  maxWidth: 1200      // 最大宽度1200px（默认1160px）
+}
 </script>
 
 <template>
@@ -466,6 +499,7 @@ const milestones = ref([
     <GanttChart 
       :tasks="tasks" 
       :milestones="milestones"
+      :task-list-config="taskListConfig"
     />
   </div>
 </template>

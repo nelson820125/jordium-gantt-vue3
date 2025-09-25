@@ -465,8 +465,8 @@ onUnmounted(() => {
         @add-successor="emit('add-successor', $event)"
         @delete="handleTaskDelete"
       >
-        <template v-if="hasContentSlot" #custom-task-content="childScope">
-          <slot name="custom-task-content" v-bind="childScope" />
+        <template v-if="hasContentSlot" #custom-task-content="slotProps">
+          <slot name="custom-task-content" v-bind="slotProps" />
         </template>
       </TaskRow>
     </template>

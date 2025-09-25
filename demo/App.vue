@@ -55,8 +55,18 @@ const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'progress', label: '进度', visible: true },
 ])
 
+// TaskList宽度配置
+const taskListWidth = ref({
+  defaultWidth: 400,  // 默认宽度400px（比默认320px更宽）
+  minWidth: 300,      // 最小宽度300px（比默认280px略大）
+  maxWidth: 1200,     // 最大宽度1200px（比默认1160px略大）
+})
+
 const taskListConfig = computed<TaskListConfig>(() => ({
   columns: availableColumns.value,
+  defaultWidth: taskListWidth.value.defaultWidth,
+  minWidth: taskListWidth.value.minWidth,
+  maxWidth: taskListWidth.value.maxWidth,
 }))
 
 // 切换列显示状态
@@ -660,24 +670,91 @@ function onTimerStopped(task: Task) {
     </h1>
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
-    <!-- TaskList列配置面板 -->
+    <!-- TaskList配置面板 -->
     <div class="config-panel">
       <h3 class="config-title">
         <svg class="config-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 15l3-3H9l3 3z" fill="currentColor"/>
           <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
         </svg>
-        TaskList 列配置
+        TaskList 配置
       </h3>
-      <div class="column-controls">
-        <label v-for="column in availableColumns" :key="column.key" class="column-control">
-          <input
-            type="checkbox"
-            :checked="column.visible"
-            @change="toggleColumn(column.key, $event)"
-          />
-          <span class="column-label">{{ column.label }}</span>
-        </label>
+
+      <!-- 宽度配置区域 -->
+      <div class="config-section">
+        <h4 class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect
+              x="3"
+              y="6"
+              width="18"
+              height="12"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"
+            />
+            <path d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+          宽度设置
+        </h4>
+        <div class="width-controls">
+          <div class="width-control">
+            <label class="width-label">默认宽度:</label>
+            <input
+              v-model.number="taskListWidth.defaultWidth"
+              type="number"
+              :min="taskListWidth.minWidth"
+              :max="taskListWidth.maxWidth"
+              step="10"
+              class="width-input"
+            />
+            <span class="width-unit">px</span>
+          </div>
+          <div class="width-control">
+            <label class="width-label">最小宽度:</label>
+            <input
+              v-model.number="taskListWidth.minWidth"
+              type="number"
+              min="280"
+              :max="taskListWidth.defaultWidth"
+              step="10"
+              class="width-input"
+            />
+            <span class="width-unit">px</span>
+          </div>
+          <div class="width-control">
+            <label class="width-label">最大宽度:</label>
+            <input
+              v-model.number="taskListWidth.maxWidth"
+              type="number"
+              :min="taskListWidth.defaultWidth"
+              max="2000"
+              step="10"
+              class="width-input"
+            />
+            <span class="width-unit">px</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 列配置区域 -->
+      <div class="config-section">
+        <h4 class="section-title">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+          </svg>
+          列显示
+        </h4>
+        <div class="column-controls">
+          <label v-for="column in availableColumns" :key="column.key" class="column-control">
+            <input
+              type="checkbox"
+              :checked="column.visible"
+              @change="toggleColumn(column.key, $event)"
+            />
+            <span class="column-label">{{ column.label }}</span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -779,6 +856,69 @@ function onTimerStopped(task: Task) {
   width: 20px;
   height: 20px;
   color: var(--gantt-primary-color, #409eff);
+}
+
+.config-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary-color);
+}
+
+.width-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.width-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.width-label {
+  flex: 0 0 80px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.width-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-background, #fff);
+  color: var(--text-primary);
+  font-size: 13px;
+  max-width: 100px;
+}
+
+.width-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.width-unit {
+  flex: 0 0 20px;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .column-controls {
