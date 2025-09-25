@@ -1543,8 +1543,8 @@ onMounted(() => {
 const handleTaskListVerticalScroll = (event: CustomEvent) => {
   const { scrollTop } = event.detail
   const timelineBody = document.querySelector('.timeline-body') as HTMLElement
-  if (timelineBody && timelineBody.scrollTop !== scrollTop) {
-    // 避免循环触发，只在scrollTop不同时才设置
+  if (timelineBody && Math.abs(timelineBody.scrollTop - scrollTop) > 1) {
+    // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
     timelineBody.scrollTop = scrollTop
   }
 }

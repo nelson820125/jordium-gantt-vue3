@@ -518,7 +518,8 @@ onUnmounted(() => {
 .task-row {
   display: flex;
   border-bottom: 1px solid var(--gantt-border-light);
-  height: 50px;
+  height: 51px; /* 修改为51px，与Timeline中的task-row高度保持一致，包含border-bottom 1px */
+  box-sizing: border-box; /* 确保border包含在高度计算中 */
   background: var(--gantt-bg-primary);
   align-items: center;
   color: var(--gantt-text-secondary);

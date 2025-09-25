@@ -313,14 +313,12 @@ const handleTaskListScroll = (event: Event) => {
       detail: { scrollTop },
     }),
   )
-}
-
-// 处理Timeline垂直滚动同步
+}// 处理Timeline垂直滚动同步
 const handleTimelineVerticalScroll = (event: CustomEvent) => {
   const { scrollTop } = event.detail
   const taskListBodyElement = document.querySelector('.task-list-body') as HTMLElement
-  if (taskListBodyElement && taskListBodyElement.scrollTop !== scrollTop) {
-    // 避免循环触发，只在scrollTop不同时才设置
+  if (taskListBodyElement && Math.abs(taskListBodyElement.scrollTop - scrollTop) > 1) {
+    // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
     taskListBodyElement.scrollTop = scrollTop
   }
 }
