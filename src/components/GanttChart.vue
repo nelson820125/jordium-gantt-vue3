@@ -45,6 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
     afternoon: { start: 13, end: 17 },
   }),
   taskListConfig: undefined,
+  autoSortByStartDate: false,
 })
 
 const emit = defineEmits([
@@ -115,6 +116,8 @@ interface Props {
   }
   // 任务列表配置
   taskListConfig?: TaskListConfig
+  // 是否启用自动排序（根据开始时间排序任务）
+  autoSortByStartDate?: boolean
 }
 
 // 使用taskListConfig中的默认宽度，如果未配置则使用320px
@@ -557,10 +560,54 @@ const tasksForTaskList = computed(() => {
 
   // 添加原始任务数据（完全保持层级结构，不扁平化）
   if (props.tasks && props.tasks.length > 0) {
-    result.push(...props.tasks)
-  }
+    // 根据配置决定是否排序
+    if (props.autoSortByStartDate) {
+      // 递归排序函数：根据实际开始时间排序
+      const sortTasksByStartDate = (tasks: Task[]): Task[] => {
+        return [...tasks]
+          .map(task => {
+            // 递归处理子任务
+            const sortedTask = { ...task }
+            if (task.children && task.children.length > 0) {
+              sortedTask.children = sortTasksByStartDate(task.children)
+            }
+            return sortedTask
+          })
+          .sort((a, b) => {
+            // 获取实际开始时间（考虑子任务的最早时间）
+            const getEarliestStartDate = (task: Task): Date => {
+              // 如果有子任务，找子任务中的最早时间
+              if (task.children && task.children.length > 0) {
+                const childDates = task.children
+                  .map(child => getEarliestStartDate(child))
+                  .filter(date => date.getTime() > 0) // 过滤无效日期
 
-  return result
+                if (childDates.length > 0) {
+                  return new Date(Math.min(...childDates.map(d => d.getTime())))
+                }
+              }
+
+              // 没有子任务或子任务都没有时间，使用自身时间
+              return task.startDate ? new Date(task.startDate) : new Date('9999-12-31')
+            }
+
+            const dateA = getEarliestStartDate(a)
+            const dateB = getEarliestStartDate(b)
+
+            // 按时间排序，时间相同时按ID排序
+            const timeDiff = dateA.getTime() - dateB.getTime()
+            return timeDiff !== 0 ? timeDiff : a.id - b.id
+          })
+      }
+
+      // 启用排序：对任务进行递归排序
+      const sortedTasks = sortTasksByStartDate(props.tasks)
+      result.push(...sortedTasks)
+    } else {
+      // 不排序：直接使用原始任务数据
+      result.push(...props.tasks)
+    }
+  }  return result
 })
 
 // 为Timeline提供正确的扁平化数据
