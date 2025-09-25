@@ -913,6 +913,26 @@ const isWeekContainsToday = (weekStart: Date, weekEnd: Date) => {
   return today >= weekStart && today <= weekEnd
 }
 
+// 计算周在全局时间轴中的位置（用于旗帜定位）
+const getGlobalWeekPosition = (monthIndex: number, weekIndex: number) => {
+  let position = 0
+
+  // 累加前面月份的宽度
+  for (let i = 0; i < monthIndex; i++) {
+    const month = timelineData.value[i]
+    if (month && month.isWeekView && month.weeks) {
+      position += month.weeks.length * 60
+    } else if (month && month.days) {
+      position += month.days.length * 30
+    }
+  }
+
+  // 加上当前月份内的周位置
+  position += weekIndex * 60
+
+  return position
+}
+
 // 更新时间刻度方法 - 供外部调用
 const updateTimeScale = (scale: TimelineScale) => {
   currentTimeScale.value = scale
@@ -2380,6 +2400,36 @@ const handleAddSuccessor = (task: Task) => {
           >
             <div class="year-month-label">{{ month.yearMonthLabel }}</div>
           </div>
+
+          <!-- 月份1号标记旗帜 - 统一放在外层容器 -->
+          <template
+            v-for="(month, monthIndex) in timelineData"
+            :key="`flags-${month.year}-${month.month}`"
+          >
+            <template v-if="month.isWeekView && month.weeks">
+              <template
+                v-for="(week, weekIndex) in month.weeks"
+                :key="`flag-${month.year}-${month.month}-${weekIndex}`"
+              >
+                <template
+                  v-for="(subDay, dayIndex) in week.subDays || []"
+                  :key="`flagday-${monthIndex}-${weekIndex}-${dayIndex}`"
+                >
+                  <div
+                    v-if="subDay.date && subDay.date.getDate() === 1"
+                    class="month-first-flag"
+                    :style="{
+                      left: `${getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60/7)}px`,
+                      transform: 'translateX(-50%)' // 使旗帜中心（杆子）对齐日期位置
+                    }"
+                  >
+                    <div class="flag-pole"></div>
+                    <div class="flag-content">{{ subDay.date.getDate() }}</div>
+                  </div>
+                </template>
+              </template>
+            </template>
+          </template>
         </div>
 
         <!-- 第二行：周/日期 -->
@@ -2481,6 +2531,36 @@ const handleAddSuccessor = (task: Task) => {
             height: `${contentHeight}px`,
           }"
         ></div>
+
+        <!-- 月份1号竖直线（周视图） -->
+        <template v-if="currentTimeScale === TimelineScale.WEEK">
+          <template
+            v-for="(month, monthIndex) in timelineData"
+            :key="`vlines-${month.year}-${month.month}`"
+          >
+            <template v-if="month.isWeekView && month.weeks">
+              <template
+                v-for="(week, weekIndex) in month.weeks"
+                :key="`vline-${month.year}-${month.month}-${weekIndex}`"
+              >
+                <template
+                  v-for="(subDay, dayIndex) in week.subDays || []"
+                  :key="`vlineday-${monthIndex}-${weekIndex}-${dayIndex}`"
+                >
+                  <div
+                    v-if="subDay.date && subDay.date.getDate() === 1"
+                    class="month-first-vertical-line"
+                    :style="{
+                      left: `${getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60/7)}px`,
+                      height: `${contentHeight}px`
+                    }"
+                  ></div>
+                </template>
+              </template>
+            </template>
+          </template>
+        </template>
+
         <!-- 背景列 -->
         <div class="day-columns" :style="{ height: `${contentHeight}px` }">
           <!-- 小时视图背景列 -->
@@ -2611,7 +2691,7 @@ const handleAddSuccessor = (task: Task) => {
                     class="sub-day-column"
                     :class="{
                       weekend: subDay.dayOfWeek === 0 || subDay.dayOfWeek === 6,
-                      today: isToday(subDay.date),
+                      today: isToday(subDay.date)
                     }"
                     :style="{ height: `${contentHeight}px`, width: '8.57px' }"
                   ></div>
@@ -2838,6 +2918,7 @@ const handleAddSuccessor = (task: Task) => {
 
 .year-month-row {
   align-items: center;
+  position: relative; /* 为旗帜提供定位上下文 */
 }
 
 .days-row {
@@ -2980,6 +3061,64 @@ const handleAddSuccessor = (task: Task) => {
   /* 每个子天的宽度为 60px / 7 ≈ 8.57px */
   width: 8.57px;
   /* 不显示边框，仅用于定位计算 */
+}
+
+/* 月份1号标记旗帜样式 */
+.month-first-flag {
+  position: absolute;
+  bottom: -40px;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flag-content {
+  background-color: var(--gantt-primary, #409eff);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-align: center;
+  min-width: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  order: 1; /* 旗帜内容在上 */
+}
+
+.flag-pole {
+  width: 1px;
+  height: 50px;
+  background-color: var(--gantt-primary, #409eff);
+  order: 2; /* 旗杆在下 */
+}
+
+/* 暗色主题下的旗帜样式 */
+:global(html[data-theme='dark']) .flag-pole {
+  background-color: var(--gantt-primary-light, #66b1ff);
+}
+
+:global(html[data-theme='dark']) .flag-content {
+  background-color: var(--gantt-primary-light, #66b1ff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* 月份1号竖直线样式 */
+.month-first-vertical-line {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  background-color: var(--gantt-primary, #409eff);
+  opacity: 0.6;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* 暗色主题下的竖直线 */
+:global(html[data-theme='dark']) .month-first-vertical-line {
+  background-color: var(--gantt-primary-light, #66b1ff);
+  opacity: 0.7;
 }
 
 /* 周视图背景列样式 */

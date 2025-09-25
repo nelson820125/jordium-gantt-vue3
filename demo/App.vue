@@ -39,25 +39,25 @@ const toolbarConfig = {
   showTheme: true,
   showFullscreen: true,
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
-  timeScaleDimensions: ['week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+  timeScaleDimensions: ['day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
   defaultTimeScale: 'week',
   showExpandCollapse: true, // 显示全部展开/折叠按钮
 }
 
 // TaskList列配置
 const availableColumns = ref<TaskListColumnConfig[]>([
-  { key: 'predecessor', label: '前置任务', visible: true },
-  { key: 'assignee', label: '负责人', visible: true },
+  // { key: 'predecessor', label: '前置任务', visible: true },
+  // { key: 'assignee', label: '负责人', visible: true },
   { key: 'startDate', label: '开始日期', visible: true },
-  { key: 'endDate', label: '结束日期', visible: true },
-  { key: 'estimatedHours', label: '预估工时', visible: true },
-  { key: 'actualHours', label: '实际工时', visible: true },
-  { key: 'progress', label: '进度', visible: true },
+  // { key: 'endDate', label: '结束日期', visible: true },
+  // { key: 'estimatedHours', label: '预估工时', visible: true },
+  // { key: 'actualHours', label: '实际工时', visible: true },
+  // { key: 'progress', label: '进度', visible: true },
 ])
 
 // TaskList宽度配置
 const taskListWidth = ref({
-  defaultWidth: 400, // 默认宽度400px（比默认320px更宽）
+  defaultWidth: 450, // 默认宽度400px（比默认320px更宽）
   minWidth: 300, // 最小宽度300px（比默认280px略大）
   maxWidth: 1200, // 最大宽度1200px（比默认1160px略大）
 })
