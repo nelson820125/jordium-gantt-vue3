@@ -1,9 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, useSlots } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
+import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
 import TaskContextMenu from './TaskContextMenu.vue'
+
+interface TaskRowSlotProps {
+  isRowContent: boolean
+  task: Task
+  level: number
+  indent: string
+  isHovered: boolean
+  hoveredTaskId: number | null
+  isParent: boolean
+  hasChildren: boolean
+  collapsed: boolean
+  formattedTimer: string
+  timerRunning: boolean
+  timerElapsed: number
+  isOvertime: number | boolean | undefined
+  overdueDays: number
+  overtimeText: string
+  overdueText: string
+  daysText: string
+  progressClass: string
+  type?: string
+}
 
 interface Props {
   task: Task
@@ -12,6 +35,7 @@ interface Props {
   isHovered?: boolean
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
+  columns: TaskListColumnConfig[]
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
@@ -24,13 +48,27 @@ const emit = defineEmits([
   'add-successor',
   'delete',
 ])
+
+defineSlots<{
+  'custom-task-content'(props: TaskRowSlotProps): unknown
+}>()
 const { t } = useI18n()
 const overtimeText = computed(() => t.value?.overtime ?? '')
 const overdueText = computed(() => t.value?.overdue ?? '')
 const daysText = computed(() => t.value?.days ?? '')
 
+const slots = useSlots()
+const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
+
 const baseIndent = 10
-const indent = `${baseIndent + props.level * 20}px`
+const indent = computed(() => `${baseIndent + props.level * 20}px`)
+const hasChildren = computed(() => !!(props.task.children && props.task.children.length > 0))
+const isStoryTask = computed(() => props.task.type === 'story')
+const isMilestoneGroup = computed(() => props.task.type === 'milestone-group')
+const isMilestoneTask = computed(() => props.task.type === 'milestone')
+const isParentTask = computed(
+  () => isStoryTask.value || hasChildren.value || isMilestoneGroup.value,
+)
 function handleToggle() {
   emit('toggle', props.task)
 }
@@ -38,8 +76,8 @@ function handleToggle() {
 function handleRowClick() {
   // 如果是普通父级任务（story类型或有子任务的任务，非里程碑分组），点击行也可以展开/收起
   if (
-    (props.task.type === 'story' || (props.task.children && props.task.children.length > 0)) &&
-    props.task.type !== 'milestone-group'
+    (isStoryTask.value || hasChildren.value) &&
+    !isMilestoneGroup.value
   ) {
     emit('toggle', props.task)
   }
@@ -220,6 +258,29 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
   closeContextMenu()
 }
 
+const progressClass = computed(() => getProgressClass())
+
+const slotPayload = computed(() => ({
+  isRowContent: true,
+  task: props.task,
+  level: props.level,
+  indent: indent.value,
+  isHovered: props.isHovered ?? false,
+  hoveredTaskId: props.hoveredTaskId ?? null,
+  isParent: isParentTask.value,
+  hasChildren: hasChildren.value,
+  collapsed: !!props.task.collapsed,
+  formattedTimer: formattedTimer.value,
+  timerRunning: !!props.task.isTimerRunning,
+  timerElapsed: timerElapsed.value,
+  isOvertime: isOvertime(),
+  overdueDays: overdueDays(),
+  overtimeText: overtimeText.value,
+  overdueText: overdueText.value,
+  daysText: daysText.value,
+  progressClass: progressClass.value,
+}))
+
 // 生命周期钩子 - 注册事件监听器
 onMounted(() => {
   window.addEventListener('splitter-drag-start', handleSplitterDragStart)
@@ -243,14 +304,11 @@ onUnmounted(() => {
       class="task-row"
       :class="{
         'task-row-hovered': isHovered,
-        'parent-task':
-          props.task.type === 'story' ||
-          (props.task.children && props.task.children.length > 0) ||
-          props.task.type === 'milestone-group',
-        'milestone-group-row': props.task.type === 'milestone-group',
-        'task-type-story': props.task.type === 'story',
+        'parent-task': isParentTask,
+        'milestone-group-row': isMilestoneGroup,
+        'task-type-story': isStoryTask,
         'task-type-task': props.task.type === 'task',
-        'task-type-milestone': props.task.type === 'milestone',
+        'task-type-milestone': isMilestoneTask
       }"
       @click="handleRowClick"
       @dblclick="handleTaskRowDoubleClick"
@@ -260,11 +318,7 @@ onUnmounted(() => {
     >
       <div class="col col-name" :style="{ paddingLeft: indent }">
         <span
-          v-if="
-            (props.task.type === 'story' ||
-              (props.task.children && props.task.children.length > 0)) &&
-            props.task.type !== 'milestone-group'
-          "
+            v-if="(isStoryTask || hasChildren) && !isMilestoneGroup"
           class="collapse-btn"
           @click.stop="handleToggle"
         >
@@ -282,13 +336,13 @@ onUnmounted(() => {
         </span>
 
         <!-- 里程碑分组的占位空间，用于与有折叠按钮的任务对齐 -->
-        <span v-if="props.task.type === 'milestone-group'" class="milestone-spacer"></span>
+        <span v-if="isMilestoneGroup" class="milestone-spacer"></span>
 
         <!-- 任务图标 -->
         <span class="task-icon">
           <!-- 里程碑分组图标 - 使用菱形图标 -->
           <svg
-            v-if="props.task.type === 'milestone-group'"
+            v-if="isMilestoneGroup"
             width="16"
             height="16"
             viewBox="0 0 24 24"
@@ -301,9 +355,7 @@ onUnmounted(() => {
           </svg>
           <!-- 父级任务图标 -->
           <svg
-            v-else-if="
-              props.task.type === 'story' || (props.task.children && props.task.children.length > 0)
-            "
+            v-else-if="isStoryTask || hasChildren"
             width="16"
             height="16"
             viewBox="0 0 24 24"
@@ -333,15 +385,18 @@ onUnmounted(() => {
 
         <span
           class="task-name-text"
-          :class="{
-            'parent-task':
-              props.task.type === 'story' ||
-              (props.task.children && props.task.children.length > 0) ||
-              props.task.type === 'milestone-group',
-          }"
+          :class="{ 'parent-task': isParentTask }"
           :title="props.task.name"
         >
-          {{ props.task.name }}
+          <slot
+            v-if="hasContentSlot"
+            name="custom-task-content"
+            v-bind="slotPayload"
+            type="task-row"
+          />
+          <template v-else>
+            {{ props.task.name }}
+          </template>
           <!-- 计时器显示 -->
           <span
             v-if="props.task.isTimerRunning || props.task.timerElapsedTime"
@@ -358,41 +413,65 @@ onUnmounted(() => {
         </span>
       </div>
 
-      <!-- 里程碑分组不显示详细信息 -->
-      <template v-if="props.task.type === 'milestone-group'">
-        <div class="col col-pre milestone-empty-col"></div>
-        <div class="col col-assignee milestone-empty-col"></div>
-        <div class="col col-date milestone-empty-col"></div>
-        <div class="col col-date milestone-empty-col"></div>
-        <div class="col col-hours milestone-empty-col"></div>
-        <div class="col col-hours milestone-empty-col"></div>
-        <div class="col col-progress milestone-empty-col"></div>
-      </template>
+      <!-- 动态渲染列 -->
+      <div
+        v-for="column in columns"
+        :key="column.key"
+        class="col"
+        :class="column.cssClass || `col-${column.key}`"
+      >
+        <!-- 里程碑分组显示空列 -->
+        <template v-if="isMilestoneGroup">
+          <div class="milestone-empty-col"></div>
+        </template>
+        <!-- 普通任务显示具体内容 -->
+        <template v-else>
+          <!-- 前置任务列 -->
+          <template v-if="column.key === 'predecessor'">
+            {{ formatPredecessorDisplay(props.task.predecessor) }}
+          </template>
 
-      <!-- 普通任务显示详细信息 -->
-      <template v-else>
-        <div class="col col-pre">{{ formatPredecessorDisplay(props.task.predecessor) }}</div>
-        <div class="col col-assignee">
-          <div class="assignee-info">
-            <div class="avatar">
-              {{ props.task.assignee ? props.task.assignee.charAt(0) : '-' }}
+          <!-- 负责人列 -->
+          <template v-else-if="column.key === 'assignee'">
+            <div class="assignee-info">
+              <div class="avatar">
+                {{ props.task.assignee ? props.task.assignee.charAt(0) : '-' }}
+              </div>
+              <span class="assignee-name">{{ props.task.assignee || '-' }}</span>
             </div>
-            <span class="assignee-name">{{ props.task.assignee || '-' }}</span>
-          </div>
-        </div>
-        <div class="col col-date">{{ props.task.startDate || '-' }}</div>
-        <div class="col col-date">{{ props.task.endDate || '-' }}</div>
-        <div class="col col-hours">{{ props.task.estimatedHours || '-' }}</div>
-        <div class="col col-hours">{{ props.task.actualHours || '-' }}</div>
-        <div class="col col-progress">
-          <span class="progress-value" :class="getProgressClass()">
-            {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
-          </span>
-        </div>
-      </template>
+          </template>
+
+          <!-- 开始日期列 -->
+          <template v-else-if="column.key === 'startDate'">
+            {{ props.task.startDate || '-' }}
+          </template>
+
+          <!-- 结束日期列 -->
+          <template v-else-if="column.key === 'endDate'">
+            {{ props.task.endDate || '-' }}
+          </template>
+
+          <!-- 预估工时列 -->
+          <template v-else-if="column.key === 'estimatedHours'">
+            {{ props.task.estimatedHours || '-' }}
+          </template>
+
+          <!-- 实际工时列 -->
+          <template v-else-if="column.key === 'actualHours'">
+            {{ props.task.actualHours || '-' }}
+          </template>
+
+          <!-- 进度列 -->
+          <template v-else-if="column.key === 'progress'">
+            <span class="progress-value" :class="progressClass">
+              {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
+            </span>
+          </template>
+        </template>
+      </div>
     </div>
     <template
-      v-if="props.task.children && !props.task.collapsed && props.task.type !== 'milestone-group'"
+      v-if="hasChildren && !props.task.collapsed && !isMilestoneGroup"
     >
       <TaskRow
         v-for="child in props.task.children"
@@ -403,6 +482,7 @@ onUnmounted(() => {
         :hovered-task-id="props.hoveredTaskId"
         :on-double-click="props.onDoubleClick"
         :on-hover="props.onHover"
+        :columns="props.columns"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
         @start-timer="emit('start-timer', $event)"
@@ -410,7 +490,11 @@ onUnmounted(() => {
         @add-predecessor="emit('add-predecessor', $event)"
         @add-successor="emit('add-successor', $event)"
         @delete="handleTaskDelete"
-      />
+      >
+        <template v-if="hasContentSlot" #custom-task-content="slotProps">
+          <slot name="custom-task-content" v-bind="(slotProps as TaskRowSlotProps)" />
+        </template>
+      </TaskRow>
     </template>
 
     <TaskContextMenu
@@ -429,11 +513,13 @@ onUnmounted(() => {
 
 <style scoped>
 @import '../styles/theme-variables.css';
+@import '../styles/list.css';
 
 .task-row {
   display: flex;
   border-bottom: 1px solid var(--gantt-border-light);
-  height: 50px;
+  height: 51px; /* 修改为51px，与Timeline中的task-row高度保持一致，包含border-bottom 1px */
+  box-sizing: border-box; /* 确保border包含在高度计算中 */
   background: var(--gantt-bg-primary);
   align-items: center;
   color: var(--gantt-text-secondary);
@@ -578,51 +664,6 @@ onUnmounted(() => {
   width: 18px;
   height: 18px;
   margin-right: 4px;
-}
-
-.col {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light);
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.col:last-child {
-  border-right: none;
-}
-
-.col-name {
-  flex: 2 0 300px;
-  max-width: 300px;
-  justify-content: flex-start;
-}
-
-.col-pre {
-  flex: 1 0 120px;
-  max-width: 120px;
-}
-
-.col-assignee {
-  flex: 1 0 200px;
-  max-width: 200px;
-}
-
-.col-date {
-  flex: 1.2 0 140px;
-  max-width: 140px;
-}
-
-.col-hours {
-  flex: 1 0 100px;
-  max-width: 100px;
-}
-
-.col-progress {
-  flex: 1 0 100px;
-  max-width: 100px;
 }
 
 .task-name-text {

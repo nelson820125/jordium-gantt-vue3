@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
@@ -20,6 +20,8 @@ const props = withDefaults(defineProps<Props>(), {
   onFullscreenChange: undefined,
   onSettingsConfirm: undefined,
   onTimeScaleChange: undefined,
+  onExpandAll: undefined,
+  onCollapseAll: undefined,
 })
 
 const emit = defineEmits<{
@@ -32,6 +34,8 @@ const emit = defineEmits<{
   'theme-change': [isDark: boolean]
   'fullscreen-change': [isFullscreen: boolean]
   'time-scale-change': [scale: TimelineScale]
+  'expand-all': []
+  'collapse-all': []
 }>()
 
 // LocalStorage keys
@@ -56,6 +60,8 @@ interface Props {
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onTimeScaleChange?: (scale: TimelineScale) => void
+  onExpandAll?: () => void
+  onCollapseAll?: () => void
   // 外部确认接口
   onSettingsConfirm?: (
     type: 'theme' | 'language',
@@ -137,6 +143,23 @@ const handleExportPdf = () => {
     props.onExportPdf()
   } else {
     emit('export-pdf')
+  }
+}
+
+// 展开/折叠处理函数
+const handleExpandAll = () => {
+  if (props.onExpandAll && typeof props.onExpandAll === 'function') {
+    props.onExpandAll()
+  } else {
+    emit('expand-all')
+  }
+}
+
+const handleCollapseAll = () => {
+  if (props.onCollapseAll && typeof props.onCollapseAll === 'function') {
+    props.onCollapseAll()
+  } else {
+    emit('collapse-all')
   }
 }
 
@@ -266,6 +289,44 @@ const handleFullscreenToggle = () => {
   }
 }
 
+// 时间刻度配置映射
+const timeScaleMap = {
+  hour: { value: TimelineScale.HOUR, label: () => t('timeScaleHour') },
+  day: { value: TimelineScale.DAY, label: () => t('timeScaleDay') },
+  week: { value: TimelineScale.WEEK, label: () => t('timeScaleWeek') },
+  month: { value: TimelineScale.MONTH, label: () => t('timeScaleMonth') },
+  quarter: { value: TimelineScale.QUARTER, label: () => t('timeScaleQuarter') },
+  year: { value: TimelineScale.YEAR, label: () => t('timeScaleYear') },
+}
+
+type TimeScaleKey = keyof typeof timeScaleMap
+const defaultScaleKeys: TimeScaleKey[] = ['hour', 'day', 'week', 'month', 'year']
+
+// 获取可用的时间刻度维度
+const availableTimeScales = computed<TimeScaleKey[]>(() => {
+  const configured = props.config?.timeScaleDimensions as TimeScaleKey[] | undefined
+  const normalized = (configured ?? defaultScaleKeys).filter(
+    (scale): scale is TimeScaleKey => scale in timeScaleMap,
+  )
+  return normalized.length > 0 ? normalized : [...defaultScaleKeys]
+})
+
+// 根据配置解析默认时间刻度
+const resolvedDefaultScaleKey = computed<TimeScaleKey>(() => {
+  const keys = availableTimeScales.value
+  const candidate = props.config?.defaultTimeScale as TimeScaleKey | undefined
+
+  if (candidate && keys.includes(candidate)) {
+    return candidate
+  }
+
+  if (keys.includes('day')) {
+    return 'day'
+  }
+
+  return keys[0] ?? 'day'
+})
+
 // 时间刻度切换处理
 const handleTimeScaleChange = (scale: TimelineScale) => {
   currentTimeScale.value = scale
@@ -277,28 +338,26 @@ const handleTimeScaleChange = (scale: TimelineScale) => {
   }
 }
 
-// 获取可用的时间刻度维度
-const availableTimeScales = computed(() => {
-  const defaultScales = ['hour', 'day', 'week', 'month', 'year'] as const
-  return props.config?.timeScaleDimensions || defaultScales
-})
-
-// 时间刻度配置映射
-const timeScaleMap = {
-  hour: { value: TimelineScale.HOUR, label: () => t('timeScaleHour') },
-  day: { value: TimelineScale.DAY, label: () => t('timeScaleDay') },
-  week: { value: TimelineScale.WEEK, label: () => t('timeScaleWeek') },
-  month: { value: TimelineScale.MONTH, label: () => t('timeScaleMonth') },
-  quarter: { value: TimelineScale.QUARTER, label: () => t('timeScaleQuarter') },
-  year: { value: TimelineScale.YEAR, label: () => t('timeScaleYear') },
-}
+// 监听配置变化并应用默认时间刻度
+let hasAppliedConfigScale = false
+watch(
+  () => resolvedDefaultScaleKey.value,
+  newKey => {
+    const targetScale = timeScaleMap[newKey].value
+    if (currentTimeScale.value !== targetScale || !hasAppliedConfigScale) {
+      hasAppliedConfigScale = true
+      handleTimeScaleChange(targetScale)
+    }
+  },
+  { immediate: true },
+)
 
 // 获取当前时间刻度对应的字符串键
-const currentTimeScaleKey = computed(() => {
-  const entry = Object.entries(timeScaleMap).find(
-    ([, config]) => config.value === currentTimeScale.value,
+const currentTimeScaleKey = computed<TimeScaleKey>(() => {
+  const matchedKey = availableTimeScales.value.find(
+    scaleKey => timeScaleMap[scaleKey].value === currentTimeScale.value,
   )
-  return entry ? entry[0] : 'day'
+  return matchedKey ?? resolvedDefaultScaleKey.value
 })
 
 // 计算分段控制器滑块位置
@@ -422,6 +481,45 @@ onUnmounted(() => {
             <line x1="8" y1="12" x2="16" y2="12"></line>
           </svg>
           {{ t('addMilestone') }}
+        </button>
+      </div>
+
+      <!-- 展开/折叠按钮组 -->
+      <div
+        v-if="config.showExpandCollapse !== false"
+        class="btn-group expand-collapse-btn-group"
+      >
+        <button
+          class="btn-group-item"
+          :title="t('expandAll')"
+          @click="handleExpandAll"
+        >
+          <svg
+            class="btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          {{ t('expandAll') }}
+        </button>
+        <button
+          class="btn-group-item"
+          :title="t('collapseAll')"
+          @click="handleCollapseAll"
+        >
+          <svg
+            class="btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+          {{ t('collapseAll') }}
         </button>
       </div>
 

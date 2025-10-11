@@ -136,6 +136,7 @@ jordium-gantt-vue3/
 | `useDefaultDrawer` | `boolean` | `true` | Use default edit drawer |
 | `showToolbar` | `boolean` | `true` | Show toolbar |
 | `toolbarConfig` | `ToolbarConfig` | `{}` | Toolbar configuration |
+| `taskListConfig` | `TaskListConfig` | `{}` | Task list configuration (including default width, min/max width limits, etc.) |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | - | Custom locale messages |
 | `workingHours` | `WorkingHours` | - | Working hours configuration |
 | `onTaskDoubleClick` | `(task: Task) => void` | - | Task double-click event callback |
@@ -299,6 +300,31 @@ interface ToolbarConfig {
 }
 ```
 
+**TaskListConfig**
+```typescript
+interface TaskListConfig {
+  columns?: TaskListColumnConfig[]  // Column configuration array
+  showAllColumns?: boolean         // Show all columns, default true
+  defaultWidth?: number           // Default expanded width in pixels, default 320px
+  minWidth?: number              // Minimum width in pixels, default 280px, cannot be less than 280px
+  maxWidth?: number              // Maximum width in pixels, default 1160px
+}
+
+interface TaskListColumnConfig {
+  type?: TaskListColumnType       // Column type
+  key: string                    // Key for internationalization, also used as identifier
+  label?: string                 // Display label
+  cssClass?: string              // CSS class name
+  width?: number                 // Optional column width
+  visible?: boolean              // Whether to display, default true
+}
+
+type TaskListColumnType = 
+  | 'name' | 'predecessor' | 'assignee' 
+  | 'startDate' | 'endDate' | 'estimatedHours' 
+  | 'actualHours' | 'progress'
+```
+
 **WorkingHours Configuration**
 ```typescript
 interface WorkingHours {
@@ -445,6 +471,13 @@ const milestones = ref([
     type: 'milestone'
   }
 ])
+
+// TaskList width configuration example
+const taskListConfig = {
+  defaultWidth: 400,  // Default expanded width 400px (default 320px)
+  minWidth: 300,      // Minimum width 300px (default 280px)
+  maxWidth: 1200      // Maximum width 1200px (default 1160px)
+}
 </script>
 
 <template>
@@ -452,6 +485,7 @@ const milestones = ref([
     <GanttChart 
       :tasks="tasks" 
       :milestones="milestones"
+      :task-list-config="taskListConfig"
     />
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import GanttChart from '../src/components/GanttChart.vue'
 // import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
@@ -8,10 +8,12 @@ import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
+import HtmlContent from './HtmlContent.vue'
 import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
+import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
@@ -37,10 +39,54 @@ const toolbarConfig = {
   showTheme: true,
   showFullscreen: true,
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
-  timeScaleDimensions: ['hour', 'day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+  timeScaleDimensions: ['day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+  defaultTimeScale: 'week',
+  showExpandCollapse: true, // 显示全部展开/折叠按钮
 }
 
-// 工作时间配置示例
+// TaskList列配置
+const availableColumns = ref<TaskListColumnConfig[]>([
+  // { key: 'predecessor', label: '前置任务', visible: true },
+  // { key: 'assignee', label: '负责人', visible: true },
+  { key: 'startDate', label: '开始日期', visible: true },
+  // { key: 'endDate', label: '结束日期', visible: true },
+  // { key: 'estimatedHours', label: '预估工时', visible: true },
+  // { key: 'actualHours', label: '实际工时', visible: true },
+  // { key: 'progress', label: '进度', visible: true },
+])
+
+// TaskList宽度配置
+const taskListWidth = ref({
+  defaultWidth: 450, // 默认宽度400px（比默认320px更宽）
+  minWidth: 300, // 最小宽度300px（比默认280px略大）
+  maxWidth: 1200, // 最大宽度1200px（比默认1160px略大）
+})
+
+const taskListConfig = computed<TaskListConfig>(() => ({
+  columns: availableColumns.value,
+  defaultWidth: taskListWidth.value.defaultWidth,
+  minWidth: taskListWidth.value.minWidth,
+  maxWidth: taskListWidth.value.maxWidth,
+}))
+
+// 配置面板折叠状态
+const isConfigPanelCollapsed = ref(false)
+
+// 切换配置面板折叠状态
+const toggleConfigPanel = () => {
+  isConfigPanelCollapsed.value = !isConfigPanelCollapsed.value
+}
+
+// 切换列显示状态
+const toggleColumn = (columnKey: string, event: Event) => {
+  const target = event.target as HTMLInputElement
+  const visible = target?.checked ?? false
+
+  const column = availableColumns.value.find(col => col.key === columnKey)
+  if (column) {
+    column.visible = visible
+  }
+} // 工作时间配置示例
 const workingHoursConfig = {
   morning: { start: 8, end: 11 }, // 上午8:00-11:59为工作时间
   afternoon: { start: 13, end: 17 }, // 下午13:00-17:00为工作时间
@@ -126,14 +172,14 @@ const handleMilestoneDelete = async (milestoneId: number) => {
     window.dispatchEvent(
       new CustomEvent('milestone-deleted', {
         detail: { milestoneId },
-      }),
+      })
     )
 
     // 触发强制更新事件，确保Timeline重新渲染
     window.dispatchEvent(
       new CustomEvent('milestone-data-changed', {
         detail: { milestones: milestones.value },
-      }),
+      })
     )
   }
 
@@ -227,7 +273,7 @@ const handleTaskUpdate = (updatedTask: Task) => {
         showMessage(
           formatTranslation('newParentTaskNotFound', { parentId: taskToAdd.parentId }),
           'warning',
-          { closable: true },
+          { closable: true }
         )
         tasks.value.push(taskToAdd)
       }
@@ -275,7 +321,7 @@ const handleTaskAdd = (newTask: Task) => {
     const maxId = Math.max(
       ...tasks.value.map(t => t.id || 0),
       ...milestones.value.map(m => m.id || 0),
-      0,
+      0
     )
     newTask.id = maxId + 1
   }
@@ -370,7 +416,7 @@ const handleStoryDeleteWithChildren = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          },
+          }
         )
         return true
       }
@@ -432,7 +478,7 @@ const handleStoryDeleteOnly = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          },
+          }
         )
         return true
       }
@@ -506,7 +552,7 @@ function handleTaskbarDragOrResizeEnd(newTask) {
       `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
       `结束: ${oldTask.endDate} → ${newTask.endDate}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
@@ -516,7 +562,7 @@ function handleMilestoneDragEnd(newMilestone) {
     `里程碑【${newMilestone.name}】\n` +
       `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 
@@ -583,7 +629,7 @@ function onTimerStarted(task: Task) {
   showMessage(
     `Demo 任务【${task.name}】\n开始计时：${new Date(task.timerStartTime).toLocaleString()}\n计时说明：${task.timerStartDesc ? task.timerStartDesc : ''}`,
     'info',
-    { closable: true },
+    { closable: true }
   )
 }
 function onTimerStopped(task: Task) {
@@ -596,6 +642,10 @@ function onTimerStopped(task: Task) {
     msg += `\n结束计时：${new Date().toLocaleString()}`
   }
   showMessage(msg, 'info', { closable: true })
+}
+
+function taskDebug(item: any) {
+  console.log('Task Debug:', item)
 }
 </script>
 
@@ -631,11 +681,143 @@ function onTimerStopped(task: Task) {
       </div>
     </h1>
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
+
+    <!-- TaskList配置面板 - 可折叠 -->
+    <div class="config-panel" :class="{ collapsed: isConfigPanelCollapsed }">
+      <div class="config-header" @click="toggleConfigPanel">
+        <h3 class="config-title">
+          <svg
+            class="config-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
+          </svg>
+          TaskList 配置
+        </h3>
+        <button class="collapse-button" :class="{ collapsed: isConfigPanelCollapsed }">
+          <svg
+            class="collapse-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7 10l5 5 5-5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 可折叠内容区域 -->
+      <transition name="config-content">
+        <div v-show="!isConfigPanelCollapsed" class="config-content">
+          <!-- 宽度配置区域 -->
+          <div class="config-section">
+            <h4 class="section-title">
+              <svg
+                class="section-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="6"
+                  width="18"
+                  height="12"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path
+                  d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                />
+              </svg>
+              宽度设置
+            </h4>
+            <div class="width-controls">
+              <div class="width-control">
+                <label class="width-label">默认宽度:</label>
+                <input
+                  v-model.number="taskListWidth.defaultWidth"
+                  type="number"
+                  :min="taskListWidth.minWidth"
+                  :max="taskListWidth.maxWidth"
+                  step="10"
+                  class="width-input"
+                />
+                <span class="width-unit">px</span>
+              </div>
+              <div class="width-control">
+                <label class="width-label">最小宽度:</label>
+                <input
+                  v-model.number="taskListWidth.minWidth"
+                  type="number"
+                  min="280"
+                  :max="taskListWidth.defaultWidth"
+                  step="10"
+                  class="width-input"
+                />
+                <span class="width-unit">px</span>
+              </div>
+              <div class="width-control">
+                <label class="width-label">最大宽度:</label>
+                <input
+                  v-model.number="taskListWidth.maxWidth"
+                  type="number"
+                  :min="taskListWidth.defaultWidth"
+                  max="2000"
+                  step="10"
+                  class="width-input"
+                />
+                <span class="width-unit">px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 列配置区域 -->
+          <div class="config-section">
+            <h4 class="section-title">
+              <svg
+                class="section-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
+              </svg>
+              列显示
+            </h4>
+            <div class="column-controls">
+              <label v-for="column in availableColumns" :key="column.key" class="column-control">
+                <input
+                  type="checkbox"
+                  :checked="column.visible"
+                  @change="toggleColumn(column.key, $event)"
+                />
+                <span class="column-label">{{ column.label }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </div>
+
     <div class="gantt-wrapper">
       <GanttChart
         :tasks="tasks"
         :milestones="milestones"
         :toolbar-config="toolbarConfig"
+        :task-list-config="taskListConfig"
         :working-hours="workingHoursConfig"
         :on-add-task="handleAddTask"
         :on-add-milestone="handleAddMilestone"
@@ -666,7 +848,11 @@ function onTimerStopped(task: Task) {
         @task-deleted="e => showMessage(`Demo 任务[${e.task.name}] 已删除`, 'info')"
         @task-added="e => showMessage(`Demo 任务[${e.task.name}] 已创建`, 'info')"
         @task-updated="e => showMessage(`Demo 任务[${e.task.name}] 已更新`, 'info')"
-      />
+      >
+        <template #custom-task-content="item">
+          <HtmlContent :item="taskDebug(item)" :task="item.task" :type="item.type" />
+        </template>
+      </GanttChart>
     </div>
     <div class="license-info">
       <p>MIT License @JORDIUM.COM</p>
@@ -693,6 +879,217 @@ function onTimerStopped(task: Task) {
   background: var(--gantt-bg-secondary, #f0f2f5);
   display: flex;
   flex-direction: column;
+}
+
+/* TaskList列配置面板样式 - 可折叠 */
+.config-panel {
+  background: var(--gantt-bg-primary, #ffffff);
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.config-panel:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.config-panel.collapsed {
+  border-radius: 8px;
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.config-panel.collapsed .config-header {
+  border-bottom: none;
+}
+
+.config-header:hover {
+  background-color: var(--gantt-hover-bg, #f8f9fa);
+}
+
+.config-content {
+  padding: 0 16px 16px;
+  overflow: hidden;
+}
+
+.collapse-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--gantt-text-secondary, #666);
+}
+
+.collapse-button:hover {
+  background-color: var(--gantt-hover-bg, #e8f4fd);
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.collapse-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+}
+
+.collapse-button.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+/* 过渡动画 */
+.config-content-enter-active,
+.config-content-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.config-content-enter-from,
+.config-content-leave-to {
+  height: 0;
+  opacity: 0;
+}
+
+.config-content-enter-to,
+.config-content-leave-from {
+  opacity: 1;
+}
+
+.config-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gantt-text-primary, #333);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.config-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary-color);
+}
+
+.width-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.width-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.width-label {
+  flex: 0 0 80px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.width-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-background, #fff);
+  color: var(--text-primary);
+  font-size: 13px;
+  max-width: 100px;
+}
+
+.width-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.width-unit {
+  flex: 0 0 20px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.column-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.column-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border: 1px solid transparent;
+}
+
+.column-control:hover {
+  background: var(--gantt-hover-bg, #e8f4fd);
+  border-color: var(--gantt-primary-color, #409eff);
+}
+
+.column-control input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--gantt-primary-color, #409eff);
+}
+
+.column-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gantt-text-primary, #333);
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.column-control:hover .column-label {
+  color: var(--gantt-primary-color, #409eff);
 }
 
 .page-title {
@@ -814,6 +1211,50 @@ function onTimerStopped(task: Task) {
 :global(html[data-theme='dark']) body {
   background: #1e1e1e !important;
   color: #e5e5e5 !important;
+}
+
+/* 暗色主题下的配置面板样式 */
+:global(html[data-theme='dark']) .config-panel {
+  background: var(--gantt-bg-primary, #2d3748);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .config-title {
+  color: var(--gantt-text-primary, #e2e8f0);
+}
+
+:global(html[data-theme='dark']) .column-control {
+  background: var(--gantt-bg-secondary, #1a202c);
+}
+
+:global(html[data-theme='dark']) .column-control:hover {
+  background: var(--gantt-hover-bg, #2d3748);
+}
+
+:global(html[data-theme='dark']) .column-label {
+  color: var(--gantt-text-primary, #e2e8f0);
+}
+
+:global(html[data-theme='dark']) .column-control:hover .column-label {
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+/* 暗色主题下的折叠面板样式 */
+:global(html[data-theme='dark']) .config-header {
+  border-bottom-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .config-header:hover {
+  background-color: var(--gantt-hover-bg, #2d3748);
+}
+
+:global(html[data-theme='dark']) .collapse-button {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .collapse-button:hover {
+  background-color: var(--gantt-hover-bg, #2d3748);
+  color: var(--gantt-primary-color, #66b3ff);
 }
 
 /* 暗黑模式下的版本标签 */

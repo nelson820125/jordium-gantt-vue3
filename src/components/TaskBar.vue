@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
@@ -25,6 +25,25 @@ interface Props {
   currentTimeScale?: TimelineScale
 }
 
+interface TaskStatus {
+  type: string
+  color: string
+  bgColor: string
+  borderColor: string
+}
+
+interface TaskBarSlotProps {
+  type: string
+  task: Task
+  status: TaskStatus
+  statusType: string
+  isParent?: boolean
+  progress: number
+  currentTimeScale?: TimelineScale
+  rowHeight: number
+  dayWidth: number
+}
+
 const props = defineProps<Props>()
 
 const emit = defineEmits([
@@ -39,12 +58,20 @@ const emit = defineEmits([
   'add-predecessor',
   'add-successor',
   'delete',
-  'contextmenu', // 添加原生contextmenu事件声明
+  'context-menu',
 ])
+
+defineSlots<{
+  'custom-task-content'(props: TaskBarSlotProps): unknown
+}>()
+
+const slots = useSlots()
 const { getTranslation } = useI18n()
 const t = (key: string): string => {
   return getTranslation(key)
 }
+
+const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -130,10 +157,26 @@ const tempTaskData = ref<{
   endDate?: string
 } | null>(null)
 
+// 季度视图拖拽时的位置覆盖（直接使用像素位置）
+const quarterDragOverride = ref<{
+  left?: number
+  width?: number
+} | null>(null)
+
 const barRef = ref<HTMLElement | null>(null)
 
 // 计算任务条位置和宽度
 const taskBarStyle = computed(() => {
+  // 季度视图拖拽时使用位置覆盖
+  if (quarterDragOverride.value && props.currentTimeScale === TimelineScale.QUARTER) {
+    return {
+      left: `${quarterDragOverride.value.left ?? 0}px`,
+      width: `${quarterDragOverride.value.width ?? 100}px`,
+      height: `${props.rowHeight - 10}px`,
+      top: '4px',
+    }
+  }
+
   const currentStartDate = tempTaskData.value?.startDate || props.task.startDate
   const currentEndDate = tempTaskData.value?.endDate || props.task.endDate
 
@@ -336,6 +379,19 @@ const taskStatus = computed(() => {
   }
 })
 
+// Slot payload for content slot - 使用 v-bind 方式传递所有属性
+const slotPayload = computed(() => ({
+  type: 'task-bar',
+  task: props.task,
+  status: taskStatus.value,
+  statusType: taskStatus.value.type,
+  isParent: props.isParent ?? false,
+  progress: props.task.progress || 0,
+  currentTimeScale: props.currentTimeScale,
+  rowHeight: props.rowHeight,
+  dayWidth: props.dayWidth,
+}))
+
 // 判断是否已完成
 const isCompleted = computed(() => (props.task.progress || 0) >= 100)
 
@@ -429,6 +485,11 @@ function reportBarPosition() {
   }
 }
 
+// 拖拽时的实时日期提示框状态
+const dragTooltipVisible = ref(false)
+const dragTooltipPosition = ref({ x: 0, y: 0 })
+const dragTooltipContent = ref({ startDate: '', endDate: '' })
+
 const handleMouseMove = (e: MouseEvent) => {
   // 发送边界检测事件给Timeline
   window.dispatchEvent(
@@ -439,6 +500,15 @@ const handleMouseMove = (e: MouseEvent) => {
       },
     }),
   )
+
+  // 更新拖拽提示框位置
+  if (isDragging.value || isResizingLeft.value || isResizingRight.value) {
+    dragTooltipVisible.value = true
+    dragTooltipPosition.value = {
+      x: e.clientX + 15, // 鼠标右侧偏移
+      y: e.clientY - 60,  // 鼠标上方偏移
+    }
+  }
 
   if (isDragging.value) {
     const deltaX = e.clientX - dragStartX.value
@@ -482,6 +552,52 @@ const handleMouseMove = (e: MouseEvent) => {
         startDate: formatDateToLocalString(newStartDate),
         endDate: formatDateToLocalString(newEndDate),
       }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: formatDateToLocalString(newEndDate),
+      }
+    } else if (props.currentTimeScale === TimelineScale.QUARTER) {
+      // 季度视图：直接使用像素位置，保持拖拽跟随鼠标
+      const newLeft = Math.max(0, dragStartLeft.value + deltaX)
+
+      // 更新位置覆盖
+      quarterDragOverride.value = {
+        left: newLeft,
+        width: dragStartWidth.value,
+      }
+
+      // 同时计算日期用于提示框（使用与Timeline相同的季度视图计算）
+      const quarterWidth = 60  // 与Timeline.vue保持一致
+      const daysInQuarter = 90  // 季度平均天数
+      const pixelsPerDay = quarterWidth / daysInQuarter  // 约0.67px/天
+      const dayOffset = Math.round(deltaX / pixelsPerDay)
+
+      // 基于原始任务日期计算新日期
+      const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+      const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+
+      const newStartDate = new Date(originalStartDate)
+      newStartDate.setDate(newStartDate.getDate() + dayOffset)
+
+      // 计算任务持续天数
+      const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
+      const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+      const newEndDate = new Date(newStartDate)
+      newEndDate.setDate(newEndDate.getDate() + Math.max(0, duration))
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: formatDateToLocalString(newEndDate),
+      }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: formatDateToLocalString(newEndDate),
+      }
     } else {
       // 其他视图：保持原有逻辑
       const newLeft = Math.max(0, dragStartLeft.value + deltaX)
@@ -491,6 +607,12 @@ const handleMouseMove = (e: MouseEvent) => {
 
       // 只更新临时数据，不触发事件
       tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: formatDateToLocalString(newEndDate),
+      }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
         startDate: formatDateToLocalString(newStartDate),
         endDate: formatDateToLocalString(newEndDate),
       }
@@ -519,6 +641,44 @@ const handleMouseMove = (e: MouseEvent) => {
         startDate: formatDateToLocalString(newStartDate),
         endDate: props.task.endDate, // 保持原来的结束日期
       }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate || '',
+      }
+    } else if (props.currentTimeScale === TimelineScale.QUARTER) {
+      // 季度视图：左侧resize直接使用像素位置
+      const newLeft = Math.max(0, resizeStartLeft.value + deltaX)
+      const newWidth = Math.max(10, resizeStartWidth.value - deltaX) // 保持最小宽度
+
+      // 更新位置覆盖
+      quarterDragOverride.value = {
+        left: newLeft,
+        width: newWidth,
+      }
+
+      // 计算日期用于提示框（使用与Timeline相同的季度视图计算）
+      const quarterWidth = 60  // 与Timeline.vue保持一致
+      const daysInQuarter = 90  // 季度平均天数
+      const pixelsPerDay = quarterWidth / daysInQuarter  // 约0.67px/天
+      const dayOffset = Math.round(deltaX / pixelsPerDay)
+
+      const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+      const newStartDate = new Date(originalStartDate)
+      newStartDate.setDate(newStartDate.getDate() + dayOffset)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate, // 保持原来的结束日期
+      }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate || '',
+      }
     } else {
       // 其他视图：保持原有逻辑
       const newLeft = Math.max(0, resizeStartLeft.value + deltaX)
@@ -528,6 +688,12 @@ const handleMouseMove = (e: MouseEvent) => {
       tempTaskData.value = {
         startDate: formatDateToLocalString(newStartDate),
         endDate: props.task.endDate, // 保持原来的结束日期
+      }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate || '',
       }
     }
   } else if (isResizingRight.value) {
@@ -554,6 +720,43 @@ const handleMouseMove = (e: MouseEvent) => {
         startDate: props.task.startDate, // 保持原来的开始日期
         endDate: formatDateToLocalString(newEndDate),
       }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: props.task.startDate || '',
+        endDate: formatDateToLocalString(newEndDate),
+      }
+    } else if (props.currentTimeScale === TimelineScale.QUARTER) {
+      // 季度视图：右侧resize直接使用像素位置
+      const newWidth = Math.max(10, resizeStartWidth.value + deltaX) // 保持最小宽度
+
+      // 更新位置覆盖
+      quarterDragOverride.value = {
+        left: resizeStartLeft.value,
+        width: newWidth,
+      }
+
+      // 计算日期用于提示框（使用与Timeline相同的季度视图计算）
+      const quarterWidth = 60  // 与Timeline.vue保持一致
+      const daysInQuarter = 90  // 季度平均天数
+      const pixelsPerDay = quarterWidth / daysInQuarter  // 约0.67px/天
+      const dayOffset = Math.round(deltaX / pixelsPerDay)
+
+      const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+      const newEndDate = new Date(originalEndDate)
+      newEndDate.setDate(newEndDate.getDate() + dayOffset)
+
+      // 只更新临时数据，不触发事件
+      tempTaskData.value = {
+        startDate: props.task.startDate, // 保持原来的开始日期
+        endDate: formatDateToLocalString(newEndDate),
+      }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: props.task.startDate || '',
+        endDate: formatDateToLocalString(newEndDate),
+      }
     } else {
       // 其他视图：保持原有逻辑
       const newWidth = Math.max(props.dayWidth, resizeStartWidth.value + deltaX)
@@ -568,11 +771,23 @@ const handleMouseMove = (e: MouseEvent) => {
         startDate: props.task.startDate, // 保持原来的开始日期
         endDate: formatDateToLocalString(newEndDate),
       }
+
+      // 更新拖拽提示框内容
+      dragTooltipContent.value = {
+        startDate: props.task.startDate || '',
+        endDate: formatDateToLocalString(newEndDate),
+      }
     }
   }
 }
 
 const handleMouseUp = () => {
+  // 隐藏拖拽提示框
+  dragTooltipVisible.value = false
+
+  // 清除季度视图位置覆盖
+  quarterDragOverride.value = null
+
   // 停止边界检测
   window.dispatchEvent(
     new CustomEvent('drag-boundary-check', {
@@ -1313,7 +1528,16 @@ onUnmounted(() => {
     @dblclick="handleTaskBarDoubleClick"
   >
     <!-- 父级任务的标签 -->
-    <div v-if="isParent" class="parent-label">{{ task.name }} ({{ task.progress || 0 }}%)</div>
+    <div v-if="isParent" class="parent-label">
+      <slot
+        v-if="hasContentSlot"
+        name="custom-task-content"
+        v-bind="slotPayload"
+      />
+      <template v-else>
+        {{ task.name }} ({{ task.progress || 0 }}%)
+      </template>
+    </div>
 
     <!-- 完成进度条（非父级任务） -->
     <div
@@ -1340,7 +1564,12 @@ onUnmounted(() => {
       @mousedown="e => (isInteractionDisabled ? null : handleMouseDown(e, 'drag'))"
     >
       <!-- 任务名称 -->
-      <div class="task-name" :style="getNameStyles()">
+      <slot
+        v-if="hasContentSlot"
+        name="custom-task-content"
+        v-bind="slotPayload"
+      />
+      <div v-else class="task-name" :style="getNameStyles()">
         {{ task.name }}
       </div>
 
@@ -1421,6 +1650,29 @@ onUnmounted(() => {
         <div class="tooltip-row">
           <span class="tooltip-label"> {{ t('progress') }}:</span>
           <span class="tooltip-value">{{ task.progress || 0 }}%</span>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- 拖拽实时反馈提示框 -->
+  <Teleport to="body">
+    <div
+      v-if="dragTooltipVisible"
+      class="drag-tooltip"
+      :style="{
+        left: `${dragTooltipPosition.x}px`,
+        top: `${dragTooltipPosition.y}px`,
+      }"
+    >
+      <div class="drag-tooltip-content">
+        <div class="tooltip-row">
+          <span class="tooltip-label">{{ t('startDate') }}:</span>
+          <span class="tooltip-value">{{ formatDisplayDate(dragTooltipContent.startDate) }}</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="tooltip-label">{{ t('endDate') }}:</span>
+          <span class="tooltip-value">{{ formatDisplayDate(dragTooltipContent.endDate) }}</span>
         </div>
       </div>
     </div>
@@ -1862,6 +2114,46 @@ onUnmounted(() => {
   font-weight: 600;
   text-align: right;
   color: #ffffff;
+}
+
+/* === 拖拽实时反馈提示框样式 === */
+.drag-tooltip {
+  position: fixed;
+  background: rgba(0, 123, 255, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10001;
+  box-shadow: 0 2px 12px rgba(0, 123, 255, 0.4);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
+}
+
+.drag-tooltip .tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.drag-tooltip .tooltip-row:last-child {
+  margin-bottom: 0;
+}
+
+.drag-tooltip .tooltip-label {
+  opacity: 0.9;
+  min-width: 55px;
+  font-size: 11px;
+}
+
+.drag-tooltip .tooltip-value {
+  font-weight: 600;
+  text-align: right;
+  font-size: 11px;
+  margin-left: 8px;
 }
 
 .sticky-text {
