@@ -441,7 +441,7 @@ showMessage('Operation successful', 'success')
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/style.css'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([
   {
@@ -450,7 +450,8 @@ const tasks = ref([
     startDate: '2025-01-01',
     endDate: '2025-01-15',
     progress: 80,
-    assignee: 'John Doe'
+    assignee: 'John Doe',
+    type: 'task'
   },
   {
     id: 2,
@@ -459,7 +460,8 @@ const tasks = ref([
     endDate: '2025-01-30',
     progress: 60,
     assignee: 'Jane Smith',
-    predecessor: '1'
+    predecessor: '1',
+    type: 'task'
   }
 ])
 
