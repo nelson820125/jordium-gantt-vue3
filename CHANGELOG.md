@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-10-11
+
+### Added
+- Timeline Scale客制化
+- TaskList可配置
+- TaskRow/TaskBar内容支持HTML插槽
+- TaskRow/TaskBar支持自定义样式
+- 增加全部展开/收起按钮
+- 按照时间排序TaskList
+- 增加周视图的1号旗帜元素
+- Timeline Scale Customization
+- TaskList Configurable
+- TaskRow/TaskBar content supports HTML slots
+- TaskRow/TaskBar supports custom styles
+- Add Expand/Collapse All Button
+- Sort TaskList by time
+- Add 1st flag element for weekly view
+
+### Fixed
+- SonarQube代码质量检查问题修改
+- 缺陷修复
+- Modification of SonarQube code quality inspection issues
+- Bugfix
+
 ## [1.3.0] - 2025-09-12
 
 ### Added
