@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted, onMounted, computed, watch, nextTick, defineEmits } from 'vue'
+import { ref, onUnmounted, onMounted, computed, watch, nextTick } from 'vue'
 import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
@@ -11,6 +11,7 @@ import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
+import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import { useMessage } from '../composables/useMessage'
 
@@ -36,11 +37,15 @@ const props = withDefaults(defineProps<Props>(), {
   onLanguageChange: undefined,
   onThemeChange: undefined,
   onFullscreenChange: undefined,
+  onExpandAll: undefined,
+  onCollapseAll: undefined,
   localeMessages: undefined,
   workingHours: () => ({
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  taskListConfig: undefined,
+  autoSortByStartDate: false,
 })
 
 const emit = defineEmits([
@@ -94,6 +99,8 @@ interface Props {
   onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
+  onExpandAll?: () => void
+  onCollapseAll?: () => void
   /**
    * 自定义多语言（国际化）配置，结构参考内置 messages['zh-CN']，只需传递需要覆盖的 key 即可。
    * 例如：
@@ -107,9 +114,41 @@ interface Props {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
     afternoon?: { start: number; end: number } // 下午工作时间，如 { start: 13, end: 17 }
   }
+  // 任务列表配置
+  taskListConfig?: TaskListConfig
+  // 是否启用自动排序（根据开始时间排序任务）
+  autoSortByStartDate?: boolean
 }
 
-const leftPanelWidth = ref(320)
+// 使用taskListConfig中的默认宽度，如果未配置则使用320px
+const leftPanelWidth = ref(props.taskListConfig?.defaultWidth || 320)
+
+// 监听taskListConfig变化，更新相关配置
+watch(
+  () => props.taskListConfig,
+  (newConfig) => {
+    if (newConfig) {
+      // 更新默认宽度
+      if (newConfig.defaultWidth !== undefined) {
+        leftPanelWidth.value = newConfig.defaultWidth
+      }
+
+      // 更新最小最大宽度限制
+      ganttPanelLeftMinWidth.value = getTaskListMinWidth()
+      taskListBodyWidth.value = getTaskListMaxWidth()
+      taskListBodyProposedWidth.value = getTaskListMaxWidth()
+      taskListBodyWidthLimit.value = getTaskListMaxWidth()
+      ganttPanelLeftCurrentWidth.value = getTaskListMinWidth()
+
+      // 确保当前宽度在新的限制范围内
+      const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
+      if (adjustedWidth !== leftPanelWidth.value) {
+        leftPanelWidth.value = adjustedWidth
+      }
+    }
+  },
+  { immediate: false, deep: true },
+)
 
 // Timeline组件的引用
 const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
@@ -117,19 +156,39 @@ const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
+watch(
+  () => timelineRef.value,
+  newTimeline => {
+    if (newTimeline) {
+      newTimeline.updateTimeScale(currentTimeScale.value)
+    }
+  },
+)
+
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
 // 列宽: 300+120+120+140+140+100+100+100 = 1120px
 // 边框: 7个列间边框 * 1px = 7px
 // 滚动条预留: 20px
 // 额外边距: 13px (task-list-header的左边距3px + 其他10px预留)
-const TASK_LIST_MAX_WIDTH = 1120 + 7 + 20 + 13 // = 1160px
-const TASK_LIST_MIN_WIDTH = 320 // TaskList最小宽度
+const DEFAULT_TASK_LIST_MAX_WIDTH = 1120 + 7 + 20 + 13 // = 1160px
+const DEFAULT_TASK_LIST_MIN_WIDTH = 280 // 最小宽度不能小于280px
 
-const taskListBodyWidth = ref(TASK_LIST_MAX_WIDTH) // TaskList默认宽度
-const ganttPanelLeftMinWidth = ref(TASK_LIST_MIN_WIDTH) // 左侧面板最小宽度
-const ganttPanelLeftCurrentWidth = ref(TASK_LIST_MIN_WIDTH) // 当前左侧面板宽度
-const taskListBodyProposedWidth = ref(TASK_LIST_MAX_WIDTH)
-const taskListBodyWidthLimit = ref(TASK_LIST_MAX_WIDTH)
+// TaskList最小宽度，支持通过taskListConfig配置
+const getTaskListMinWidth = () => {
+  const configMinWidth = props.taskListConfig?.minWidth || DEFAULT_TASK_LIST_MIN_WIDTH
+  return Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH) // 确保不小于280px
+}
+
+// TaskList最大宽度，支持通过taskListConfig配置
+const getTaskListMaxWidth = () => {
+  return props.taskListConfig?.maxWidth || DEFAULT_TASK_LIST_MAX_WIDTH
+}
+
+const taskListBodyWidth = ref(getTaskListMaxWidth()) // TaskList默认宽度
+const ganttPanelLeftMinWidth = ref(getTaskListMinWidth()) // 左侧面板最小宽度
+const ganttPanelLeftCurrentWidth = ref(getTaskListMinWidth()) // 当前左侧面板宽度
+const taskListBodyProposedWidth = ref(getTaskListMaxWidth())
+const taskListBodyWidthLimit = ref(getTaskListMaxWidth())
 
 // 简化的限制检查函数：直接基于面板实际宽度判断
 const checkWidthLimits = (proposedLeftWidth: number): number => {
@@ -208,11 +267,11 @@ function onMouseDown(e: MouseEvent) {
     document.body.style.webkitUserSelect = ''
     document.body.style.cursor = ''
 
-    taskListBodyWidth.value = TASK_LIST_MAX_WIDTH // TaskList默认宽度
-    ganttPanelLeftMinWidth.value = TASK_LIST_MIN_WIDTH // 左侧面板最小宽度
-    taskListBodyProposedWidth.value = TASK_LIST_MAX_WIDTH
-    taskListBodyWidthLimit.value = TASK_LIST_MAX_WIDTH
-    ganttPanelLeftCurrentWidth.value = TASK_LIST_MIN_WIDTH // 当前左侧面板宽度
+    taskListBodyWidth.value = getTaskListMaxWidth() // TaskList默认宽度
+    ganttPanelLeftMinWidth.value = getTaskListMinWidth() // 左侧面板最小宽度
+    taskListBodyProposedWidth.value = getTaskListMaxWidth()
+    taskListBodyWidthLimit.value = getTaskListMaxWidth()
+    ganttPanelLeftCurrentWidth.value = getTaskListMinWidth() // 当前左侧面板宽度
 
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
@@ -331,6 +390,52 @@ const handleTaskCollapseChange = (task: Task) => {
 
   // 触发Timeline重新计算
   updateTaskTrigger.value++
+}
+
+// 全部展开任务
+const handleExpandAll = () => {
+  if (props.onExpandAll && typeof props.onExpandAll === 'function') {
+    props.onExpandAll()
+  } else {
+    // 默认行为：递归展开所有任务
+    const expandAllTasks = (tasks: Task[]): void => {
+      tasks.forEach(task => {
+        if (task.children && task.children.length > 0) {
+          task.collapsed = false
+          expandAllTasks(task.children)
+        }
+      })
+    }
+
+    if (props.tasks) {
+      expandAllTasks(props.tasks)
+      // 触发Timeline重新计算
+      updateTaskTrigger.value++
+    }
+  }
+}
+
+// 全部折叠任务
+const handleCollapseAll = () => {
+  if (props.onCollapseAll && typeof props.onCollapseAll === 'function') {
+    props.onCollapseAll()
+  } else {
+    // 默认行为：递归折叠所有任务
+    const collapseAllTasks = (tasks: Task[]): void => {
+      tasks.forEach(task => {
+        if (task.children && task.children.length > 0) {
+          task.collapsed = true
+          collapseAllTasks(task.children)
+        }
+      })
+    }
+
+    if (props.tasks) {
+      collapseAllTasks(props.tasks)
+      // 触发Timeline重新计算
+      updateTaskTrigger.value++
+    }
+  }
 }
 
 // 用于强制触发Timeline重新计算的响应式值
@@ -455,10 +560,54 @@ const tasksForTaskList = computed(() => {
 
   // 添加原始任务数据（完全保持层级结构，不扁平化）
   if (props.tasks && props.tasks.length > 0) {
-    result.push(...props.tasks)
-  }
+    // 根据配置决定是否排序
+    if (props.autoSortByStartDate) {
+      // 递归排序函数：根据实际开始时间排序
+      const sortTasksByStartDate = (tasks: Task[]): Task[] => {
+        return [...tasks]
+          .map(task => {
+            // 递归处理子任务
+            const sortedTask = { ...task }
+            if (task.children && task.children.length > 0) {
+              sortedTask.children = sortTasksByStartDate(task.children)
+            }
+            return sortedTask
+          })
+          .sort((a, b) => {
+            // 获取实际开始时间（考虑子任务的最早时间）
+            const getEarliestStartDate = (task: Task): Date => {
+              // 如果有子任务，找子任务中的最早时间
+              if (task.children && task.children.length > 0) {
+                const childDates = task.children
+                  .map(child => getEarliestStartDate(child))
+                  .filter(date => date.getTime() > 0) // 过滤无效日期
 
-  return result
+                if (childDates.length > 0) {
+                  return new Date(Math.min(...childDates.map(d => d.getTime())))
+                }
+              }
+
+              // 没有子任务或子任务都没有时间，使用自身时间
+              return task.startDate ? new Date(task.startDate) : new Date('9999-12-31')
+            }
+
+            const dateA = getEarliestStartDate(a)
+            const dateB = getEarliestStartDate(b)
+
+            // 按时间排序，时间相同时按ID排序
+            const timeDiff = dateA.getTime() - dateB.getTime()
+            return timeDiff !== 0 ? timeDiff : a.id - b.id
+          })
+      }
+
+      // 启用排序：对任务进行递归排序
+      const sortedTasks = sortTasksByStartDate(props.tasks)
+      result.push(...sortedTasks)
+    } else {
+      // 不排序：直接使用原始任务数据
+      result.push(...props.tasks)
+    }
+  }  return result
 })
 
 // 为Timeline提供正确的扁平化数据
@@ -1515,7 +1664,11 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
       :on-theme-change="props.onThemeChange"
       :on-fullscreen-change="props.onFullscreenChange"
       :on-time-scale-change="handleTimeScaleChange"
+      :on-expand-all="handleExpandAll"
+      :on-collapse-all="handleCollapseAll"
       @add-task="handleToolbarAddTask"
+      @expand-all="handleExpandAll"
+      @collapse-all="handleCollapseAll"
     />
 
     <!-- 甘特图主体 -->
@@ -1530,13 +1683,18 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           :on-task-double-click="props.onTaskDoubleClick"
           :edit-component="props.editComponent"
           :use-default-drawer="props.useDefaultDrawer"
+          :task-list-config="props.taskListConfig"
           @task-collapse-change="handleTaskCollapseChange"
           @start-timer="handleStartTimer"
           @stop-timer="handleStopTimer"
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
           @delete="handleTaskDelete"
-        />
+        >
+          <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
+            <slot name="custom-task-content" v-bind="rowScope" />
+          </template>
+        </TaskList>
       </div>
       <div class="gantt-splitter" @mousedown="onMouseDown">
         <!-- TaskList切换按钮 - 贴合splitter右侧 -->
@@ -1584,7 +1742,11 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
           @delete="handleTaskDelete"
-        />
+        >
+          <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
+            <slot name="custom-task-content" v-bind="barScope" />
+          </template>
+        </Timeline>
       </div>
     </div>
 

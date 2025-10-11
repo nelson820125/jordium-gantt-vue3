@@ -10,6 +10,10 @@ export { default as TaskRow } from './components/TaskRow.vue'
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 
+// 导出配置类型
+export type { TaskListConfig, TaskListColumnConfig, TaskListColumnType } from './models/configs/TaskListConfig'
+export type { ToolbarConfig } from './models/configs/ToolbarConfig'
+
 // 导出样式文件
 import './styles/theme-variables.css'
 

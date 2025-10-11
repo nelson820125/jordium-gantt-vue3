@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, useSlots, computed } from 'vue'
+import type { Component } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
+import type { TaskListConfig } from '../models/configs/TaskListConfig'
+import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 
 interface Props {
   tasks?: Task[]
   onTaskDoubleClick?: (task: Task) => void
-  editComponent?: any
+  editComponent?: Component
   useDefaultDrawer?: boolean
+  taskListConfig?: TaskListConfig
 }
 
 const props = defineProps<Props>()
@@ -26,9 +30,19 @@ const emit = defineEmits<{
   'add-successor': [task: Task] // 新增：添加后置任务事件
   delete: [task: Task, deleteChildren?: boolean]
 }>()
+const slots = useSlots()
+const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
 
 // 多语言支持
 const { t } = useI18n()
+
+// 计算可见的列配置
+const visibleColumns = computed(() => {
+  const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
+
+  // 过滤出可见的列（visible !== false）
+  return columns.filter(col => col.visible !== false)
+})
 
 // 内部响应式任务列表
 const localTasks = ref<Task[]>([])
@@ -299,14 +313,12 @@ const handleTaskListScroll = (event: Event) => {
       detail: { scrollTop },
     }),
   )
-}
-
-// 处理Timeline垂直滚动同步
+}// 处理Timeline垂直滚动同步
 const handleTimelineVerticalScroll = (event: CustomEvent) => {
   const { scrollTop } = event.detail
   const taskListBodyElement = document.querySelector('.task-list-body') as HTMLElement
-  if (taskListBodyElement && taskListBodyElement.scrollTop !== scrollTop) {
-    // 避免循环触发，只在scrollTop不同时才设置
+  if (taskListBodyElement && Math.abs(taskListBodyElement.scrollTop - scrollTop) > 1) {
+    // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
     taskListBodyElement.scrollTop = scrollTop
   }
 }
@@ -382,14 +394,20 @@ onUnmounted(() => {
 <template>
   <div class="task-list">
     <div class="task-list-header">
-      <div class="col col-name">{{ t.taskName }}</div>
-      <div class="col col-pre">{{ t.predecessor }}</div>
-      <div class="col col-assignee">{{ t.assignee }}</div>
-      <div class="col col-date">{{ t.startDate }}</div>
-      <div class="col col-date">{{ t.endDate }}</div>
-      <div class="col col-hours">{{ t.estimatedHours }}</div>
-      <div class="col col-hours">{{ t.actualHours }}</div>
-      <div class="col col-progress">{{ t.progress }}</div>
+      <!-- 任务名称列，始终显示 -->
+      <div class="col col-name">
+        {{ (t as any).taskName || '任务名称' }}
+      </div>
+      <!-- 可配置的其他列 -->
+      <div
+        v-for="column in visibleColumns"
+        :key="column.key"
+        class="col"
+        :class="column.cssClass || `col-${column.key}`"
+        :style="column.width ? { width: column.width + 'px' } : undefined"
+      >
+        {{ column.label || (t as any)[column.key] }}
+      </div>
     </div>
     <div class="task-list-body" @scroll="handleTaskListScroll">
       <TaskRow
@@ -401,6 +419,7 @@ onUnmounted(() => {
         :hovered-task-id="hoveredTaskId"
         :on-double-click="props.onTaskDoubleClick"
         :on-hover="handleTaskRowHover"
+        :columns="visibleColumns"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"
@@ -409,13 +428,18 @@ onUnmounted(() => {
         @add-predecessor="handleAddPredecessor"
         @add-successor="handleAddSuccessor"
         @delete="handleTaskDelete"
-      />
+      >
+        <template v-if="hasRowSlot" #custom-task-content="rowScope">
+          <slot name="custom-task-content" v-bind="rowScope" />
+        </template>
+      </TaskRow>
     </div>
   </div>
 </template>
 
 <style scoped>
 @import '../styles/theme-variables.css';
+@import '../styles/list.css';
 
 .task-list {
   width: 100%;
@@ -448,58 +472,12 @@ onUnmounted(() => {
   z-index: 10; /* 确保在滚动时保持在最上层 */
 }
 
-.col {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border-right: 1px solid var(--gantt-border-light);
-  box-sizing: border-box;
-  overflow: hidden;
-  font-weight: 400;
-}
-
 .task-list-header .col {
   justify-content: center;
   font-weight: 700;
   background: var(--gantt-bg-secondary);
   color: var(--gantt-text-header);
   border-right-color: var(--gantt-border-medium);
-}
-
-.col:last-child {
-  border-right: none;
-}
-
-.col-name {
-  flex: 2 0 300px;
-  max-width: 300px;
-  justify-content: flex-start;
-}
-
-.col-pre {
-  flex: 1 0 120px;
-  max-width: 120px;
-}
-
-.col-assignee {
-  flex: 1 0 200px;
-  max-width: 200px;
-}
-
-.col-date {
-  flex: 1.2 0 140px;
-  max-width: 140px;
-}
-
-.col-hours {
-  flex: 1 0 100px;
-  max-width: 100px;
-}
-
-.col-progress {
-  flex: 1 0 100px;
-  max-width: 100px;
 }
 
 .task-list-body {

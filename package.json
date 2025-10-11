@@ -50,7 +50,7 @@
     "dev:demo": "vite",
     "build": "vue-tsc -b && vite build",
     "build:demo": "vue-tsc -b && vite build",
-    "build:lib": "vite build --config vite.config.lib.ts",
+    "build:lib": "vite build --config vite.config.lib.ts && node scripts/generate-css-export.js",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
     "lint:check": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",

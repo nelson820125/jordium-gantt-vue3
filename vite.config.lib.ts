@@ -1,9 +1,19 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+// 生成CSS导出文件的插件
+const generateCssExportPlugin = () => {
+  return {
+    name: 'generate-css-export',
+    generateBundle() {
+      // 此插件将在构建后脚本中处理
+    }
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), generateCssExportPlugin()],
   build: {
     outDir: './npm-package/dist',
     emptyOutDir: true,
@@ -21,6 +31,13 @@ export default defineConfig({
         globals: {
           vue: 'Vue',
         },
+        // 禁用文件名哈希，生成固定文件名
+        entryFileNames: 'jordium-gantt-vue3.[format].js',
+        chunkFileNames: 'chunks/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+        // 禁用代码分割，将所有代码打包到一个文件中
+        manualChunks: undefined,
+        inlineDynamicImports: true
       },
     },
   },

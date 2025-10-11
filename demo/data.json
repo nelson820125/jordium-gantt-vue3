@@ -27,7 +27,7 @@
           "children": [
             {
               "id": 1101,
-              "name": "试验方案设计与伦理审查",
+              "name": "试验方案设计与<span style='font-weight: bold;color:red;'>伦理审查</span>",
               "assignee": "方案设计师 李明",
               "startDate": "2025-01-01",
               "endDate": "2025-02-28",
@@ -84,7 +84,7 @@
           "children": [
             {
               "id": 1201,
-              "name": "多中心试验启动",
+              "name": "多中心试验<span style='font-weight: bold; color: blue;'>启动</span>",
               "assignee": "项目经理 王芳",
               "startDate": "2025-09-01",
               "endDate": "2025-11-30",
