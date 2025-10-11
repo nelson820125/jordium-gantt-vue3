@@ -42,8 +42,6 @@ interface TaskBarSlotProps {
   currentTimeScale?: TimelineScale
   rowHeight: number
   dayWidth: number
-  // 新增：动态样式对象
-  dynamicStyles: Record<string, string>
 }
 
 const props = defineProps<Props>()
@@ -246,13 +244,13 @@ const taskBarStyle = computed(() => {
     const startDateOnly = new Date(
       startDate.getFullYear(),
       startDate.getMonth(),
-      startDate.getDate(),
+      startDate.getDate()
     )
     const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
     const baseStartOnly = new Date(
       baseStart.getFullYear(),
       baseStart.getMonth(),
-      baseStart.getDate(),
+      baseStart.getDate()
     )
 
     if (props.currentTimeScale === TimelineScale.YEAR) {
@@ -274,7 +272,7 @@ const taskBarStyle = computed(() => {
       const startPosition = calculatePositionFromTimelineData(
         startDateOnly,
         props.timelineData,
-        props.currentTimeScale,
+        props.currentTimeScale
       )
       // 计算结束位置：为结束日期添加一天来获取正确的结束位置
       const nextDay = new Date(endDateOnly)
@@ -282,7 +280,7 @@ const taskBarStyle = computed(() => {
       let endPosition = calculatePositionFromTimelineData(
         nextDay,
         props.timelineData,
-        props.currentTimeScale,
+        props.currentTimeScale
       )
 
       // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
@@ -297,7 +295,7 @@ const taskBarStyle = computed(() => {
           calculatePositionFromTimelineData(
             endDateOnly,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           ) + dayWidth
       }
 
@@ -306,7 +304,7 @@ const taskBarStyle = computed(() => {
     } else {
       // 日视图：基于日期的简单计算
       const startDiff = Math.floor(
-        (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24),
+        (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24)
       )
 
       // 计算持续天数（基于日期，忽略时间）
@@ -395,7 +393,6 @@ const slotPayload = computed(() => ({
   currentTimeScale: props.currentTimeScale,
   rowHeight: props.rowHeight,
   dayWidth: props.dayWidth,
-  dynamicStyles: getNameStyles(),
 }))
 
 // 判断是否已完成
@@ -504,7 +501,7 @@ const handleMouseMove = (e: MouseEvent) => {
         mouseX: e.clientX,
         isDragging: isDragging.value || isResizingLeft.value || isResizingRight.value,
       },
-    }),
+    })
   )
 
   // 更新拖拽提示框位置
@@ -769,7 +766,7 @@ const handleMouseMove = (e: MouseEvent) => {
       const newDurationDays = newWidth / props.dayWidth
       const newEndDate = addDaysToLocalDate(
         props.startDate,
-        resizeStartLeft.value / props.dayWidth + newDurationDays - 1,
+        resizeStartLeft.value / props.dayWidth + newDurationDays - 1
       )
 
       // 只更新临时数据，不触发事件
@@ -801,7 +798,7 @@ const handleMouseUp = () => {
         mouseX: 0,
         isDragging: false,
       },
-    }),
+    })
   )
 
   // 如果有临时数据，说明发生了拖拽或拉伸，提交数据更新
@@ -885,7 +882,7 @@ watch(
       reportBarPosition()
     })
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 处理TaskBar双击事件
@@ -1174,7 +1171,7 @@ watch(
         }
       }, 200)
     }
-  },
+  }
 )
 
 // 监听外部hideBubbles属性变化，确保Timeline的容器变化能及时反应
@@ -1187,7 +1184,7 @@ watch(
         // 强制重新计算bubbleIndicator，确保容器宽度变化后正确显示半圆
       })
     }
-  },
+  }
 )
 
 // 监听TaskBar可见性变化，只在滚动时实现重新出现动画
@@ -1196,7 +1193,7 @@ watch(
   () => {
     // TaskBar重新出现时，不需要动画效果
     // 半圆会自然消失，TaskBar会立即显示
-  },
+  }
 )
 
 // 监听页面缩放和大小变化，重新计算气泡位置
@@ -1356,13 +1353,13 @@ const calculateYearViewPosition = (targetDate: Date, baseStartDate: Date): numbe
   const daysInHalfYear =
     month <= 6
       ? Math.floor(
-        (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
-            (1000 * 60 * 60 * 24),
-      )
+          (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
       : Math.floor(
-        (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
-            (1000 * 60 * 60 * 24),
-      )
+          (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
 
   const dayPositionInHalfYear = (dayOffset / daysInHalfYear) * halfYearWidth
   position += dayPositionInHalfYear
@@ -1386,7 +1383,7 @@ const calculatePositionFromTimelineData = (
       subDays: Array<{ date: Date; dayOfWeek?: number }>
     }>
   }>,
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ) => {
   let cumulativePosition = 0
 
@@ -1404,11 +1401,11 @@ const calculatePositionFromTimelineData = (
           // 找到目标日期所在的季度
           const quarterWidth = 60
           const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = quarterWidth / daysInQuarter
           const dayInQuarter = Math.ceil(
-            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInQuarter * dayWidth
         }
@@ -1566,14 +1563,9 @@ onUnmounted(() => {
       @mousedown="e => (isInteractionDisabled ? null : handleMouseDown(e, 'drag'))"
     >
       <!-- 任务名称 -->
-      <div ref="taskBarNameRef">
-        <slot
-          v-if="hasContentSlot"
-          name="custom-task-content"
-          v-bind="slotPayload"
-          :style="getNameStyles()"
-        />
-        <div v-else class="task-name" :style="getNameStyles()">
+      <div ref="taskBarNameRef" :style="getNameStyles()">
+        <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+        <div v-else class="task-name">
           {{ task.name }}
         </div>
       </div>

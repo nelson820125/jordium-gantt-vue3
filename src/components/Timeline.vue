@@ -3122,7 +3122,6 @@ const handleAddSuccessor = (task: Task) => {
 /* 暗色主题下的竖直线 */
 :global(html[data-theme='dark']) .month-first-vertical-line {
   background-color: var(--gantt-primary-light, #66b1ff);
-  opacity: 0.7;
 }
 
 /* 周视图背景列样式 */
