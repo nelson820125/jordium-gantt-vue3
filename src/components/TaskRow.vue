@@ -67,7 +67,7 @@ const isStoryTask = computed(() => props.task.type === 'story')
 const isMilestoneGroup = computed(() => props.task.type === 'milestone-group')
 const isMilestoneTask = computed(() => props.task.type === 'milestone')
 const isParentTask = computed(
-  () => isStoryTask.value || hasChildren.value || isMilestoneGroup.value,
+  () => isStoryTask.value || hasChildren.value || isMilestoneGroup.value
 )
 function handleToggle() {
   emit('toggle', props.task)
@@ -75,10 +75,7 @@ function handleToggle() {
 
 function handleRowClick() {
   // 如果是普通父级任务（story类型或有子任务的任务，非里程碑分组），点击行也可以展开/收起
-  if (
-    (isStoryTask.value || hasChildren.value) &&
-    !isMilestoneGroup.value
-  ) {
+  if ((isStoryTask.value || hasChildren.value) && !isMilestoneGroup.value) {
     emit('toggle', props.task)
   }
 }
@@ -224,7 +221,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 右键菜单相关状态
@@ -308,7 +305,7 @@ onUnmounted(() => {
         'milestone-group-row': isMilestoneGroup,
         'task-type-story': isStoryTask,
         'task-type-task': props.task.type === 'task',
-        'task-type-milestone': isMilestoneTask
+        'task-type-milestone': isMilestoneTask,
       }"
       @click="handleRowClick"
       @dblclick="handleTaskRowDoubleClick"
@@ -318,7 +315,7 @@ onUnmounted(() => {
     >
       <div class="col col-name" :style="{ paddingLeft: indent }">
         <span
-            v-if="(isStoryTask || hasChildren) && !isMilestoneGroup"
+          v-if="(isStoryTask || hasChildren) && !isMilestoneGroup"
           class="collapse-btn"
           @click.stop="handleToggle"
         >
@@ -470,9 +467,7 @@ onUnmounted(() => {
         </template>
       </div>
     </div>
-    <template
-      v-if="hasChildren && !props.task.collapsed && !isMilestoneGroup"
-    >
+    <template v-if="hasChildren && !props.task.collapsed && !isMilestoneGroup">
       <TaskRow
         v-for="child in props.task.children"
         :key="child.id"
@@ -492,7 +487,7 @@ onUnmounted(() => {
         @delete="handleTaskDelete"
       >
         <template v-if="hasContentSlot" #custom-task-content="slotProps">
-          <slot name="custom-task-content" v-bind="(slotProps as TaskRowSlotProps)" />
+          <slot name="custom-task-content" v-bind="slotProps as TaskRowSlotProps" />
         </template>
       </TaskRow>
     </template>
@@ -696,8 +691,8 @@ onUnmounted(() => {
 }
 
 .avatar {
-  width: 24px;
-  height: 24px;
+  min-width: 25px;
+  min-height: 25px;
   border-radius: 50%;
   background: var(--gantt-primary);
   color: var(--gantt-text-white);

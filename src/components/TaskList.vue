@@ -313,7 +313,7 @@ const handleTaskListScroll = (event: Event) => {
       detail: { scrollTop },
     }),
   )
-}// 处理Timeline垂直滚动同步
+} // 处理Timeline垂直滚动同步
 const handleTimelineVerticalScroll = (event: CustomEvent) => {
   const { scrollTop } = event.detail
   const taskListBodyElement = document.querySelector('.task-list-body') as HTMLElement
@@ -406,7 +406,7 @@ onUnmounted(() => {
         :class="column.cssClass || `col-${column.key}`"
         :style="column.width ? { width: column.width + 'px' } : undefined"
       >
-        {{ column.label || (t as any)[column.key] }}
+        {{ (t as any)[column.key] || column.label }}
       </div>
     </div>
     <div class="task-list-body" @scroll="handleTaskListScroll">

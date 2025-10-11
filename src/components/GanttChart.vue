@@ -126,7 +126,7 @@ const leftPanelWidth = ref(props.taskListConfig?.defaultWidth || 320)
 // 监听taskListConfig变化，更新相关配置
 watch(
   () => props.taskListConfig,
-  (newConfig) => {
+  newConfig => {
     if (newConfig) {
       // 更新默认宽度
       if (newConfig.defaultWidth !== undefined) {
@@ -607,7 +607,8 @@ const tasksForTaskList = computed(() => {
       // 不排序：直接使用原始任务数据
       result.push(...props.tasks)
     }
-  }  return result
+  }
+  return result
 })
 
 // 为Timeline提供正确的扁平化数据

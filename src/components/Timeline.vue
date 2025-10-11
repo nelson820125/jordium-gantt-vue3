@@ -2419,8 +2419,10 @@ const handleAddSuccessor = (task: Task) => {
                     v-if="subDay.date && subDay.date.getDate() === 1"
                     class="month-first-flag"
                     :style="{
-                      left: `${getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60/7)}px`,
-                      transform: 'translateX(-50%)' // 使旗帜中心（杆子）对齐日期位置
+                      left: `${
+                        getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60 / 7)
+                      }px`,
+                      transform: 'translateX(-50%)', // 使旗帜中心（杆子）对齐日期位置
                     }"
                   >
                     <div class="flag-pole"></div>
@@ -2551,8 +2553,10 @@ const handleAddSuccessor = (task: Task) => {
                     v-if="subDay.date && subDay.date.getDate() === 1"
                     class="month-first-vertical-line"
                     :style="{
-                      left: `${getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60/7)}px`,
-                      height: `${contentHeight}px`
+                      left: `${
+                        getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60 / 7)
+                      }px`,
+                      height: `${contentHeight}px`,
                     }"
                   ></div>
                 </template>
@@ -2691,7 +2695,7 @@ const handleAddSuccessor = (task: Task) => {
                     class="sub-day-column"
                     :class="{
                       weekend: subDay.dayOfWeek === 0 || subDay.dayOfWeek === 6,
-                      today: isToday(subDay.date)
+                      today: isToday(subDay.date),
                     }"
                     :style="{ height: `${contentHeight}px`, width: '8.57px' }"
                   ></div>

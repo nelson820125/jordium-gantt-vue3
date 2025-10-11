@@ -34,6 +34,11 @@ Example:
 - **Main Contributions**: added language support for task tooltip
 - **Participation Period**: 2025-08
 
+<img src="https://foruda.gitee.com/avatar/1676904209687527903/139467_qiuchengw_1578919251.jpg!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[秋成](https://gitee.com/qiuchengw)
+- **Contribution Type**: Code
+- **Main Contributions**: Configurable TaskList; TaskContent slot; Collapse/expand all; Time-based sorting; Component optimizations
+- **Participation Period**: 2025-09
+
 ## 📊 Contribution Statistics
 
 ### Code Contributions

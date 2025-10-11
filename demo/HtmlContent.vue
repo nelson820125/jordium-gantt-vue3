@@ -2,18 +2,17 @@
 import type { Task } from '../src/models/Task'
 
 interface Props {
-  task: Task,
-  type: string, // 'task-row' | 'task-bar'
+  task: Task
+  type: string // 'task-row' | 'task-bar'
 }
-const props = withDefaults(defineProps<Props>(), {
-})
+const props = withDefaults(defineProps<Props>(), {})
 // console.error('props', props)
 </script>
 
 <template>
   <div class="html-content-card">
-    <div v-if="type==='task-row'" class="task-row" v-html="task.name" />
-    <div v-else-if="type==='task-bar'" class="task-bar" v-html="task.name" />
+    <div v-if="props.type === 'task-row'" class="task-row" v-html="props.task.name" />
+    <div v-else-if="props.type === 'task-bar'" class="task-bar" v-html="props.task.name" />
   </div>
 </template>
 
@@ -31,7 +30,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 .task-bar {
   flex: 1;
-  padding: 0 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

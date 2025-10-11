@@ -199,6 +199,19 @@ const messages = {
     timerConfirmPrefix: '即将为任务',
     timerConfirmSuffix: '计时，若有特殊说明请完善下面的描述',
     timerConfirmPlaceholder: '请输入计时说明',
+    // TaskList配置
+    taskListConfig: {
+      title: 'TaskList 配置',
+      columns: {
+        title: '列显示',
+      },
+      width: {
+        title: '宽度设置',
+        defaultWidth: '默认宽度',
+        minWidth: '最小宽度',
+        maxWidth: '最大宽度',
+      },
+    },
   },
   'en-US': {
     dateNotSet: 'Not set',
@@ -396,6 +409,19 @@ const messages = {
     timerConfirmPrefix: 'About to start timing for',
     timerConfirmSuffix: '. If there are special notes, please complete the description below.',
     timerConfirmPlaceholder: 'Please enter timer description',
+    // TaskList配置
+    taskListConfig: {
+      title: 'TaskList Configuration',
+      columns: {
+        title: 'Columns',
+      },
+      width: {
+        title: 'Width Settings',
+        defaultWidth: 'Default Width',
+        minWidth: 'Min Width',
+        maxWidth: 'Max Width',
+      },
+    },
   },
 }
 

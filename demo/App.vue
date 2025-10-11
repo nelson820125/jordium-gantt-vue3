@@ -39,20 +39,20 @@ const toolbarConfig = {
   showTheme: true,
   showFullscreen: true,
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
-  timeScaleDimensions: ['day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
+  timeScaleDimensions: ['hour', 'day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
   defaultTimeScale: 'week',
   showExpandCollapse: true, // 显示全部展开/折叠按钮
 }
 
 // TaskList列配置
 const availableColumns = ref<TaskListColumnConfig[]>([
-  // { key: 'predecessor', label: '前置任务', visible: true },
-  // { key: 'assignee', label: '负责人', visible: true },
+  { key: 'predecessor', label: '前置任务', visible: true },
+  { key: 'assignee', label: '负责人', visible: true },
   { key: 'startDate', label: '开始日期', visible: true },
-  // { key: 'endDate', label: '结束日期', visible: true },
-  // { key: 'estimatedHours', label: '预估工时', visible: true },
-  // { key: 'actualHours', label: '实际工时', visible: true },
-  // { key: 'progress', label: '进度', visible: true },
+  { key: 'endDate', label: '结束日期', visible: true },
+  { key: 'estimatedHours', label: '预估工时', visible: true },
+  { key: 'actualHours', label: '实际工时', visible: true },
+  { key: 'progress', label: '进度', visible: true },
 ])
 
 // TaskList宽度配置
@@ -172,14 +172,14 @@ const handleMilestoneDelete = async (milestoneId: number) => {
     window.dispatchEvent(
       new CustomEvent('milestone-deleted', {
         detail: { milestoneId },
-      })
+      }),
     )
 
     // 触发强制更新事件，确保Timeline重新渲染
     window.dispatchEvent(
       new CustomEvent('milestone-data-changed', {
         detail: { milestones: milestones.value },
-      })
+      }),
     )
   }
 
@@ -273,7 +273,7 @@ const handleTaskUpdate = (updatedTask: Task) => {
         showMessage(
           formatTranslation('newParentTaskNotFound', { parentId: taskToAdd.parentId }),
           'warning',
-          { closable: true }
+          { closable: true },
         )
         tasks.value.push(taskToAdd)
       }
@@ -321,7 +321,7 @@ const handleTaskAdd = (newTask: Task) => {
     const maxId = Math.max(
       ...tasks.value.map(t => t.id || 0),
       ...milestones.value.map(m => m.id || 0),
-      0
+      0,
     )
     newTask.id = maxId + 1
   }
@@ -416,7 +416,7 @@ const handleStoryDeleteWithChildren = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          }
+          },
         )
         return true
       }
@@ -478,7 +478,7 @@ const handleStoryDeleteOnly = (storyToDelete: Task) => {
           'success',
           {
             closable: false,
-          }
+          },
         )
         return true
       }
@@ -552,7 +552,7 @@ function handleTaskbarDragOrResizeEnd(newTask) {
       `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
       `结束: ${oldTask.endDate} → ${newTask.endDate}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
@@ -562,7 +562,7 @@ function handleMilestoneDragEnd(newMilestone) {
     `里程碑【${newMilestone.name}】\n` +
       `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 
@@ -629,7 +629,7 @@ function onTimerStarted(task: Task) {
   showMessage(
     `Demo 任务【${task.name}】\n开始计时：${new Date(task.timerStartTime).toLocaleString()}\n计时说明：${task.timerStartDesc ? task.timerStartDesc : ''}`,
     'info',
-    { closable: true }
+    { closable: true },
   )
 }
 function onTimerStopped(task: Task) {
@@ -645,7 +645,7 @@ function onTimerStopped(task: Task) {
 }
 
 function taskDebug(item: any) {
-  console.log('Task Debug:', item)
+  //console.log('Task Debug:', item)
 }
 </script>
 
@@ -694,7 +694,7 @@ function taskDebug(item: any) {
           >
             <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
           </svg>
-          TaskList 配置
+          {{ t.taskListConfig.title }}
         </h3>
         <button class="collapse-button" :class="{ collapsed: isConfigPanelCollapsed }">
           <svg
@@ -742,11 +742,11 @@ function taskDebug(item: any) {
                   fill="none"
                 />
               </svg>
-              宽度设置
+              {{ t.taskListConfig.width.title }}
             </h4>
             <div class="width-controls">
               <div class="width-control">
-                <label class="width-label">默认宽度:</label>
+                <label class="width-label">{{ t.taskListConfig.width.defaultWidth }}:</label>
                 <input
                   v-model.number="taskListWidth.defaultWidth"
                   type="number"
@@ -758,7 +758,7 @@ function taskDebug(item: any) {
                 <span class="width-unit">px</span>
               </div>
               <div class="width-control">
-                <label class="width-label">最小宽度:</label>
+                <label class="width-label">{{ t.taskListConfig.width.minWidth }}:</label>
                 <input
                   v-model.number="taskListWidth.minWidth"
                   type="number"
@@ -770,7 +770,7 @@ function taskDebug(item: any) {
                 <span class="width-unit">px</span>
               </div>
               <div class="width-control">
-                <label class="width-label">最大宽度:</label>
+                <label class="width-label">{{ t.taskListConfig.width.maxWidth }}:</label>
                 <input
                   v-model.number="taskListWidth.maxWidth"
                   type="number"
@@ -795,7 +795,7 @@ function taskDebug(item: any) {
               >
                 <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
               </svg>
-              列显示
+              {{ t.taskListConfig.columns.title }}
             </h4>
             <div class="column-controls">
               <label v-for="column in availableColumns" :key="column.key" class="column-control">
@@ -804,7 +804,7 @@ function taskDebug(item: any) {
                   :checked="column.visible"
                   @change="toggleColumn(column.key, $event)"
                 />
-                <span class="column-label">{{ column.label }}</span>
+                <span class="column-label">{{ (t as any)[column.key] || column.label }}</span>
               </label>
             </div>
           </div>
@@ -850,7 +850,12 @@ function taskDebug(item: any) {
         @task-updated="e => showMessage(`Demo 任务[${e.task.name}] 已更新`, 'info')"
       >
         <template #custom-task-content="item">
-          <HtmlContent :item="taskDebug(item)" :task="item.task" :type="item.type" />
+          <HtmlContent
+            :item="taskDebug(item)"
+            :task="item.task"
+            :type="item.type"
+            :style="item.dynamicStyles"
+          />
         </template>
       </GanttChart>
     </div>
@@ -1022,7 +1027,7 @@ function taskDebug(item: any) {
 }
 
 .width-label {
-  flex: 0 0 80px;
+  flex: 0 0 100px;
   font-size: 13px;
   color: var(--text-secondary);
 }

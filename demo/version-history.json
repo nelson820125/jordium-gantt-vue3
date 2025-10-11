@@ -190,5 +190,31 @@
       "SonarQube代码质量检查问题修改",
       "SonarQube code quality inspection issue modification"
     ]
+  },
+  {
+    "version": "1.4.0",
+    "date": "2025-10-11",
+    "notes": [
+      "Timeline Scale客制化",
+      "Timeline Scale Customization",
+      "TaskList可配置",
+      "TaskList Configurable",
+      "TaskRow/TaskBar内容支持HTML插槽",
+      "TaskRow/TaskBar content supports HTML slots",
+      "TaskRow/TaskBar支持自定义样式",
+      "TaskRow/TaskBar supports custom styles",
+      "增加全部展开/收起按钮",
+      "按照时间排序TaskList",
+      "Sort TaskList by time",
+      "增加周视图的1号旗帜元素",
+      "Add 1st flag element for weekly view",
+      "Add Expand/Collapse All Button",
+      "SonarQube代码质量检查问题修改",
+      "SonarQube code quality inspection issue modification",
+      "修复缺陷",
+      "Bugfix",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢贡献者 @qiuchengw</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to contributor @qiuchengw</span>"
+    ]
   }
 ]

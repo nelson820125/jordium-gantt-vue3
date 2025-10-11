@@ -42,6 +42,8 @@ interface TaskBarSlotProps {
   currentTimeScale?: TimelineScale
   rowHeight: number
   dayWidth: number
+  // 新增：动态样式对象
+  dynamicStyles: Record<string, string>
 }
 
 const props = defineProps<Props>()
@@ -164,6 +166,9 @@ const quarterDragOverride = ref<{
 } | null>(null)
 
 const barRef = ref<HTMLElement | null>(null)
+
+const taskBarNameRef = ref<HTMLElement | null>(null)
+const nameTextWidth = ref(0)
 
 // 计算任务条位置和宽度
 const taskBarStyle = computed(() => {
@@ -390,6 +395,7 @@ const slotPayload = computed(() => ({
   currentTimeScale: props.currentTimeScale,
   rowHeight: props.rowHeight,
   dayWidth: props.dayWidth,
+  dynamicStyles: getNameStyles(),
 }))
 
 // 判断是否已完成
@@ -506,7 +512,7 @@ const handleMouseMove = (e: MouseEvent) => {
     dragTooltipVisible.value = true
     dragTooltipPosition.value = {
       x: e.clientX + 15, // 鼠标右侧偏移
-      y: e.clientY - 60,  // 鼠标上方偏移
+      y: e.clientY - 60, // 鼠标上方偏移
     }
   }
 
@@ -569,9 +575,9 @@ const handleMouseMove = (e: MouseEvent) => {
       }
 
       // 同时计算日期用于提示框（使用与Timeline相同的季度视图计算）
-      const quarterWidth = 60  // 与Timeline.vue保持一致
-      const daysInQuarter = 90  // 季度平均天数
-      const pixelsPerDay = quarterWidth / daysInQuarter  // 约0.67px/天
+      const quarterWidth = 60 // 与Timeline.vue保持一致
+      const daysInQuarter = 90 // 季度平均天数
+      const pixelsPerDay = quarterWidth / daysInQuarter // 约0.67px/天
       const dayOffset = Math.round(deltaX / pixelsPerDay)
 
       // 基于原始任务日期计算新日期
@@ -659,9 +665,9 @@ const handleMouseMove = (e: MouseEvent) => {
       }
 
       // 计算日期用于提示框（使用与Timeline相同的季度视图计算）
-      const quarterWidth = 60  // 与Timeline.vue保持一致
-      const daysInQuarter = 90  // 季度平均天数
-      const pixelsPerDay = quarterWidth / daysInQuarter  // 约0.67px/天
+      const quarterWidth = 60 // 与Timeline.vue保持一致
+      const daysInQuarter = 90 // 季度平均天数
+      const pixelsPerDay = quarterWidth / daysInQuarter // 约0.67px/天
       const dayOffset = Math.round(deltaX / pixelsPerDay)
 
       const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
@@ -737,9 +743,9 @@ const handleMouseMove = (e: MouseEvent) => {
       }
 
       // 计算日期用于提示框（使用与Timeline相同的季度视图计算）
-      const quarterWidth = 60  // 与Timeline.vue保持一致
-      const daysInQuarter = 90  // 季度平均天数
-      const pixelsPerDay = quarterWidth / daysInQuarter  // 约0.67px/天
+      const quarterWidth = 60 // 与Timeline.vue保持一致
+      const daysInQuarter = 90 // 季度平均天数
+      const pixelsPerDay = quarterWidth / daysInQuarter // 约0.67px/天
       const dayOffset = Math.round(deltaX / pixelsPerDay)
 
       const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
@@ -835,6 +841,9 @@ const handleMouseUp = () => {
 onMounted(() => {
   nextTick(() => {
     reportBarPosition()
+    if (taskBarNameRef.value) {
+      nameTextWidth.value = taskBarNameRef.value.getBoundingClientRect().width
+    }
   })
 
   // 监听时间刻度变化事件，重新计算位置
@@ -936,8 +945,7 @@ const stickyStyles = computed(() => {
   let progressTop = ''
 
   // 估算文字内容的实际位置
-  const nameText = props.task.name || ''
-  const nameWidth = Math.max(nameText.length * 7, 40)
+  const nameWidth = Math.max(nameTextWidth.value, 40) // 最小40px
   const progressWidth = 35
 
   // 计算名称和进度在默认居中状态下的位置
@@ -959,12 +967,12 @@ const stickyStyles = computed(() => {
     const offset = leftBoundary - taskLeft
     nameLeft = `${offset + 8}px`
     namePosition = 'absolute'
-    nameTop = '6px'
+    nameTop = '2px'
   } else if (nameNeedsRightSticky) {
     const offset = rightBoundary - taskLeft - nameWidth
     nameLeft = `${offset - 8}px`
     namePosition = 'absolute'
-    nameTop = '6px'
+    nameTop = '2px'
   }
 
   // 进度左侧边界粘性逻辑
@@ -980,12 +988,12 @@ const stickyStyles = computed(() => {
     const offset = leftBoundary - taskLeft
     progressLeft = `${offset + 8}px`
     progressPosition = 'absolute'
-    progressTop = '24px'
+    progressTop = '18px'
   } else if (progressNeedsRightSticky) {
     const offset = rightBoundary - taskLeft - progressWidth
     progressLeft = `${offset - 8}px`
     progressPosition = 'absolute'
-    progressTop = '24px'
+    progressTop = '18px'
   }
 
   return {
@@ -1529,14 +1537,8 @@ onUnmounted(() => {
   >
     <!-- 父级任务的标签 -->
     <div v-if="isParent" class="parent-label">
-      <slot
-        v-if="hasContentSlot"
-        name="custom-task-content"
-        v-bind="slotPayload"
-      />
-      <template v-else>
-        {{ task.name }} ({{ task.progress || 0 }}%)
-      </template>
+      <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+      <template v-else> {{ task.name }} ({{ task.progress || 0 }}%) </template>
     </div>
 
     <!-- 完成进度条（非父级任务） -->
@@ -1564,13 +1566,16 @@ onUnmounted(() => {
       @mousedown="e => (isInteractionDisabled ? null : handleMouseDown(e, 'drag'))"
     >
       <!-- 任务名称 -->
-      <slot
-        v-if="hasContentSlot"
-        name="custom-task-content"
-        v-bind="slotPayload"
-      />
-      <div v-else class="task-name" :style="getNameStyles()">
-        {{ task.name }}
+      <div ref="taskBarNameRef">
+        <slot
+          v-if="hasContentSlot"
+          name="custom-task-content"
+          v-bind="slotPayload"
+          :style="getNameStyles()"
+        />
+        <div v-else class="task-name" :style="getNameStyles()">
+          {{ task.name }}
+        </div>
       </div>
 
       <!-- 进度百分比 -->

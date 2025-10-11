@@ -46,7 +46,7 @@ onMounted(async () => {
             </div>
             <div class="version-timeline-content version-card">
               <ul class="version-notes">
-                <li v-for="(note, nidx) in item.notes" :key="nidx">{{ note }}</li>
+                <li v-for="(note, nidx) in item.notes" :key="nidx" v-html="note"></li>
               </ul>
             </div>
           </div>

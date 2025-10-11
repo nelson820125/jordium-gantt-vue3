@@ -33,6 +33,11 @@
 - **主要贡献**: 任务Tooltip语言增强
 - **参与时间**: 2025-08
 
+<img src="https://foruda.gitee.com/avatar/1676904209687527903/139467_qiuchengw_1578919251.jpg!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[秋成](https://gitee.com/qiuchengw)
+- **贡献类型**: 代码开发
+- **主要贡献**: TaskList可配置；TaskContent插槽；全部收起/展开；按照时间排序；优化组件
+- **参与时间**: 2025-09
+
 
 ## 📊 贡献统计
 
