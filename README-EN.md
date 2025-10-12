@@ -12,6 +12,7 @@
 ## 🌐 Online Demo
 
 🎯 **[Try Github Live Demo →](https://nelson820125.github.io/jordium-gantt-vue3/)**
+<span><strong>Recommend to use <a href="https://dovee.cc/a.php?anaxjgyz1ozZq2B">DOVE</a> VPN for fast and stable access if needed.</strong></span> <span style="color:red;">(Note: Please use VPN resources legally.)</span>
 
 *The online demo includes full feature showcase: task management, milestones, theme switching, internationalization, etc.*
 
