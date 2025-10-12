@@ -19,11 +19,11 @@
 
 ### Light Theme
 
-![Light Theme](design/screenshots/light-theme.png)
+![Light Theme](design/screenshots/light-theme-en.png)
 
 ### Dark Theme
 
-![Dark Theme](design/screenshots/dark-theme.png)
+![Dark Theme](design/screenshots/dark-theme-en.png)
 
 ## 🚀 Features
 
