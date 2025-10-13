@@ -4,8 +4,9 @@
 
 [![npm version](https://img.shields.io/npm/v/jordium-gantt-vue3.svg?cacheBust=1)](https://www.npmjs.com/package/jordium-gantt-vue3)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Vue 3](https://img.shields.io/badge/vue-3.x-green.svg)](https://vuejs.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)](https://www.typescriptlang.org/)
+[![Vue.Js](https://img.shields.io/badge/Vue.js->=3.5.13-4FC08D?style=flat-square&logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript->=5.8.3-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js->=16.0.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 
 > Modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling
 
