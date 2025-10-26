@@ -216,5 +216,19 @@
       "<span style=\"font-weight: bold; color: #f00;\">特别感谢贡献者 @qiuchengw</span>",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to contributor @qiuchengw</span>"
     ]
+  },
+  {
+    "version": "1.4.1",
+    "date": "2025-10-26",
+    "notes": [
+      "TaskList客制化列展示问题修复",
+      "TaskList Custom Column Display Issue Fix",
+      "TaskList客制化列数据动态绑定问题修复",
+      "TaskList Custom Column Data Dynamic Binding Issue Fix",
+      "SonarQube代码质量检查问题修改",
+      "SonarQube code quality inspection issue modification",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @Guduxwa</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @Guduxwa</span>"
+    ]
   }
 ]

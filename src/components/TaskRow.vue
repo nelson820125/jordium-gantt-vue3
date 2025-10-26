@@ -67,7 +67,7 @@ const isStoryTask = computed(() => props.task.type === 'story')
 const isMilestoneGroup = computed(() => props.task.type === 'milestone-group')
 const isMilestoneTask = computed(() => props.task.type === 'milestone')
 const isParentTask = computed(
-  () => isStoryTask.value || hasChildren.value || isMilestoneGroup.value
+  () => isStoryTask.value || hasChildren.value || isMilestoneGroup.value,
 )
 function handleToggle() {
   emit('toggle', props.task)
@@ -221,7 +221,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 右键菜单相关状态
@@ -463,6 +463,11 @@ onUnmounted(() => {
             <span class="progress-value" :class="progressClass">
               {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
             </span>
+          </template>
+
+          <!-- 自定义列 - 通过task对象的key动态获取值 -->
+          <template v-else>
+            {{ (props.task as any)[column.key] || '-' }}
           </template>
         </template>
       </div>

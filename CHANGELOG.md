@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-10-26
+
+### Fixed
+- TaskList客制化列展示问题修复
+- TaskList客制化列数据动态绑定问题修复
+- SonarQube代码质量检查问题修改
+- MTaskList Custom Column Display Issue Fix
+- TaskList Custom Column Data Dynamic Binding Issue Fix
+- SonarQube code quality inspection issue modification
+
 ## [1.4.0] - 2025-10-11
 
 ### Added

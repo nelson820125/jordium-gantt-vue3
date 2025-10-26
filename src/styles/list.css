@@ -8,6 +8,10 @@
   border-right: 1px solid var(--gantt-border-light);
   box-sizing: border-box;
   overflow: hidden;
+  /* 为没有特定样式的列设置默认宽度 */
+  flex: 1 0 120px;
+  min-width: 120px;
+  max-width: 120px;
 }
 
 .col:last-child {

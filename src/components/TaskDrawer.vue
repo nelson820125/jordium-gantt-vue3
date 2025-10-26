@@ -68,7 +68,7 @@ watch(
   () => [props.task?.isTimerRunning, props.task?.timerStartTime, props.task?.timerElapsedTime],
   () => {
     updateTimer()
-  }
+  },
 )
 
 // 计时器本地状态，保证点击后UI立即切换
@@ -84,7 +84,7 @@ watch(
       timerInterval.value = null
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 修正计时器每秒递增逻辑，保证计时器正常跳动
@@ -102,7 +102,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 onUnmounted(() => {
@@ -153,7 +153,7 @@ const availableParentTasks = computed(() => {
     .filter(
       task =>
         task.id !== props.task?.id && // 排除当前任务自己
-        (task.type === 'story' || task.type === 'task') // 只显示story和task类型
+        (task.type === 'story' || task.type === 'task'), // 只显示story和task类型
     )
     .map(task => ({
       ...task,
@@ -346,7 +346,7 @@ watch(
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
     }
-  }
+  },
 )
 
 // 监听 isVisible 变化，同步到父组件
@@ -363,7 +363,7 @@ watch(
       formData.parentId = newTask.parentId ?? undefined
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 重置表单
@@ -548,7 +548,7 @@ watch(
   newValue => {
     progressDisplayValue.value = (newValue || 0).toString()
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 修正计时器首次启动不跳动问题：每次打开抽屉时重置 timerElapsed，且 timerStartTime 为空时立即赋值
@@ -566,7 +566,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const handleStartTimer = (desc?: string) => {

@@ -53,6 +53,7 @@ const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'estimatedHours', label: '预估工时', visible: true },
   { key: 'actualHours', label: '实际工时', visible: true },
   { key: 'progress', label: '进度', visible: true },
+  { key: 'custom', label: '自定义列', visible: true, width: 120 }, // 添加默认宽度120px
 ])
 
 // TaskList宽度配置

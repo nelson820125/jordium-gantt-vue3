@@ -11,6 +11,7 @@
       "actualHours": 3942.75,
       "type": "story",
       "description": "ADX-2024新药完整临床试验计划，从I期到III期临床试验",
+      "custom": 180000,
       "children": [
         {
           "id": 1100,
@@ -24,6 +25,7 @@
           "type": "story",
           "parentId": 1000,
           "description": "评估ADX-2024在健康志愿者和患者中的安全性、耐受性和药代动力学特征",
+          "custom": "test11111",
           "children": [
             {
               "id": 1101,
@@ -36,7 +38,8 @@
               "actualHours": 480,
               "type": "task",
               "parentId": 1100,
-              "description": "完成I期试验方案设计、伦理委员会审批及监管部门申报"
+              "description": "完成I期试验方案设计、伦理委员会审批及监管部门申报",
+              "custom": "test11111"
             },
             {
               "id": 1102,
@@ -50,7 +53,8 @@
               "type": "task",
               "predecessor": [1101],
               "parentId": 1100,
-              "description": "招募24名健康志愿者，完成医学筛选和入组评估"
+              "description": "招募24名健康志愿者，完成医学筛选和入组评估",
+              "custom": "test11111"
             },
             {
               "id": 1103,
@@ -64,7 +68,8 @@
               "type": "task",
               "predecessor": [1102],
               "parentId": 1100,
-              "description": "按照剂量递增方案给药，密切监测不良反应和药代动力学参数"
+              "description": "按照剂量递增方案给药，密切监测不良反应和药代动力学参数",
+              "custom": "test11111"
             }
           ],
           "collapsed": false
@@ -81,6 +86,7 @@
           "type": "story",
           "parentId": 1000,
           "description": "在目标患者群体中评估ADX-2024的初步疗效和进一步的安全性",
+          "custom": "test11111",
           "children": [
             {
               "id": 1201,
@@ -94,7 +100,8 @@
               "type": "task",
               "predecessor": [1103],
               "parentId": 1200,
-              "description": "启动5个临床中心，完成研究者培训和质量体系建立"
+              "description": "启动5个临床中心，完成研究者培训和质量体系建立",
+              "custom": "test11111"
             },
             {
               "id": 1202,
@@ -108,7 +115,8 @@
               "type": "task",
               "predecessor": [1201],
               "parentId": 1200,
-              "description": "计划入组120名患者，采用双盲随机对照设计"
+              "description": "计划入组120名患者，采用双盲随机对照设计",
+              "custom": "test11111"
             },
             {
               "id": 1203,
@@ -122,7 +130,8 @@
               "type": "task",
               "predecessor": [1202],
               "parentId": 1200,
-              "description": "定期评估患者疗效指标，收集安全性数据，进行中期分析"
+              "description": "定期评估患者疗效指标，收集安全性数据，进行中期分析",
+              "custom": "test11111"
             }
           ],
           "collapsed": false

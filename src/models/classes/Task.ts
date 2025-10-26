@@ -23,4 +23,6 @@ export interface Task {
   timerEndTime?: number // 结束计时时间
   timerStartDesc?: string // 计时开始时填写的描述
   timerElapsedTime?: number
+  // 支持自定义属性 - 使用 unknown 允许任意类型
+  [key: string]: unknown
 }
