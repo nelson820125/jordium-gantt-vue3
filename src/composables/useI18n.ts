@@ -199,6 +199,8 @@ const messages = {
     timerConfirmPrefix: '即将为任务',
     timerConfirmSuffix: '计时，若有特殊说明请完善下面的描述',
     timerConfirmPlaceholder: '请输入计时说明',
+    // Demo配置面板
+    configDemo: '配置演示',
     // TaskList配置
     taskListConfig: {
       title: 'TaskList 配置',
@@ -210,8 +212,34 @@ const messages = {
         defaultWidth: '默认宽度',
         minWidth: '最小宽度',
         maxWidth: '最大宽度',
+        pixelsModel: '像素 (px)',
+        percentageModel: '百分比 (%)',
       },
     },
+    // TaskBar配置
+    taskBarConfig: {
+      title: 'TaskBar 配置',
+      display: {
+        title: '显示选项',
+        showAvatar: '显示头像 (Avatar)',
+        showTitle: '显示标题 (Title)',
+        showProgress: '显示进度 (Progress)',
+      },
+      mistouch: {
+        title: '防误触配置',
+        dragThreshold: '拖拽阈值 (px)',
+        dragThresholdHint: '移动超过此距离才触发拖拽',
+        resizeHandleWidth: '拉伸手柄宽度 (px)',
+        resizeHandleWidthHint: '调整手柄的可点击宽度 (5-15px)',
+        enableDragDelay: '启用拖拽延迟',
+        enableDragDelayHint: '按住一段时间后才能拖拽',
+        dragDelayTime: '延迟时间 (ms)',
+        dragDelayTimeHint: '延迟启动拖拽的时间',
+        allowDragOnClick: '允许拖拽和拉伸 TaskBar 和 Milestone',
+        allowDragOnClickHint: '控制是否允许拖拽 TaskBar 和 Milestone，以及拉伸 TaskBar 的长度',
+      },
+    },
+    disableTaskbarFocusMode: '关闭聚焦功能',
   },
   'en-US': {
     dateNotSet: 'Not set',
@@ -409,6 +437,8 @@ const messages = {
     timerConfirmPrefix: 'About to start timing for',
     timerConfirmSuffix: '. If there are special notes, please complete the description below.',
     timerConfirmPlaceholder: 'Please enter timer description',
+    // Demo配置面板
+    configDemo: 'Configuration Demo',
     // TaskList配置
     taskListConfig: {
       title: 'TaskList Configuration',
@@ -420,15 +450,55 @@ const messages = {
         defaultWidth: 'Default Width',
         minWidth: 'Min Width',
         maxWidth: 'Max Width',
+        pixelsModel: 'pixels (px)',
+        percentageModel: 'percentage (%)',
       },
     },
+    // TaskBar配置
+    taskBarConfig: {
+      title: 'TaskBar Configuration',
+      display: {
+        title: 'Display Options',
+        showAvatar: 'Show Avatar',
+        showTitle: 'Show Title',
+        showProgress: 'Show Progress',
+      },
+      mistouch: {
+        title: 'Mistouch Prevention',
+        dragThreshold: 'Drag Threshold (px)',
+        dragThresholdHint: 'Distance to trigger dragging',
+        resizeHandleWidth: 'Resize Handle Width (px)',
+        resizeHandleWidthHint: 'Clickable width of resize handle (5-15px)',
+        enableDragDelay: 'Enable Drag Delay',
+        enableDragDelayHint: 'Hold to drag after a delay',
+        dragDelayTime: 'Delay Time (ms)',
+        dragDelayTimeHint: 'Delay time before dragging starts',
+        allowDragOnClick: 'Allow dragging and resizing of TaskBars and Milestones',
+        allowDragOnClickHint: 'Controls whether to allow dragging of TaskBars and Milestones, as well as resizing the length of TaskBars',
+      },
+    },
+    disableTaskbarFocusMode: 'Disable Focus Mode',
   },
 }
 
 // 允许外部合并自定义多语言
 export function setCustomMessages(locale: Locale, custom: Partial<(typeof messages)['zh-CN']>) {
   if (!messages[locale]) return
-  Object.assign(messages[locale], custom)
+
+  // 使用深度合并，触发响应式更新
+  messages[locale] = {
+    ...messages[locale],
+    ...custom,
+  } as (typeof messages)['zh-CN']
+
+  // 触发语言切换事件，强制刷新所有使用翻译的组件
+  if (currentLocale.value === locale) {
+    window.dispatchEvent(
+      new CustomEvent('locale-changed', {
+        detail: { locale },
+      }),
+    )
+  }
 }
 
 // LocalStorage key

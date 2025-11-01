@@ -61,7 +61,7 @@ onMounted(async () => {
   position: fixed;
   top: 0;
   left: 0;
-  width: 540px; /* 增加Drawer宽度，适中大气 */
+  width: 50%; /* 增加Drawer宽度，适中大气 */
   height: 100vh;
   background: var(--gantt-bg-primary, #fff);
   box-shadow: 2px 0 24px rgba(0, 0, 0, 0.1);

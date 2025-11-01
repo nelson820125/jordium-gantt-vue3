@@ -3,6 +3,7 @@
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
+import type { TimelineMonth, TimelineYear, TimelineDay } from '../models/types/TimelineDataTypes'
 import { useI18n } from '../composables/useI18n'
 import { createLocalDate } from '../utils/predecessorUtils'
 const props = defineProps<Props>()
@@ -21,29 +22,30 @@ const t = (key: string): string => {
 }
 
 interface Props {
-  date: string // 里程碑日期
+  date: string
+  milestone: Milestone
+  name?: string
   rowHeight: number
   dayWidth: number
   startDate: Date
-  name?: string
-  milestone?: Milestone // 完整的里程碑数据
-  // 新增：用于边界粘性显示的滚动位置信息
+  timelineStart: Date
+  timelineEnd: Date
   scrollLeft?: number
   containerWidth?: number
-  // 新增：里程碑推挤效果所需的信息
-  milestoneId?: string | number // 唯一标识符
+  milestoneId?: number
   otherMilestones?: Array<{
-    id: string | number
-    left: number
-    originalLeft: number // 原始位置（不考虑停靠）
+    id: number
     isSticky: boolean
-    stickyPosition: 'left' | 'right' | 'none'
-    priority: number // 推挤优先级
-  }> // 其他里程碑的位置信息
-  // 新增：时间线数据，用于精确计算subDays定位
-  timelineData?: unknown[]
-  // 新增：当前时间刻度
-  currentTimeScale?: TimelineScale
+    stickyPosition: string
+    left: number
+    originalLeft: number
+    priority: number
+  }>
+  currentTimeScale?: TimelineScale | null
+  timelineData?: TimelineMonth[] | TimelineYear[] | TimelineDay[]
+  periodWidth: number
+  isInHighlightMode?: boolean
+  allowDragAndResize: boolean
 }
 
 // 拖拽相关状态
@@ -102,8 +104,112 @@ const formatDateToLocalString = (date: Date): string => {
   return `${year}-${month}-${day}`
 }
 
+// 根据像素位置计算日期（支持月度、季度视图）
+const calculateDateFromPosition = (
+  pixelPosition: number,
+  timelineData: Array<{
+    year: number
+    month: number
+    startDate: Date
+    endDate: Date
+    days?: Array<{ date: Date; day: number }>
+    monthData?: { dayCount: number }
+  }>,
+  timeScale: TimelineScale,
+): Date | null => {
+  if (!timelineData) {
+    return null
+  }
+
+  let cumulativePosition = 0
+
+  if (timeScale === TimelineScale.DAY) {
+    // 日视图：基于 days 数组
+    for (const periodData of timelineData) {
+      const days = periodData.days || []
+      const periodWidth = days.length * 30 // 日视图每天30px
+
+      if (pixelPosition >= cumulativePosition && pixelPosition < cumulativePosition + periodWidth) {
+        const relativePosition = pixelPosition - cumulativePosition
+        const dayIndex = Math.floor(relativePosition / 30)
+
+        if (dayIndex >= 0 && dayIndex < days.length) {
+          return new Date(days[dayIndex].date)
+        }
+      }
+
+      cumulativePosition += periodWidth
+    }
+  } else if (timeScale === TimelineScale.MONTH) {
+    // 月视图：每个月60px
+    for (const periodData of timelineData) {
+      const monthWidth = 60
+
+      if (pixelPosition >= cumulativePosition && pixelPosition < cumulativePosition + monthWidth) {
+        const relativePosition = pixelPosition - cumulativePosition
+        const daysInMonth = periodData.monthData?.dayCount || 30
+        const dayWidth = monthWidth / daysInMonth
+
+        const dayIndex = Math.floor(relativePosition / dayWidth)
+        const day = Math.min(dayIndex + 1, daysInMonth)
+
+        return new Date(periodData.year, periodData.month - 1, day)
+      }
+
+      cumulativePosition += monthWidth
+    }
+  } else if (timeScale === TimelineScale.QUARTER) {
+    // 季度视图：每个季度60px
+    for (const periodData of timelineData) {
+      const quarters = (periodData as Record<string, unknown>).quarters as Array<{
+        quarter: number
+        startDate: Date
+        endDate: Date
+      }> || []
+
+      for (const quarter of quarters) {
+        const quarterStart = new Date(quarter.startDate)
+        const quarterEnd = new Date(quarter.endDate)
+        const quarterWidth = 60
+
+        if (
+          pixelPosition >= cumulativePosition &&
+          pixelPosition < cumulativePosition + quarterWidth
+        ) {
+          const relativePosition = pixelPosition - cumulativePosition
+          const daysInQuarter = Math.ceil(
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = quarterWidth / daysInQuarter
+
+          const dayIndex = Math.floor(relativePosition / dayWidth)
+
+          const resultDate = new Date(quarterStart)
+          resultDate.setDate(resultDate.getDate() + dayIndex)
+
+          return resultDate
+        }
+
+        cumulativePosition += quarterWidth
+      }
+    }
+  }
+
+  return null
+}
+
 // 拖拽事件处理 - 使用相对位置拖拽方案
 const handleMouseDown = (e: MouseEvent) => {
+  // 如果禁用了拖拽和拉伸，直接返回
+  if (props.allowDragAndResize === false) {
+    return
+  }
+
+  // 年度视图禁止拖拽（与TaskBar保持一致）
+  if (props.currentTimeScale === TimelineScale.YEAR) {
+    return
+  }
+
   // 如果是停靠状态或被推出边界，禁止拖拽
   if (
     milestoneVisibility.value.isSticky ||
@@ -162,7 +268,42 @@ const handleMouseMove = (e: MouseEvent) => {
     isDragging.value = true
 
     const newLeft = Math.max(0, dragStartLeft.value + deltaX)
-    const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+    let newStartDate: Date
+
+    // 根据当前时间刻度使用不同的日期计算方法
+    if (
+      props.currentTimeScale === TimelineScale.MONTH ||
+      props.currentTimeScale === TimelineScale.QUARTER ||
+      props.currentTimeScale === TimelineScale.DAY
+    ) {
+      // 月度、季度、日视图：使用 timelineData 精确计算
+      if (props.timelineData && props.currentTimeScale) {
+        const calculatedDate = calculateDateFromPosition(
+          newLeft,
+          props.timelineData as Array<{
+            year: number
+            month: number
+            startDate: Date
+            endDate: Date
+            days?: Array<{ date: Date; day: number }>
+            monthData?: { dayCount: number }
+          }>,
+          props.currentTimeScale,
+        )
+        if (calculatedDate) {
+          newStartDate = calculatedDate
+        } else {
+          // 如果计算失败，回退到简单计算
+          newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+        }
+      } else {
+        // 如果没有 timelineData，回退到简单计算
+        newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+      }
+    } else {
+      // 其他视图（周视图、小时视图）：使用原有的简单计算
+      newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+    }
 
     // 只更新临时数据，不触发事件
     tempMilestoneData.value = {
@@ -246,6 +387,11 @@ const handleMilestoneClick = (e: MouseEvent) => {
   }
 }
 
+// 判断是否应该显示为暗淡（处于高亮模式）
+const isDimmed = computed(() => {
+  return props.isInHighlightMode === true
+})
+
 // 计算菱形位置 - 考虑拖拽临时数据
 const milestoneStyle = computed(() => {
   const currentMilestoneDate = tempMilestoneData.value?.startDate || props.date
@@ -282,15 +428,8 @@ const milestoneStyle = computed(() => {
     size = Math.min(props.rowHeight, props.dayWidth * 1.2, 24)
   }
 
-  // 年度视图：使用专门的年度位置计算
-  if (props.currentTimeScale === TimelineScale.YEAR) {
-    const centerPosition = calculateYearViewMilestonePosition(milestoneDate, props.startDate)
-    left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
-  } else if (props.currentTimeScale === TimelineScale.QUARTER) {
-    // 季度视图：使用类似年度视图的简单计算方法
-    const centerPosition = calculateQuarterViewMilestonePosition(milestoneDate, props.startDate)
-    left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
-  } else if (props.currentTimeScale === TimelineScale.HOUR) {
+  // 小时视图：使用专门的小时位置计算
+  if (props.currentTimeScale === TimelineScale.HOUR) {
     // 小时视图：精确到小时和分钟的定位
     const centerPosition = calculateHourViewMilestonePosition(milestoneDate, props.startDate)
     left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
@@ -298,9 +437,12 @@ const milestoneStyle = computed(() => {
     props.timelineData &&
     props.currentTimeScale &&
     (props.currentTimeScale === TimelineScale.WEEK ||
-      props.currentTimeScale === TimelineScale.MONTH)
+      props.currentTimeScale === TimelineScale.MONTH ||
+      props.currentTimeScale === TimelineScale.DAY ||
+      props.currentTimeScale === TimelineScale.QUARTER ||
+      props.currentTimeScale === TimelineScale.YEAR)
   ) {
-    // 优先使用基于timelineData的精确定位（适用于周视图和月视图）
+    // 优先使用基于timelineData的精确定位（适用于周视图、月视图、日视图、季度视图和年度视图）
     const centerPosition = calculateMilestonePositionFromTimelineData(
       milestoneDate,
       props.timelineData,
@@ -309,7 +451,7 @@ const milestoneStyle = computed(() => {
 
     left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
   } else {
-    // 日视图：保持原有逻辑
+    // 其他情况（没有 timelineData）：保持原有逻辑
     const startDiff = Math.floor(
       (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
     )
@@ -543,58 +685,6 @@ onUnmounted(() => {
 })
 
 // 年度视图里程碑位置计算函数
-const calculateYearViewMilestonePosition = (targetDate: Date, baseStartDate: Date): number => {
-  const targetYear = targetDate.getFullYear()
-  const baseYear = baseStartDate.getFullYear()
-
-  // 每年的宽度是360px，每半年180px
-  const yearWidth = 360
-  const halfYearWidth = 180
-
-  // 计算目标年份相对于基准年份的偏移
-  const yearOffset = targetYear - baseYear
-  let position = yearOffset * yearWidth
-
-  // 判断是上半年还是下半年
-  const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
-
-  if (month > 6) {
-    // 下半年，添加半年偏移
-    position += halfYearWidth
-  }
-
-  // 在半年内的具体位置计算
-  let dayOffset = 0
-  let startOfHalfYear: Date
-
-  if (month <= 6) {
-    // 上半年：1-6月
-    startOfHalfYear = new Date(targetYear, 0, 1) // 1月1日
-  } else {
-    // 下半年：7-12月
-    startOfHalfYear = new Date(targetYear, 6, 1) // 7月1日
-  }
-
-  dayOffset = Math.floor((targetDate.getTime() - startOfHalfYear.getTime()) / (1000 * 60 * 60 * 24))
-
-  // 半年大约181-184天，将天数映射到180px的宽度
-  const daysInHalfYear =
-    month <= 6
-      ? Math.floor(
-        (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
-            (1000 * 60 * 60 * 24),
-      )
-      : Math.floor(
-        (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
-            (1000 * 60 * 60 * 24),
-      )
-
-  const dayPositionInHalfYear = (dayOffset / daysInHalfYear) * halfYearWidth
-  position += dayPositionInHalfYear
-
-  return position
-}
-
 // 小时视图里程碑位置计算 - 精确到小时和分钟
 const calculateHourViewMilestonePosition = (targetDate: Date, baseStartDate: Date): number => {
   // 计算基础天数差
@@ -628,81 +718,94 @@ const calculateHourViewMilestonePosition = (targetDate: Date, baseStartDate: Dat
   return totalPosition
 }
 
-// 季度视图里程碑位置计算 - 参考年度视图的简单算法
-const calculateQuarterViewMilestonePosition = (targetDate: Date, baseStartDate: Date): number => {
-  const targetYear = targetDate.getFullYear()
-  const baseYear = baseStartDate.getFullYear()
-
-  // 每年的宽度是240px (4季度 * 60px)，每季度60px
-  const yearWidth = 240
-  const quarterWidth = 60
-
-  // 计算目标年份相对于基准年份的偏移
-  const yearOffset = targetYear - baseYear
-  let position = yearOffset * yearWidth
-
-  // 判断是哪个季度
-  const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
-  let quarter = 1
-  if (month >= 1 && month <= 3) {
-    // Q1: 1-3月
-  } else if (month >= 4 && month <= 6) {
-    quarter = 2 // Q2: 4-6月
-  } else if (month >= 7 && month <= 9) {
-    quarter = 3 // Q3: 7-9月
-  } else {
-    quarter = 4 // Q4: 10-12月
-  }
-
-  // 添加季度偏移 (Q1=0px, Q2=60px, Q3=120px, Q4=180px)
-  position += (quarter - 1) * quarterWidth
-
-  // 在季度内的具体位置计算
-  let dayOffset = 0
-  let startOfQuarter: Date
-  let endOfQuarter: Date
-
-  if (quarter === 1) {
-    startOfQuarter = new Date(targetYear, 0, 1) // 1月1日
-    endOfQuarter = new Date(targetYear, 2, 31) // 3月31日
-  } else if (quarter === 2) {
-    startOfQuarter = new Date(targetYear, 3, 1) // 4月1日
-    endOfQuarter = new Date(targetYear, 5, 30) // 6月30日
-  } else if (quarter === 3) {
-    startOfQuarter = new Date(targetYear, 6, 1) // 7月1日
-    endOfQuarter = new Date(targetYear, 8, 30) // 9月30日
-  } else {
-    startOfQuarter = new Date(targetYear, 9, 1) // 10月1日
-    endOfQuarter = new Date(targetYear, 11, 31) // 12月31日
-  }
-
-  dayOffset = Math.floor((targetDate.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24))
-
-  // 计算季度内的天数，将天数映射到60px的宽度
-  const endTime = endOfQuarter.getTime()
-  const startTime = startOfQuarter.getTime()
-  const daysInQuarter = Math.floor((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1 // 包含结束日期
-
-  const dayPositionInQuarter = (dayOffset / daysInQuarter) * quarterWidth
-
-  position += dayPositionInQuarter
-
-  return position
-}
-
 // 基于timelineData和subDays精确计算里程碑位置的函数
 const calculateMilestonePositionFromTimelineData = (
   targetDate: Date,
-  timelineData: any,
+  timelineData: TimelineMonth[] | TimelineYear[] | TimelineDay[],
   timeScale: TimelineScale,
 ) => {
   // 回退到原来的逻辑用于其他时间刻度
   let cumulativePosition = 0
 
   for (const periodData of timelineData) {
-    if (timeScale === TimelineScale.WEEK) {
+    if (timeScale === TimelineScale.DAY) {
+      // 日视图：处理days数组，返回中心位置
+      // 类型保护：确保 periodData 是 TimelineMonth 并有 days 属性
+      const days = ('days' in periodData && periodData.days) ? periodData.days : []
+
+      for (let i = 0; i < days.length; i++) {
+        const dayData = days[i]
+        const dayDate = new Date(dayData.date)
+
+        // 比较日期（忽略时分秒）
+        if (
+          dayDate.getFullYear() === targetDate.getFullYear() &&
+          dayDate.getMonth() === targetDate.getMonth() &&
+          dayDate.getDate() === targetDate.getDate()
+        ) {
+          // 找到目标日期，返回累计位置 + 当前天数索引 * 日宽度 + 半个日宽度（中心）
+          return cumulativePosition + i * 30 + 15 // 日视图每天30px，中心+15px
+        }
+      }
+
+      // 累加当前月份所有天数的宽度
+      cumulativePosition += days.length * 30
+    } else if (timeScale === TimelineScale.QUARTER) {
+      // 季度视图：处理years数组，每个year包含quarters
+      // 类型保护：确保 periodData 是 TimelineYear 并有 quarters 属性
+      const quarters = ('quarters' in periodData && periodData.quarters) ? periodData.quarters : []
+
+      for (const quarter of quarters) {
+        const quarterStart = new Date(quarter.startDate)
+        const quarterEnd = new Date(quarter.endDate)
+
+        if (targetDate >= quarterStart && targetDate <= quarterEnd) {
+          // 找到目标日期所在的季度
+          const quarterWidth = 60
+          const daysInQuarter = Math.ceil(
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = quarterWidth / daysInQuarter
+          const dayInQuarter = Math.ceil(
+            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const finalPosition = cumulativePosition + dayInQuarter * dayWidth + dayWidth / 2
+
+          return finalPosition
+        }
+
+        // 累加每季度的宽度
+        cumulativePosition += 60
+      }
+    } else if (timeScale === TimelineScale.YEAR) {
+      // 年度视图：处理years数组，每个year包含halfYears
+      // 类型保护：确保 periodData 是 TimelineYear 并有 halfYears 属性
+      const halfYears = ('halfYears' in periodData && periodData.halfYears) ? periodData.halfYears : []
+
+      for (const halfYear of halfYears) {
+        const halfYearStart = new Date(halfYear.startDate)
+        const halfYearEnd = new Date(halfYear.endDate)
+
+        if (targetDate >= halfYearStart && targetDate <= halfYearEnd) {
+          // 找到目标日期所在的半年
+          const halfYearWidth = 180 // 年度视图每半年180px
+          const daysInHalfYear = Math.ceil(
+            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = halfYearWidth / daysInHalfYear
+          const dayInHalfYear = Math.ceil(
+            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          return cumulativePosition + dayInHalfYear * dayWidth + dayWidth / 2
+        }
+
+        // 累加每半年的宽度
+        cumulativePosition += 180
+      }
+    } else if (timeScale === TimelineScale.WEEK) {
       // 周视图：处理嵌套的weeks结构，返回中心位置
-      const weeks = periodData.weeks || []
+      // 类型保护：确保 periodData 是 TimelineMonth 并有 weeks 属性
+      const weeks = ('weeks' in periodData && periodData.weeks) ? periodData.weeks : []
 
       for (const week of weeks) {
         const weekStart = new Date(week.weekStart)
@@ -741,13 +844,17 @@ const calculateMilestonePositionFromTimelineData = (
       }
     } else if (timeScale === TimelineScale.MONTH) {
       // 月视图：处理扁平化的subDays结构，返回中心位置
+      // 类型保护：确保 periodData 是 TimelineMonth
+      if (!('startDate' in periodData) || !('endDate' in periodData)) {
+        continue
+      }
       const periodStart = new Date(periodData.startDate)
       const periodEnd = new Date(periodData.endDate)
 
       if (targetDate >= periodStart && targetDate <= periodEnd) {
         // 找到目标日期所在的时间段
         const monthWidth = 60
-        const daysInMonth = periodData.monthData?.dayCount || 30
+        const daysInMonth = ('monthData' in periodData && periodData.monthData?.dayCount) || 30
         const dayWidth = monthWidth / daysInMonth
         const dayInMonth = targetDate.getDate()
         const finalPosition = cumulativePosition + (dayInMonth - 1) * dayWidth + dayWidth / 2
@@ -777,6 +884,7 @@ const calculateMilestonePositionFromTimelineData = (
       'milestone-sticky-left': milestoneVisibility.stickyPosition === 'left',
       'milestone-sticky-right': milestoneVisibility.stickyPosition === 'right',
       'milestone-pushed-out': milestoneVisibility.isPushedOut,
+      dimmed: isDimmed,
     }"
     @click.stop="handleMilestoneClick"
   >
@@ -873,6 +981,13 @@ const calculateMilestonePositionFromTimelineData = (
   justify-content: flex-start;
   cursor: pointer;
   user-select: none;
+}
+
+/* 高亮模式下，非高亮的Milestone变暗淡 */
+.milestone.dimmed {
+  opacity: 0.35 !important;
+  filter: grayscale(0.3) !important;
+  transition: all 0.3s ease !important;
 }
 
 /* 里程碑SVG发光效果 */

@@ -4,6 +4,7 @@ import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
 import TaskDrawer from './TaskDrawer.vue'
+import MilestoneDialog from './MilestoneDialog.vue'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import jsPDF from 'jspdf'
@@ -12,25 +13,23 @@ import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import type { TaskListConfig } from '../models/configs/TaskListConfig'
-import { TimelineScale } from '../models/types/TimelineScale'
+import {
+  DEFAULT_TASK_LIST_WIDTH,
+  DEFAULT_TASK_LIST_MIN_WIDTH,
+  DEFAULT_TASK_LIST_MAX_WIDTH,
+  parseWidthValue,
+} from '../models/configs/TaskListConfig'
+import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
+import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
 import { useMessage } from '../composables/useMessage'
 
 const props = withDefaults(defineProps<Props>(), {
   tasks: () => [],
   milestones: () => [],
-  onTaskDoubleClick: undefined,
-  editComponent: undefined,
   useDefaultDrawer: true,
-  onTaskDelete: undefined,
-  onMilestoneSave: undefined,
-  onMilestoneDelete: undefined,
-  onTaskUpdate: undefined,
-  onTaskAdd: undefined,
-  onMilestoneIconChange: undefined,
+  useDefaultMilestoneDialog: true,
   toolbarConfig: () => ({}),
   showToolbar: true,
-  onAddTask: undefined,
-  onAddMilestone: undefined,
   onTodayLocate: undefined,
   onExportCsv: undefined,
   onExportPdf: undefined,
@@ -45,13 +44,18 @@ const props = withDefaults(defineProps<Props>(), {
     afternoon: { start: 13, end: 17 },
   }),
   taskListConfig: undefined,
+  taskBarConfig: undefined,
   autoSortByStartDate: false,
+  allowDragAndResize: true,
 })
 
 const emit = defineEmits([
+  'task-click',
+  'task-double-click',
   'taskbar-drag-end',
   'taskbar-resize-end',
   'milestone-drag-end',
+  'milestone-double-click',
   'timer-started',
   'timer-stopped',
   'predecessor-added',
@@ -59,6 +63,13 @@ const emit = defineEmits([
   'task-deleted',
   'task-added',
   'task-updated',
+  // 工具栏事件
+  'add-task',
+  'add-milestone',
+  // 里程碑事件
+  'milestone-saved',
+  'milestone-deleted',
+  'milestone-icon-changed',
 ])
 
 const { showMessage } = useMessage()
@@ -68,31 +79,15 @@ interface Props {
   tasks?: Task[]
   // 里程碑数据
   milestones?: Task[]
-  // TaskBar双击事件处理器API
-  onTaskDoubleClick?: (task: Task) => void
-  // 自定义编辑组件
-  editComponent?: any
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
-  // 自定义删除处理器API
-  onTaskDelete?: (task: Task, deleteChildren?: boolean) => void
-  // 里程碑保存处理器API
-  onMilestoneSave?: (milestone: Task) => void
-  // 里程碑删除处理器API
-  onMilestoneDelete?: (milestoneId: number) => void
-  // 任务更新处理器API
-  onTaskUpdate?: (task: Task) => void
-  // 任务添加处理器API
-  onTaskAdd?: (task: Task) => void
-  // 里程碑图标变更处理器API
-  onMilestoneIconChange?: (milestoneId: number, icon: string) => void
+  // 是否使用默认的MilestoneDialog
+  useDefaultMilestoneDialog?: boolean
   // 工具栏配置
   toolbarConfig?: ToolbarConfig
   // 是否显示工具栏
   showToolbar?: boolean
   // 工具栏事件处理器
-  onAddTask?: () => void
-  onAddMilestone?: () => void
   onTodayLocate?: () => void
   onExportCsv?: () => boolean | void
   onExportPdf?: () => void
@@ -102,13 +97,19 @@ interface Props {
   onExpandAll?: () => void
   onCollapseAll?: () => void
   /**
-   * 自定义多语言（国际化）配置，结构参考内置 messages['zh-CN']，只需传递需要覆盖的 key 即可。
+   * 自定义多语言（国际化）配置，支持多语言扩展。
    * 例如：
-   * localeMessages={{ taskName: '自定义任务名', addTask: '自定义新增任务' }}
+   * localeMessages={{
+   *   'zh-CN': { department: '部门', departmentCode: '部门编号' },
+   *   'en-US': { department: 'Department', departmentCode: 'Department Code' }
+   * }}
    * 支持嵌套对象（如 csvHeaders、taskTypeMap 等）。
    * 仅在组件初始化时合并，运行时变更会自动响应。
    */
-  localeMessages?: Partial<import('../composables/useI18n').Messages['zh-CN']>
+  localeMessages?: Partial<{
+    'zh-CN'?: Partial<import('../composables/useI18n').Messages['zh-CN']>
+    'en-US'?: Partial<import('../composables/useI18n').Messages['en-US']>
+  }>
   // 工作时间配置
   workingHours?: {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
@@ -116,21 +117,112 @@ interface Props {
   }
   // 任务列表配置
   taskListConfig?: TaskListConfig
+  // TaskBar 配置
+  taskBarConfig?: TaskBarConfig
   // 是否启用自动排序（根据开始时间排序任务）
   autoSortByStartDate?: boolean
+  // 是否允许拖拽和拉伸（默认为 true）
+  allowDragAndResize?: boolean
 }
 
+// TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
+// 列宽: 300+120+120+140+140+100+100+100 = 1120px
+// 边框: 7个列间边框 * 1px = 7px
+// 滚动条预留: 20px
+// 额外边距: 13px (task-list-header的左边距3px + 其他10px预留)
+// 总计: 1160px (已在 TaskListConfig 中定义)
+
+// 甘特图容器宽度
+const ganttRootRef = ref<HTMLElement | null>(null)
+const ganttContainerWidth = ref(1920) // 默认使用常见的屏幕宽度作为初始值
+
+// 监听容器宽度变化
+const updateContainerWidth = () => {
+  if (ganttRootRef.value) {
+    const newWidth = ganttRootRef.value.clientWidth
+    if (newWidth !== ganttContainerWidth.value) {
+      ganttContainerWidth.value = newWidth
+      // 容器宽度变化时，重新计算 TaskList 的宽度限制
+      ganttPanelLeftMinWidth.value = getTaskListMinWidth()
+      taskListBodyWidth.value = getTaskListMaxWidth()
+      taskListBodyProposedWidth.value = getTaskListMaxWidth()
+      taskListBodyWidthLimit.value = getTaskListMaxWidth()
+
+      // 确保当前宽度在新的限制范围内
+      const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
+      if (adjustedWidth !== leftPanelWidth.value) {
+        leftPanelWidth.value = adjustedWidth
+      }
+    }
+  }
+}
+
+onMounted(() => {
+  updateContainerWidth()
+  // 监听窗口大小变化
+  window.addEventListener('resize', updateContainerWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateContainerWidth)
+})
+
+// TaskList最小宽度，支持通过taskListConfig配置（支持像素和百分比）
+const getTaskListMinWidth = () => {
+  const configMinWidth = parseWidthValue(
+    props.taskListConfig?.minWidth,
+    ganttContainerWidth.value,
+    DEFAULT_TASK_LIST_MIN_WIDTH,
+  )
+  return Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH) // 确保不小于280px
+}
+
+// TaskList最大宽度，支持通过taskListConfig配置（支持像素和百分比）
+const getTaskListMaxWidth = () => {
+  return parseWidthValue(
+    props.taskListConfig?.maxWidth,
+    ganttContainerWidth.value,
+    DEFAULT_TASK_LIST_MAX_WIDTH,
+  )
+}
+
+// TaskList默认宽度，支持通过taskListConfig配置（支持像素和百分比）
+const getTaskListDefaultWidth = () => {
+  return parseWidthValue(
+    props.taskListConfig?.defaultWidth,
+    ganttContainerWidth.value,
+    DEFAULT_TASK_LIST_WIDTH,
+  )
+}
+
+const taskListBodyWidth = ref(getTaskListMaxWidth()) // TaskList默认宽度
+const ganttPanelLeftMinWidth = ref(getTaskListMinWidth()) // 左侧面板最小宽度
+const ganttPanelLeftCurrentWidth = ref(getTaskListMinWidth()) // 当前左侧面板宽度
+const taskListBodyProposedWidth = ref(getTaskListMaxWidth())
+const taskListBodyWidthLimit = ref(getTaskListMaxWidth())
+
 // 使用taskListConfig中的默认宽度，如果未配置则使用320px
-const leftPanelWidth = ref(props.taskListConfig?.defaultWidth || 320)
+const leftPanelWidth = ref(getTaskListDefaultWidth())
+
+// 简化的限制检查函数：直接基于面板实际宽度判断
+const checkWidthLimits = (proposedLeftWidth: number): number => {
+  if (proposedLeftWidth < ganttPanelLeftMinWidth.value) {
+    return ganttPanelLeftMinWidth.value
+  } else if (proposedLeftWidth > taskListBodyWidthLimit.value) {
+    return taskListBodyWidthLimit.value
+  } else {
+    return Math.max(ganttPanelLeftMinWidth.value, proposedLeftWidth)
+  }
+}
 
 // 监听taskListConfig变化，更新相关配置
 watch(
   () => props.taskListConfig,
   newConfig => {
     if (newConfig) {
-      // 更新默认宽度
+      // 更新默认宽度（支持像素和百分比）
       if (newConfig.defaultWidth !== undefined) {
-        leftPanelWidth.value = newConfig.defaultWidth
+        leftPanelWidth.value = getTaskListDefaultWidth()
       }
 
       // 更新最小最大宽度限制
@@ -153,8 +245,20 @@ watch(
 // Timeline组件的引用
 const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
 
+// Timeline容器宽度（用于计算需要多少列才能铺满）
+const timelineContainerWidth = ref<number>(0)
+
+// 任务拖拽/拉伸触发器（用于触发timeline范围重新计算）
+const updateTaskTrigger = ref<number>(0)
+
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
+
+// 计算是否显示关闭按钮
+const showCloseButton = computed(() => {
+  const taskId = timelineRef.value?.highlightedTaskId
+  return taskId !== null && taskId !== undefined
+})
 
 watch(
   () => timelineRef.value,
@@ -164,42 +268,6 @@ watch(
     }
   },
 )
-
-// TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
-// 列宽: 300+120+120+140+140+100+100+100 = 1120px
-// 边框: 7个列间边框 * 1px = 7px
-// 滚动条预留: 20px
-// 额外边距: 13px (task-list-header的左边距3px + 其他10px预留)
-const DEFAULT_TASK_LIST_MAX_WIDTH = 1120 + 7 + 20 + 13 // = 1160px
-const DEFAULT_TASK_LIST_MIN_WIDTH = 280 // 最小宽度不能小于280px
-
-// TaskList最小宽度，支持通过taskListConfig配置
-const getTaskListMinWidth = () => {
-  const configMinWidth = props.taskListConfig?.minWidth || DEFAULT_TASK_LIST_MIN_WIDTH
-  return Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH) // 确保不小于280px
-}
-
-// TaskList最大宽度，支持通过taskListConfig配置
-const getTaskListMaxWidth = () => {
-  return props.taskListConfig?.maxWidth || DEFAULT_TASK_LIST_MAX_WIDTH
-}
-
-const taskListBodyWidth = ref(getTaskListMaxWidth()) // TaskList默认宽度
-const ganttPanelLeftMinWidth = ref(getTaskListMinWidth()) // 左侧面板最小宽度
-const ganttPanelLeftCurrentWidth = ref(getTaskListMinWidth()) // 当前左侧面板宽度
-const taskListBodyProposedWidth = ref(getTaskListMaxWidth())
-const taskListBodyWidthLimit = ref(getTaskListMaxWidth())
-
-// 简化的限制检查函数：直接基于面板实际宽度判断
-const checkWidthLimits = (proposedLeftWidth: number): number => {
-  if (proposedLeftWidth < ganttPanelLeftMinWidth.value) {
-    return ganttPanelLeftMinWidth.value
-  } else if (proposedLeftWidth > taskListBodyWidthLimit.value) {
-    return taskListBodyWidthLimit.value
-  } else {
-    return Math.max(ganttPanelLeftMinWidth.value, proposedLeftWidth)
-  }
-}
 
 const dragging = ref(false)
 
@@ -339,26 +407,68 @@ const handleToggleTaskList = (event: CustomEvent) => {
   })
 }
 
-// --- 事件链路：监听 Timeline 传递上来的拖拽/拉伸事件，并通过 props 回调暴露 ---
+// --- 事件链路：监听 Timeline 传递上来的拖拽/拉伸事件，更新数据并通过 emit 暴露 ---
 function handleTaskBarDragEnd(event: CustomEvent) {
-  emit('taskbar-drag-end', event.detail)
+  const updatedTask = event.detail
+  // 更新 props.tasks 中的任务数据
+  if (props.tasks) {
+    updateTaskInTree(props.tasks, updatedTask)
+  }
+  updateTaskTrigger.value++
+  emit('taskbar-drag-end', updatedTask)
 }
 function handleTaskBarResizeEnd(event: CustomEvent) {
-  emit('taskbar-resize-end', event.detail)
+  const updatedTask = event.detail
+  // 更新 props.tasks 中的任务数据
+  if (props.tasks) {
+    updateTaskInTree(props.tasks, updatedTask)
+  }
+  updateTaskTrigger.value++
+  emit('taskbar-resize-end', updatedTask)
 }
 function handleMilestoneDragEnd(event: CustomEvent) {
-  emit('milestone-drag-end', event.detail)
+  const updatedMilestone = event.detail
+  updateTaskTrigger.value++
+  emit('milestone-drag-end', updatedMilestone)
 }
+
+// ResizeObserver 引用，用于清理
+let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   window.addEventListener('taskbar-drag-end', handleTaskBarDragEnd as EventListener)
   window.addEventListener('taskbar-resize-end', handleTaskBarResizeEnd as EventListener)
   window.addEventListener('milestone-drag-end', handleMilestoneDragEnd as EventListener)
+
+  // 监听 timeline 容器宽度变化
+  nextTick(() => {
+    // 监听右侧面板（timeline 的可视容器）的宽度
+    const rightPanel = document.querySelector('.gantt-panel-right')
+    if (rightPanel) {
+      // 初始化宽度
+      timelineContainerWidth.value = rightPanel.clientWidth
+
+      // 使用 ResizeObserver 监听宽度变化
+      resizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          timelineContainerWidth.value = entry.contentRect.width
+        }
+      })
+      resizeObserver.observe(rightPanel)
+    }
+  })
 })
+
 onUnmounted(() => {
   window.removeEventListener('taskbar-drag-end', handleTaskBarDragEnd as EventListener)
   window.removeEventListener('taskbar-resize-end', handleTaskBarResizeEnd as EventListener)
   window.removeEventListener('milestone-drag-end', handleMilestoneDragEnd as EventListener)
+
+  // 清理 ResizeObserver
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
 })
 
 // 处理TaskList的任务折叠状态变化
@@ -438,9 +548,6 @@ const handleCollapseAll = () => {
   }
 }
 
-// 用于强制触发Timeline重新计算的响应式值
-const updateTaskTrigger = ref(0)
-
 // 处理TaskDrawer请求任务列表
 const handleRequestTaskList = () => {
   // 创建扁平化的任务列表，包含所有任务和里程碑
@@ -492,9 +599,7 @@ onMounted(() => {
   window.addEventListener('toggle-task-list', handleToggleTaskList as EventListener)
   // 监听GanttToolbar的全屏切换事件
   window.addEventListener('fullscreen-toggle', handleFullscreenToggle as EventListener)
-  // 监听Timeline的任务相关事件
-  window.addEventListener('task-updated', handleTaskUpdate as EventListener)
-  window.addEventListener('task-added', handleTaskAdd as EventListener)
+  // 监听Timeline的里程碑相关事件
   window.addEventListener('milestone-icon-changed', handleMilestoneIconChangeEvent as EventListener)
   // 监听里程碑删除和数据变化事件
   window.addEventListener('milestone-deleted', handleMilestoneDeleted as EventListener)
@@ -518,8 +623,6 @@ onUnmounted(() => {
   // 移除事件监听器
   window.removeEventListener('toggle-task-list', handleToggleTaskList as EventListener)
   window.removeEventListener('fullscreen-toggle', handleFullscreenToggle as EventListener)
-  window.removeEventListener('task-updated', handleTaskUpdate as EventListener)
-  window.removeEventListener('task-added', handleTaskAdd as EventListener)
   window.removeEventListener(
     'milestone-icon-changed',
     handleMilestoneIconChangeEvent as EventListener,
@@ -757,10 +860,15 @@ const tasksForTimeline = computed(() => {
 
 // 将Task[]转换为Milestone[]的计算属性，确保类型兼容
 const milestonesForTimeline = computed((): Milestone[] => {
+  // 通过条件判断访问触发器，确保里程碑更新时重新计算
+  if (updateTaskTrigger.value >= 0) {
+    // 触发器起作用，继续执行计算逻辑
+  }
+
   if (!props.milestones) return []
 
   // 过滤出有startDate的里程碑，并转换为Milestone类型
-  return props.milestones
+  const result = props.milestones
     .filter((task): task is Task & { startDate: string } => !!task.startDate)
     .map(task => ({
       id: task.id,
@@ -772,10 +880,16 @@ const milestonesForTimeline = computed((): Milestone[] => {
       icon: task.icon,
       description: task.description,
     }))
+
+  return result
 })
 
 // 计算所有任务和里程碑的最小开始时间和最大结束时间
 const timelineDateRange = computed(() => {
+  // 触发器依赖：确保拖拽/拉伸后会重新计算
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  updateTaskTrigger.value
+
   // 扁平化所有任务和子任务
   const flattenTasks = (tasks: Task[]): Task[] => {
     let result: Task[] = []
@@ -802,32 +916,308 @@ const timelineDateRange = computed(() => {
     .filter(Boolean)
     .map(d => new Date(d!))
 
+  // 如果没有任务，使用默认范围（今天为中心，±6个月）
   if (startDates.length === 0 || endDates.length === 0) {
-    // 没有任务时，默认以今天为中心
     const today = new Date()
     const min = new Date(today.getFullYear(), today.getMonth() - 6, 1)
     const max = new Date(today.getFullYear(), today.getMonth() + 6 + 1, 0)
     return { min, max }
   }
 
-  // 找到最小开始和最大结束
-  const minDate = new Date(Math.min(...startDates.map(d => d.getTime())))
-  const maxDate = new Date(Math.max(...endDates.map(d => d.getTime())))
+  // 1. 获取任务的实际范围
+  const taskMinDate = new Date(Math.min(...startDates.map(d => d.getTime())))
+  const taskMaxDate = new Date(Math.max(...endDates.map(d => d.getTime())))
 
-  // 日视图前后各延伸6个月
-  let min = new Date(minDate.getFullYear(), minDate.getMonth() - 6, 1)
-  let max = new Date(maxDate.getFullYear(), maxDate.getMonth() + 6 + 1, 0)
-  if (currentTimeScale.value === TimelineScale.WEEK) {
-    // 月视图Timeline周期为往前1年~往后1年
-    min = new Date(minDate.getFullYear() - 1, minDate.getMonth(), 1)
-    max = new Date(maxDate.getFullYear() + 1, maxDate.getMonth() + 1, 0)
-  } else if (currentTimeScale.value === TimelineScale.MONTH) {
-    // 月视图Timeline周期为往前2年~往后2年
-    min = new Date(minDate.getFullYear() - 2, minDate.getMonth(), 1)
-    max = new Date(maxDate.getFullYear() + 2, maxDate.getMonth() + 1, 0)
-  }
+  // 2. 获取容器宽度和当前刻度的列宽
+  const containerWidth = timelineContainerWidth.value || 1200 // 默认值
+  const columnWidth = SCALE_CONFIGS[currentTimeScale.value].cellWidth
+
+  // 3. 计算需要多少列才能铺满容器
+  const minColumns = Math.ceil(containerWidth / columnWidth)
+
+  // 4. 应用固定 buffer + 确保铺满容器
+  const { min, max } = applyBufferAndFillContainer(
+    taskMinDate,
+    taskMaxDate,
+    currentTimeScale.value,
+    minColumns,
+    columnWidth,
+  )
+
   return { min, max }
 })
+
+/**
+ * 应用固定 buffer 规则并确保铺满容器
+ * Buffer 规则：
+ * - 小时视图：±1天
+ * - 日视图：±15天
+ * - 周视图：±1个月（对齐到整月）
+ * - 月视图：±1年
+ * - 季度视图：±1年
+ * - 年度视图：±1年
+ */
+function applyBufferAndFillContainer(
+  taskMin: Date,
+  taskMax: Date,
+  scale: TimelineScale,
+  minColumns: number,
+  columnWidth: number,
+): { min: Date; max: Date } {
+  let min: Date
+  let max: Date
+
+  switch (scale) {
+  case TimelineScale.HOUR: {
+    // 小时视图：±1天
+    min = new Date(taskMin.getTime() - 24 * 60 * 60 * 1000)
+    max = new Date(taskMax.getTime() + 24 * 60 * 60 * 1000)
+    // 确保至少有 minColumns 小时
+    const currentHours = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60))
+    if (currentHours < minColumns) {
+      const needHours = minColumns - currentHours
+      const expandEach = Math.ceil(needHours / 2)
+      min = new Date(min.getTime() - expandEach * 60 * 60 * 1000)
+      max = new Date(max.getTime() + expandEach * 60 * 60 * 1000)
+    }
+    break
+  }
+  case TimelineScale.DAY: {
+    // 日视图：±15天，显示 buffer 日期所在月份的完整月份
+
+    // 1. 计算 buffer 日期
+    const minBufferDate = new Date(taskMin)
+    minBufferDate.setDate(minBufferDate.getDate() - 15)
+
+    const maxBufferDate = new Date(taskMax)
+    maxBufferDate.setDate(maxBufferDate.getDate() + 15)
+
+    // 2. 获取 buffer 日期所在月份的第一天和最后一天
+    min = new Date(minBufferDate.getFullYear(), minBufferDate.getMonth(), 1)
+    max = new Date(maxBufferDate.getFullYear(), maxBufferDate.getMonth() + 1, 0)
+
+    // 3. 确保至少有 minColumns 天
+    const currentDays = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60 * 24))
+    if (currentDays < minColumns) {
+      const needDays = minColumns - currentDays
+      const expandMonths = Math.ceil(needDays / 30) // 按月扩展
+
+      // 向前扩展整月
+      const newMinMonth = min.getMonth() - expandMonths
+      const newMinYear = min.getFullYear() + Math.floor(newMinMonth / 12)
+      const normalizedMinMonth = ((newMinMonth % 12) + 12) % 12
+      min = new Date(newMinYear, normalizedMinMonth, 1)
+
+      // 向后扩展整月
+      const newMaxMonth = max.getMonth() + expandMonths + 1
+      const newMaxYear = max.getFullYear() + Math.floor(newMaxMonth / 12)
+      const normalizedMaxMonth = ((newMaxMonth % 12) + 12) % 12
+      max = new Date(newMaxYear, normalizedMaxMonth, 0)
+    }
+    break
+  }
+  case TimelineScale.WEEK: {
+    // 周视图：确保铺满容器，按整月扩展
+
+    // 工具函数：获取某日期所在周的周一
+    const getMonday = (date: Date): Date => {
+      const d = new Date(date)
+      const day = d.getDay() || 7
+      d.setDate(d.getDate() - (day - 1))
+      return d
+    }
+
+    // 工具函数：获取某月第一个周一在该月的周（该月最小日期作为周一的周）
+    const getFirstMondayOfMonth = (year: number, month: number): Date => {
+      let day = 1
+      while (day <= 31) {
+        const date = new Date(year, month, day)
+        if (date.getMonth() !== month) break // 超出该月
+        const monday = getMonday(date)
+        if (monday.getMonth() === month) {
+          return monday
+        }
+        day++
+      }
+      return new Date(year, month, 1) // 兜底
+    }
+
+    // 工具函数：获取某月最后一个周一在该月的周（该月最大日期作为周一的周）
+    const getLastMondayOfMonth = (year: number, month: number): Date => {
+      const lastDay = new Date(year, month + 1, 0).getDate()
+      for (let day = lastDay; day >= 1; day--) {
+        const date = new Date(year, month, day)
+        const monday = getMonday(date)
+        if (monday.getMonth() === month) {
+          return monday
+        }
+      }
+      return new Date(year, month, 1) // 兜底
+    }
+
+    // 工具函数：获取某月的所有周（周一在该月的周）
+    const getWeeksOfMonth = (year: number, month: number): Date[] => {
+      const weeks: Date[] = []
+      const firstMonday = getFirstMondayOfMonth(year, month)
+      const lastMonday = getLastMondayOfMonth(year, month)
+      const current = new Date(firstMonday)
+      while (current <= lastMonday) {
+        weeks.push(new Date(current))
+        current.setDate(current.getDate() + 7)
+      }
+      return weeks
+    }
+
+    // 1. 获取最早TaskBar/Milestone的最小开始日期所在周的周一
+    const minMonday = getMonday(taskMin)
+    const minYear = minMonday.getFullYear()
+    const minMonth = minMonday.getMonth()
+
+    // 2. 基于第一周周一往前追加一个完整月份的周数作为baseBuffer
+    const prevMonth = minMonth === 0 ? 11 : minMonth - 1
+    const prevYear = minMonth === 0 ? minYear - 1 : minYear
+    const prevMonthWeeks = getWeeksOfMonth(prevYear, prevMonth)
+
+    // 3. 获取最晚TaskBar/Milestone的最大开始日期所在周的周一
+    const maxMonday = getMonday(taskMax)
+    const maxYear = maxMonday.getFullYear()
+    const maxMonth = maxMonday.getMonth()
+
+    // 4. 基于最后一周周日往后追加一个完整月份的周数作为baseBuffer
+    const nextMonth = maxMonth === 11 ? 0 : maxMonth + 1
+    const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
+    const nextMonthWeeks = getWeeksOfMonth(nextYear, nextMonth)
+
+    // 初始weeks：前buffer月 + 最小月到最大月之间所有月 + 后buffer月
+    let weeks: Date[] = []
+
+    // 添加前buffer月
+    weeks.push(...prevMonthWeeks)
+
+    // 添加最小月到最大月之间的所有月份的周
+    let currentYear = minYear
+    let currentMonth = minMonth
+    while (currentYear < maxYear || (currentYear === maxYear && currentMonth <= maxMonth)) {
+      const monthWeeks = getWeeksOfMonth(currentYear, currentMonth)
+      weeks.push(...monthWeeks)
+      currentMonth++
+      if (currentMonth > 11) {
+        currentMonth = 0
+        currentYear++
+      }
+    }
+
+    // 添加后buffer月
+    weeks.push(...nextMonthWeeks)
+
+    // 5. 判断是否填满容器，不够则继续扩展前后的完整月份
+    const weekWidth = 60 // 周视图：每周60px
+    let totalWidth = weeks.length * weekWidth
+    while (totalWidth < minColumns * columnWidth) {
+      // 前面扩展一个完整月
+      const firstWeek = weeks[0]
+      const firstYear = firstWeek.getFullYear()
+      const firstMonth = firstWeek.getMonth()
+      const extendPrevMonth = firstMonth === 0 ? 11 : firstMonth - 1
+      const extendPrevYear = firstMonth === 0 ? firstYear - 1 : firstYear
+      const extendPrevWeeks = getWeeksOfMonth(extendPrevYear, extendPrevMonth)
+      weeks = [...extendPrevWeeks, ...weeks]
+      totalWidth = weeks.length * weekWidth
+
+      if (totalWidth >= minColumns * columnWidth) break
+
+      // 后面扩展一个完整月
+      const lastWeek = weeks[weeks.length - 1]
+      const lastYear = lastWeek.getFullYear()
+      const lastMonth = lastWeek.getMonth()
+      const extendNextMonth = lastMonth === 11 ? 0 : lastMonth + 1
+      const extendNextYear = lastMonth === 11 ? lastYear + 1 : lastYear
+      const extendNextWeeks = getWeeksOfMonth(extendNextYear, extendNextMonth)
+      weeks = [...weeks, ...extendNextWeeks]
+      totalWidth = weeks.length * weekWidth
+    }
+
+    // 6. 计算最终 min/max
+    min = new Date(weeks[0])
+    max = new Date(weeks[weeks.length - 1])
+    max.setDate(max.getDate() + 6) // 该周的周日
+
+    break
+  }
+  case TimelineScale.MONTH: {
+    // 月视图：±1年
+    min = new Date(taskMin.getFullYear() - 1, taskMin.getMonth(), 1)
+    max = new Date(taskMax.getFullYear() + 1, taskMax.getMonth() + 1, 0)
+    // 确保至少有 minColumns 月
+    const currentMonths =
+      (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth())
+    if (currentMonths < minColumns) {
+      const needMonths = minColumns - currentMonths
+      const expandEach = Math.ceil(needMonths / 2)
+      min = new Date(min.getFullYear(), min.getMonth() - expandEach, 1)
+      max = new Date(max.getFullYear(), max.getMonth() + expandEach + 1, 0)
+    }
+    break
+  }
+  case TimelineScale.QUARTER: {
+    // 季度视图：以今日为中心，±2年 buffer，不够则继续扩展
+    const today = new Date()
+    const todayYear = today.getFullYear()
+
+    // 1. 先确保包含任务范围 + ±2年 buffer
+    const taskMinYear = taskMin.getFullYear()
+    const taskMaxYear = taskMax.getFullYear()
+
+    min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
+    max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
+
+    // 2. 检查是否能填充容器
+    const currentQuarters = (max.getFullYear() - min.getFullYear() + 1) * 4
+    if (currentQuarters < minColumns) {
+      // 需要扩展，以1年（4个季度）为单位
+      const needQuarters = minColumns - currentQuarters
+      const expandYears = Math.ceil(needQuarters / 4)
+
+      // 以今日为中心扩展
+      const expandEach = Math.ceil(expandYears / 2)
+      min = new Date(min.getFullYear() - expandEach, 0, 1)
+      max = new Date(max.getFullYear() + expandEach, 11, 31)
+    }
+    break
+  }
+  case TimelineScale.YEAR: {
+    // 年度视图：以今日为中心，±2年 buffer，不够则继续扩展（与季度视图逻辑一致）
+    const today = new Date()
+    const todayYear = today.getFullYear()
+
+    // 1. 先确保包含任务范围 + ±2年 buffer
+    const taskMinYear = taskMin.getFullYear()
+    const taskMaxYear = taskMax.getFullYear()
+
+    min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
+    max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
+
+    // 2. 检查是否能填充容器（年度视图每年2个半年，每个半年是一列）
+    const currentHalfYears = (max.getFullYear() - min.getFullYear() + 1) * 2
+    if (currentHalfYears < minColumns) {
+      // 需要扩展，以1年（2个半年）为单位
+      const needHalfYears = minColumns - currentHalfYears
+      const expandYears = Math.ceil(needHalfYears / 2)
+
+      // 以今日为中心扩展
+      const expandEach = Math.ceil(expandYears / 2)
+      min = new Date(min.getFullYear() - expandEach, 0, 1)
+      max = new Date(max.getFullYear() + expandEach, 11, 31)
+    }
+    break
+  }
+  default:
+    min = taskMin
+    max = taskMax
+  }
+
+  return { min, max }
+}
 
 // CSV导出处理器包装函数
 const csvExportHandler = () => {
@@ -863,6 +1253,13 @@ const handleTimelineScaleChanged = (scale: TimelineScale) => {
     const event = new CustomEvent('timeline-scale-updated', { detail: scale })
     window.dispatchEvent(event)
   })
+}
+
+// 处理关闭高亮
+const handleClearHighlight = () => {
+  if (timelineRef.value?.clearHighlight) {
+    timelineRef.value.clearHighlight()
+  }
 }
 
 // 默认CSV导出功能
@@ -1133,114 +1530,100 @@ const handleFullscreenToggle = (event: CustomEvent) => {
   if (props.onFullscreenChange && typeof props.onFullscreenChange === 'function') {
     props.onFullscreenChange(isFullscreen.value)
   }
+
+  // 全屏切换会改变Timeline容器宽度，需要通知Timeline重新计算TaskBar位置和关系线
+  // 延迟到动画完成后（全屏动画需要 300ms），确保容器尺寸已经稳定
+  setTimeout(() => {
+    window.dispatchEvent(
+      new CustomEvent('timeline-container-resized', {
+        detail: { source: 'fullscreen-toggle' },
+      }),
+    )
+  }, 500) // 比动画时间稍长一点，确保完全完成
+}
+
+// 更新或添加里程碑到列表中
+const updateOrAddMilestone = (milestones: Task[], milestone: Task): boolean => {
+  const existingIndex = milestones.findIndex(m => m.id === milestone.id)
+  if (existingIndex !== -1) {
+    // 更新现有里程碑 - 使用 splice 确保响应式
+    milestones.splice(existingIndex, 1, { ...milestones[existingIndex], ...milestone })
+    return true
+  } else {
+    // 添加新里程碑
+    milestones.push(milestone)
+    return true
+  }
 }
 
 // 处理里程碑保存事件
 const handleMilestoneSave = (milestone: Task) => {
-  // 调用外部传入的里程碑保存处理器
-  if (props.onMilestoneSave && typeof props.onMilestoneSave === 'function') {
-    props.onMilestoneSave(milestone)
+  // 如果是新建里程碑（没有id），生成一个临时ID
+  if (!milestone.id) {
+    milestone.id = Date.now()
   }
 
-  // 如果没有外部处理器，执行默认的更新逻辑
-  // 这里可以添加默认的里程碑数据更新逻辑，比如更新本地数据或者触发重新渲染
-}
+  // 确保里程碑有必要的属性
+  milestone.type = 'milestone'
 
-// 处理任务更新事件
-const handleTaskUpdate = (event: CustomEvent) => {
-  const updatedTask = event.detail
-
-  // 如果更新的是task类型且有parentId，需要同时更新对应的story进度
-  if (updatedTask.type === 'task' && updatedTask.parentId) {
-    const updatedStory = calculateStoryProgress(updatedTask.parentId, updatedTask)
-
-    // 先调用外部的任务更新处理器更新子任务
-    if (props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
-      props.onTaskUpdate(updatedTask)
-    }
-
-    // 如果story进度有变化，也更新story
-    if (updatedStory && props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
-      props.onTaskUpdate(updatedStory)
-    }
-  } else if (props.onTaskUpdate && typeof props.onTaskUpdate === 'function') {
-    // 普通任务更新
-    props.onTaskUpdate(updatedTask)
+  // 1. 先更新 props.milestones 数据（自动处理数据）
+  if (props.milestones) {
+    updateOrAddMilestone(props.milestones, milestone)
   }
 
-  // 关键：任务更新后强制刷新Timeline时间轴
+  // 2. 触发里程碑保存事件（新的事件驱动 API）
+  emit('milestone-saved', milestone)
+
+  // 3. 强制更新任务触发器，确保Timeline重新计算
   updateTaskTrigger.value++
+
+  // 如果是从对话框保存的，关闭对话框
+  if (milestoneDialogVisible.value) {
+    handleMilestoneDialogClose()
+  }
 }
 
-// 计算story的进度（根据其下所有task的进度计算）
-const calculateStoryProgress = (storyId: number, updatedTask?: Task): Task | null => {
-  // 获取所有任务的扁平列表
-  const allTasks = [...(props.tasks || [])]
-  const flatTasks: Task[] = []
-
-  const flattenTasks = (tasks: Task[]) => {
-    tasks.forEach(task => {
-      flatTasks.push(task)
-      if (task.children && task.children.length > 0) {
-        flattenTasks(task.children)
-      }
-    })
+// 更新里程碑图标
+const updateMilestoneIcon = (milestones: Task[], milestoneId: number, icon: string): boolean => {
+  const index = milestones.findIndex(m => m.id === milestoneId)
+  if (index !== -1) {
+    // 使用 splice 确保响应式更新
+    milestones.splice(index, 1, { ...milestones[index], icon })
+    return true
   }
-
-  flattenTasks(allTasks)
-
-  // 找到对应的story
-  const storyTask = flatTasks.find(task => task.id === storyId && task.type === 'story')
-  if (!storyTask) return null
-
-  // 获取该story下所有的task
-  let childTasks = flatTasks.filter(task => task.parentId === storyId && task.type === 'task')
-  if (childTasks.length === 0) return null
-
-  // 如果有正在更新的task，使用最新的数据替换旧数据
-  if (updatedTask && updatedTask.type === 'task' && updatedTask.parentId === storyId) {
-    childTasks = childTasks.map(task => (task.id === updatedTask.id ? updatedTask : task))
-  }
-
-  // 计算平均进度
-  const totalProgress = childTasks.reduce((sum, task) => sum + (task.progress || 0), 0)
-  const avgProgress = Math.round(totalProgress / childTasks.length)
-
-  // 如果进度有变化，返回更新后的story
-  if (storyTask.progress !== avgProgress) {
-    return { ...storyTask, progress: avgProgress }
-  }
-
-  // 进度没有变化，返回null
-  return null
-}
-
-// 处理任务添加事件
-const handleTaskAdd = (event: CustomEvent) => {
-  const newTask = event.detail
-  if (props.onTaskAdd && typeof props.onTaskAdd === 'function') {
-    props.onTaskAdd(newTask)
-  }
-  // 关键：任务新增后强制刷新Timeline时间轴
-  updateTaskTrigger.value++
+  return false
 }
 
 // 处理里程碑图标变更事件
 const handleMilestoneIconChangeEvent = (event: CustomEvent) => {
   const { milestoneId, icon } = event.detail
-  if (props.onMilestoneIconChange && typeof props.onMilestoneIconChange === 'function') {
-    props.onMilestoneIconChange(milestoneId, icon)
+
+  // 1. 先更新 props.milestones 中的图标（自动处理数据）
+  if (props.milestones) {
+    updateMilestoneIcon(props.milestones, milestoneId, icon)
   }
+
+  // 2. 触发里程碑图标变更事件（新的事件驱动 API）
+  emit('milestone-icon-changed', { milestoneId, icon })
+
+  // 3. 强制更新任务触发器，确保Timeline重新计算
+  updateTaskTrigger.value++
 }
 
-// 处理里程碑删除事件
-const handleMilestoneDeleted = (event: CustomEvent) => {
-  const { milestoneId } = event.detail
-
-  // 调用外部的里程碑删除处理器
-  if (props.onMilestoneDelete && typeof props.onMilestoneDelete === 'function') {
-    props.onMilestoneDelete(milestoneId)
+// 从里程碑列表中删除指定的里程碑
+const removeMilestone = (milestones: Task[], milestoneId: number): boolean => {
+  const index = milestones.findIndex(m => m.id === milestoneId)
+  if (index !== -1) {
+    milestones.splice(index, 1)
+    return true
   }
+  return false
+}
+
+// 处理里程碑删除事件（从全局事件触发，主要用于向后兼容）
+const handleMilestoneDeleted = () => {
+  // 注意：由于新的架构中，handleMilestoneDialogDelete 已经处理了数据删除
+  // 这里只处理强制更新，避免重复删除导致的问题
 
   // 强制更新任务触发器，确保Timeline重新计算
   updateTaskTrigger.value++
@@ -1285,20 +1668,20 @@ const todayLocateHandler = () => {
 
 // 里程碑添加处理器
 const milestoneAddHandler = () => {
-  // 如果有外部处理器，先调用它
-  if (props.onAddMilestone && typeof props.onAddMilestone === 'function') {
-    props.onAddMilestone()
-    return
-  }
+  // 先派发事件，让外部有机会处理
+  emit('add-milestone')
 
-  // 使用默认里程碑添加实现
-  defaultAddMilestone()
+  // 如果启用默认里程碑对话框，则使用内置实现
+  if (props.useDefaultMilestoneDialog) {
+    defaultAddMilestone()
+  }
 }
 
 // 默认里程碑添加功能
 const defaultAddMilestone = () => {
-  // 派发全局事件，让其他组件处理
-  window.dispatchEvent(new CustomEvent('add-milestone'))
+  // 打开里程碑对话框（editingMilestone 为 null 表示新建）
+  editingMilestone.value = null
+  milestoneDialogVisible.value = true
 }
 
 // 默认今日定位功能
@@ -1352,15 +1735,28 @@ const handleWindowResize = () => {
   }
 }
 
-// 设置自定义多语言消息
-
+// 设置自定义多语言消息（支持多语言）
 if (props.localeMessages) {
-  setCustomMessages(locale.value, props.localeMessages)
+  Object.keys(props.localeMessages).forEach(localeKey => {
+    const messages = props.localeMessages![localeKey as keyof typeof props.localeMessages]
+    if (messages) {
+      setCustomMessages(localeKey as import('../composables/useI18n').Locale, messages)
+    }
+  })
 }
+
+// 监听自定义多语言变化
 watch(
   () => props.localeMessages,
   val => {
-    if (val) setCustomMessages(locale.value, val)
+    if (val) {
+      Object.keys(val).forEach(localeKey => {
+        const messages = val[localeKey as keyof typeof val]
+        if (messages) {
+          setCustomMessages(localeKey as import('../composables/useI18n').Locale, messages)
+        }
+      })
+    }
   },
   { deep: true },
 )
@@ -1374,6 +1770,10 @@ const contextMenuTask = ref<Task | null>(null)
 const taskDrawerVisible = ref(false)
 const taskDrawerTask = ref<Task | null>(null)
 const taskDrawerEditMode = ref(false)
+
+// MilestoneDialog 相关变量
+const milestoneDialogVisible = ref(false)
+const editingMilestone = ref<Milestone | null>(null)
 
 // 添加前置任务功能相关变量
 const taskToAddPredecessorTo = ref<Task | null>(null) // 要添加前置任务的目标任务
@@ -1398,25 +1798,30 @@ const closeContextMenu = () => {
 
 // 工具栏新建任务事件处理
 function handleToolbarAddTask() {
-  // 构造一个空的新任务对象
-  const newTask: Task = {
-    id: Date.now(), // 临时id，实际保存时应由后端分配
-    name: '',
-    type: 'task',
-    assignee: '',
-    startDate: '',
-    endDate: '',
-    predecessor: [],
-    estimatedHours: 0,
-    actualHours: 0,
-    progress: 0,
-    description: '',
-    parentId: undefined,
-    children: [],
+  // 向外部发出 add-task 事件，让使用者决定如何处理
+  emit('add-task')
+
+  // 如果使用默认 TaskDrawer，则打开内置的任务抽屉
+  if (props.useDefaultDrawer) {
+    const newTask: Task = {
+      id: Date.now(), // 临时id，实际保存时应由后端分配
+      name: '',
+      type: 'task',
+      assignee: '',
+      startDate: '',
+      endDate: '',
+      predecessor: [],
+      estimatedHours: 0,
+      actualHours: 0,
+      progress: 0,
+      description: '',
+      parentId: undefined,
+      children: [],
+    }
+    taskDrawerTask.value = newTask
+    taskDrawerEditMode.value = false
+    taskDrawerVisible.value = true
   }
-  taskDrawerTask.value = newTask
-  taskDrawerEditMode.value = false
-  taskDrawerVisible.value = true
 }
 
 // 监听TaskDrawer、TaskList、Timeline的计时事件，统一处理
@@ -1478,11 +1883,21 @@ const handleStopTimer = (task: Task) => {
   emit('timer-stopped', task)
 }
 
-// 监听来自Timeline的任务编辑事件
+// 监听来自Timeline的任务单击事件
+function handleTimelineClickTask(task: Task, event: MouseEvent) {
+  emit('task-click', task, event)
+}
+
+// 监听来自Timeline的任务编辑事件（双击）
 function handleTimelineEditTask(task: Task) {
-  taskDrawerTask.value = task
-  taskDrawerEditMode.value = true
-  taskDrawerVisible.value = true
+  emit('task-double-click', task)
+
+  // 根据 useDefaultDrawer 决定是否打开内置 TaskDrawer
+  if (props.useDefaultDrawer) {
+    taskDrawerTask.value = task
+    taskDrawerEditMode.value = true
+    taskDrawerVisible.value = true
+  }
 }
 
 // 处理添加前置任务事件
@@ -1645,10 +2060,46 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
   // emit 删除事件
   emit('task-deleted', { task })
 }
+
+// 处理里程碑双击事件
+function handleMilestoneDoubleClick(milestone: Milestone) {
+  // 先触发外部事件，让外部可以自定义处理
+  emit('milestone-double-click', milestone)
+
+  // 根据 useDefaultMilestoneDialog 决定是否打开内置 MilestoneDialog
+  if (props.useDefaultMilestoneDialog) {
+    editingMilestone.value = milestone
+    milestoneDialogVisible.value = true
+  }
+}
+
+// 处理里程碑对话框关闭事件
+function handleMilestoneDialogClose() {
+  milestoneDialogVisible.value = false
+  editingMilestone.value = null
+}
+
+// 处理里程碑对话框删除事件
+function handleMilestoneDialogDelete(milestoneId: number) {
+  // 1. 先从 props.milestones 中删除（自动处理数据）
+  if (props.milestones) {
+    removeMilestone(props.milestones, milestoneId)
+  }
+
+  // 2. 触发里程碑删除事件（新的事件驱动 API）
+  emit('milestone-deleted', { milestoneId })
+
+  // 3. 强制更新任务触发器，确保Timeline重新计算
+  updateTaskTrigger.value++
+
+  // 4. 关闭对话框
+  handleMilestoneDialogClose()
+}
 </script>
 
 <template>
   <div
+    ref="ganttRootRef"
     class="gantt-root"
     :class="{ 'gantt-fullscreen': isFullscreen, 'splitter-dragging': dragging }"
   >
@@ -1656,8 +2107,6 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
     <GanttToolbar
       v-if="props.showToolbar"
       :config="props.toolbarConfig"
-      :on-add-task="props.onAddTask"
-      :on-add-milestone="milestoneAddHandler"
       :on-today-locate="todayLocateHandler"
       :on-export-csv="csvExportHandler"
       :on-export-pdf="pdfExportHandler"
@@ -1668,6 +2117,7 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
       :on-expand-all="handleExpandAll"
       :on-collapse-all="handleCollapseAll"
       @add-task="handleToolbarAddTask"
+      @add-milestone="milestoneAddHandler"
       @expand-all="handleExpandAll"
       @collapse-all="handleCollapseAll"
     />
@@ -1681,8 +2131,6 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
       >
         <TaskList
           :tasks="tasksForTaskList"
-          :on-task-double-click="props.onTaskDoubleClick"
-          :edit-component="props.editComponent"
           :use-default-drawer="props.useDefaultDrawer"
           :task-list-config="props.taskListConfig"
           @task-collapse-change="handleTaskCollapseChange"
@@ -1732,12 +2180,15 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
           :start-date="timelineDateRange.min"
           :end-date="timelineDateRange.max"
           :working-hours="props.workingHours"
-          :on-task-double-click="props.onTaskDoubleClick"
-          :edit-component="props.editComponent"
+          :task-bar-config="props.taskBarConfig"
+          :allow-drag-and-resize="props.allowDragAndResize"
           :use-default-drawer="props.useDefaultDrawer"
+          :use-default-milestone-dialog="props.useDefaultMilestoneDialog"
           :on-milestone-save="handleMilestoneSave"
           @timeline-scale-changed="handleTimelineScaleChanged"
+          @click-task="handleTimelineClickTask"
           @edit-task="handleTimelineEditTask"
+          @milestone-double-click="handleMilestoneDoubleClick"
           @start-timer="handleStartTimer"
           @stop-timer="handleStopTimer"
           @add-predecessor="handleAddPredecessor"
@@ -1748,6 +2199,29 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
             <slot name="custom-task-content" v-bind="barScope" />
           </template>
         </Timeline>
+
+        <!-- 关闭聚焦按钮 - 固定在gantt-panel-right底部居中 -->
+        <div
+          v-if="showCloseButton"
+          class="focus-close-button"
+          @click.stop="handleClearHighlight"
+        >
+          <svg
+            class="close-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6L6 18M6 6l12 12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="close-text">{{ t.disableTaskbarFocusMode }}</span>
+        </div>
       </div>
     </div>
 
@@ -1762,6 +2236,16 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
       @start-timer="handleStartTimer"
       @stop-timer="handleStopTimer"
       @delete="handleTaskDelete"
+    />
+
+    <!-- 里程碑对话框组件 - 用于编辑里程碑 -->
+    <MilestoneDialog
+      v-if="props.useDefaultMilestoneDialog"
+      v-model:visible="milestoneDialogVisible"
+      :milestone="editingMilestone"
+      @close="handleMilestoneDialogClose"
+      @save="handleMilestoneSave"
+      @delete="handleMilestoneDialogDelete"
     />
   </div>
 </template>
@@ -1810,6 +2294,55 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
 .gantt-panel-right.full-width {
   flex: 1;
   width: 100%;
+}
+
+/* 关闭聚焦按钮 - 固定在gantt-panel-right底部居中 */
+.focus-close-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1004;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #f56c6c;
+  border: 1px solid #f56c6c;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(245, 108, 108, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.focus-close-button:hover {
+  background: #f78989;
+  border-color: #f78989;
+  box-shadow: 0 6px 16px rgba(245, 108, 108, 0.5);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.focus-close-button .close-icon {
+  width: 18px;
+  height: 18px;
+  color: #ffffff;
+  transition: color 0.3s ease;
+}
+
+.focus-close-button:hover .close-icon {
+  color: #ffffff;
+}
+
+.focus-close-button .close-text {
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.focus-close-button:hover .close-text {
+  color: #ffffff;
 }
 
 .gantt-splitter {
@@ -1930,6 +2463,28 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
 
 :global(html[data-theme='dark']) .gantt-panel-left {
   border-right-color: #4c4c4c !important;
+}
+
+:global(html[data-theme='dark']) .focus-close-button {
+  background: #d85555;
+  border-color: #d85555;
+  box-shadow: 0 4px 12px rgba(216, 85, 85, 0.4);
+}
+
+:global(html[data-theme='dark']) .focus-close-button:hover {
+  background: #e67676;
+  border-color: #e67676;
+  box-shadow: 0 6px 16px rgba(216, 85, 85, 0.5);
+}
+
+:global(html[data-theme='dark']) .focus-close-button .close-icon,
+:global(html[data-theme='dark']) .focus-close-button .close-text {
+  color: #ffffff;
+}
+
+:global(html[data-theme='dark']) .focus-close-button:hover .close-icon,
+:global(html[data-theme='dark']) .focus-close-button:hover .close-text {
+  color: #ffffff;
 }
 
 :global(html[data-theme='dark']) .gantt-splitter {

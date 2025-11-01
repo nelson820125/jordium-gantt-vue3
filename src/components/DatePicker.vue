@@ -1,6 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
+
+interface Props {
+  modelValue?: string | [string, string]
+  type?: 'date' | 'daterange' | 'datetime'
+  placeholder?: string
+  startPlaceholder?: string
+  endPlaceholder?: string
+  disabled?: boolean
+  clearable?: boolean
+  size?: 'small' | 'default' | 'large'
+  format?: string
+  valueFormat?: string
+  rangeSeparator?: string
+}
+
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   type: 'date',
@@ -24,20 +39,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-interface Props {
-  modelValue?: string | [string, string]
-  type?: 'date' | 'daterange'
-  placeholder?: string
-  startPlaceholder?: string
-  endPlaceholder?: string
-  disabled?: boolean
-  clearable?: boolean
-  size?: 'small' | 'default' | 'large'
-  format?: string
-  valueFormat?: string
-  rangeSeparator?: string
-}
-
 // 内部状态
 const isFocused = ref(false)
 const isHovered = ref(false)
@@ -53,6 +54,12 @@ const hourListRef = ref<HTMLElement>()
 const minuteListRef = ref<HTMLElement>()
 const blurTimer = ref<number | null>(null)
 const positionUpdateKey = ref(0) // 用于强制重新计算位置
+
+// 保存打开选择器时的原始值（用于取消时恢复）
+const originalSingleValue = ref('')
+const originalSelectedTime = ref('12:00')
+const originalStartValue = ref('')
+const originalEndValue = ref('')
 
 // 当前显示的年月
 const currentYear = ref(new Date().getFullYear())
@@ -80,10 +87,12 @@ const formatDisplayDateTime = (dateStr: string, timeStr: string) => {
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return ''
 
-  const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+  // 使用 format 属性来决定日期格式
+  const separator = props.format.includes('-') ? '-' : '/'
+  const dateFormat = `${date.getFullYear()}${separator}${String(date.getMonth() + 1).padStart(2, '0')}${separator}${String(date.getDate()).padStart(2, '0')}`
 
-  // 总是显示时间部分
-  if (timeStr) {
+  // 仅在 datetime 模式下显示时间部分
+  if (props.type === 'datetime' && timeStr) {
     return `${dateFormat} ${timeStr}`
   }
 
@@ -102,6 +111,7 @@ const displayValue = computed(() => {
     }
     return start || end || ''
   }
+  // 对于单日期/日期时间，使用内部状态来显示（即使未确认也显示）
   return singleValue.value ? formatDisplayDateTime(singleValue.value, selectedTime.value) : ''
 })
 
@@ -217,6 +227,15 @@ const togglePicker = () => {
   if (props.disabled) return
   showPicker.value = !showPicker.value
   if (showPicker.value) {
+    // 保存打开时的原始值
+    if (props.type === 'daterange') {
+      originalStartValue.value = startValue.value
+      originalEndValue.value = endValue.value
+    } else {
+      originalSingleValue.value = singleValue.value
+      originalSelectedTime.value = selectedTime.value
+    }
+
     // 记录当前滚动位置
     lastScrollPosition.x = window.scrollX
     lastScrollPosition.y = window.scrollY
@@ -246,8 +265,17 @@ const togglePicker = () => {
   }
 }
 
-// 关闭日期选择器
+// 关闭日期选择器（未确认时恢复原始值）
 const closePicker = () => {
+  // 如果是 datetime 模式，恢复原始值（因为可能没有点击确认按钮）
+  if (props.type === 'datetime' && showPicker.value) {
+    singleValue.value = originalSingleValue.value
+    selectedTime.value = originalSelectedTime.value
+  } else if (props.type === 'daterange' && showPicker.value) {
+    startValue.value = originalStartValue.value
+    endValue.value = originalEndValue.value
+  }
+
   showPicker.value = false
   showYearPicker.value = false
   showMonthPicker.value = false
@@ -354,7 +382,9 @@ const confirmDate = () => {
       // 格式化日期和时间
       const formatDateTime = (dateStr: string) => {
         const date = new Date(dateStr)
-        const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+        // 使用 valueFormat 来格式化日期
+        const separator = props.valueFormat.includes('-') ? '-' : '/'
+        const dateFormat = `${date.getFullYear()}${separator}${String(date.getMonth() + 1).padStart(2, '0')}${separator}${String(date.getDate()).padStart(2, '0')}`
         return selectedTime.value ? `${dateFormat} ${selectedTime.value}` : dateFormat
       }
 
@@ -364,17 +394,27 @@ const confirmDate = () => {
 
       emit('update:modelValue', newValue)
       emit('change', newValue)
+
+      // 更新原始值，这样关闭时不会恢复
+      originalStartValue.value = startValue.value
+      originalEndValue.value = endValue.value
     }
   } else if (singleValue.value) {
     // 格式化日期和时间
     const date = new Date(singleValue.value)
-    const dateFormat = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+    // 使用 valueFormat 来格式化日期
+    const separator = props.valueFormat.includes('-') ? '-' : '/'
+    const dateFormat = `${date.getFullYear()}${separator}${String(date.getMonth() + 1).padStart(2, '0')}${separator}${String(date.getDate()).padStart(2, '0')}`
     const formattedDateTime = selectedTime.value
       ? `${dateFormat} ${selectedTime.value}`
       : dateFormat
 
     emit('update:modelValue', formattedDateTime)
     emit('change', formattedDateTime)
+
+    // 更新原始值，这样关闭时不会恢复
+    originalSingleValue.value = singleValue.value
+    originalSelectedTime.value = selectedTime.value
   }
 
   // 确认后关闭面板
@@ -494,7 +534,27 @@ const selectDate = (dateStr: string) => {
     }
   } else {
     singleValue.value = dateStr
-    // 不再自动提交，等待用户点击确认按钮
+
+    // 如果 type='date'（纯日期模式），立即提交并关闭
+    if (props.type === 'date') {
+      // 格式化日期
+      const date = new Date(dateStr)
+      const separator = props.valueFormat.includes('-') ? '-' : '/'
+      const formattedDate = `${date.getFullYear()}${separator}${String(date.getMonth() + 1).padStart(2, '0')}${separator}${String(date.getDate()).padStart(2, '0')}`
+
+      // 发送事件
+      emit('update:modelValue', formattedDate)
+      emit('change', formattedDate)
+
+      // 更新原始值，这样关闭时不会恢复
+      originalSingleValue.value = singleValue.value
+
+      // 延迟关闭，让用户看到选中效果
+      setTimeout(() => {
+        closePicker()
+      }, 150)
+    }
+    // 如果 type='datetime'，等待用户选择时间并点击确认按钮
   }
 }
 
@@ -1145,8 +1205,8 @@ const timePickerStyle = computed(() => {
               </div>
             </div>
 
-            <!-- 时间选择器输入框 -->
-            <div class="el-time-picker-input">
+            <!-- 时间选择器输入框（仅在 datetime 模式下显示） -->
+            <div v-if="type === 'datetime'" class="el-time-picker-input">
               <label class="el-time-picker-label" for="time-input">{{ t.time }}:</label>
               <input
                 id="time-input"
@@ -1161,8 +1221,8 @@ const timePickerStyle = computed(() => {
               />
             </div>
 
-            <!-- 日期选择器确认按钮 -->
-            <div class="el-date-picker-footer">
+            <!-- 日期选择器确认按钮（仅在 datetime 模式下显示） -->
+            <div v-if="type === 'datetime'" class="el-date-picker-footer">
               <button
                 class="el-date-picker-btn el-date-picker-btn--confirm"
                 @click.stop="confirmDate"

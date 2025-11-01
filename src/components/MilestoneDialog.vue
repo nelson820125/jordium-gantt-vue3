@@ -4,6 +4,7 @@ import { useI18n } from '../composables/useI18n'
 import DatePicker from './DatePicker.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
 import type { Milestone } from '../models/classes/Milestone'
+import type { Task } from '../models/classes/Task'
 import '../styles/app.css'
 
 interface Props {
@@ -16,12 +17,13 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:visible': [visible: boolean]
   close: []
-  save: [milestone: Milestone]
+  save: [milestone: Task]
   delete: [milestoneId: number]
 }>()
 
 // 表单数据
 const formData = reactive<Milestone>({
+  id: undefined,
   name: '',
   startDate: '',
   assignee: '',
@@ -87,6 +89,28 @@ watch(
   { immediate: true },
 )
 
+// 监听对话框打开，确保新建时重置表单
+watch(
+  () => props.visible,
+  (newVisible) => {
+    if (newVisible && !props.milestone) {
+      // 打开对话框且没有传入里程碑（新建模式），重置表单
+      Object.assign(formData, {
+        id: undefined,
+        name: '',
+        startDate: '',
+        assignee: '',
+        type: 'milestone',
+        icon: 'diamond',
+        description: '',
+      })
+      // 清空错误
+      errors.name = ''
+      errors.startDate = ''
+    }
+  },
+)
+
 // 表单验证
 const validateForm = () => {
   errors.name = ''
@@ -121,7 +145,13 @@ const selectIcon = (icon: string) => {
 // 保存处理
 const handleSave = () => {
   if (validateForm()) {
-    emit('save', { ...formData })
+    // 里程碑的 endDate 必须与 startDate 相同
+    const milestoneData = {
+      ...formData,
+      endDate: formData.startDate,
+      id: formData.id!, // 确保id不为undefined
+    } as Task
+    emit('save', milestoneData)
     closeDialog()
   }
 }
@@ -245,6 +275,7 @@ const t = (key: string) => {
                 id="milestone-date"
                 v-model="formData.startDate"
                 type="date"
+                value-format="YYYY-MM-DD"
                 placeholder="请选择里程碑日期"
                 :class="{ error: errors.startDate }"
               />

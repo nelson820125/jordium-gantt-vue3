@@ -14,6 +14,7 @@ import { useI18n } from '../src/composables/useI18n'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
+import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
@@ -63,19 +64,102 @@ const taskListWidth = ref({
   maxWidth: 1200, // 最大宽度1200px（比默认1160px略大）
 })
 
+// TaskList宽度单位配置（px 或百分比）
+const widthUnit = ref<'px' | '%'>('px')
+const widthPercentage = ref({
+  defaultWidth: 25,
+  minWidth: 15,
+  maxWidth: 60,
+})
+
 const taskListConfig = computed<TaskListConfig>(() => ({
   columns: availableColumns.value,
-  defaultWidth: taskListWidth.value.defaultWidth,
-  minWidth: taskListWidth.value.minWidth,
-  maxWidth: taskListWidth.value.maxWidth,
+  defaultWidth:
+    widthUnit.value === '%'
+      ? `${widthPercentage.value.defaultWidth}%`
+      : taskListWidth.value.defaultWidth,
+  minWidth:
+    widthUnit.value === '%' ? `${widthPercentage.value.minWidth}%` : taskListWidth.value.minWidth,
+  maxWidth:
+    widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
+}))
+
+// 控制是否允许拖拽和拉伸
+const allowDragAndResize = ref(true)
+
+// TaskBar配置
+const taskBarOptions = ref({
+  showAvatar: true,
+  showTitle: true,
+  showProgress: true,
+  dragThreshold: 5, // 拖拽触发阈值（像素）
+  resizeHandleWidth: 5, // 拉伸手柄宽度（像素），默认5px，最大15px
+  enableDragDelay: false, // 是否启用拖拽延迟
+  dragDelayTime: 150, // 拖拽延迟时间（毫秒）
+})
+
+const taskBarConfig = computed<TaskBarConfig>(() => ({
+  showAvatar: taskBarOptions.value.showAvatar,
+  showTitle: taskBarOptions.value.showTitle,
+  showProgress: taskBarOptions.value.showProgress,
+  dragThreshold: taskBarOptions.value.dragThreshold,
+  resizeHandleWidth: taskBarOptions.value.resizeHandleWidth,
+  enableDragDelay: taskBarOptions.value.enableDragDelay,
+  dragDelayTime: taskBarOptions.value.dragDelayTime,
 }))
 
 // 配置面板折叠状态
 const isConfigPanelCollapsed = ref(false)
 
+// TaskList 配置区域折叠状态（默认收起）
+const isTaskListConfigCollapsed = ref(true)
+
+// TaskBar 配置区域折叠状态（默认收起）
+const isTaskBarConfigCollapsed = ref(true)
+
 // 切换配置面板折叠状态
 const toggleConfigPanel = () => {
   isConfigPanelCollapsed.value = !isConfigPanelCollapsed.value
+}
+
+// 切换 TaskList 配置区域
+const toggleTaskListConfig = () => {
+  isTaskListConfigCollapsed.value = !isTaskListConfigCollapsed.value
+}
+
+// 切换 TaskBar 配置区域
+const toggleTaskBarConfig = () => {
+  isTaskBarConfigCollapsed.value = !isTaskBarConfigCollapsed.value
+}
+
+// Task Click Dialog 状态管理
+const showTaskClickDialog = ref(false)
+const clickedTask = ref<Task | null>(null)
+
+// 处理任务点击事件
+const handleTaskClick = (task: Task) => {
+  clickedTask.value = task
+  showTaskClickDialog.value = true
+}
+
+// 关闭 Task Click Dialog
+const closeTaskClickDialog = () => {
+  showTaskClickDialog.value = false
+  clickedTask.value = null
+}
+
+// 格式化属性值用于显示
+const formatPropertyValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return 'null'
+  }
+  if (Array.isArray(value)) {
+    return JSON.stringify(value)
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value, null, 2)
+  }
+  return String(value)
 }
 
 // 切换列显示状态
@@ -110,10 +194,9 @@ const handleCustomCsvExport = () => {
 
 // 其他工具栏事件处理器示例
 const handleAddTask = () => {
-  // 打开TaskDrawer进行新建任务
-  currentTask.value = null
-  isEditMode.value = false
-  showTaskDrawer.value = true
+  // GanttChart 内部会打开 TaskDrawer（如果 useDefaultDrawer=true）
+  // 这里可以添加自定义逻辑，比如显示提示消息
+  showMessage('准备新增任务...', 'info', { closable: true })
 }
 
 const handleAddMilestone = () => {
@@ -137,397 +220,125 @@ const handleThemeChange = (isDark: boolean) => {
   })
 }
 
-// 里程碑保存处理器示例
-const handleMilestoneSave = (milestone: Task) => {
-  // 更新本地里程碑数据
-  const milestoneIndex = milestones.value.findIndex(m => m.id === milestone.id)
-  if (milestoneIndex !== -1) {
+// 从外部 MilestoneDialog 保存里程碑（新建里程碑按钮打开的对话框）
+const handleMilestoneSaveFromDialog = (milestone: Task) => {
+  // 如果是新建里程碑（没有id），生成一个临时ID
+  if (!milestone.id) {
+    milestone.id = Date.now()
+  }
+
+  // 确保里程碑有必要的属性
+  milestone.type = 'milestone'
+
+  // 查找是否已存在该里程碑
+  const existingIndex = milestones.value.findIndex(m => m.id === milestone.id)
+  if (existingIndex !== -1) {
     // 更新现有里程碑
-    milestones.value[milestoneIndex] = { ...milestone }
+    milestones.value.splice(existingIndex, 1, milestone)
   } else {
-    // 新增里程碑
-    const newMilestone = {
-      ...milestone,
-      id: Date.now(), // 生成临时ID
-      type: 'milestone',
-    }
-    milestones.value.push(newMilestone)
+    // 添加新里程碑
+    milestones.value.push(milestone)
   }
+
+  // 关闭对话框
+  showMilestoneDialog.value = false
+
+  // 显示成功提示
+  showMessage(`里程碑 "${milestone.name}" 已保存`, 'success', { closable: false })
+}
+
+// 里程碑保存事件处理器（新的事件驱动 API）
+const handleMilestoneSaved = (milestone: Task) => {
+  // 组件已自动更新 milestones 数据，这里只需处理额外的业务逻辑
+
+  // 关闭里程碑对话框
+  showMilestoneDialog.value = false
+
+  // 可以在这里添加其他业务逻辑，如：
+  // - 发送数据到服务器
+  // - 显示成功提示
+  // - 记录操作日志等
+  showMessage(`里程碑 "${milestone.name}" 已保存`, 'success', { closable: false })
+}
+
+// 里程碑删除事件处理器（新的事件驱动 API）
+const handleMilestoneDeleted = async (event: { milestoneId: number }) => {
+  // 组件已自动从 milestones 中删除数据，这里只需处理额外的业务逻辑
+  const { milestoneId } = event
+
+  showMessage(t.value.milestoneDeleteSuccess, 'success', { closable: false })
+
+  // 等待DOM更新完成
+  await nextTick()
+
+  // 触发全局事件，通知其他组件里程碑已删除
+  window.dispatchEvent(
+    new CustomEvent('milestone-deleted', {
+      detail: { milestoneId },
+    }),
+  )
+
+  // 触发强制更新事件，确保Timeline重新渲染
+  window.dispatchEvent(
+    new CustomEvent('milestone-data-changed', {
+      detail: { milestones: milestones.value },
+    }),
+  )
 
   // 关闭里程碑对话框
   showMilestoneDialog.value = false
 }
 
-// 里程碑删除处理器
-const handleMilestoneDelete = async (milestoneId: number) => {
-  // 从里程碑数据中删除
-  const milestoneIndex = milestones.value.findIndex(m => m.id === milestoneId)
-  if (milestoneIndex !== -1) {
-    milestones.value.splice(milestoneIndex, 1)
-    showMessage(t.value.milestoneDeleteSuccess, 'success', { closable: false })
+// 任务更新事件处理器
+const handleTaskUpdateEvent = (e: { task: Task }) => {
+  const updatedTask = e.task
+  showMessage(`Demo 任务[${updatedTask.name}] 已更新`, 'success')
 
-    // 等待DOM更新完成
-    await nextTick()
+  // 注意：GanttChart 内部已经通过 updateTaskInTree 更新了任务
+  // 这里只需要显示消息，无需再次执行更新逻辑
 
-    // 触发全局事件，通知其他组件里程碑已删除
-    window.dispatchEvent(
-      new CustomEvent('milestone-deleted', {
-        detail: { milestoneId },
-      }),
-    )
-
-    // 触发强制更新事件，确保Timeline重新渲染
-    window.dispatchEvent(
-      new CustomEvent('milestone-data-changed', {
-        detail: { milestones: milestones.value },
-      }),
-    )
-  }
-
-  // 关闭里程碑对话框
-  showMilestoneDialog.value = false
-}
-
-// 任务更新处理器
-const handleTaskUpdate = (updatedTask: Task) => {
   // 计时信息展示（无论来源于 TaskBar/TaskRow 还是 TaskDrawer header）
   if (updatedTask.timerStartTime) {
-    const msg = `任务【${updatedTask.name}】已更新`
-    showMessage(msg, 'success', { closable: true })
-  }
-
-  // 先找到原任务，检查parentId是否改变了
-  const findOriginalTask = (taskArray: Task[]): Task | null => {
-    for (const task of taskArray) {
-      if (task.id === updatedTask.id) {
-        return task
-      }
-      if (task.children && task.children.length > 0) {
-        const found = findOriginalTask(task.children)
-        if (found) return found
-      }
-    }
-    return null
-  }
-
-  const originalTask = findOriginalTask(tasks.value)
-  if (!originalTask) {
-    showMessage(formatTranslation('taskNotFound', { id: updatedTask.id }), 'warning', {
-      closable: true,
-    })
-    return
-  }
-
-  // 检查parentId是否改变了
-  const parentIdChanged = originalTask.parentId !== updatedTask.parentId
-
-  if (parentIdChanged) {
-    // parentId改变了，需要移除任务并重新添加到新位置
-    const removeTaskFromArray = (taskArray: Task[]): Task | null => {
-      for (let i = 0; i < taskArray.length; i++) {
-        if (taskArray[i].id === updatedTask.id) {
-          const removedTask = taskArray.splice(i, 1)[0]
-          return removedTask
-        }
-
-        if (taskArray[i].children && taskArray[i].children.length > 0) {
-          const removedTask = removeTaskFromArray(taskArray[i].children!)
-          if (removedTask) {
-            if (taskArray[i].children!.length === 0) {
-              delete taskArray[i].children
-              taskArray[i].isParent = taskArray[i].type === 'story'
-            }
-            return removedTask
-          }
-        }
-      }
-      return null
-    }
-
-    const removedTask = removeTaskFromArray(tasks.value)
-    if (!removedTask) return
-
-    const taskToAdd = {
-      ...updatedTask,
-      isParent:
-        updatedTask.type === 'story' || (updatedTask.children && updatedTask.children.length > 0),
-    }
-
-    // 重新添加到新位置
-    if (taskToAdd.parentId) {
-      const addToParentChildren = (taskArray: Task[]): boolean => {
-        for (const task of taskArray) {
-          if (task.id === taskToAdd.parentId) {
-            if (!task.children) task.children = []
-            task.children.push(taskToAdd)
-            task.isParent = true
-            return true
-          }
-          if (task.children && task.children.length > 0) {
-            if (addToParentChildren(task.children)) return true
-          }
-        }
-        return false
-      }
-
-      if (!addToParentChildren(tasks.value)) {
-        showMessage(
-          formatTranslation('newParentTaskNotFound', { parentId: taskToAdd.parentId }),
-          'warning',
-          { closable: true },
-        )
-        tasks.value.push(taskToAdd)
-      }
-    } else {
-      tasks.value.push(taskToAdd)
-    }
-  } else {
-    // parentId没有改变，只是就地更新任务数据
-    const updateTaskInPlace = (taskArray: Task[]): boolean => {
-      for (let i = 0; i < taskArray.length; i++) {
-        if (taskArray[i].id === updatedTask.id) {
-          // 保持原有的children和层级关系
-          taskArray[i] = {
-            ...updatedTask,
-            children: taskArray[i].children, // 保持原有的children
-            isParent:
-              updatedTask.type === 'story' ||
-              (taskArray[i].children && taskArray[i].children.length > 0),
-          }
-          return true
-        }
-
-        if (taskArray[i].children && taskArray[i].children.length > 0) {
-          if (updateTaskInPlace(taskArray[i].children!)) {
-            return true
-          }
-        }
-      }
-      return false
-    }
-
-    if (!updateTaskInPlace(tasks.value)) {
-      showMessage(formatTranslation('inPlaceUpdateFailed', { id: updatedTask.id }), 'warning', {
-        closable: true,
-      })
-    }
+    const msg = `任务【${updatedTask.name}】计时已更新`
+    showMessage(msg, 'info', { closable: true })
   }
 }
 
-// 任务添加处理器
-const handleTaskAdd = (newTask: Task) => {
-  // 为新任务生成ID（如果没有的话）
-  if (!newTask.id) {
-    // 找到当前最大的ID，然后+1
-    const maxId = Math.max(
-      ...tasks.value.map(t => t.id || 0),
-      ...milestones.value.map(m => m.id || 0),
-      0,
-    )
-    newTask.id = maxId + 1
-  }
+// 任务添加事件处理器
+const handleTaskAddEvent = (e: { task: Task }) => {
+  const newTask = e.task
+  showMessage(`Demo 任务[${newTask.name}] 已创建`, 'success')
 
-  // 设置isParent属性
-  newTask.isParent = newTask.type === 'story' || (newTask.children && newTask.children.length > 0)
-
-  // 处理父子关系
-  if (newTask.parentId) {
-    // 如果有上级任务，需要将子任务添加到父任务的children中
-    const addToParentChildren = (taskArray: Task[]): boolean => {
-      for (const task of taskArray) {
-        if (task.id === newTask.parentId) {
-          // 找到父任务
-          if (!task.children) {
-            // 如果父任务没有children属性，创建一个
-            task.children = []
-          }
-          // 将新任务添加到父任务的children中
-          task.children.push({ ...newTask })
-          return true
-        }
-        // 递归查找父任务（支持多层嵌套）
-        if (task.children && task.children.length > 0) {
-          if (addToParentChildren(task.children)) {
-            return true
-          }
-        }
-      }
-      return false
-    }
-
-    // 尝试添加到父任务的children中
-    if (!addToParentChildren(tasks.value)) {
-      // 如果没找到父任务，作为顶级任务添加
-      tasks.value.push({ ...newTask })
-    }
-  } else {
-    // 没有父任务，作为顶级任务添加
-    tasks.value.push({ ...newTask })
-  }
+  // 注意：GanttChart 内部已经通过 insertTask 添加了任务
+  // 这里只需要显示消息，无需再次执行添加逻辑
 }
 
-// 任务删除处理器
-const handleTaskDelete = (taskToDelete: Task) => {
-  // 收集要删除的所有任务ID（包括子任务）
-  const deletedTaskIds = collectAllTaskIds(taskToDelete)
+// 任务删除事件处理器
+const handleTaskDeleteEvent = (e: { task: Task; deleteChildren?: boolean }) => {
+  const task = e.task
 
-  // 递归查找和删除任务（支持嵌套结构）
-  const deleteTaskFromArray = (taskArray: Task[]): boolean => {
-    for (let i = 0; i < taskArray.length; i++) {
-      if (taskArray[i].id === taskToDelete.id) {
-        // 找到任务，删除它
-        taskArray.splice(i, 1)
-        showMessage(t.value.taskDeletedSuccess, 'success', { closable: false })
-        return true
-      }
+  showMessage(`Demo 任务[${task.name}] 已删除`, 'success')
 
-      // 如果有子任务，递归查找
-      if (taskArray[i].children && taskArray[i].children.length > 0) {
-        if (deleteTaskFromArray(taskArray[i].children!)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
+  // 注意：GanttChart 内部已经通过 removeTaskFromTree 删除了任务
+  // 这里只需要显示消息，无需再次执行删除逻辑
+  // 如果需要在删除后清理其他数据（如 predecessor），可以在这里处理
 
-  if (deleteTaskFromArray(tasks.value)) {
-    // 删除成功后，清理predecessor依赖关系
-    cleanupPredecessorReferences(deletedTaskIds)
-  } else {
-    showMessage(formatTranslation('taskToDeleteNotFound', { id: taskToDelete.id }), 'warning', {
-      closable: true,
-    })
-  }
+  // 收集被删除任务的所有ID（包括子任务）
+  const deletedTaskIds = collectAllTaskIds(task)
+  // 清理predecessor依赖关系
+  cleanupPredecessorReferences(deletedTaskIds)
 }
 
-// 删除story及其所有子任务
-const handleStoryDeleteWithChildren = (storyToDelete: Task) => {
-  // 收集要删除的所有任务ID（story及其所有子任务）
-  const deletedTaskIds = collectAllTaskIds(storyToDelete)
+// 里程碑图标变更事件处理器（新的事件驱动 API）
+const handleMilestoneIconChanged = (event: { milestoneId: number; icon: string }) => {
+  // 组件已自动更新 milestones 中的 icon，这里只需处理额外的业务逻辑
+  const { icon } = event
 
-  // 递归查找和删除story（包含其所有子任务）
-  const deleteStoryFromArray = (taskArray: Task[]): boolean => {
-    for (let i = 0; i < taskArray.length; i++) {
-      if (taskArray[i].id === storyToDelete.id) {
-        // 找到story，直接删除它（包含所有子任务）
-        taskArray.splice(i, 1)
-        showMessage(
-          formatTranslation('storyDeleteAllSuccess', { name: storyToDelete.name }),
-          'success',
-          {
-            closable: false,
-          },
-        )
-        return true
-      }
-
-      // 如果有子任务，递归查找
-      if (taskArray[i].children && taskArray[i].children.length > 0) {
-        if (deleteStoryFromArray(taskArray[i].children!)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  if (deleteStoryFromArray(tasks.value)) {
-    // 删除成功后，清理predecessor依赖关系
-    cleanupPredecessorReferences(deletedTaskIds)
-  } else {
-    showMessage(formatTranslation('storyNotFound', { id: storyToDelete.id }), 'warning', {
-      closable: true,
-    })
-  }
-}
-
-// 仅删除story，保留子任务
-const handleStoryDeleteOnly = (storyToDelete: Task) => {
-  // 递归查找story并处理其子任务
-  const deleteStoryOnlyFromArray = (taskArray: Task[]): boolean => {
-    for (let i = 0; i < taskArray.length; i++) {
-      if (taskArray[i].id === storyToDelete.id) {
-        // 找到story
-        const childrenToPromote = taskArray[i].children || []
-
-        // 步骤a: 克隆并升级子任务
-        const upgradedChildren: Task[] = []
-        if (childrenToPromote.length > 0) {
-          childrenToPromote.forEach(child => {
-            // 深度克隆子任务
-            const clonedChild = JSON.parse(JSON.stringify(child))
-            // 升级：移除parentId，使其成为顶级任务
-            delete clonedChild.parentId
-            upgradedChildren.push(clonedChild)
-          })
-        }
-
-        // 步骤b: 删除story数据
-        taskArray.splice(i, 1)
-
-        // 将升级后的子任务push到tasks集合顶层
-        if (upgradedChildren.length > 0) {
-          tasks.value.push(...upgradedChildren)
-        }
-
-        showMessage(
-          formatTranslation('storyDeleteOnlySuccess', {
-            name: storyToDelete.name,
-            count: upgradedChildren.length,
-          }),
-          'success',
-          {
-            closable: false,
-          },
-        )
-        return true
-      }
-
-      // 如果有子任务，递归查找
-      if (taskArray[i].children && taskArray[i].children.length > 0) {
-        if (deleteStoryOnlyFromArray(taskArray[i].children!)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  if (deleteStoryOnlyFromArray(tasks.value)) {
-    // 删除成功后，清理story的predecessor依赖关系（只清理story本身的ID，不影响子任务）
-    cleanupPredecessorReferences([storyToDelete.id])
-  } else {
-    showMessage(formatTranslation('storyNotFound', { id: storyToDelete.id }), 'warning', {
-      closable: true,
-    })
-  }
-}
-
-// 里程碑图标变更处理器
-const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
-  const milestoneIndex = milestones.value.findIndex(m => m.id === milestoneId)
-  if (milestoneIndex !== -1) {
-    milestones.value[milestoneIndex].icon = icon
-  } else {
-    showMessage(formatTranslation('milestoneIconUpdateNotFound', { id: milestoneId }), 'warning', {
-      closable: true,
-    })
-  }
-}
-
-const handleTaskDrawerDelete = (task: Task, deleteChildren?: boolean) => {
-  if (task.type === 'story' && deleteChildren === true) {
-    // 删除story及其所有子任务
-    handleStoryDeleteWithChildren(task)
-  } else if (task.type === 'story' && deleteChildren === false) {
-    // 仅删除story，保留子任务
-    handleStoryDeleteOnly(task)
-  } else {
-    // 普通任务删除
-    handleTaskDelete(task)
-  }
-  showTaskDrawer.value = false
+  // 可以在这里添加其他业务逻辑，如：
+  // - 发送更新到服务器
+  // - 显示成功提示
+  // - 记录操作日志等
+  showMessage(`里程碑图标已更新为 ${icon}`, 'info', { closable: false })
 }
 
 // GitHub 文档处理函数
@@ -546,23 +357,21 @@ const handleGiteeDocsClick = (event: Event) => {
 
 // 任务拖拽/拉伸/里程碑拖拽监听
 function handleTaskbarDragOrResizeEnd(newTask) {
-  const oldTask = findTaskDeep(tasks.value, newTask.id)
-  if (!oldTask) return
+  // 注意：GanttChart 已经更新了 props.tasks，所以这里只显示更新后的信息
   showMessage(
-    `任务【${newTask.name}】\n` +
-      `开始: ${oldTask.startDate} → ${newTask.startDate}\n` +
-      `结束: ${oldTask.endDate} → ${newTask.endDate}`,
-    'info',
+    `任务【${newTask.name}】已更新\n` +
+      `开始日期: ${newTask.startDate}\n` +
+      `结束日期: ${newTask.endDate}`,
+    'success',
     { closable: true },
   )
 }
 function handleMilestoneDragEnd(newMilestone) {
-  const oldMilestone = findTaskDeep(milestones.value, newMilestone.id)
-  if (!oldMilestone) return
+  // 注意：GanttChart 已经更新了数据
   showMessage(
-    `里程碑【${newMilestone.name}】\n` +
-      `开始: ${oldMilestone.endDate} → ${newMilestone.startDate}`,
-    'info',
+    `里程碑【${newMilestone.name}】已更新\n` +
+      `日期: ${newMilestone.startDate || newMilestone.endDate}`,
+    'success',
     { closable: true },
   )
 }
@@ -571,18 +380,6 @@ onMounted(() => {
   tasks.value = demoData.tasks as Task[]
   milestones.value = demoData.milestones as Task[]
 })
-
-// 递归查找任务/里程碑，因为原始结构一致
-function findTaskDeep(taskArray: Task[], id: number): Task | null {
-  for (const task of taskArray) {
-    if (task.id === id) return task
-    if (task.children && task.children.length > 0) {
-      const found = findTaskDeep(task.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
 
 // 清理被删除任务的predecessor依赖关系
 const cleanupPredecessorReferences = (deletedTaskIds: number[]) => {
@@ -646,7 +443,7 @@ function onTimerStopped(task: Task) {
 }
 
 function taskDebug(item: any) {
-  //console.log('Task Debug:', item)
+  // Placeholder for debugging
 }
 </script>
 
@@ -683,7 +480,7 @@ function taskDebug(item: any) {
     </h1>
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
-    <!-- TaskList配置面板 - 可折叠 -->
+    <!-- 配置说明面板 - 可折叠 -->
     <div class="config-panel" :class="{ collapsed: isConfigPanelCollapsed }">
       <div class="config-header" @click="toggleConfigPanel">
         <h3 class="config-title">
@@ -693,9 +490,12 @@ function taskDebug(item: any) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
+              fill="currentColor"
+            />
           </svg>
-          {{ t.taskListConfig.title }}
+          {{ t.configDemo }}
         </h3>
         <button class="collapse-button" :class="{ collapsed: isConfigPanelCollapsed }">
           <svg
@@ -718,96 +518,301 @@ function taskDebug(item: any) {
       <!-- 可折叠内容区域 -->
       <transition name="config-content">
         <div v-show="!isConfigPanelCollapsed" class="config-content">
-          <!-- 宽度配置区域 -->
+          <!-- TaskList 配置区域 -->
           <div class="config-section">
-            <h4 class="section-title">
-              <svg
-                class="section-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="section-header" @click="toggleTaskListConfig">
+              <div class="section-header-title">
+                <svg
+                  class="section-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
+                </svg>
+                {{ t.taskListConfig.title }}
+              </div>
+              <button
+                class="section-collapse-button"
+                :class="{ collapsed: isTaskListConfigCollapsed }"
               >
-                <rect
-                  x="3"
-                  y="6"
-                  width="18"
-                  height="12"
-                  stroke="currentColor"
-                  stroke-width="2"
+                <svg
+                  class="collapse-icon"
+                  viewBox="0 0 24 24"
                   fill="none"
-                />
-                <path
-                  d="M8 12h8M8 9l-2 3 2 3M16 9l2 3-2 3"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  fill="none"
-                />
-              </svg>
-              {{ t.taskListConfig.width.title }}
-            </h4>
-            <div class="width-controls">
-              <div class="width-control">
-                <label class="width-label">{{ t.taskListConfig.width.defaultWidth }}:</label>
-                <input
-                  v-model.number="taskListWidth.defaultWidth"
-                  type="number"
-                  :min="taskListWidth.minWidth"
-                  :max="taskListWidth.maxWidth"
-                  step="10"
-                  class="width-input"
-                />
-                <span class="width-unit">px</span>
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <!-- TaskList 配置内容 -->
+            <transition name="section-content">
+              <div v-show="!isTaskListConfigCollapsed" class="section-content">
+                <!-- 宽度配置 -->
+            <div class="subsection">
+              <h5 class="subsection-title">{{ t.taskListConfig.width.title }}</h5>
+
+              <!-- 单位切换器 -->
+              <div
+                class="width-unit-toggle"
+                style="margin-bottom: 12px; display: flex; align-items: center; gap: 16px"
+              >
+                <label class="taskbar-control">
+                  <input v-model="widthUnit" type="radio" value="px" />
+                  <span class="taskbar-label">
+                    {{ t.taskListConfig.width.pixelsModel }}
+                  </span>
+                </label>
+                <label class="taskbar-control">
+                  <input v-model="widthUnit" type="radio" value="%" />
+                  <span class="taskbar-label">{{ t.taskListConfig.width.percentageModel }}</span>
+                </label>
               </div>
-              <div class="width-control">
-                <label class="width-label">{{ t.taskListConfig.width.minWidth }}:</label>
-                <input
-                  v-model.number="taskListWidth.minWidth"
-                  type="number"
-                  min="280"
-                  :max="taskListWidth.defaultWidth"
-                  step="10"
-                  class="width-input"
-                />
-                <span class="width-unit">px</span>
+
+              <!-- 像素值配置 -->
+              <div v-if="widthUnit === 'px'" class="width-controls">
+                <div class="width-control">
+                  <label class="width-label">{{ t.taskListConfig.width.defaultWidth }}:</label>
+                  <input
+                    v-model.number="taskListWidth.defaultWidth"
+                    type="number"
+                    :min="taskListWidth.minWidth"
+                    :max="taskListWidth.maxWidth"
+                    step="10"
+                    class="width-input"
+                  />
+                  <span class="width-unit">px</span>
+                </div>
+                <div class="width-control">
+                  <label class="width-label">{{ t.taskListConfig.width.minWidth }}:</label>
+                  <input
+                    v-model.number="taskListWidth.minWidth"
+                    type="number"
+                    min="280"
+                    :max="taskListWidth.defaultWidth"
+                    step="10"
+                    class="width-input"
+                  />
+                  <span class="width-unit">px</span>
+                </div>
+                <div class="width-control">
+                  <label class="width-label">{{ t.taskListConfig.width.maxWidth }}:</label>
+                  <input
+                    v-model.number="taskListWidth.maxWidth"
+                    type="number"
+                    :min="taskListWidth.defaultWidth"
+                    max="2000"
+                    step="10"
+                    class="width-input"
+                  />
+                  <span class="width-unit">px</span>
+                </div>
               </div>
-              <div class="width-control">
-                <label class="width-label">{{ t.taskListConfig.width.maxWidth }}:</label>
-                <input
-                  v-model.number="taskListWidth.maxWidth"
-                  type="number"
-                  :min="taskListWidth.defaultWidth"
-                  max="2000"
-                  step="10"
-                  class="width-input"
-                />
-                <span class="width-unit">px</span>
+
+              <!-- 百分比配置 -->
+              <div v-else class="width-controls">
+                <div class="width-control">
+                  <label class="width-label">{{ t.taskListConfig.width.defaultWidth }}:</label>
+                  <input
+                    v-model.number="widthPercentage.defaultWidth"
+                    type="number"
+                    :min="widthPercentage.minWidth"
+                    :max="widthPercentage.maxWidth"
+                    step="1"
+                    class="width-input"
+                  />
+                  <span class="width-unit">%</span>
+                </div>
+                <div class="width-control">
+                  <label class="width-label">{{ t.taskListConfig.width.minWidth }}:</label>
+                  <input
+                    v-model.number="widthPercentage.minWidth"
+                    type="number"
+                    min="10"
+                    :max="widthPercentage.defaultWidth"
+                    step="1"
+                    class="width-input"
+                  />
+                  <span class="width-unit">%</span>
+                </div>
+                <div class="width-control">
+                  <label class="width-label">{{ t.taskListConfig.width.maxWidth }}:</label>
+                  <input
+                    v-model.number="widthPercentage.maxWidth"
+                    type="number"
+                    :min="widthPercentage.defaultWidth"
+                    max="80"
+                    step="1"
+                    class="width-input"
+                  />
+                  <span class="width-unit">%</span>
+                </div>
               </div>
             </div>
+
+            <!-- 列配置 -->
+            <div class="subsection">
+              <h5 class="subsection-title">{{ t.taskListConfig.columns.title }}</h5>
+              <div class="column-controls">
+                <label v-for="column in availableColumns" :key="column.key" class="column-control">
+                  <input
+                    type="checkbox"
+                    :checked="column.visible"
+                    @change="toggleColumn(column.key, $event)"
+                  />
+                  <span class="column-label">{{ (t as any)[column.key] || column.label }}</span>
+                </label>
+              </div>
+            </div>
+              </div>
+            </transition>
           </div>
 
-          <!-- 列配置区域 -->
+          <!-- TaskBar配置区域 -->
           <div class="config-section">
-            <h4 class="section-title">
-              <svg
-                class="section-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="section-header" @click="toggleTaskBarConfig">
+              <div class="section-header-title">
+                <svg
+                  class="section-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <rect x="2" y="6" width="20" height="3" rx="1.5" fill="currentColor" />
+                  <rect x="2" y="11" width="15" height="3" rx="1.5" fill="currentColor" />
+                  <rect x="2" y="16" width="18" height="3" rx="1.5" fill="currentColor" />
+                </svg>
+                {{ t.taskBarConfig.title }}
+              </div>
+              <button
+                class="section-collapse-button"
+                :class="{ collapsed: isTaskBarConfigCollapsed }"
               >
-                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor" />
-              </svg>
-              {{ t.taskListConfig.columns.title }}
-            </h4>
-            <div class="column-controls">
-              <label v-for="column in availableColumns" :key="column.key" class="column-control">
-                <input
-                  type="checkbox"
-                  :checked="column.visible"
-                  @change="toggleColumn(column.key, $event)"
-                />
-                <span class="column-label">{{ (t as any)[column.key] || column.label }}</span>
-              </label>
+                <svg
+                  class="collapse-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
             </div>
+
+            <!-- TaskBar 配置内容 -->
+            <transition name="section-content">
+              <div v-show="!isTaskBarConfigCollapsed" class="section-content">
+                <!-- 显示选项 -->
+                <div class="subsection">
+                  <h5 class="subsection-title">{{ t.taskBarConfig.display.title }}</h5>
+                  <div class="taskbar-controls">
+                    <label class="taskbar-control">
+                      <input v-model="taskBarOptions.showAvatar" type="checkbox" />
+                      <span class="taskbar-label">{{ t.taskBarConfig.display.showAvatar }}</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <input v-model="taskBarOptions.showTitle" type="checkbox" />
+                      <span class="taskbar-label">{{ t.taskBarConfig.display.showTitle }}</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <input v-model="taskBarOptions.showProgress" type="checkbox" />
+                      <span class="taskbar-label">{{ t.taskBarConfig.display.showProgress }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 防误触配置 -->
+                <div class="subsection">
+                  <h5 class="subsection-title">{{ t.taskBarConfig.mistouch.title }}</h5>
+                  <div class="taskbar-advanced-controls">
+                    <div class="control-row">
+                      <label class="taskbar-control">
+                        <input v-model="allowDragAndResize" type="checkbox" />
+                        <span class="taskbar-label">
+                          {{ t.taskBarConfig.mistouch.allowDragOnClick }}
+                        </span>
+                      </label>
+                      <span class="control-hint">
+                        {{ t.taskBarConfig.mistouch.allowDragOnClickHint }}
+                      </span>
+                    </div>
+                    <div class="control-row">
+                      <label class="control-label">
+                        {{ t.taskBarConfig.mistouch.dragThreshold }}:
+                      </label>
+                      <input
+                        v-model.number="taskBarOptions.dragThreshold"
+                        type="number"
+                        min="0"
+                        max="20"
+                        step="1"
+                        class="control-input"
+                      />
+                      <span class="control-hint">
+                        {{ t.taskBarConfig.mistouch.dragThresholdHint }}
+                      </span>
+                    </div>
+                    <div class="control-row">
+                      <label class="control-label">
+                        {{ t.taskBarConfig.mistouch.resizeHandleWidth }}:
+                      </label>
+                      <input
+                        v-model.number="taskBarOptions.resizeHandleWidth"
+                        type="number"
+                        min="5"
+                        max="15"
+                        step="1"
+                        class="control-input"
+                      />
+                      <span class="control-hint">
+                        {{ t.taskBarConfig.mistouch.resizeHandleWidthHint }}
+                      </span>
+                    </div>
+                    <div class="control-row">
+                      <label class="taskbar-control">
+                        <input v-model="taskBarOptions.enableDragDelay" type="checkbox" />
+                        <span class="taskbar-label">
+                          {{ t.taskBarConfig.mistouch.enableDragDelay }}
+                        </span>
+                      </label>
+                      <span class="control-hint">
+                        {{ t.taskBarConfig.mistouch.enableDragDelayHint }}
+                      </span>
+                    </div>
+                    <div v-if="taskBarOptions.enableDragDelay" class="control-row control-indent">
+                      <label class="control-label">
+                        {{ t.taskBarConfig.mistouch.dragDelayTime }}:
+                      </label>
+                      <input
+                        v-model.number="taskBarOptions.dragDelayTime"
+                        type="number"
+                        min="50"
+                        max="500"
+                        step="50"
+                        class="control-input"
+                      />
+                      <span class="control-hint">
+                        {{ t.taskBarConfig.mistouch.dragDelayTimeHint }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
       </transition>
@@ -819,21 +824,21 @@ function taskDebug(item: any) {
         :milestones="milestones"
         :toolbar-config="toolbarConfig"
         :task-list-config="taskListConfig"
+        :task-bar-config="taskBarConfig"
         :working-hours="workingHoursConfig"
-        :on-add-task="handleAddTask"
-        :on-add-milestone="handleAddMilestone"
+        :use-default-milestone-dialog="true"
+        :allow-drag-and-resize="allowDragAndResize"
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
-        :on-milestone-save="handleMilestoneSave"
-        :on-milestone-delete="handleMilestoneDelete"
-        :on-task-update="handleTaskUpdate"
-        :on-task-add="handleTaskAdd"
-        :on-task-delete="handleTaskDrawerDelete"
-        :on-milestone-icon-change="handleMilestoneIconChange"
+        @milestone-saved="handleMilestoneSaved"
+        @milestone-deleted="handleMilestoneDeleted"
+        @milestone-icon-changed="handleMilestoneIconChanged"
+        @add-task="handleAddTask"
         @taskbar-drag-end="handleTaskbarDragOrResizeEnd"
         @taskbar-resize-end="handleTaskbarDragOrResizeEnd"
         @milestone-drag-end="handleMilestoneDragEnd"
+        @task-click="handleTaskClick"
         @edit-task="task => showMessage(`进入任务编辑：${task.name}`)"
         @close="() => showMessage('已关闭任务编辑', 'info')"
         @timer-started="onTimerStarted"
@@ -846,9 +851,9 @@ function taskDebug(item: any) {
           e =>
             showMessage(`Demo 任务[${e.targetTask.name}] 添加后置任务 [${e.newTask.name}]`, 'info')
         "
-        @task-deleted="e => showMessage(`Demo 任务[${e.task.name}] 已删除`, 'info')"
-        @task-added="e => showMessage(`Demo 任务[${e.task.name}] 已创建`, 'info')"
-        @task-updated="e => showMessage(`Demo 任务[${e.task.name}] 已更新`, 'info')"
+        @task-deleted="handleTaskDeleteEvent"
+        @task-added="handleTaskAddEvent"
+        @task-updated="handleTaskUpdateEvent"
       >
         <template #custom-task-content="item">
           <HtmlContent
@@ -869,10 +874,35 @@ function taskDebug(item: any) {
       :visible="showMilestoneDialog"
       :milestone="currentMilestone"
       @update:visible="showMilestoneDialog = $event"
-      @save="handleMilestoneSave"
-      @delete="handleMilestoneDelete"
+      @save="handleMilestoneSaveFromDialog"
+      @delete="handleMilestoneDeleted"
       @close="showMilestoneDialog = false"
     />
+
+    <!-- Task Click Dialog - 显示任务详细信息 -->
+    <div v-if="showTaskClickDialog" class="task-click-dialog-overlay" @click="closeTaskClickDialog">
+      <div class="task-click-dialog" @click.stop>
+        <div class="task-click-dialog-header">
+          <h3>Task</h3>
+          <button class="close-button" @click="closeTaskClickDialog">×</button>
+        </div>
+        <div class="task-click-dialog-content">
+          <div v-if="clickedTask" class="task-properties">
+            <div
+              v-for="[key, value] in Object.entries(clickedTask)"
+              :key="key"
+              class="property-row"
+            >
+              <span class="property-key">{{ key }}:</span>
+              <span class="property-value">{{ formatPropertyValue(value) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="task-click-dialog-footer">
+          <button class="confirm-button" @click="closeTaskClickDialog">确认</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -994,7 +1024,74 @@ function taskDebug(item: any) {
 }
 
 .config-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+/* 折叠区域样式 */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 8px 0;
+  margin-bottom: 16px;
+  background-color: transparent;
+  border-bottom: 2px solid var(--gantt-primary-color, #409eff);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.section-header:hover {
+  border-bottom-color: var(--gantt-primary-color-light, #66b3ff);
+}
+
+.section-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gantt-text-primary, #333);
+}
+
+.section-collapse-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gantt-text-secondary, #666);
+  transition: transform 0.3s ease, color 0.2s ease;
+}
+
+.section-collapse-button:hover {
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.section-collapse-button.collapsed {
+  transform: rotate(-90deg);
+}
+
+.section-content-enter-active,
+.section-content-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.section-content-enter-from,
+.section-content-leave-to {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+.section-content-enter-to,
+.section-content-leave-from {
+  max-height: 2000px;
+  opacity: 1;
+  margin-bottom: 16px;
 }
 
 .section-title {
@@ -1003,16 +1100,42 @@ function taskDebug(item: any) {
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-color);
+  color: var(--gantt-text-primary, #333);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--gantt-primary-color, #409eff);
 }
 
 .section-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--primary-color);
+  width: 18px;
+  height: 18px;
+  color: var(--gantt-primary-color, #409eff);
+}
+
+/* 子区域样式 */
+.subsection {
+  margin-bottom: 16px;
+  padding-left: 12px;
+  border-left: 2px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.subsection-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gantt-text-secondary, #666);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subsection-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--gantt-primary-color, #409eff);
 }
 
 .width-controls {
@@ -1096,6 +1219,138 @@ function taskDebug(item: any) {
 
 .column-control:hover .column-label {
   color: var(--gantt-primary-color, #409eff);
+}
+
+/* TaskBar配置样式 */
+.taskbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.taskbar-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border: 1px solid transparent;
+}
+
+.taskbar-control:hover {
+  background: var(--gantt-hover-bg, #e8f4fd);
+  border-color: var(--gantt-primary-color, #409eff);
+}
+
+.taskbar-control input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--gantt-primary-color, #409eff);
+}
+
+.taskbar-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gantt-text-primary, #333);
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.taskbar-control:hover .taskbar-label {
+  color: var(--gantt-primary-color, #409eff);
+}
+
+/* TaskBar 高级配置样式 */
+.taskbar-advanced-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border-radius: 6px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.control-indent {
+  margin-left: 24px;
+}
+
+.control-label {
+  flex: 0 0 140px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gantt-text-secondary, #666);
+}
+
+.control-input {
+  flex: 0 0 80px;
+  padding: 4px 8px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  border-radius: 4px;
+  background: var(--gantt-bg-primary, #fff);
+  color: var(--gantt-text-primary, #333);
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.control-input:focus {
+  outline: none;
+  border-color: var(--gantt-primary-color, #409eff);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.control-hint {
+  flex: 1;
+  font-size: 12px;
+  color: var(--gantt-text-muted, #999);
+  font-style: italic;
+}
+
+.taskbar-field-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  min-width: 300px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gantt-text-secondary, #666);
+  white-space: nowrap;
+}
+
+.field-select {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  border-radius: 4px;
+  background: var(--gantt-bg-primary, #fff);
+  color: var(--gantt-text-primary, #333);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.field-select:focus {
+  outline: none;
+  border-color: var(--gantt-primary-color, #409eff);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
 }
 
 .page-title {
@@ -1229,6 +1484,47 @@ function taskDebug(item: any) {
   color: var(--gantt-text-primary, #e2e8f0);
 }
 
+:global(html[data-theme='dark']) .section-title {
+  color: var(--gantt-text-primary, #e2e8f0);
+  border-bottom-color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .section-header {
+  border-bottom-color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .section-header:hover {
+  border-bottom-color: var(--gantt-primary-color-light, #74c0fc);
+}
+
+:global(html[data-theme='dark']) .section-header-title {
+  color: var(--gantt-text-primary, #e2e8f0);
+}
+
+:global(html[data-theme='dark']) .section-collapse-button {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .section-collapse-button:hover {
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .section-icon {
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .subsection {
+  border-left-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .subsection-title {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .subsection-title::before {
+  background-color: var(--gantt-primary-color, #66b3ff);
+}
+
 :global(html[data-theme='dark']) .column-control {
   background: var(--gantt-bg-secondary, #1a202c);
 }
@@ -1243,6 +1539,58 @@ function taskDebug(item: any) {
 
 :global(html[data-theme='dark']) .column-control:hover .column-label {
   color: var(--gantt-primary-color, #66b3ff);
+}
+
+/* 暗色主题下的TaskBar配置样式 */
+:global(html[data-theme='dark']) .taskbar-control {
+  background: var(--gantt-bg-secondary, #1a202c);
+}
+
+:global(html[data-theme='dark']) .taskbar-control:hover {
+  background: var(--gantt-hover-bg, #2d3748);
+}
+
+:global(html[data-theme='dark']) .taskbar-label {
+  color: var(--gantt-text-primary, #e2e8f0);
+}
+
+:global(html[data-theme='dark']) .taskbar-control:hover .taskbar-label {
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+/* 暗色主题下的 TaskBar 高级配置 */
+:global(html[data-theme='dark']) .control-row {
+  background: var(--gantt-bg-secondary, #1a202c);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .control-label {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .control-input {
+  background: var(--gantt-bg-primary, #2d3748);
+  color: var(--gantt-text-primary, #e2e8f0);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .control-hint {
+  color: var(--gantt-text-muted, #718096);
+}
+
+:global(html[data-theme='dark']) .taskbar-field-control {
+  background: var(--gantt-bg-secondary, #1a202c);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .field-label {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .field-select {
+  background: var(--gantt-bg-primary, #2d3748);
+  color: var(--gantt-text-primary, #e2e8f0);
+  border-color: var(--gantt-border-color, #4a5568);
 }
 
 /* 暗色主题下的折叠面板样式 */
@@ -1405,5 +1753,157 @@ function taskDebug(item: any) {
 :global(html[data-theme='dark']) .gitee-link:hover .doc-icon {
   filter: brightness(0) saturate(100%) invert(50%) sepia(100%) saturate(1800%) hue-rotate(340deg)
     brightness(1.2);
+}
+
+/* Task Click Dialog 样式 */
+.task-click-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.task-click-dialog {
+  background: var(--gantt-bg-primary, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-click-dialog-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--gantt-border-color, #e4e7ed);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-click-dialog-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gantt-text-primary, #303133);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--gantt-text-secondary, #909399);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.close-button:hover {
+  background: var(--gantt-bg-hover, #f5f7fa);
+  color: var(--gantt-text-primary, #303133);
+}
+
+.task-click-dialog-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.task-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.property-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gantt-border-light, #f0f0f0);
+}
+
+.property-row:last-child {
+  border-bottom: none;
+}
+
+.property-key {
+  font-weight: 600;
+  color: var(--gantt-text-secondary, #606266);
+  word-break: break-word;
+}
+
+.property-value {
+  color: var(--gantt-text-primary, #303133);
+  word-break: break-all;
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.task-click-dialog-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--gantt-border-color, #e4e7ed);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.confirm-button {
+  padding: 8px 20px;
+  background: var(--gantt-primary-color, #409eff);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.confirm-button:hover {
+  background: var(--gantt-primary-color-hover, #66b1ff);
+}
+
+.confirm-button:active {
+  background: var(--gantt-primary-color-active, #3a8ee6);
+}
+
+/* 暗黑模式适配 */
+:global(html[data-theme='dark']) .task-click-dialog {
+  background: var(--gantt-bg-primary, #1a1a1a);
+}
+
+:global(html[data-theme='dark']) .task-click-dialog-header h3 {
+  color: var(--gantt-text-primary, #e0e0e0);
+}
+
+:global(html[data-theme='dark']) .close-button {
+  color: var(--gantt-text-secondary, #b0b0b0);
+}
+
+:global(html[data-theme='dark']) .close-button:hover {
+  background: var(--gantt-bg-hover, #2a2a2a);
+  color: var(--gantt-text-primary, #e0e0e0);
+}
+
+:global(html[data-theme='dark']) .property-key {
+  color: var(--gantt-text-secondary, #b0b0b0);
+}
+
+:global(html[data-theme='dark']) .property-value {
+  color: var(--gantt-text-primary, #e0e0e0);
 }
 </style>

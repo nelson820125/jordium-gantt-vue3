@@ -2,9 +2,9 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
-import MilestoneDialog from './MilestoneDialog.vue'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useI18n } from '../composables/useI18n'
+import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
@@ -19,9 +19,8 @@ interface Props {
   milestones?: Milestone[]
   startDate: Date
   endDate: Date
-  onTaskDoubleClick?: (task: Task) => void
-  editComponent?: unknown
   useDefaultDrawer?: boolean
+  useDefaultMilestoneDialog?: boolean
   onTaskDelete?: (task: Task) => void
   onTaskUpdate?: (task: Task) => void
   onMilestoneDelete?: (milestone: Milestone) => void
@@ -31,14 +30,17 @@ interface Props {
     morning?: { start: number; end: number }
     afternoon?: { start: number; end: number }
   }
+  // TaskBar 配置
+  taskBarConfig?: TaskBarConfig
+  // 是否允许拖拽和拉伸（默认为 true）
+  allowDragAndResize?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   tasks: () => [],
   milestones: () => [],
-  onTaskDoubleClick: undefined,
-  editComponent: undefined,
   useDefaultDrawer: true,
+  useDefaultMilestoneDialog: true,
   onTaskDelete: undefined,
   onTaskUpdate: undefined,
   onMilestoneDelete: undefined,
@@ -48,12 +50,16 @@ const props = withDefaults(defineProps<Props>(), {
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  taskBarConfig: undefined,
+  allowDragAndResize: true,
 })
 
 // 定义emits
 const emit = defineEmits<{
   'timeline-scale-changed': [scale: TimelineScale]
+  'click-task': [task: Task, event: MouseEvent]
   'edit-task': [task: Task]
+  'milestone-double-click': [milestone: Milestone]
   'start-timer': [task: Task]
   'stop-timer': [task: Task]
   'add-predecessor': [task: Task] // 新增：添加前置任务事件
@@ -69,8 +75,8 @@ const t = (key: string): string => {
   return getTranslation(key)
 }
 
-// 获取以今天为中心的时间线范围
-const getTodayCenteredRange = () => {
+// 获取以今天为中心的时间线范围（缓存结果，避免每次计算创建新对象）
+const cachedTodayCenteredRange = (() => {
   const today = new Date()
 
   // 计算开始日期：今天往前6个月的月初
@@ -83,7 +89,9 @@ const getTodayCenteredRange = () => {
     startDate,
     endDate,
   }
-}
+})()
+
+const getTodayCenteredRange = () => cachedTodayCenteredRange
 
 // 新增：接收外部传入的startDate和endDate
 const timelineStartDate = computed(() => {
@@ -106,8 +114,13 @@ const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
 // 响应外部props变化，动态更新timelineConfig
 watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
-  timelineConfig.value.startDate = newStart
-  timelineConfig.value.endDate = newEnd
+  // 所有视图都正常响应props变化
+  if (props.startDate || props.endDate) {
+    if (!isUpdatingTimelineConfig) {
+      timelineConfig.value.startDate = newStart
+      timelineConfig.value.endDate = newEnd
+    }
+  }
 })
 
 // 使用props传入的任务和里程碑数据
@@ -179,58 +192,427 @@ const getTasksDateRange = () => {
   return { minDate, maxDate }
 }
 
-// 获取月度视图的时间范围（任务最小开始日期-2年 ~ 任务最大结束日期+2年）
-const getMonthTimelineRange = () => {
+// 获取小时视图的时间范围
+const getHourTimelineRange = () => {
   const taskRange = getTasksDateRange()
+  const containerWidth = timelineContainerWidth.value || 1200
+  const hourWidth = 40 // 小时视图：每小时40px
 
   if (!taskRange) {
-    // 如果没有任务，使用当前日期为中心的范围
+    // 如果没有任务，只显示前一天、当天、后一天（共3天）
     const today = new Date()
-    const startDate = new Date(today.getFullYear() - 2, 0, 1) // 当前年-2年的1月1日
-    const endDate = new Date(today.getFullYear() + 2, 11, 31) // 当前年+2年的12月31日
+    today.setHours(0, 0, 0, 0)
+
+    const startDate = new Date(today)
+    startDate.setDate(startDate.getDate() - 1)
+
+    const endDate = new Date(today)
+    endDate.setDate(endDate.getDate() + 1)
+    endDate.setHours(23, 59, 59, 999)
+
     return { startDate, endDate }
   }
 
   const { minDate, maxDate } = taskRange
 
-  // 开始日期：任务最小开始日期-2年，月初
-  const startDate = new Date(minDate.getFullYear() - 2, 0, 1)
+  // 开始日期：任务最小开始日期的前一天0点
+  const startDate = new Date(minDate)
+  startDate.setHours(0, 0, 0, 0)
+  startDate.setDate(startDate.getDate() - 1)
 
-  // 结束日期：任务最大结束日期+2年，月末
-  const endDate = new Date(maxDate.getFullYear() + 2, 11, 31)
+  // 结束日期：任务最大结束日期的后一天23:59:59
+  const endDate = new Date(maxDate)
+  endDate.setHours(23, 59, 59, 999)
+  endDate.setDate(endDate.getDate() + 1)
+
+  // 计算当前范围需要的宽度
+  const hoursDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60))
+  const currentWidth = hoursDiff * hourWidth
+
+  // 如果当前宽度小于容器宽度，按天扩展范围
+  if (currentWidth < containerWidth) {
+    const hoursNeeded = Math.ceil(containerWidth / hourWidth)
+    const additionalHours = Math.ceil((hoursNeeded - hoursDiff) / 2)
+    const additionalDays = Math.ceil(additionalHours / 24)
+
+    // 向前扩展
+    startDate.setDate(startDate.getDate() - additionalDays)
+
+    // 向后扩展
+    endDate.setDate(endDate.getDate() + additionalDays)
+  }
 
   return { startDate, endDate }
 }
 
-// 获取年度视图的时间范围（任务最小开始日期-5年 ~ 任务最大结束日期+5年）
+// 获取日视图的时间范围
+const getDayTimelineRange = () => {
+  const taskRange = getTasksDateRange()
+  const containerWidth = timelineContainerWidth.value || 1200
+  const dayWidth = 30 // 日视图：每天30px
+
+  if (!taskRange) {
+    // 如果没有任务，根据容器宽度计算范围
+    const today = new Date()
+    const daysNeeded = Math.max(Math.ceil(containerWidth / dayWidth), 60) // 至少60天
+
+    const startDate = new Date(today)
+    startDate.setDate(startDate.getDate() - Math.floor(daysNeeded / 2))
+
+    const endDate = new Date(today)
+    endDate.setDate(endDate.getDate() + Math.ceil(daysNeeded / 2))
+
+    return { startDate, endDate }
+  }
+
+  const { minDate, maxDate } = taskRange
+
+  // 开始日期：任务最小开始日期-30天
+  let startDate = new Date(minDate)
+  startDate.setDate(startDate.getDate() - 30)
+
+  // 结束日期：任务最大结束日期+30天
+  let endDate = new Date(maxDate)
+  endDate.setDate(endDate.getDate() + 30)
+
+  // 计算当前范围需要的宽度
+  const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+  const currentWidth = daysDiff * dayWidth
+
+  // 如果当前宽度小于容器宽度，扩展范围
+  if (currentWidth < containerWidth) {
+    const daysNeeded = Math.ceil(containerWidth / dayWidth)
+    const additionalDays = Math.ceil((daysNeeded - daysDiff) / 2)
+
+    // 向前扩展
+    const newStartDate = new Date(startDate)
+    newStartDate.setDate(newStartDate.getDate() - additionalDays)
+    startDate = newStartDate
+
+    // 向后扩展
+    const newEndDate = new Date(endDate)
+    newEndDate.setDate(newEndDate.getDate() + additionalDays)
+    endDate = newEndDate
+  }
+
+  return { startDate, endDate }
+}
+
+// 获取周视图的时间范围
+const getWeekTimelineRange = () => {
+  const taskRange = getTasksDateRange()
+  const containerWidth = timelineContainerWidth.value || 1200
+  const weekWidth = 60 // 周视图：每周60px
+
+  if (!taskRange) {
+    // 如果没有任务，根据容器宽度计算范围
+    const today = new Date()
+    const weeksNeeded = Math.max(Math.ceil(containerWidth / weekWidth), 20) // 向上取整确保填满，至少20周
+
+    const startDate = new Date(today)
+    startDate.setDate(startDate.getDate() - Math.floor(weeksNeeded / 2) * 7)
+
+    const endDate = new Date(today)
+    endDate.setDate(endDate.getDate() + Math.ceil(weeksNeeded / 2) * 7)
+
+    return { startDate, endDate }
+  }
+
+  const { minDate, maxDate } = taskRange
+
+  // 工具函数：获取某日期所在周的周一
+  function getMonday(date: Date) {
+    const d = new Date(date)
+    const day = d.getDay() || 7
+    d.setDate(d.getDate() - (day - 1))
+    return d
+  }
+
+  // 工具函数：获取某月第一个周一在该月的周（该月最小日期作为周一的周）
+  function getFirstMondayOfMonth(year: number, month: number): Date {
+    let day = 1
+    while (day <= 31) {
+      const date = new Date(year, month, day)
+      if (date.getMonth() !== month) break // 超出该月
+      const monday = getMonday(date)
+      if (monday.getMonth() === month) {
+        return monday
+      }
+      day++
+    }
+    return new Date(year, month, 1) // 兜底
+  }
+
+  // 工具函数：获取某月最后一个周一在该月的周（该月最大日期作为周一的周）
+  function getLastMondayOfMonth(year: number, month: number): Date {
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    for (let day = lastDay; day >= 1; day--) {
+      const date = new Date(year, month, day)
+      const monday = getMonday(date)
+      if (monday.getMonth() === month) {
+        return monday
+      }
+    }
+    return new Date(year, month, 1) // 兜底
+  }
+
+  // 工具函数：获取某月的所有周（周一在该月的周）
+  function getWeeksOfMonth(year: number, month: number): Date[] {
+    const weeks: Date[] = []
+    const firstMonday = getFirstMondayOfMonth(year, month)
+    const lastMonday = getLastMondayOfMonth(year, month)
+    const current = new Date(firstMonday)
+    while (current <= lastMonday) {
+      weeks.push(new Date(current))
+      current.setDate(current.getDate() + 7)
+    }
+    return weeks
+  }
+
+  // 1. 获取最早TaskBar/Milestone的最小开始日期所在月份的第一周周一
+  const minMonday = getMonday(minDate)
+  const minYear = minMonday.getFullYear()
+  const minMonth = minMonday.getMonth()
+
+  // 2. 基于第一周周一往前追加一个完整月份的周数作为baseBuffer
+  const prevMonth = minMonth === 0 ? 11 : minMonth - 1
+  const prevYear = minMonth === 0 ? minYear - 1 : minYear
+  const prevMonthWeeks = getWeeksOfMonth(prevYear, prevMonth)
+
+  // 3. 获取最晚TaskBar/Milestone的最大开始日期所在月份的最后一周周一
+  const maxMonday = getMonday(maxDate)
+  const maxYear = maxMonday.getFullYear()
+  const maxMonth = maxMonday.getMonth()
+
+  // 4. 基于最后一周周日往后追加一个完整月份的周数作为baseBuffer
+  const nextMonth = maxMonth === 11 ? 0 : maxMonth + 1
+  const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
+  const nextMonthWeeks = getWeeksOfMonth(nextYear, nextMonth)
+
+  // 初始weeks：前buffer月 + 最小月到最大月之间所有月 + 后buffer月
+  let weeks: Date[] = []
+
+  // 添加前buffer月
+  weeks.push(...prevMonthWeeks)
+
+  // 添加最小月到最大月之间的所有月份的周
+  let currentYear = minYear
+  let currentMonth = minMonth
+  while (currentYear < maxYear || (currentYear === maxYear && currentMonth <= maxMonth)) {
+    const monthWeeks = getWeeksOfMonth(currentYear, currentMonth)
+    weeks.push(...monthWeeks)
+    currentMonth++
+    if (currentMonth > 11) {
+      currentMonth = 0
+      currentYear++
+    }
+  }
+
+  // 添加后buffer月
+  weeks.push(...nextMonthWeeks)
+
+  // 5. 判断是否填满容器，不够则继续扩展前后的完整月份
+  let totalWidth = weeks.length * weekWidth
+  while (totalWidth < containerWidth) {
+    // 前面扩展一个完整月
+    const firstWeek = weeks[0]
+    const firstYear = firstWeek.getFullYear()
+    const firstMonth = firstWeek.getMonth()
+    const extendPrevMonth = firstMonth === 0 ? 11 : firstMonth - 1
+    const extendPrevYear = firstMonth === 0 ? firstYear - 1 : firstYear
+    const extendPrevWeeks = getWeeksOfMonth(extendPrevYear, extendPrevMonth)
+    weeks = [...extendPrevWeeks, ...weeks]
+    totalWidth = weeks.length * weekWidth
+
+    if (totalWidth >= containerWidth) break
+
+    // 后面扩展一个完整月
+    const lastWeek = weeks[weeks.length - 1]
+    const lastYear = lastWeek.getFullYear()
+    const lastMonth = lastWeek.getMonth()
+    const extendNextMonth = lastMonth === 11 ? 0 : lastMonth + 1
+    const extendNextYear = lastMonth === 11 ? lastYear + 1 : lastYear
+    const extendNextWeeks = getWeeksOfMonth(extendNextYear, extendNextMonth)
+    weeks = [...weeks, ...extendNextWeeks]
+    totalWidth = weeks.length * weekWidth
+  }
+
+  // 6. 计算最终 startDate/endDate
+  const startDate = new Date(weeks[0])
+  const endDate = new Date(weeks[weeks.length - 1])
+  endDate.setDate(endDate.getDate() + 6) // 该周的周日
+
+  return { startDate, endDate }
+}
+
+// 获取月度视图的时间范围（任务最小开始日期-2年 ~ 任务最大结束日期+2年）
+const getMonthTimelineRange = () => {
+  const taskRange = getTasksDateRange()
+  if (!taskRange) {
+    // 如果没有任务，使用当前日期为中心的范围
+    const today = new Date()
+    const startDate = new Date(today.getFullYear() - 1, 0, 1) // 当前年-1年的1月1日
+    const endDate = new Date(today.getFullYear() + 1, 11, 31) // 当前年+1年的12月31日
+    return { startDate, endDate }
+  }
+
+  const { minDate, maxDate } = taskRange
+  const containerWidth = timelineContainerWidth.value || 1200 // 默认1200px
+
+  // 开始日期：任务最小开始日期-1年，月初
+  let startDate = new Date(minDate.getFullYear() - 1, 0, 1)
+
+  // 结束日期：任务最大结束日期+1年，月末
+  let endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
+
+  // 计算当前范围的月数
+  const yearsDiff = endDate.getFullYear() - startDate.getFullYear()
+  const monthsDiff = yearsDiff * 12 + (endDate.getMonth() - startDate.getMonth())
+
+  // 月视图：每月60px
+  const monthWidth = 60
+  const currentWidth = monthsDiff * monthWidth
+
+  // 如果当前宽度小于容器宽度，扩展范围
+  if (currentWidth < containerWidth) {
+    const monthsNeeded = Math.ceil(containerWidth / monthWidth)
+    const additionalMonths = Math.ceil((monthsNeeded - monthsDiff) / 2)
+
+    // 向前扩展
+    const newStartDate = new Date(startDate)
+    newStartDate.setMonth(newStartDate.getMonth() - additionalMonths)
+    startDate = new Date(newStartDate.getFullYear(), newStartDate.getMonth(), 1)
+
+    // 向后扩展
+    const newEndDate = new Date(endDate)
+    newEndDate.setMonth(newEndDate.getMonth() + additionalMonths)
+    endDate = new Date(newEndDate.getFullYear(), newEndDate.getMonth() + 1, 0)
+  }
+
+  return { startDate, endDate }
+}
+
+// 获取年度视图的时间范围（任务最小开始日期-1年 ~ 任务最大结束日期+1年）
 const getYearTimelineRange = () => {
   const taskRange = getTasksDateRange()
 
   if (!taskRange) {
-    // 如果没有任务，使用当前日期为中心的范围
+    // 如果没有任务，根据容器宽度和时间刻度动态计算范围
     const today = new Date()
-    const startDate = new Date(today.getFullYear() - 5, 0, 1) // 当前年-5年的1月1日
-    const endDate = new Date(today.getFullYear() + 5, 11, 31) // 当前年+5年的12月31日
+    const containerWidth = timelineContainerWidth.value || 1200 // 默认1200px
+
+    let yearsNeeded = 3 // 默认至少3年
+
+    if (currentTimeScale.value === TimelineScale.QUARTER) {
+      // 季度视图：每季度60px，每年4个季度 = 240px
+      const quarterWidth = 60
+      const yearWidth = quarterWidth * 4 // 240px
+      yearsNeeded = Math.max(Math.ceil(containerWidth / yearWidth) + 1, 5) // 至少5年
+    } else if (currentTimeScale.value === TimelineScale.YEAR) {
+      // 年度视图：每年360px
+      const yearWidth = 360
+      yearsNeeded = Math.max(Math.ceil(containerWidth / yearWidth) + 1, 5) // 至少5年
+    }
+
+    const startYear = today.getFullYear() - Math.floor(yearsNeeded / 2)
+    const endYear = startYear + yearsNeeded - 1
+
+    const startDate = new Date(startYear, 0, 1)
+    const endDate = new Date(endYear, 11, 31)
+
     return { startDate, endDate }
   }
 
   const { minDate, maxDate } = taskRange
+  const containerWidth = timelineContainerWidth.value || 1200 // 默认1200px
 
-  // 开始日期：任务最小开始日期-5年，年初
-  const startDate = new Date(minDate.getFullYear() - 5, 0, 1)
+  // 开始日期：任务最小开始日期-1年，年初
+  let startDate = new Date(minDate.getFullYear() - 1, 0, 1)
 
-  // 结束日期：任务最大结束日期+5年，年末
-  const endDate = new Date(maxDate.getFullYear() + 5, 11, 31)
+  // 结束日期：任务最大结束日期+1年，年末
+  let endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
+
+  // 计算当前范围需要的宽度
+  const yearsDiff = endDate.getFullYear() - startDate.getFullYear() + 1
+
+  if (currentTimeScale.value === TimelineScale.QUARTER) {
+    // 季度视图：每季度60px，每年4个季度 = 240px
+    const quarterWidth = 60
+    const yearWidth = quarterWidth * 4 // 240px
+    const currentWidth = yearsDiff * yearWidth
+
+    // 如果当前宽度小于容器宽度，扩展范围
+    if (currentWidth < containerWidth) {
+      const yearsNeeded = Math.ceil(containerWidth / yearWidth)
+      const additionalYears = Math.ceil((yearsNeeded - yearsDiff) / 2)
+
+      startDate = new Date(startDate.getFullYear() - additionalYears, 0, 1)
+      endDate = new Date(endDate.getFullYear() + additionalYears, 11, 31)
+    }
+  } else if (currentTimeScale.value === TimelineScale.YEAR) {
+    // 年度视图：每年360px
+    const yearWidth = 360
+    const currentWidth = yearsDiff * yearWidth
+
+    // 如果当前宽度小于容器宽度，扩展范围
+    if (currentWidth < containerWidth) {
+      const yearsNeeded = Math.ceil(containerWidth / yearWidth)
+      const additionalYears = Math.ceil((yearsNeeded - yearsDiff) / 2)
+
+      startDate = new Date(startDate.getFullYear() - additionalYears, 0, 1)
+      endDate = new Date(endDate.getFullYear() + additionalYears, 11, 31)
+    }
+  }
 
   return { startDate, endDate }
 }
 
-// 里程碑对话框状态管理
-const milestoneDialogVisible = ref(false)
-const currentMilestone = ref<Milestone | null>(null)
-
 // 悬停状态管理
 const hoveredTaskId = ref<number | null>(null)
+
+// 高亮状态管理（用于长按高亮功能）
+const highlightedTaskId = ref<number | null>(null)
+const highlightedTaskIds = ref<Set<number>>(new Set())
+
+// 计算是否处于高亮模式（禁用所有交互）
+const isInHighlightMode = computed(() => highlightedTaskId.value !== null)
+
+// 清除高亮状态
+const clearHighlight = () => {
+  highlightedTaskId.value = null
+  highlightedTaskIds.value.clear()
+}
+
+// 设置高亮任务（包括前置和后置任务）
+const setHighlightTask = (taskId: number) => {
+  highlightedTaskId.value = taskId
+  highlightedTaskIds.value.clear()
+  highlightedTaskIds.value.add(taskId)
+
+  // 查找当前任务
+  const currentTask = tasks.value.find(t => t.id === taskId)
+  if (!currentTask) {
+    return
+  }
+
+  // 添加所有前置任务（从 predecessor 字符串解析）
+  if (currentTask.predecessor) {
+    const predecessorIds = getPredecessorIds(currentTask.predecessor)
+    predecessorIds.forEach(id => {
+      highlightedTaskIds.value.add(id)
+    })
+  }
+
+  // 添加所有后置任务（找到所有把当前任务作为前置任务的任务）
+  tasks.value.forEach(task => {
+    if (task.predecessor) {
+      const taskPredecessorIds = getPredecessorIds(task.predecessor)
+      if (taskPredecessorIds.includes(taskId)) {
+        highlightedTaskIds.value.add(task.id)
+      }
+    }
+  })
+}
 
 // 拖拽状态管理
 const isSplitterDragging = ref(false)
@@ -266,9 +648,18 @@ const visibleHourRange = computed(() => {
     return { startHour: 0, endHour: 0 }
   }
 
+  const scrollLeft = timelineScrollLeft.value
+  const containerWidth = timelineContainerWidth.value
+
   // 首次加载时，使用更大的初始渲染范围
-  if (isInitialLoad.value || timelineScrollLeft.value === 0) {
-    // 初始渲染范围：以今天为中心的一周范围
+  if (isInitialLoad.value && scrollLeft === 0) {
+    // 初始加载且在起始位置：显示开头的一周
+    return {
+      startHour: 0,
+      endHour: 168, // 一周 (7*24=168小时)
+    }
+  } else if (isInitialLoad.value) {
+    // 初始加载但不在起始位置：以今天为中心的一周范围
     const today = new Date()
     const timelineStart = timelineConfig.value.startDate
     const todayHours = Math.floor((today.getTime() - timelineStart.getTime()) / (1000 * 60 * 60))
@@ -279,10 +670,7 @@ const visibleHourRange = computed(() => {
     }
   }
 
-  const scrollLeft = timelineScrollLeft.value
-  const containerWidth = timelineContainerWidth.value
-
-  // 计算可视区域的开始和结束小时（相对于时间线开始的小时偏移）
+  // 正常滚动状态：计算可视区域的开始和结束小时（相对于时间线开始的小时偏移）
   const startHour = Math.floor(scrollLeft / HOUR_WIDTH) - VIRTUAL_BUFFER
   const endHour = Math.ceil((scrollLeft + containerWidth) / HOUR_WIDTH) + VIRTUAL_BUFFER
 
@@ -341,7 +729,8 @@ const getCachedTimelineData = (): unknown => {
 // 获取虚拟滚动优化后的时间轴数据
 const optimizedTimelineData = computed(() => {
   const cachedData = getCachedTimelineData() as any
-
+  // TODO 测试后删除
+  console.log('optimizedTimelineData - cachedData: ', cachedData)
   // 只在小时视图中应用虚拟滚动
   if (currentTimeScale.value === TimelineScale.HOUR && Array.isArray(cachedData)) {
     const { startHour, endHour } = visibleHourRange.value
@@ -387,7 +776,8 @@ const optimizedTimelineData = computed(() => {
 // 计算完整时间线的总宽度（用于虚拟滚动容器）
 const totalTimelineWidth = computed(() => {
   const cachedData = getCachedTimelineData() as any
-
+  // TODO 测试后删除
+  console.log('totalTimelineWidth - cachedData: ', cachedData)
   if (currentTimeScale.value === TimelineScale.HOUR) {
     if (Array.isArray(cachedData)) {
       // 计算总小时数
@@ -410,6 +800,8 @@ const totalTimelineWidth = computed(() => {
       const totalWeeks = cachedData.reduce((total, month: { weeks?: unknown[] }) => {
         return total + (month.weeks?.length || 0)
       }, 0)
+      // TODO 测试后删除
+      console.log('total weeks: ', totalWeeks)
       return totalWeeks * 60
     } else if (currentTimeScale.value === TimelineScale.MONTH) {
       return cachedData.length * 60
@@ -433,7 +825,7 @@ let resizeObserver: ResizeObserver | null = null
 // 里程碑位置信息管理（用于推挤效果）
 const milestonePositions = ref<
   Map<
-    string | number,
+    number,
     {
       left: number
       originalLeft: number // 原始位置（不考虑停靠）
@@ -524,9 +916,9 @@ const computeAllMilestonesPositions = () => {
 }
 
 // 获取其他里程碑的位置信息（排除当前里程碑）
-const getOtherMilestonesInfo = (currentId: string | number) => {
+const getOtherMilestonesInfo = (currentId: number) => {
   const result: Array<{
-    id: string | number
+    id: number
     left: number
     originalLeft: number // 新增：原始位置（不考虑停靠）
     isSticky: boolean
@@ -574,9 +966,15 @@ const handleTimelineContainerResized = () => {
   // 立即隐藏半圆，让TaskBar重新计算边界
   hideBubbles.value = true
 
+  // 清空TaskBar位置信息并强制重新渲染（修复全屏时关系线位置不正确的问题）
+  taskBarPositions.value = {}
+  taskBarRenderKey.value++
+
   // 延迟恢复显示，确保容器变化完全生效
   setTimeout(() => {
     hideBubbles.value = false
+    // 再次更新SVG尺寸，确保关系线容器大小正确
+    updateSvgSize()
   }, 300)
 }
 
@@ -628,64 +1026,15 @@ const handleLocaleChange = () => {
 
 // 处理里程碑双击事件
 const handleMilestoneDoubleClick = (milestone: Milestone) => {
-  currentMilestone.value = milestone
-  milestoneDialogVisible.value = true
+  // 高亮模式下禁用双击
+  if (isInHighlightMode.value) {
+    return
+  }
+  // 向上emit事件，让GanttChart统一处理
+  emit('milestone-double-click', milestone)
 }
 
 // 关闭里程碑对话框
-const closeMilestoneDialog = () => {
-  milestoneDialogVisible.value = false
-  currentMilestone.value = null
-}
-
-// 处理里程碑图标变更
-const handleMilestoneIconChange = (milestoneId: number, icon: string) => {
-  // 不直接修改props数据，而是通过事件通知父组件更新
-  window.dispatchEvent(
-    new CustomEvent('milestone-icon-changed', {
-      detail: { milestoneId, icon },
-    }),
-  )
-}
-
-// 处理里程碑保存事件
-const handleMilestoneSave = (updatedMilestone: Milestone) => {
-  // 通知父组件里程碑数据已更新
-  if (props.onMilestoneSave && typeof props.onMilestoneSave === 'function') {
-    props.onMilestoneSave(updatedMilestone as Task) // Type conversion for backward compatibility
-  }
-
-  // 关闭对话框
-  closeMilestoneDialog()
-
-  // 广播里程碑更新事件，通知其他组件数据变化
-  window.dispatchEvent(
-    new CustomEvent('milestone-data-updated', {
-      detail: { milestone: updatedMilestone },
-    }),
-  )
-}
-
-// 处理里程碑删除事件
-const handleMilestoneDelete = (milestoneId: number) => {
-  // 关闭里程碑对话框
-  closeMilestoneDialog()
-
-  // 广播里程碑删除事件，通知其他组件数据变化
-  window.dispatchEvent(
-    new CustomEvent('milestone-deleted', {
-      detail: { milestoneId },
-    }),
-  )
-
-  // 广播里程碑数据变化事件，确保Timeline重新渲染
-  window.dispatchEvent(
-    new CustomEvent('milestone-data-changed', {
-      detail: { milestoneId },
-    }),
-  )
-}
-
 // 处理里程碑拖拽更新事件
 const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
   // 通知父组件里程碑数据已更新
@@ -827,7 +1176,6 @@ const generateHourTimelineData = () => {
 // 生成周视图时间轴数据
 const generateWeekTimelineData = () => {
   const allWeeks: unknown[] = []
-
   // 首先生成所有周
   const startDate = new Date(timelineConfig.value.startDate)
   const endDate = new Date(timelineConfig.value.endDate)
@@ -839,24 +1187,24 @@ const generateWeekTimelineData = () => {
 
   const currentWeekStart = new Date(weekStart)
 
-  // 生成所有周
+  // 生成所有周 - 从第一周的周一开始，到包含endDate的周为止
   while (currentWeekStart <= endDate) {
     const currentWeekEnd = new Date(currentWeekStart)
     currentWeekEnd.setDate(currentWeekEnd.getDate() + 6)
 
-    // 只要周开始日期在范围内就添加
-    if (currentWeekStart >= startDate || currentWeekEnd >= startDate) {
-      allWeeks.push({
-        weekStart: new Date(currentWeekStart),
-        weekEnd: new Date(currentWeekEnd),
-        label: `${currentWeekStart.getDate()}`,
-        isToday: isWeekContainsToday(currentWeekStart, currentWeekEnd),
-        subDays: generateSubDaysForWeek(currentWeekStart),
-        // 根据周的第一天所在月份归属
-        belongsToYear: currentWeekStart.getFullYear(),
-        belongsToMonth: currentWeekStart.getMonth() + 1,
-      })
-    }
+    // 每周归属到周一所在的月份
+    // 例如：2025-09-29(周一) ~ 2025-10-05(周日) 归属到2025年9月
+    //      2025-10-27(周一) ~ 2025-11-02(周日) 归属到2025年10月
+    allWeeks.push({
+      weekStart: new Date(currentWeekStart),
+      weekEnd: new Date(currentWeekEnd),
+      label: `${currentWeekStart.getDate()}`,
+      isToday: isWeekContainsToday(currentWeekStart, currentWeekEnd),
+      subDays: generateSubDaysForWeek(currentWeekStart),
+      // 根据周一所在月份归属
+      belongsToYear: currentWeekStart.getFullYear(),
+      belongsToMonth: currentWeekStart.getMonth() + 1,
+    })
 
     currentWeekStart.setDate(currentWeekStart.getDate() + 7)
   }
@@ -943,6 +1291,42 @@ const updateTimeScale = (scale: TimelineScale) => {
   // 清除缓存，确保使用新的时间刻度数据
   clearTimelineCache()
 
+  // 如果是小时视图或日视图，更新时间线配置
+  if (scale === TimelineScale.HOUR) {
+    const hourRange = getHourTimelineRange()
+    // 设置防护标志，避免递归更新
+    isUpdatingTimelineConfig = true
+    timelineConfig.value = {
+      ...timelineConfig.value,
+      startDate: hourRange.startDate,
+      endDate: hourRange.endDate,
+    }
+    isUpdatingTimelineConfig = false
+  } else if (scale === TimelineScale.DAY) {
+    const dayRange = getDayTimelineRange()
+    // 设置防护标志，避免递归更新
+    isUpdatingTimelineConfig = true
+    timelineConfig.value = {
+      ...timelineConfig.value,
+      startDate: dayRange.startDate,
+      endDate: dayRange.endDate,
+    }
+    isUpdatingTimelineConfig = false
+  }
+
+  // 如果是周视图，更新时间线配置
+  if (scale === TimelineScale.WEEK) {
+    const weekRange = getWeekTimelineRange()
+    // 设置防护标志，避免递归更新
+    isUpdatingTimelineConfig = true
+    timelineConfig.value = {
+      ...timelineConfig.value,
+      startDate: weekRange.startDate,
+      endDate: weekRange.endDate,
+    }
+    isUpdatingTimelineConfig = false
+  }
+
   // 如果是月度视图，更新时间线配置
   if (scale === TimelineScale.MONTH) {
     const monthRange = getMonthTimelineRange()
@@ -952,6 +1336,19 @@ const updateTimeScale = (scale: TimelineScale) => {
       ...timelineConfig.value,
       startDate: monthRange.startDate,
       endDate: monthRange.endDate,
+    }
+    isUpdatingTimelineConfig = false
+  }
+
+  // 如果是季度视图，更新时间线配置
+  if (scale === TimelineScale.QUARTER) {
+    const yearRange = getYearTimelineRange()
+    // 设置防护标志，避免递归更新
+    isUpdatingTimelineConfig = true
+    timelineConfig.value = {
+      ...timelineConfig.value,
+      startDate: yearRange.startDate,
+      endDate: yearRange.endDate,
     }
     isUpdatingTimelineConfig = false
   }
@@ -1059,6 +1456,14 @@ const scrollToTodayCenter = (retry = 0) => {
       yearRange.startDate.getMonth(),
       yearRange.startDate.getDate(),
     )
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    // 月视图使用 getMonthTimelineRange
+    const monthRange = getMonthTimelineRange()
+    startNormalized = new Date(
+      monthRange.startDate.getFullYear(),
+      monthRange.startDate.getMonth(),
+      monthRange.startDate.getDate(),
+    )
   } else {
     startNormalized = new Date(
       timelineStart.getFullYear(),
@@ -1142,6 +1547,76 @@ const scrollToTodayCenter = (retry = 0) => {
       Math.floor((endOfQuarter.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)) + 1
     const dayPositionInQuarter = (dayOffset / daysInQuarter) * quarterWidth
     todayPosition += dayPositionInQuarter
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    // 月视图：计算今天所在月份的位置
+    const targetYear = todayNormalized.getFullYear()
+    const targetMonth = todayNormalized.getMonth() + 1 // 1-12
+
+    const baseYear = startNormalized.getFullYear()
+    const baseMonth = startNormalized.getMonth() + 1 // 1-12
+
+    // 计算从起始月份到目标月份的月数
+    const monthsDiff = (targetYear - baseYear) * 12 + (targetMonth - baseMonth)
+
+    // 每个月60px
+    const monthWidth = 60
+    todayPosition = monthsDiff * monthWidth
+
+    // 在月份内的具体位置（基于日期）
+    const dayInMonth = todayNormalized.getDate()
+    const daysInMonth = new Date(targetYear, targetMonth, 0).getDate()
+    const dayPositionInMonth = (dayInMonth / daysInMonth) * monthWidth
+    todayPosition += dayPositionInMonth
+  } else if (currentTimeScale.value === TimelineScale.YEAR) {
+    // 年度视图：使用 timelineData 计算精确位置
+    const yearData = timelineData.value as Array<{
+      year: number
+      halfYears?: Array<{
+        half: number
+        startDate: Date
+        endDate: Date
+      }>
+    }>
+
+    let position = 0
+    const halfYearWidth = 180 // 每个半年的宽度
+    let found = false
+
+    // 遍历年份数据
+    for (const yearItem of yearData) {
+      const halfYears = yearItem.halfYears || []
+
+      for (const halfYear of halfYears) {
+        const halfYearStart = new Date(halfYear.startDate)
+        const halfYearEnd = new Date(halfYear.endDate)
+        halfYearStart.setHours(0, 0, 0, 0)
+        halfYearEnd.setHours(0, 0, 0, 0)
+
+        // 如果今天在这个半年之前，说明已经过了
+        if (todayNormalized < halfYearStart) {
+          found = true
+          break
+        }
+
+        // 如果今天在这个半年之内
+        if (todayNormalized >= halfYearStart && todayNormalized <= halfYearEnd) {
+          // 计算在半年内的偏移比例
+          const totalMs = halfYearEnd.getTime() - halfYearStart.getTime()
+          const elapsedMs = todayNormalized.getTime() - halfYearStart.getTime()
+          const ratio = elapsedMs / totalMs
+          position += ratio * halfYearWidth
+          found = true
+          break
+        }
+
+        // 今天在这个半年之后，累加宽度继续查找
+        position += halfYearWidth
+      }
+
+      if (found) break
+    }
+
+    todayPosition = position
   } else {
     // 其他视图：使用原有逻辑
     todayPosition = daysDiff * dayWidth.value
@@ -1186,34 +1661,56 @@ const getTodayLinePositionInYearView = computed(() => {
   }
 
   const today = new Date()
-  const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  today.setHours(0, 0, 0, 0)
 
-  // 使用与今日定位相同的逻辑
-  const yearRange = getYearTimelineRange()
-  const startNormalized = new Date(
-    yearRange.startDate.getFullYear(),
-    yearRange.startDate.getMonth(),
-    yearRange.startDate.getDate(),
-  )
+  // 使用 timelineData 计算精确位置
+  const yearData = timelineData.value as Array<{
+    year: number
+    halfYears?: Array<{
+      half: number
+      startDate: Date
+      endDate: Date
+    }>
+  }>
 
-  const startYear = startNormalized.getFullYear()
-  const todayYear = todayNormalized.getFullYear()
-  const yearsDiff = todayYear - startYear
+  if (!yearData || yearData.length === 0) {
+    return -1
+  }
 
-  // 年度视图：每年360px
-  const yearWidth = 360
-  const yearPosition = yearsDiff * yearWidth
+  let position = 0
+  const halfYearWidth = 180 // 每个半年的宽度
 
-  // 计算今年内的月份偏移
-  const monthsIntoYear = todayNormalized.getMonth()
-  const monthOffset = (monthsIntoYear / 12) * yearWidth
+  // 遍历年份数据
+  for (const yearItem of yearData) {
+    const halfYears = yearItem.halfYears || []
 
-  // 计算月内的天数偏移
-  const daysIntoMonth = todayNormalized.getDate() - 1
-  const daysInMonth = new Date(todayYear, todayNormalized.getMonth() + 1, 0).getDate()
-  const dayOffset = (daysIntoMonth / daysInMonth) * (yearWidth / 12)
+    for (const halfYear of halfYears) {
+      const halfYearStart = new Date(halfYear.startDate)
+      const halfYearEnd = new Date(halfYear.endDate)
+      halfYearStart.setHours(0, 0, 0, 0)
+      halfYearEnd.setHours(0, 0, 0, 0)
 
-  return yearPosition + monthOffset + dayOffset
+      // 如果今天在这个半年之前，说明已经过了
+      if (today < halfYearStart) {
+        return position
+      }
+
+      // 如果今天在这个半年之内
+      if (today >= halfYearStart && today <= halfYearEnd) {
+        // 计算在半年内的偏移比例
+        const totalMs = halfYearEnd.getTime() - halfYearStart.getTime()
+        const elapsedMs = today.getTime() - halfYearStart.getTime()
+        const ratio = elapsedMs / totalMs
+        return position + ratio * halfYearWidth
+      }
+
+      // 今天在这个半年之后，累加宽度继续查找
+      position += halfYearWidth
+    }
+  }
+
+  // 今天在所有数据之后
+  return position
 })
 
 // 检查年度视图中今日是否在当前时间范围内
@@ -1296,7 +1793,6 @@ const scrollToToday = () => {
 
   // 如果今天不在时间线范围内，则不进行滚动
   if (daysDiff < 0 || todayNormalized > timelineConfig.value.endDate) {
-    // console.warn('今天不在当前时间线范围内')
     return
   }
 
@@ -1344,13 +1840,29 @@ const updateTask = (updatedTask: Task) => {
 
 // 处理TaskBar双击事件 - 只emit事件
 const handleTaskBarDoubleClick = (task: Task) => {
+  // 高亮模式下禁用双击
+  if (isInHighlightMode.value) {
+    return
+  }
   emit('edit-task', task)
+}
+
+// 处理TaskBar单击事件 - 发出事件
+const handleTaskBarClick = (task: Task, event: MouseEvent) => {
+  // 高亮模式下禁用单击
+  if (isInHighlightMode.value) {
+    return
+  }
+  emit('click-task', task, event)
 }
 
 // 存储所有TaskBar的位置信息
 const taskBarPositions = ref<
   Record<number, { left: number; top: number; width: number; height: number }>
 >({})
+
+// TaskBar渲染key，用于在容器变化时强制重新渲染
+const taskBarRenderKey = ref(0)
 
 const bodyContentRef = ref<HTMLElement | null>(null)
 const svgWidth = ref(0)
@@ -1447,11 +1959,22 @@ const links = computed(() => {
         if (taskBarPositions.value[predecessorId] && currentTaskIds.has(predecessorId)) {
           const fromBar = taskBarPositions.value[predecessorId]
           const toBar = taskBarPositions.value[task.id]
+
+          // 计算高亮状态下的Y轴偏移
+          const fromIsHighlighted = highlightedTaskIds.value.has(predecessorId)
+          const fromIsPrimary = highlightedTaskId.value === predecessorId
+          const toIsHighlighted = highlightedTaskIds.value.has(task.id)
+          const toIsPrimary = highlightedTaskId.value === task.id
+
+          // 高亮偏移量：primary-highlight -8px, highlighted -5px
+          const fromYOffset = fromIsPrimary ? -8 : (fromIsHighlighted ? -5 : 0)
+          const toYOffset = toIsPrimary ? -8 : (toIsHighlighted ? -5 : 0)
+
           // 起点为前置TaskBar右侧中点，终点为当前TaskBar左侧中点
           const x1 = fromBar.left + fromBar.width
-          const y1 = fromBar.top + fromBar.height / 2
+          const y1 = fromBar.top + fromBar.height / 2 + fromYOffset
           const x2 = toBar.left
-          const y2 = toBar.top + toBar.height / 2
+          const y2 = toBar.top + toBar.height / 2 + toYOffset
           // 控制点：横向中点，纵向分别为起点和终点
           const c1x = x1 + 40
           const c1y = y1
@@ -1499,6 +2022,9 @@ onMounted(() => {
 
   // 监听拖拽边界检测事件
   window.addEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
+
+  // 监听TaskBar高亮事件
+  window.addEventListener('taskbar-highlighted', handleTaskBarHighlighted as EventListener)
 
   // 设置ResizeObserver监听timeline-body的尺寸变化
   nextTick(() => {
@@ -1609,6 +2135,42 @@ let autoScrollTimer: number | null = null
 const EDGE_SCROLL_ZONE = 50 // 边界滚动触发区域宽度
 const EDGE_SCROLL_SPEED = 5 // 每次滚动的像素数
 
+// 处理TaskBar高亮事件 - 如果用户仍在按住鼠标，启动拖拽滚动
+const handleTaskBarHighlighted = () => {
+  // 检查是否有鼠标按钮按下（buttons > 0 表示至少有一个按钮按下）
+  // 注意：这里无法直接获取鼠标状态，所以我们添加一个全局监听器
+  // 在下一次 mousemove 时启动拖拽滚动
+  const handleNextMouseMove = (e: MouseEvent) => {
+    // 检查鼠标左键是否按下
+    if (e.buttons === 1) {
+      // 启动拖拽滚动
+      isDragging.value = true
+      startX.value = e.pageX
+      startScrollLeft.value = timelineContainer.value?.scrollLeft || 0
+
+      if (timelineContainer.value) {
+        timelineContainer.value.style.cursor = 'grabbing'
+        timelineContainer.value.style.userSelect = 'none'
+      }
+
+      // 添加事件监听器
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    // 只监听一次
+    document.removeEventListener('mousemove', handleNextMouseMove)
+  }
+
+  // 添加临时监听器，等待下一次鼠标移动
+  document.addEventListener('mousemove', handleNextMouseMove)
+
+  // 5秒后自动清理监听器（防止内存泄漏）
+  setTimeout(() => {
+    document.removeEventListener('mousemove', handleNextMouseMove)
+  }, 5000)
+}
+
 // 鼠标按下开始拖拽（在时间轴表头和body区域）
 const handleMouseDown = (event: MouseEvent) => {
   const target = event.target as HTMLElement
@@ -1624,24 +2186,38 @@ const handleMouseDown = (event: MouseEvent) => {
 
   // 如果在body区域，需要检查是否点击了交互元素
   if (isInBody) {
-    // 排除TaskBar组件、按钮、输入框等交互元素
-    const interactiveElements = [
-      '.task-bar',
-      '.milestone',
-      'button',
-      'input',
-      'select',
-      'textarea',
-      '.custom-task-content',
-      '.progress-bar',
-      '.task-name',
-      '.task-controls',
-    ]
+    // 检查是否点击了TaskBar
+    const taskBarElement = target.closest('.task-bar') as HTMLElement
 
-    const isInteractiveElement = interactiveElements.some(selector => target.closest(selector))
+    // 如果点击了TaskBar，检查是否为高亮状态
+    if (taskBarElement) {
+      const isHighlighted = taskBarElement.classList.contains('highlighted')
+      const isPrimaryHighlight = taskBarElement.classList.contains('primary-highlight')
 
-    if (isInteractiveElement) {
-      return
+      // 如果是高亮状态的TaskBar，允许拖拽滚动
+      // 否则返回，让TaskBar自己处理交互
+      if (!isHighlighted && !isPrimaryHighlight) {
+        return
+      }
+    } else {
+      // 如果不是TaskBar，排除其他交互元素
+      const interactiveElements = [
+        '.milestone',
+        'button',
+        'input',
+        'select',
+        'textarea',
+        '.custom-task-content',
+        '.progress-bar',
+        '.task-name',
+        '.task-controls',
+      ]
+
+      const isInteractiveElement = interactiveElements.some(selector => target.closest(selector))
+
+      if (isInteractiveElement) {
+        return
+      }
     }
   }
 
@@ -1907,6 +2483,9 @@ defineExpose({
   timelineConfig,
   // 时间刻度更新
   updateTimeScale,
+  // 高亮相关
+  highlightedTaskId,
+  clearHighlight,
 })
 
 // 处理开始计时事件
@@ -1933,8 +2512,104 @@ const convertTaskToMilestone = (task: Task): Milestone => {
 // 监听tasks变化，重新计算里程碑位置
 watch(tasks, computeAllMilestonesPositions, { immediate: true, deep: true })
 
+// 监听tasks数据变化，当从空变为有数据时重新计算时间范围
+watch(
+  () => tasks.value?.length,
+  (newLength, oldLength) => {
+    // 当任务从无到有时，重新计算时间范围
+    if (oldLength === 0 && newLength > 0) {
+      let newRange: { startDate: Date; endDate: Date } | null = null
+
+      if (currentTimeScale.value === TimelineScale.HOUR) {
+        newRange = getHourTimelineRange()
+      } else if (currentTimeScale.value === TimelineScale.DAY) {
+        newRange = getDayTimelineRange()
+      } else if (currentTimeScale.value === TimelineScale.WEEK) {
+        newRange = getWeekTimelineRange()
+      } else if (currentTimeScale.value === TimelineScale.MONTH) {
+        newRange = getMonthTimelineRange()
+      } else if (
+        currentTimeScale.value === TimelineScale.QUARTER ||
+        currentTimeScale.value === TimelineScale.YEAR
+      ) {
+        newRange = getYearTimelineRange()
+      }
+
+      if (newRange) {
+        // 清除缓存，确保使用新的日期范围
+        clearTimelineCache()
+
+        isUpdatingTimelineConfig = true
+        timelineConfig.value.startDate = newRange.startDate
+        timelineConfig.value.endDate = newRange.endDate
+        isUpdatingTimelineConfig = false
+
+        // 重新生成时间线数据
+        timelineData.value = generateTimelineData()
+      }
+    }
+  },
+)
+
 // 监听滚动变化，重新计算里程碑位置
 watch([timelineScrollLeft, timelineContainerWidth], computeAllMilestonesPositions)
+
+// 监听容器宽度变化，重新计算时间线范围以填充容器
+watch(
+  timelineContainerWidth,
+  (newWidth, oldWidth) => {
+    // 只在容器宽度从 0 变为有效值，或容器宽度发生显著变化时重新计算
+    if (!oldWidth || oldWidth === 0 || Math.abs(newWidth - oldWidth) > 50) {
+      if (newWidth > 0) {
+        // 根据当前时间刻度重新计算范围
+        let newRange: { startDate: Date; endDate: Date } | null = null
+
+        if (currentTimeScale.value === TimelineScale.HOUR) {
+          newRange = getHourTimelineRange()
+        } else if (currentTimeScale.value === TimelineScale.DAY) {
+          newRange = getDayTimelineRange()
+        } else if (currentTimeScale.value === TimelineScale.WEEK) {
+          newRange = getWeekTimelineRange()
+        } else if (currentTimeScale.value === TimelineScale.MONTH) {
+          newRange = getMonthTimelineRange()
+        } else if (
+          currentTimeScale.value === TimelineScale.QUARTER ||
+          currentTimeScale.value === TimelineScale.YEAR
+        ) {
+          newRange = getYearTimelineRange()
+        }
+        // 如果计算出新范围，更新配置并重新生成数据
+        if (newRange) {
+          // 清除缓存，确保使用新的日期范围
+          clearTimelineCache()
+
+          isUpdatingTimelineConfig = true
+          timelineConfig.value.startDate = newRange.startDate
+          timelineConfig.value.endDate = newRange.endDate
+          isUpdatingTimelineConfig = false
+
+          // 重新生成时间线数据
+          timelineData.value = generateTimelineData()
+        }
+      }
+    }
+  },
+  { immediate: true },
+)
+
+// 监听timelineData或容器宽度变化，强制TaskBar重新渲染以更新关系线位置
+watch([timelineData, timelineContainerWidth], () => {
+  // 清空位置信息
+  taskBarPositions.value = {}
+  // 更新渲染key强制TaskBar重新渲染
+  taskBarRenderKey.value++
+  // 延迟更新SVG尺寸
+  nextTick(() => {
+    setTimeout(() => {
+      updateSvgSize()
+    }, 100)
+  })
+})
 
 // 监听tasks变化，清理不再存在的任务的位置信息
 watch(
@@ -2120,22 +2795,17 @@ const generateMonthTimelineData = () => {
 
 // 生成季度视图时间轴数据
 const generateQuarterTimelineData = () => {
-  // 参考年度视图的时间范围设定
-  const yearRange = getYearTimelineRange()
-  const startDate = yearRange.startDate
-  const endDate = yearRange.endDate
+  // 使用从 GanttChart 传入的日期范围（已包含正确的 buffer 和容器填充逻辑）
+  const startDate = timelineConfig.value.startDate
+  const endDate = timelineConfig.value.endDate
 
   const years: unknown[] = []
-  const currentDate = new Date(startDate)
 
-  // 从年初开始
-  currentDate.setMonth(0)
-  currentDate.setDate(1)
-  currentDate.setHours(0, 0, 0, 0)
+  // 确保从 startDate 所在年份的年初开始
+  const startYear = startDate.getFullYear()
+  const endYear = endDate.getFullYear()
 
-  while (currentDate <= endDate) {
-    const year = currentDate.getFullYear()
-
+  for (let year = startYear; year <= endYear; year++) {
     // 生成该年的4个季度
     const quarters = []
     for (let quarter = 1; quarter <= 4; quarter++) {
@@ -2163,8 +2833,6 @@ const generateQuarterTimelineData = () => {
       endDate: new Date(year, 11, 31),
       quarters,
     })
-
-    currentDate.setFullYear(currentDate.getFullYear() + 1)
   }
 
   return years
@@ -2179,19 +2847,17 @@ const isQuarterContainsToday = (startDate: Date, endDate: Date) => {
 
 // 生成年度视图时间轴数据
 const generateYearTimelineData = () => {
-  // 根据时间刻度动态调整时间范围
-  const yearRange = getYearTimelineRange()
-  const startDate = yearRange.startDate
-  const endDate = yearRange.endDate
+  // 使用从 GanttChart 传入的日期范围（已包含正确的 buffer 和容器填充逻辑）
+  const startDate = timelineConfig.value.startDate
+  const endDate = timelineConfig.value.endDate
 
   const years: unknown[] = []
-  const currentDate = new Date(startDate)
-  currentDate.setMonth(0) // 从年初开始
-  currentDate.setDate(1)
 
-  while (currentDate <= endDate) {
-    const year = currentDate.getFullYear()
+  // 确保从 startDate 所在年份的年初开始到 endDate 所在年份的年末
+  const startYear = startDate.getFullYear()
+  const endYear = endDate.getFullYear()
 
+  for (let year = startYear; year <= endYear; year++) {
     // 生成上半年和下半年
     const halfYears = [
       {
@@ -2215,9 +2881,6 @@ const generateYearTimelineData = () => {
       halfYears,
       width: 360,
     })
-
-    // 移动到下一年
-    currentDate.setFullYear(currentDate.getFullYear() + 1)
   }
 
   return years
@@ -2495,7 +3158,13 @@ const handleAddSuccessor = (task: Task) => {
           class="gantt-links"
           :width="svgWidth"
           :height="svgHeight"
-          style="position: absolute; left: 0; top: 0; z-index: 25; pointer-events: none"
+          :style="{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            zIndex: highlightedTaskId !== null ? 1001 : 25,
+            pointerEvents: 'none',
+          }"
         >
           <defs>
             <marker
@@ -2509,17 +3178,51 @@ const handleAddSuccessor = (task: Task) => {
             >
               <polygon points="0,0 4,2 0,4" fill="#c0c4cc" />
             </marker>
+            <marker
+              id="arrow-highlighted"
+              markerWidth="4"
+              markerHeight="4"
+              refX="4"
+              refY="2"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <polygon points="0,0 4,2 0,4" fill="#409eff" />
+            </marker>
           </defs>
           <g>
             <path
               v-for="link in links"
               :key="link.from + '-' + link.to"
               :d="link.path"
-              stroke="#c0c4cc"
-              stroke-width="2"
+              :stroke="
+                highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to)
+                  ? '#409eff'
+                  : '#c0c4cc'
+              "
+              :stroke-width="
+                highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to) ? 4 : 2
+              "
+              :stroke-opacity="
+                highlightedTaskId !== null &&
+                !(highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to))
+                  ? 0.2
+                  : 1
+              "
               stroke-dasharray="6,4"
               fill="none"
-              marker-end="url(#arrow)"
+              :marker-end="
+                highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to)
+                  ? 'url(#arrow-highlighted)'
+                  : 'url(#arrow)'
+              "
+              :style="{
+                filter:
+                  highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to)
+                    ? 'drop-shadow(0 2px 4px rgba(64, 158, 255, 0.4))'
+                    : 'none',
+                transition: 'all 0.3s ease',
+              }"
             />
           </g>
         </svg>
@@ -2757,6 +3460,9 @@ const handleAddSuccessor = (task: Task) => {
                           ? getMonthTimelineRange().startDate
                           : timelineConfig.startDate
                   "
+                  :timeline-start="timelineConfig.startDate"
+                  :timeline-end="timelineConfig.endDate"
+                  :period-width="dayWidth"
                   :name="milestone.name"
                   :milestone="convertTaskToMilestone(milestone)"
                   :scroll-left="timelineScrollLeft"
@@ -2765,6 +3471,8 @@ const handleAddSuccessor = (task: Task) => {
                   :other-milestones="getOtherMilestonesInfo(milestone.id)"
                   :timeline-data="timelineData"
                   :current-time-scale="currentTimeScale"
+                  :allow-drag-and-resize="props.allowDragAndResize && !isInHighlightMode"
+                  :is-in-highlight-mode="isInHighlightMode"
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
@@ -2786,6 +3494,9 @@ const handleAddSuccessor = (task: Task) => {
                           ? getMonthTimelineRange().startDate
                           : timelineConfig.startDate
                   "
+                  :timeline-start="timelineConfig.startDate"
+                  :timeline-end="timelineConfig.endDate"
+                  :period-width="dayWidth"
                   :name="task.name"
                   :milestone="convertTaskToMilestone(task)"
                   :scroll-left="timelineScrollLeft"
@@ -2794,6 +3505,8 @@ const handleAddSuccessor = (task: Task) => {
                   :other-milestones="getOtherMilestonesInfo(task.id)"
                   :timeline-data="timelineData"
                   :current-time-scale="currentTimeScale"
+                  :allow-drag-and-resize="props.allowDragAndResize && !isInHighlightMode"
+                  :is-in-highlight-mode="isInHighlightMode"
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
@@ -2802,6 +3515,7 @@ const handleAddSuccessor = (task: Task) => {
               <!-- 普通任务条 - 排除里程碑分组和普通里程碑 -->
               <TaskBar
                 v-else-if="task.type !== 'milestone-group' && task.type !== 'milestone'"
+                :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                 :task="task"
                 :row-height="50"
                 :day-width="dayWidth"
@@ -2813,7 +3527,6 @@ const handleAddSuccessor = (task: Task) => {
                       : timelineConfig.startDate
                 "
                 :is-parent="task.isParent"
-                :on-double-click="props.onTaskDoubleClick"
                 :scroll-left="timelineScrollLeft"
                 :container-width="timelineContainerWidth"
                 :hide-bubbles="hideBubbles"
@@ -2821,8 +3534,14 @@ const handleAddSuccessor = (task: Task) => {
                   currentTimeScale === TimelineScale.HOUR ? optimizedTimelineData : timelineData
                 "
                 :current-time-scale="currentTimeScale"
+                :task-bar-config="props.taskBarConfig"
+                :allow-drag-and-resize="props.allowDragAndResize && !isInHighlightMode"
+                :is-highlighted="highlightedTaskIds.has(task.id)"
+                :is-primary-highlight="highlightedTaskId === task.id"
+                :is-in-highlight-mode="isInHighlightMode"
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"
+                @click="handleTaskBarClick(task, $event)"
                 @dblclick="handleTaskBarDoubleClick(task)"
                 @drag-end="handleTaskBarDragEnd"
                 @resize-end="handleTaskBarResizeEnd"
@@ -2833,6 +3552,7 @@ const handleAddSuccessor = (task: Task) => {
                 @add-predecessor="handleAddPredecessor"
                 @add-successor="handleAddSuccessor"
                 @delete="handleTaskDelete"
+                @long-press="setHighlightTask"
               >
                 <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
                   <slot name="custom-task-content" v-bind="barScope" />
@@ -2843,20 +3563,12 @@ const handleAddSuccessor = (task: Task) => {
         </div>
       </div>
     </div>
-    <!-- Milestone Dialog 里程碑对话框组件 -->
-    <MilestoneDialog
-      v-model:visible="milestoneDialogVisible"
-      :milestone="currentMilestone"
-      @close="closeMilestoneDialog"
-      @save="handleMilestoneSave"
-      @delete="handleMilestoneDelete"
-      @icon-changed="handleMilestoneIconChange"
-    />
   </div>
 </template>
 
 <style scoped>
 @import '../styles/theme-variables.css';
+
 .timeline {
   height: 100%;
   display: flex;
@@ -3216,7 +3928,7 @@ const handleAddSuccessor = (task: Task) => {
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 10;
+  z-index: 100;
   pointer-events: none;
   /* height由内联样式动态设置 */
 }

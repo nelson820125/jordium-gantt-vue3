@@ -15,7 +15,7 @@ const generateCssExportPlugin = () => {
 export default defineConfig({
   plugins: [vue(), generateCssExportPlugin()],
   build: {
-    outDir: './npm-package/dist',
+    outDir: '../npm-package/dist',
     emptyOutDir: true,
     lib: {
       entry: './src/index.ts',
@@ -34,7 +34,13 @@ export default defineConfig({
         // 禁用文件名哈希，生成固定文件名
         entryFileNames: 'jordium-gantt-vue3.[format].js',
         chunkFileNames: 'chunks/[name].js',
-        assetFileNames: 'assets/[name].[ext]',
+        assetFileNames: (assetInfo) => {
+          // 为CSS文件使用固定名称
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'assets/jordium-gantt-vue3.css'
+          }
+          return 'assets/[name].[ext]'
+        },
         // 禁用代码分割，将所有代码打包到一个文件中
         manualChunks: undefined,
         inlineDynamicImports: true

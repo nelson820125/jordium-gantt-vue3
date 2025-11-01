@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, useSlots, computed } from 'vue'
-import type { Component } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
@@ -9,8 +8,6 @@ import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 
 interface Props {
   tasks?: Task[]
-  onTaskDoubleClick?: (task: Task) => void
-  editComponent?: Component
   useDefaultDrawer?: boolean
   taskListConfig?: TaskListConfig
 }
@@ -91,17 +88,13 @@ const handleTaskRowDoubleClick = (task: Task) => {
     return
   }
 
-  // 优先调用外部传入的双击处理器
-  if (props.onTaskDoubleClick && typeof props.onTaskDoubleClick === 'function') {
-    props.onTaskDoubleClick(task)
-  } else if (props.useDefaultDrawer) {
-    // 默认行为：发送到Timeline处理（通过全局事件）
-    window.dispatchEvent(
-      new CustomEvent('task-row-double-click', {
-        detail: task,
-      }),
-    )
-  }
+  // 始终发送到Timeline处理（通过全局事件），让Timeline决定是否打开编辑器
+  // 这样外部监听的 @task-double-click 事件也会被触发
+  window.dispatchEvent(
+    new CustomEvent('task-row-double-click', {
+      detail: task,
+    }),
+  )
 }
 
 // 计算父级任务的进度和日期范围
@@ -417,7 +410,6 @@ onUnmounted(() => {
         :level="0"
         :is-hovered="hoveredTaskId === task.id"
         :hovered-task-id="hoveredTaskId"
-        :on-double-click="props.onTaskDoubleClick"
         :on-hover="handleTaskRowHover"
         :columns="visibleColumns"
         @toggle="toggleCollapse"
@@ -478,6 +470,7 @@ onUnmounted(() => {
   background: var(--gantt-bg-secondary);
   color: var(--gantt-text-header);
   border-right-color: var(--gantt-border-medium);
+  padding: 0 10px;
 }
 
 .task-list-body {

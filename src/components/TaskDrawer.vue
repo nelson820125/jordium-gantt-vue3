@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useMessage } from '../composables/useMessage'
 import DatePicker from './DatePicker.vue'
@@ -327,21 +327,29 @@ watch(
   newVal => {
     isVisible.value = newVal
     if (newVal) {
-      resetForm()
       if (props.task && props.isEdit) {
-        // 编辑模式，填充表单数据
+        // 编辑模式，先重置表单再填充表单数据
+        resetForm()
         const taskData = { ...props.task }
 
         // 处理日期格式：如果是只有日期部分的数据，在小时视图编辑时需要特殊处理
         taskData.startDate = processDateForHourView(taskData.startDate, 'start')
         taskData.endDate = processDateForHourView(taskData.endDate, 'end')
 
-        Object.assign(formData, taskData)
+        // 使用 nextTick 确保 resetForm 的响应式更新完成后再赋值
+        nextTick(() => {
+          Object.assign(formData, taskData)
+        })
       } else if (props.task && !props.isEdit) {
+        // 新建模式，重置表单
+        resetForm()
         // 新建模式，自动绑定上级任务
         formData.parentId = props.task.parentId ?? undefined
         // 新建模式，自动绑定前置任务
         formData.predecessor = props.task.predecessor ?? []
+      } else {
+        // 没有 task，也重置表单
+        resetForm()
       }
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
@@ -811,7 +819,8 @@ function confirmTimer(desc: string) {
               <DatePicker
                 id="task-start-date"
                 v-model="formData.startDate"
-                type="date"
+                :type="'datetime' as any"
+                value-format="YYYY-MM-DD HH:mm"
                 :placeholder="t.startDateRequired"
                 :class="{ error: errors.startDate }"
               />
@@ -825,7 +834,8 @@ function confirmTimer(desc: string) {
               <DatePicker
                 id="task-end-date"
                 v-model="formData.endDate"
-                type="date"
+                :type="'datetime' as any"
+                value-format="YYYY-MM-DD HH:mm"
                 :placeholder="t.endDateRequired"
                 :class="{ error: errors.endDate }"
               />

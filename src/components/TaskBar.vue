@@ -6,6 +6,8 @@ import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
 
 import { useI18n } from '../composables/useI18n'
+import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
+import { DEFAULT_TASK_BAR_CONFIG } from '../models/configs/TaskBarConfig'
 
 interface Props {
   task: Task
@@ -13,7 +15,7 @@ interface Props {
   dayWidth: number
   startDate: Date
   isParent?: boolean
-  onDoubleClick?: (task: Task) => void
+  onClick?: (task: Task, event: MouseEvent) => void
   // 新增：用于粘性文字显示的滚动位置信息
   scrollLeft?: number
   containerWidth?: number
@@ -23,6 +25,16 @@ interface Props {
   timelineData?: any
   // 新增：当前时间刻度
   currentTimeScale?: TimelineScale
+  // TaskBar 配置
+  taskBarConfig?: TaskBarConfig
+  // 是否允许拖拽和拉伸（默认为 true）
+  allowDragAndResize?: boolean
+  // 是否被高亮显示（前置或后置任务）
+  isHighlighted?: boolean
+  // 是否是主要高亮（被长按的任务）
+  isPrimaryHighlight?: boolean
+  // 是否处于高亮模式（有任务被高亮）
+  isInHighlightMode?: boolean
 }
 
 interface TaskStatus {
@@ -49,6 +61,7 @@ const props = defineProps<Props>()
 const emit = defineEmits([
   'update:task',
   'bar-mounted',
+  'click',
   'dblclick',
   'drag-end',
   'resize-end',
@@ -59,6 +72,7 @@ const emit = defineEmits([
   'add-successor',
   'delete',
   'context-menu',
+  'long-press',
 ])
 
 defineSlots<{
@@ -72,6 +86,12 @@ const t = (key: string): string => {
 }
 
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// 合并默认配置和用户配置
+const barConfig = computed(() => ({
+  ...DEFAULT_TASK_BAR_CONFIG,
+  ...props.taskBarConfig,
+}))
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -132,8 +152,13 @@ const getMinutesDiff = (startDate: Date, endDate: Date): number => {
   return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
 }
 
-// 计算是否应该禁用拖拽和调整大小（年度视图下禁用）
+// 计算是否应该禁用拖拽和调整大小（年度视图下禁用或任务不可编辑时禁用）
 const isInteractionDisabled = computed(() => {
+  // 检查任务的 isEditable 属性
+  if (props.task.isEditable === false) {
+    return true
+  }
+  // 年度视图下禁用
   return props.currentTimeScale === TimelineScale.YEAR
 })
 
@@ -141,12 +166,25 @@ const isInteractionDisabled = computed(() => {
 const isDragging = ref(false)
 const isResizingLeft = ref(false)
 const isResizingRight = ref(false)
+const justFinishedDragOrResize = ref(false) // 标记刚刚完成拖拽或调整大小
 const dragStartX = ref(0)
 const dragStartLeft = ref(0)
 const dragStartWidth = ref(0)
 const resizeStartX = ref(0)
 const resizeStartWidth = ref(0)
 const resizeStartLeft = ref(0)
+
+// 长按检测状态
+const longPressTimer = ref<number | null>(null)
+const longPressTriggered = ref(false)
+const LONG_PRESS_DURATION = 1000 // 1秒（缩短了）
+
+// 防误触配置 - 使用配置项或默认值
+const dragThreshold = computed(() => barConfig.value.dragThreshold ?? 5)
+const isDragThresholdMet = ref(false) // 是否达到拖拽阈值
+const dragType = ref<'drag' | 'resize-left' | 'resize-right' | null>(null) // 记录操作类型
+const dragDelayTimer = ref<number | null>(null) // 延迟拖拽定时器
+const isDelayPassed = ref(false) // 延迟是否已过
 
 // 相对位置拖拽方案：记录鼠标相对于TaskBar的位置
 const mouseOffsetX = ref(0) // 鼠标在TaskBar内的相对位置
@@ -253,21 +291,15 @@ const taskBarStyle = computed(() => {
       baseStart.getDate(),
     )
 
-    if (props.currentTimeScale === TimelineScale.YEAR) {
-      // 年度视图计算逻辑
-      const startPosition = calculateYearViewPosition(startDateOnly, baseStartOnly)
-      const endPosition = calculateYearViewPosition(endDateOnly, baseStartOnly)
-
-      left = startPosition
-      width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
-    } else if (
+    if (
       props.timelineData &&
       props.currentTimeScale &&
       (props.currentTimeScale === TimelineScale.WEEK ||
         props.currentTimeScale === TimelineScale.MONTH ||
-        props.currentTimeScale === TimelineScale.QUARTER)
+        props.currentTimeScale === TimelineScale.QUARTER ||
+        props.currentTimeScale === TimelineScale.YEAR)
     ) {
-      // 优先使用基于timelineData的精确定位（适用于周视图、月视图和季度视图）
+      // 优先使用基于timelineData的精确定位（适用于周视图、月视图、季度视图和年度视图）
       // 计算开始位置
       const startPosition = calculatePositionFromTimelineData(
         startDateOnly,
@@ -290,6 +322,8 @@ const taskBarStyle = computed(() => {
           dayWidth = 60 / 7
         } else if (props.currentTimeScale === TimelineScale.QUARTER) {
           dayWidth = 60 / 90 // 季度视图：每季度60px，约90天
+        } else if (props.currentTimeScale === TimelineScale.YEAR) {
+          dayWidth = 180 / 182 // 年度视图：每半年180px，约182天
         }
         endPosition =
           calculatePositionFromTimelineData(
@@ -301,8 +335,39 @@ const taskBarStyle = computed(() => {
 
       left = startPosition
       width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
+    } else if (
+      props.timelineData &&
+      props.currentTimeScale === TimelineScale.DAY
+    ) {
+      // 日视图：使用 timelineData 精确定位
+      const startPosition = calculatePositionFromTimelineData(
+        startDateOnly,
+        props.timelineData,
+        props.currentTimeScale,
+      )
+
+      // 计算结束位置：为结束日期添加一天来获取正确的结束位置
+      const nextDay = new Date(endDateOnly)
+      nextDay.setDate(nextDay.getDate() + 1)
+      let endPosition = calculatePositionFromTimelineData(
+        nextDay,
+        props.timelineData,
+        props.currentTimeScale,
+      )
+
+      // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
+      if (endPosition === startPosition) {
+        endPosition = calculatePositionFromTimelineData(
+          endDateOnly,
+          props.timelineData,
+          props.currentTimeScale,
+        ) + 30 // 日视图每天30px
+      }
+
+      left = startPosition
+      width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
     } else {
-      // 日视图：基于日期的简单计算
+      // 其他情况（没有 timelineData）：基于日期的简单计算
       const startDiff = Math.floor(
         (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24),
       )
@@ -398,6 +463,11 @@ const slotPayload = computed(() => ({
 // 判断是否已完成
 const isCompleted = computed(() => (props.task.progress || 0) >= 100)
 
+// 判断是否应该显示为暗淡（处于高亮模式但自己不是高亮的）
+const isDimmed = computed(() => {
+  return props.isInHighlightMode && !props.isHighlighted && !props.isPrimaryHighlight
+})
+
 // 计算完成部分的宽度
 const progressWidth = computed(() => {
   const progress = props.task.progress || 0
@@ -417,8 +487,20 @@ const isShortTaskBar = computed(() => {
 // 判断是否需要溢出效果（周视图且短TaskBar）
 const needsOverflowEffect = computed(() => isWeekView.value && isShortTaskBar.value)
 
-// 鼠标事件处理 - 使用相对位置拖拽方案
+// 鼠标事件处理 - 使用相对位置拖拽方案（带防误触机制）
 const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-right') => {
+  // 如果处于高亮状态，不阻止事件传播，让Timeline可以滚动
+  if (props.isHighlighted || props.isPrimaryHighlight) {
+    // 不调用 e.preventDefault() 和 e.stopPropagation()
+    // 让事件继续传播到父容器，从而触发 Timeline 的滚动
+    return
+  }
+
+  // 如果禁用了拖拽和拉伸，直接返回
+  if (props.allowDragAndResize === false) {
+    return
+  }
+
   // 如果已完成或是父级任务或年度视图，禁用所有交互
   if (isCompleted.value || props.isParent || isInteractionDisabled.value) {
     return
@@ -430,6 +512,46 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
   // 清空之前的临时数据
   tempTaskData.value = null
 
+  // 重置防误触状态
+  isDragThresholdMet.value = false
+  isDelayPassed.value = false
+  dragType.value = type
+
+  // 重置长按状态
+  longPressTriggered.value = false
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+
+  // 启动长按检测定时器（仅在拖拽模式下）
+  if (type === 'drag') {
+    longPressTimer.value = window.setTimeout(() => {
+      // 检查是否发生了拖拽或拉伸（通过检查是否达到拖拽阈值）
+      const noDragOrResize =
+        !isDragThresholdMet.value &&
+        !isDragging.value &&
+        !isResizingLeft.value &&
+        !isResizingRight.value
+      if (noDragOrResize) {
+        longPressTriggered.value = true
+        emit('long-press', props.task.id)
+      }
+      longPressTimer.value = null
+    }, LONG_PRESS_DURATION)
+  }
+
+  // 如果启用了拖拽延迟，设置定时器
+  if (barConfig.value.enableDragDelay && barConfig.value.dragDelayTime) {
+    dragDelayTimer.value = window.setTimeout(() => {
+      isDelayPassed.value = true
+      dragDelayTimer.value = null
+    }, barConfig.value.dragDelayTime)
+  } else {
+    // 未启用延迟，立即标记为已过延迟
+    isDelayPassed.value = true
+  }
+
   // 获取TaskBar相对于Timeline容器的位置
   const timelineContainer = document.querySelector('.timeline') as HTMLElement
   if (!timelineContainer || !barRef.value) return
@@ -439,18 +561,16 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
   // 计算鼠标相对于TaskBar的位置
   mouseOffsetX.value = e.clientX - barRect.left
 
-  if (type === 'drag') {
-    isDragging.value = true
-    dragStartX.value = e.clientX
-    dragStartLeft.value = parseInt(taskBarStyle.value.left)
-    dragStartWidth.value = parseInt(taskBarStyle.value.width)
-  } else if (type === 'resize-left') {
-    isResizingLeft.value = true
+  // 记录初始状态，但不立即激活拖拽
+  dragStartX.value = e.clientX
+  dragStartLeft.value = parseInt(taskBarStyle.value.left)
+  dragStartWidth.value = parseInt(taskBarStyle.value.width)
+
+  if (type === 'resize-left') {
     resizeStartX.value = e.clientX
     resizeStartWidth.value = parseInt(taskBarStyle.value.width)
     resizeStartLeft.value = parseInt(taskBarStyle.value.left)
   } else if (type === 'resize-right') {
-    isResizingRight.value = true
     resizeStartX.value = e.clientX
     resizeStartWidth.value = parseInt(taskBarStyle.value.width)
     resizeStartLeft.value = parseInt(taskBarStyle.value.left)
@@ -494,6 +614,41 @@ const dragTooltipPosition = ref({ x: 0, y: 0 })
 const dragTooltipContent = ref({ startDate: '', endDate: '' })
 
 const handleMouseMove = (e: MouseEvent) => {
+  // 如果处于高亮状态，立即返回，不执行任何拖拽/拉伸操作
+  if (props.isHighlighted || props.isPrimaryHighlight) {
+    return
+  }
+
+  // 检查延迟是否已过（如果启用了延迟）
+  if (barConfig.value.enableDragDelay && !isDelayPassed.value) {
+    return
+  }
+
+  // 检查是否达到拖拽阈值
+  if (!isDragThresholdMet.value) {
+    const deltaX = Math.abs(e.clientX - dragStartX.value)
+
+    // 如果移动距离小于阈值，不执行任何操作
+    if (deltaX < dragThreshold.value) {
+      return
+    }
+
+    // 达到阈值，激活对应的拖拽/拉伸状态
+    isDragThresholdMet.value = true
+    if (dragType.value === 'drag') {
+      isDragging.value = true
+    } else if (dragType.value === 'resize-left') {
+      isResizingLeft.value = true
+    } else if (dragType.value === 'resize-right') {
+      isResizingRight.value = true
+    }
+  }
+
+  // 只有达到阈值后才执行边界检测和提示框显示
+  if (!isDragThresholdMet.value) {
+    return
+  }
+
   // 发送边界检测事件给Timeline
   window.dispatchEvent(
     new CustomEvent('drag-boundary-check', {
@@ -602,22 +757,62 @@ const handleMouseMove = (e: MouseEvent) => {
         endDate: formatDateToLocalString(newEndDate),
       }
     } else {
-      // 其他视图：保持原有逻辑
+      // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
       const newLeft = Math.max(0, dragStartLeft.value + deltaX)
-      const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
-      const duration = dragStartWidth.value / props.dayWidth
-      const newEndDate = addDaysToLocalDate(newStartDate, duration - 1)
 
-      // 只更新临时数据，不触发事件
-      tempTaskData.value = {
-        startDate: formatDateToLocalString(newStartDate),
-        endDate: formatDateToLocalString(newEndDate),
-      }
+      // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
+      if (
+        (props.currentTimeScale === TimelineScale.DAY ||
+          props.currentTimeScale === TimelineScale.MONTH ||
+          props.currentTimeScale === TimelineScale.QUARTER ||
+          props.currentTimeScale === TimelineScale.YEAR) &&
+        props.timelineData
+      ) {
+        const newStartDate = calculateDateFromPosition(
+          newLeft,
+          props.timelineData,
+          props.currentTimeScale,
+        )
 
-      // 更新拖拽提示框内容
-      dragTooltipContent.value = {
-        startDate: formatDateToLocalString(newStartDate),
-        endDate: formatDateToLocalString(newEndDate),
+        if (newStartDate) {
+          // 计算任务持续天数
+          const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+          const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+          const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
+          const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+
+          const newEndDate = new Date(newStartDate)
+          newEndDate.setDate(newEndDate.getDate() + Math.max(0, duration))
+
+          // 只更新临时数据，不触发事件
+          tempTaskData.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: formatDateToLocalString(newEndDate),
+          }
+
+          // 更新拖拽提示框内容
+          dragTooltipContent.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: formatDateToLocalString(newEndDate),
+          }
+        }
+      } else {
+        // 其他情况：使用原有的简单计算
+        const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+        const duration = dragStartWidth.value / props.dayWidth
+        const newEndDate = addDaysToLocalDate(newStartDate, duration - 1)
+
+        // 只更新临时数据，不触发事件
+        tempTaskData.value = {
+          startDate: formatDateToLocalString(newStartDate),
+          endDate: formatDateToLocalString(newEndDate),
+        }
+
+        // 更新拖拽提示框内容
+        dragTooltipContent.value = {
+          startDate: formatDateToLocalString(newStartDate),
+          endDate: formatDateToLocalString(newEndDate),
+        }
       }
     }
   } else if (isResizingLeft.value) {
@@ -683,20 +878,51 @@ const handleMouseMove = (e: MouseEvent) => {
         endDate: props.task.endDate || '',
       }
     } else {
-      // 其他视图：保持原有逻辑
+      // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
       const newLeft = Math.max(0, resizeStartLeft.value + deltaX)
-      const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
 
-      // 只更新临时数据，不触发事件
-      tempTaskData.value = {
-        startDate: formatDateToLocalString(newStartDate),
-        endDate: props.task.endDate, // 保持原来的结束日期
-      }
+      // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
+      if (
+        (props.currentTimeScale === TimelineScale.DAY ||
+          props.currentTimeScale === TimelineScale.MONTH ||
+          props.currentTimeScale === TimelineScale.QUARTER ||
+          props.currentTimeScale === TimelineScale.YEAR) &&
+        props.timelineData
+      ) {
+        const newStartDate = calculateDateFromPosition(
+          newLeft,
+          props.timelineData,
+          props.currentTimeScale,
+        )
 
-      // 更新拖拽提示框内容
-      dragTooltipContent.value = {
-        startDate: formatDateToLocalString(newStartDate),
-        endDate: props.task.endDate || '',
+        if (newStartDate) {
+          // 只更新临时数据，不触发事件
+          tempTaskData.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: props.task.endDate, // 保持原来的结束日期
+          }
+
+          // 更新拖拽提示框内容
+          dragTooltipContent.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: props.task.endDate || '',
+          }
+        }
+      } else {
+        // 其他情况：使用原有的简单计算
+        const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
+
+        // 只更新临时数据，不触发事件
+        tempTaskData.value = {
+          startDate: formatDateToLocalString(newStartDate),
+          endDate: props.task.endDate, // 保持原来的结束日期
+        }
+
+        // 更新拖拽提示框内容
+        dragTooltipContent.value = {
+          startDate: formatDateToLocalString(newStartDate),
+          endDate: props.task.endDate || '',
+        }
       }
     }
   } else if (isResizingRight.value) {
@@ -761,30 +987,75 @@ const handleMouseMove = (e: MouseEvent) => {
         endDate: formatDateToLocalString(newEndDate),
       }
     } else {
-      // 其他视图：保持原有逻辑
+      // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
       const newWidth = Math.max(props.dayWidth, resizeStartWidth.value + deltaX)
-      const newDurationDays = newWidth / props.dayWidth
-      const newEndDate = addDaysToLocalDate(
-        props.startDate,
-        resizeStartLeft.value / props.dayWidth + newDurationDays - 1,
-      )
 
-      // 只更新临时数据，不触发事件
-      tempTaskData.value = {
-        startDate: props.task.startDate, // 保持原来的开始日期
-        endDate: formatDateToLocalString(newEndDate),
-      }
+      // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
+      if (
+        (props.currentTimeScale === TimelineScale.DAY ||
+          props.currentTimeScale === TimelineScale.MONTH ||
+          props.currentTimeScale === TimelineScale.QUARTER ||
+          props.currentTimeScale === TimelineScale.YEAR) &&
+        props.timelineData
+      ) {
+        // 计算新的结束位置（左侧位置 + 新宽度）
+        const newRightPosition = resizeStartLeft.value + newWidth
+        const newEndDate = calculateDateFromPosition(
+          newRightPosition,
+          props.timelineData,
+          props.currentTimeScale,
+        )
 
-      // 更新拖拽提示框内容
-      dragTooltipContent.value = {
-        startDate: props.task.startDate || '',
-        endDate: formatDateToLocalString(newEndDate),
+        if (newEndDate) {
+          // 只更新临时数据，不触发事件
+          tempTaskData.value = {
+            startDate: props.task.startDate, // 保持原来的开始日期
+            endDate: formatDateToLocalString(newEndDate),
+          }
+
+          // 更新拖拽提示框内容
+          dragTooltipContent.value = {
+            startDate: props.task.startDate || '',
+            endDate: formatDateToLocalString(newEndDate),
+          }
+        }
+      } else {
+        // 其他情况：使用原有的简单计算
+        const newDurationDays = newWidth / props.dayWidth
+        const newEndDate = addDaysToLocalDate(
+          props.startDate,
+          resizeStartLeft.value / props.dayWidth + newDurationDays - 1,
+        )
+
+        // 只更新临时数据，不触发事件
+        tempTaskData.value = {
+          startDate: props.task.startDate, // 保持原来的开始日期
+          endDate: formatDateToLocalString(newEndDate),
+        }
+
+        // 更新拖拽提示框内容
+        dragTooltipContent.value = {
+          startDate: props.task.startDate || '',
+          endDate: formatDateToLocalString(newEndDate),
+        }
       }
     }
   }
 }
 
 const handleMouseUp = () => {
+  // 清除延迟定时器
+  if (dragDelayTimer.value !== null) {
+    window.clearTimeout(dragDelayTimer.value)
+    dragDelayTimer.value = null
+  }
+
+  // 清除长按定时器
+  if (longPressTimer.value !== null) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+
   // 隐藏拖拽提示框
   dragTooltipVisible.value = false
 
@@ -801,8 +1072,8 @@ const handleMouseUp = () => {
     }),
   )
 
-  // 如果有临时数据，说明发生了拖拽或拉伸，提交数据更新
-  if (tempTaskData.value) {
+  // 只有达到拖拽阈值且有临时数据时才提交更新
+  if (isDragThresholdMet.value && tempTaskData.value) {
     const updatedTask = {
       ...props.task,
       ...tempTaskData.value,
@@ -828,9 +1099,23 @@ const handleMouseUp = () => {
   // 清理自动滚动监听器
   window.removeEventListener('timeline-auto-scroll', handleAutoScroll as EventListener)
 
+  // 如果发生了拖拽或调整大小，设置标志防止触发 click 事件
+  if (isDragging.value || isResizingLeft.value || isResizingRight.value) {
+    justFinishedDragOrResize.value = true
+    // 200ms 后清除标志
+    setTimeout(() => {
+      justFinishedDragOrResize.value = false
+    }, 200)
+  }
+
+  // 重置所有拖拽状态
   isDragging.value = false
   isResizingLeft.value = false
   isResizingRight.value = false
+  isDragThresholdMet.value = false
+  isDelayPassed.value = false
+  dragType.value = null
+
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 }
@@ -871,6 +1156,12 @@ onMounted(() => {
     window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
     window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
     window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+
+    // 清除长按定时器
+    if (longPressTimer.value !== null) {
+      clearTimeout(longPressTimer.value)
+      longPressTimer.value = null
+    }
   })
 })
 
@@ -885,11 +1176,100 @@ watch(
   { deep: true },
 )
 
+// 监听高亮状态变化（调试）
+watch(
+  () => [props.isHighlighted, props.isPrimaryHighlight],
+  ([highlighted, primary]) => {
+    if (highlighted || primary) {
+      // 当TaskBar变为高亮状态时，立即清理所有拖拽状态和事件监听器
+      // 无条件清理，即使没有正在拖拽也要重置状态
+      isDragging.value = false
+      isResizingLeft.value = false
+      isResizingRight.value = false
+      isDragThresholdMet.value = false
+      isDelayPassed.value = false
+      dragType.value = null
+      dragTooltipVisible.value = false
+
+      // 清理事件监听器
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('timeline-auto-scroll', handleAutoScroll as EventListener)
+
+      // 清理定时器
+      if (longPressTimer.value) {
+        clearTimeout(longPressTimer.value)
+        longPressTimer.value = null
+      }
+      if (dragDelayTimer.value) {
+        clearTimeout(dragDelayTimer.value)
+        dragDelayTimer.value = null
+      }
+
+      // 触发自定义事件，通知Timeline启动拖拽滚动
+      window.dispatchEvent(
+        new CustomEvent('taskbar-highlighted', {
+          detail: {
+            taskId: props.task.id,
+          },
+        }),
+      )
+    }
+  },
+)
+
+// 单击/双击延迟处理
+let clickTimer: number | null = null
+const clickDelay = 250 // 延迟时间（毫秒）
+
+// 处理TaskBar单击事件（使用延迟以区分双击）
+const handleTaskBarClick = (e: MouseEvent) => {
+  // 如果正在拖拽或调整大小，或者刚刚完成拖拽/调整大小，不触发点击事件
+  if (
+    isDragging.value ||
+    isResizingLeft.value ||
+    isResizingRight.value ||
+    justFinishedDragOrResize.value
+  ) {
+    return
+  }
+
+  // 如果刚刚触发了长按，不触发点击事件
+  if (longPressTriggered.value) {
+    longPressTriggered.value = false // 重置标记
+    return
+  }
+
+  // 如果已有定时器，说明是双击的第二次点击，清除定时器不触发单击
+  if (clickTimer !== null) {
+    return
+  }
+
+  // 设置延迟触发单击事件
+  clickTimer = window.setTimeout(() => {
+    clickTimer = null
+
+    // 优先调用外部传入的单击处理器
+    if (props.onClick && typeof props.onClick === 'function') {
+      props.onClick(props.task, e)
+    } else {
+      // 默认行为：发出单击事件给父组件
+      emit('click', props.task, e)
+    }
+  }, clickDelay)
+}
+
 // 处理TaskBar双击事件
 const handleTaskBarDoubleClick = (e: MouseEvent) => {
   // 阻止事件冒泡，避免触发拖拽等其他事件
   e.stopPropagation()
   e.preventDefault()
+
+  // 清除单击定时器，防止触发单击事件
+  if (clickTimer !== null) {
+    clearTimeout(clickTimer)
+    clickTimer = null
+  }
 
   // 清理任何可能残留的拖拽状态和临时数据
   isDragging.value = false
@@ -901,13 +1281,8 @@ const handleTaskBarDoubleClick = (e: MouseEvent) => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 
-  // 优先调用外部传入的双击处理器
-  if (props.onDoubleClick && typeof props.onDoubleClick === 'function') {
-    props.onDoubleClick(props.task)
-  } else {
-    // 默认行为：发出双击事件给父组件
-    emit('dblclick', props.task)
-  }
+  // 发出双击事件给父组件
+  emit('dblclick', props.task, e)
 }
 
 // 计算粘性样式 - 支持左右边界的精细控制
@@ -923,6 +1298,8 @@ const stickyStyles = computed(() => {
       progressLeft: '',
       progressPosition: '',
       progressTop: '',
+      avatarLeft: '',
+      avatarPosition: '',
     }
   }
 
@@ -940,55 +1317,122 @@ const stickyStyles = computed(() => {
   let progressLeft = ''
   let progressPosition = ''
   let progressTop = ''
+  let avatarLeft = ''
+  let avatarPosition = ''
 
   // 估算文字内容的实际位置
   const nameWidth = Math.max(nameTextWidth.value, 40) // 最小40px
   const progressWidth = 35
+  const avatarWidth = 22 // avatar 宽度
+  const handleWidth = actualHandleWidth.value // 拉伸手柄宽度
 
-  // 计算名称和进度在默认居中状态下的位置
+  // === 第一步：检测 Avatar 是否需要粘性定位 ===
+  const avatarDefaultLeft = handleWidth + 3 // 手柄宽度 + 3px 间距
+  const avatarLeftPos = taskLeft + avatarDefaultLeft
+  const avatarRightPos = taskLeft + avatarDefaultLeft + avatarWidth
+
+  // Avatar 左侧粘性逻辑
+  const avatarNeedsLeftSticky =
+    (avatarLeftPos < leftBoundary && taskRight > leftBoundary) ||
+    (taskCenterX < leftBoundary && taskRight > leftBoundary)
+
+  // Avatar 右侧粘性逻辑：当 avatar 接近右边框 + name/progress 宽度 + 15px 时触发
+  const maxContentWidth = Math.max(nameWidth, progressWidth)
+  const avatarNeedsRightSticky =
+    (avatarRightPos + maxContentWidth + 15 > rightBoundary && taskLeft < rightBoundary)
+
+  // 计算 avatar 粘性时的偏移量
+  let avatarStickyOffset = 0
+  if (avatarNeedsLeftSticky) {
+    const offset = leftBoundary - taskLeft
+    avatarLeft = `${offset + handleWidth + 3}px` // 手柄宽度 + 3px 间距
+    avatarPosition = 'absolute'
+    avatarStickyOffset = avatarWidth + 8 // avatar 宽度 + 右侧间距
+  } else if (avatarNeedsRightSticky) {
+    // avatar 应该停靠在 name/progress 左侧 15px 的位置
+    // 计算 name/progress 在右边界时的位置（它们会贴在右边框上）
+    const maxContentWidth = Math.max(nameWidth, progressWidth)
+    // 内容贴右边框时的左侧位置，考虑手柄宽度
+    const contentRightPos = rightBoundary - taskLeft - maxContentWidth - handleWidth - 3
+    const offset = contentRightPos - avatarWidth - 15 // avatar 在内容左侧 15px
+    avatarLeft = `${offset}px`
+    avatarPosition = 'absolute'
+    avatarStickyOffset = -(avatarWidth + 15) // 负值表示在右侧，avatar宽度 + 15px间距
+  }
+
+  // === 第二步：处理名称粘性定位（考虑 avatar 偏移） ===
   const nameLeftPos = taskCenterX - nameWidth / 2
   const nameRightPos = taskCenterX + nameWidth / 2
-  const progressLeftPos = taskCenterX - progressWidth / 2
-  const progressRightPos = taskCenterX + progressWidth / 2
 
-  // 左侧边界粘性逻辑
-  const nameNeedsLeftSticky =
-    nameLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+  // 判断是否显示 avatar（只要配置开启就显示，包括默认头像）
+  const hasAvatar = barConfig.value.showAvatar
 
-  // 右侧边界粘性逻辑
+  // Name 左侧磁吸触发条件优化
+  let nameNeedsLeftSticky = false
+  if (hasAvatar) {
+    // 如果 avatar 存在：当 name 左侧接近左边界（预留 avatar+间距 的空间）时触发
+    // name 默认居中，当它向左移动到需要为 avatar 留出空间时触发磁吸
+    const nameActualLeft = nameLeftPos // name 实际左侧位置
+    const avatarReservedSpace = avatarWidth + 15 // avatar 需要的空间
+    nameNeedsLeftSticky =
+      nameActualLeft < leftBoundary + avatarReservedSpace && taskRight > leftBoundary
+  } else {
+    // 如果 avatar 不存在：保留原逻辑
+    nameNeedsLeftSticky =
+      nameLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+  }
+
   const nameNeedsRightSticky =
     nameRightPos > rightBoundary && taskLeft < rightBoundary && taskCenterX > rightBoundary
 
-  // 名称粘性处理
   if (nameNeedsLeftSticky) {
     const offset = leftBoundary - taskLeft
-    nameLeft = `${offset + 8}px`
+    // 如果 avatar 也在左侧粘性，则 title 需要在 avatar 右侧
+    const extraOffset = avatarNeedsLeftSticky ? avatarStickyOffset : 0
+    nameLeft = `${offset + handleWidth + 3 + extraOffset}px` // 考虑手柄宽度 + 间距
     namePosition = 'absolute'
     nameTop = '2px'
   } else if (nameNeedsRightSticky) {
     const offset = rightBoundary - taskLeft - nameWidth
-    nameLeft = `${offset - 8}px`
+    // name 右侧磁吸时应始终保持与右边框固定距离，需要减去右侧手柄宽度
+    nameLeft = `${offset - handleWidth - 3}px` // 考虑手柄宽度 + 间距
     namePosition = 'absolute'
     nameTop = '2px'
   }
 
-  // 进度左侧边界粘性逻辑
-  const progressNeedsLeftSticky =
-    progressLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+  // === 第三步：处理进度粘性定位（考虑 avatar 偏移） ===
+  const progressLeftPos = taskCenterX - progressWidth / 2
+  const progressRightPos = taskCenterX + progressWidth / 2
 
-  // 进度右侧边界粘性逻辑
+  // Progress 左侧磁吸触发条件优化
+  let progressNeedsLeftSticky = false
+  if (hasAvatar) {
+    // 如果 avatar 存在：当 progress 左侧接近左边界（预留 avatar+间距 的空间）时触发
+    // progress 默认居中，当它向左移动到需要为 avatar 留出空间时触发磁吸
+    const progressActualLeft = progressLeftPos // progress 实际左侧位置
+    const avatarReservedSpace = avatarWidth + 15 // avatar 需要的空间
+    progressNeedsLeftSticky =
+      progressActualLeft < leftBoundary + avatarReservedSpace && taskRight > leftBoundary
+  } else {
+    // 如果 avatar 不存在：保留原逻辑
+    progressNeedsLeftSticky =
+      progressLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+  }
+
   const progressNeedsRightSticky =
     progressRightPos > rightBoundary && taskLeft < rightBoundary && taskCenterX > rightBoundary
 
-  // 进度粘性处理
   if (progressNeedsLeftSticky) {
     const offset = leftBoundary - taskLeft
-    progressLeft = `${offset + 8}px`
+    // 如果 avatar 也在左侧粘性，则进度需要在 avatar 右侧
+    const extraOffset = avatarNeedsLeftSticky ? avatarStickyOffset : 0
+    progressLeft = `${offset + handleWidth + 3 + extraOffset}px` // 考虑手柄宽度 + 间距
     progressPosition = 'absolute'
     progressTop = '18px'
   } else if (progressNeedsRightSticky) {
     const offset = rightBoundary - taskLeft - progressWidth
-    progressLeft = `${offset - 8}px`
+    // progress 右侧磁吸时应始终保持与右边框固定距离，需要减去右侧手柄宽度
+    progressLeft = `${offset - handleWidth - 3}px` // 考虑手柄宽度 + 间距
     progressPosition = 'absolute'
     progressTop = '18px'
   }
@@ -1000,6 +1444,8 @@ const stickyStyles = computed(() => {
     progressLeft,
     progressPosition,
     progressTop,
+    avatarLeft,
+    avatarPosition,
   }
 })
 
@@ -1085,7 +1531,11 @@ const isAutoScrolling = ref(false) // 跟踪自动滚动状态（如定位到今
 const bubbleHidden = ref(false) // 控制半圆的强制隐藏状态
 
 // 气泡点击事件 - 将TaskBar定位到Timeline中间
-const handleBubbleClick = () => {
+const handleBubbleClick = (e: MouseEvent) => {
+  // 阻止事件冒泡，避免触发 TaskBar 的 click 事件
+  e.stopPropagation()
+  e.preventDefault()
+
   const scrollLeft = props.scrollLeft || 0
   const containerWidth = props.containerWidth || 0
 
@@ -1227,6 +1677,9 @@ onUnmounted(() => {
 
 // 处理气泡悬停
 const handleBubbleMouseEnter = (event: MouseEvent) => {
+  // 阻止事件冒泡
+  event.stopPropagation()
+
   showTooltip.value = true
 
   // 智能定位：右侧气泡在左侧显示tooltip，左侧气泡在右侧显示
@@ -1239,7 +1692,10 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
   }
 }
 
-const handleBubbleMouseLeave = () => {
+const handleBubbleMouseLeave = (event: MouseEvent) => {
+  // 阻止事件冒泡
+  event.stopPropagation()
+
   showTooltip.value = false
 }
 
@@ -1314,58 +1770,35 @@ const getProgressStyles = () => {
   return result
 }
 
-// 年度视图位置计算函数
-const calculateYearViewPosition = (targetDate: Date, baseStartDate: Date): number => {
-  const targetYear = targetDate.getFullYear()
-  const baseYear = baseStartDate.getFullYear()
+const getAvatarStyles = () => {
+  const styles = stickyStyles.value
+  const result: Record<string, string> = {}
 
-  // 每年的宽度是360px，每半年180px
-  const yearWidth = 360
-  const halfYearWidth = 180
+  if (styles.avatarLeft) result.left = styles.avatarLeft
+  if (styles.avatarPosition) result.position = styles.avatarPosition
 
-  // 计算目标年份相对于基准年份的偏移
-  const yearOffset = targetYear - baseYear
-  let position = yearOffset * yearWidth
-
-  // 判断是上半年还是下半年
-  const month = targetDate.getMonth() + 1 // getMonth()返回0-11，需要+1
-
-  if (month > 6) {
-    // 下半年，添加半年偏移
-    position += halfYearWidth
-  }
-
-  // 在半年内的具体位置计算
-  let dayOffset = 0
-  let startOfHalfYear: Date
-
-  if (month <= 6) {
-    // 上半年：1-6月
-    startOfHalfYear = new Date(targetYear, 0, 1) // 1月1日
-  } else {
-    // 下半年：7-12月
-    startOfHalfYear = new Date(targetYear, 6, 1) // 7月1日
-  }
-
-  dayOffset = Math.floor((targetDate.getTime() - startOfHalfYear.getTime()) / (1000 * 60 * 60 * 24))
-
-  // 半年大约181-184天，将天数映射到180px的宽度
-  const daysInHalfYear =
-    month <= 6
-      ? Math.floor(
-        (new Date(targetYear, 6, 1).getTime() - new Date(targetYear, 0, 1).getTime()) /
-            (1000 * 60 * 60 * 24),
-      )
-      : Math.floor(
-        (new Date(targetYear + 1, 0, 1).getTime() - new Date(targetYear, 6, 1).getTime()) /
-            (1000 * 60 * 60 * 24),
-      )
-
-  const dayPositionInHalfYear = (dayOffset / daysInHalfYear) * halfYearWidth
-  position += dayPositionInHalfYear
-
-  return position
+  return result
 }
+
+// 计算 avatar 是否应该渲染在外框边缘
+const shouldRenderAvatarOutside = computed(() => {
+  const taskWidth = parseInt(taskBarStyle.value.width)
+  const avatarWidth = 22
+  return taskWidth - 10 < avatarWidth
+})
+
+// 计算 resize-handle 的样式
+const resizeHandleStyle = computed(() => {
+  const width = Math.min(barConfig.value.resizeHandleWidth ?? 5, 15) // 最大15px
+  return {
+    width: `${width}px`,
+  }
+})
+
+// 计算实际手柄宽度（用于位置计算）
+const actualHandleWidth = computed(() => {
+  return Math.min(barConfig.value.resizeHandleWidth ?? 5, 15)
+})
 
 // 基于timelineData和subDays精确计算日期位置的函数
 const calculatePositionFromTimelineData = (
@@ -1375,6 +1808,7 @@ const calculatePositionFromTimelineData = (
     month: number
     startDate: Date
     endDate: Date
+    days?: Array<{ date: Date; day: number }>
     subDays?: Array<{ date: Date; dayOfWeek?: number }>
     monthData?: { dayCount: number }
     weeks?: Array<{
@@ -1388,14 +1822,34 @@ const calculatePositionFromTimelineData = (
   let cumulativePosition = 0
 
   for (const periodData of timelineData) {
-    if (timeScale === TimelineScale.QUARTER) {
-      // 季度视图：处理quarters结构
-      const quarters = ((periodData as Record<string, unknown>).quarters as unknown[]) || []
+    if (timeScale === TimelineScale.DAY) {
+      // 日视图：处理days数组
+      const days = periodData.days || []
+
+      for (let i = 0; i < days.length; i++) {
+        const dayData = days[i]
+        const dayDate = new Date(dayData.date)
+
+        // 比较日期（忽略时分秒）
+        if (
+          dayDate.getFullYear() === targetDate.getFullYear() &&
+          dayDate.getMonth() === targetDate.getMonth() &&
+          dayDate.getDate() === targetDate.getDate()
+        ) {
+          // 找到目标日期，返回累计位置 + 当前天数索引 * 日宽度
+          return cumulativePosition + i * 30 // 日视图每天30px
+        }
+      }
+
+      // 累加当前月份所有天数的宽度
+      cumulativePosition += days.length * 30
+    } else if (timeScale === TimelineScale.QUARTER) {
+      // 季度视图：处理years数组，每个year包含quarters
+      const quarters = (periodData as any).quarters || []
 
       for (const quarter of quarters) {
-        const quarterObj = quarter as Record<string, unknown>
-        const quarterStart = new Date(quarterObj.startDate as string)
-        const quarterEnd = new Date(quarterObj.endDate as string)
+        const quarterStart = new Date(quarter.startDate)
+        const quarterEnd = new Date(quarter.endDate)
 
         if (targetDate >= quarterStart && targetDate <= quarterEnd) {
           // 找到目标日期所在的季度
@@ -1465,10 +1919,175 @@ const calculatePositionFromTimelineData = (
 
       // 累加每月的宽度
       cumulativePosition += 60
+    } else if (timeScale === TimelineScale.YEAR) {
+      // 年度视图：处理years数组，每个year包含halfYears
+      const halfYears = (periodData as any).halfYears || []
+
+      for (const halfYear of halfYears) {
+        const halfYearStart = new Date(halfYear.startDate)
+        const halfYearEnd = new Date(halfYear.endDate)
+
+        if (targetDate >= halfYearStart && targetDate <= halfYearEnd) {
+          // 找到目标日期所在的半年
+          const halfYearWidth = 180 // 年度视图每半年180px
+          const daysInHalfYear = Math.ceil(
+            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = halfYearWidth / daysInHalfYear
+          const dayInHalfYear = Math.ceil(
+            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          return cumulativePosition + dayInHalfYear * dayWidth
+        }
+
+        // 累加每半年的宽度
+        cumulativePosition += 180
+      }
     }
   }
 
-  return cumulativePosition // 如果没找到，返回累计位置
+  // 周视图没找到目标日期时返回-1
+  if (timeScale === TimelineScale.WEEK) {
+    // eslint-disable-next-line no-console
+    console.warn('[Gantt Debug] 周视图定位失败，任务日期未找到 week 匹配，返回 -1', { targetDate })
+    return -1
+  }
+  return cumulativePosition // 其他视图保持原逻辑
+}
+
+// 反向函数：从像素位置计算日期（基于 timelineData）
+const calculateDateFromPosition = (
+  pixelPosition: number,
+  timelineData: Array<{
+    year: number
+    month: number
+    startDate: Date
+    endDate: Date
+    days?: Array<{ date: Date; day: number }>
+    monthData?: { dayCount: number }
+  }>,
+  timeScale: TimelineScale,
+): Date | null => {
+  if (!timelineData) {
+    return null
+  }
+
+  let cumulativePosition = 0
+
+  if (timeScale === TimelineScale.DAY) {
+    // 日视图：基于 days 数组
+    for (const periodData of timelineData) {
+      const days = periodData.days || []
+      const periodWidth = days.length * 30 // 日视图每天30px
+
+      // 检查像素位置是否在当前时间段内
+      if (pixelPosition >= cumulativePosition && pixelPosition < cumulativePosition + periodWidth) {
+        // 计算在当前时间段内的相对位置
+        const relativePosition = pixelPosition - cumulativePosition
+        const dayIndex = Math.floor(relativePosition / 30)
+
+        // 确保索引在范围内
+        if (dayIndex >= 0 && dayIndex < days.length) {
+          return new Date(days[dayIndex].date)
+        }
+      }
+
+      cumulativePosition += periodWidth
+    }
+  } else if (timeScale === TimelineScale.MONTH) {
+    // 月视图：每个月60px
+    for (const periodData of timelineData) {
+      const monthWidth = 60
+
+      // 检查像素位置是否在当前月份内
+      if (pixelPosition >= cumulativePosition && pixelPosition < cumulativePosition + monthWidth) {
+        // 计算在当前月份内的相对位置
+        const relativePosition = pixelPosition - cumulativePosition
+        const daysInMonth = periodData.monthData?.dayCount || 30
+        const dayWidth = monthWidth / daysInMonth
+
+        // 计算是该月的第几天
+        const dayIndex = Math.floor(relativePosition / dayWidth)
+        const day = Math.min(dayIndex + 1, daysInMonth) // 1-based，确保不超过该月天数
+
+        return new Date(periodData.year, periodData.month - 1, day)
+      }
+
+      cumulativePosition += monthWidth
+    }
+  } else if (timeScale === TimelineScale.QUARTER) {
+    // 季度视图：每个季度60px
+    for (const periodData of timelineData) {
+      const quarters = (periodData as any).quarters || []
+
+      for (const quarter of quarters) {
+        const quarterStart = new Date(quarter.startDate)
+        const quarterEnd = new Date(quarter.endDate)
+        const quarterWidth = 60
+
+        // 检查像素位置是否在当前季度内
+        if (
+          pixelPosition >= cumulativePosition &&
+          pixelPosition < cumulativePosition + quarterWidth
+        ) {
+          // 计算在当前季度内的相对位置
+          const relativePosition = pixelPosition - cumulativePosition
+          const daysInQuarter = Math.ceil(
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = quarterWidth / daysInQuarter
+
+          // 计算是该季度的第几天
+          const dayIndex = Math.floor(relativePosition / dayWidth)
+
+          // 从季度开始日期加上天数
+          const resultDate = new Date(quarterStart)
+          resultDate.setDate(resultDate.getDate() + dayIndex)
+
+          return resultDate
+        }
+
+        cumulativePosition += quarterWidth
+      }
+    }
+  } else if (timeScale === TimelineScale.YEAR) {
+    // 年度视图：每半年180px
+    for (const periodData of timelineData) {
+      const halfYears = (periodData as any).halfYears || []
+
+      for (const halfYear of halfYears) {
+        const halfYearStart = new Date(halfYear.startDate)
+        const halfYearEnd = new Date(halfYear.endDate)
+        const halfYearWidth = 180
+
+        // 检查像素位置是否在当前半年内
+        if (
+          pixelPosition >= cumulativePosition &&
+          pixelPosition < cumulativePosition + halfYearWidth
+        ) {
+          // 计算在当前半年内的相对位置
+          const relativePosition = pixelPosition - cumulativePosition
+          const daysInHalfYear = Math.ceil(
+            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const dayWidth = halfYearWidth / daysInHalfYear
+
+          // 计算是该半年的第几天
+          const dayIndex = Math.floor(relativePosition / dayWidth)
+
+          // 从半年开始日期加上天数
+          const resultDate = new Date(halfYearStart)
+          resultDate.setDate(resultDate.getDate() + dayIndex)
+
+          return resultDate
+        }
+
+        cumulativePosition += halfYearWidth
+      }
+    }
+  }
+
+  return null // 如果没找到，返回 null
 }
 
 // 处理右键菜单
@@ -1477,6 +2096,12 @@ const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuTask = computed(() => props.task)
 
 function handleContextMenu(event: MouseEvent) {
+  // 高亮模式下禁用右键菜单
+  if (props.isHighlighted || props.isPrimaryHighlight) {
+    event.preventDefault()
+    return
+  }
+
   // 先广播关闭所有TaskBar菜单
   window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
   if (props.task.type !== 'task' && props.task.type !== 'story') {
@@ -1505,6 +2130,12 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+
+  // 清理单击定时器
+  if (clickTimer !== null) {
+    clearTimeout(clickTimer)
+    clickTimer = null
+  }
 })
 </script>
 
@@ -1519,6 +2150,7 @@ onUnmounted(() => {
       color: taskStatus.color,
       cursor: isCompleted || isParent ? 'default' : 'move',
       '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
+      '--handle-width': `${actualHandleWidth}px` /* 传递手柄宽度给CSS变量 */,
     }"
     :class="{
       dragging: isDragging,
@@ -1528,7 +2160,11 @@ onUnmounted(() => {
       'week-view': isWeekView,
       'short-task-bar': isShortTaskBar,
       'overflow-effect': needsOverflowEffect,
+      highlighted: isHighlighted,
+      'primary-highlight': isPrimaryHighlight,
+      dimmed: isDimmed,
     }"
+    @click="handleTaskBarClick"
     @contextmenu="handleContextMenu"
     @dblclick="handleTaskBarDoubleClick"
   >
@@ -1550,8 +2186,16 @@ onUnmounted(() => {
 
     <!-- 左侧调整把手 -->
     <div
-      v-if="!isCompleted && !isParent && !isInteractionDisabled"
+      v-if="
+        !isCompleted &&
+        !isParent &&
+        !isInteractionDisabled &&
+        props.allowDragAndResize !== false &&
+        !isHighlighted &&
+        !isPrimaryHighlight
+      "
       class="resize-handle resize-handle-left"
+      :style="resizeHandleStyle"
       @mousedown="e => handleMouseDown(e, 'resize-left')"
     ></div>
 
@@ -1559,11 +2203,51 @@ onUnmounted(() => {
     <div
       v-if="!isParent"
       class="task-bar-content"
-      :style="{ cursor: isInteractionDisabled ? 'default' : 'move' }"
-      @mousedown="e => (isInteractionDisabled ? null : handleMouseDown(e, 'drag'))"
+      :style="{
+        cursor:
+          isInteractionDisabled ||
+          props.allowDragAndResize === false ||
+          isHighlighted ||
+          isPrimaryHighlight
+            ? 'grab'
+            : 'move',
+      }"
+      @mousedown="
+        e => {
+          // 高亮状态下不处理，让事件冒泡到Timeline
+          if (isHighlighted || isPrimaryHighlight) {
+            return
+          }
+          // 禁用交互时也不处理
+          if (isInteractionDisabled || props.allowDragAndResize === false) {
+            return
+          }
+          // 正常拖拽
+          handleMouseDown(e, 'drag')
+        }
+      "
     >
+      <!-- 任务头像 -->
+      <div
+        v-if="barConfig.showAvatar"
+        class="task-avatar"
+        :class="{ 'avatar-outside': shouldRenderAvatarOutside, 'avatar-default': !task.avatar }"
+        :style="getAvatarStyles()"
+      >
+        <!-- 图片头像 -->
+        <img v-if="task.avatar" :src="task.avatar" :alt="task.assignee || 'avatar'" />
+        <!-- 文字头像（负责人首字母） -->
+        <span v-else-if="task.assignee" class="avatar-text">
+          {{ task.assignee.charAt(0).toUpperCase() }}
+        </span>
+        <!-- 默认灰色用户图标 -->
+        <svg v-else class="avatar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
+        </svg>
+      </div>
+
       <!-- 任务名称 -->
-      <div ref="taskBarNameRef" :style="getNameStyles()">
+      <div v-if="barConfig.showTitle" ref="taskBarNameRef" :style="getNameStyles()">
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <div v-else class="task-name">
           {{ task.name }}
@@ -1571,15 +2255,27 @@ onUnmounted(() => {
       </div>
 
       <!-- 进度百分比 -->
-      <div v-if="shouldShowProgress" class="task-progress" :style="getProgressStyles()">
+      <div
+        v-if="barConfig.showProgress && shouldShowProgress"
+        class="task-progress"
+        :style="getProgressStyles()"
+      >
         {{ task.progress || 0 }}%
       </div>
     </div>
 
     <!-- 右侧调整把手 -->
     <div
-      v-if="!isCompleted && !isParent && !isInteractionDisabled"
+      v-if="
+        !isCompleted &&
+        !isParent &&
+        !isInteractionDisabled &&
+        props.allowDragAndResize !== false &&
+        !isHighlighted &&
+        !isPrimaryHighlight
+      "
       class="resize-handle resize-handle-right"
+      :style="resizeHandleStyle"
       @mousedown="e => handleMouseDown(e, 'resize-right')"
     ></div>
 
@@ -1596,10 +2292,10 @@ onUnmounted(() => {
         backgroundColor: bubbleIndicator.color,
         borderColor: bubbleIndicator.color,
       }"
-      @mouseenter="handleBubbleMouseEnter"
-      @mouseleave="handleBubbleMouseLeave"
-      @mousedown="handleBubbleMouseDown"
-      @click="handleBubbleClick"
+      @mouseenter.stop="handleBubbleMouseEnter"
+      @mouseleave.stop="handleBubbleMouseLeave"
+      @mousedown.stop="handleBubbleMouseDown"
+      @click.stop="handleBubbleClick"
     ></div>
 
     <TaskContextMenu
@@ -1682,7 +2378,10 @@ onUnmounted(() => {
   border-radius: 4px;
   user-select: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: box-shadow 0.2s;
+  transition:
+    box-shadow 0.2s,
+    transform 0.3s,
+    filter 0.3s;
   z-index: 100;
   border: 2px solid;
   overflow: visible; /* 允许内容超出 TaskBar */
@@ -1711,6 +2410,45 @@ onUnmounted(() => {
   z-index: 1000;
 }
 
+/* 高亮模式下，非高亮的TaskBar变暗淡 */
+.task-bar.dimmed {
+  opacity: 0.35 !important;
+  filter: grayscale(0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* 高亮样式 - 前置/后置任务 */
+.task-bar.highlighted {
+  z-index: 1002 !important;
+  box-shadow:
+    0 8px 24px rgba(64, 158, 255, 0.5),
+    0 6px 16px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-5px) scale(1.05) !important;
+  transition: all 0.3s ease !important;
+  cursor: grab !important;
+}
+
+/* 高亮TaskBar的内容加粗 */
+.task-bar.highlighted .task-bar-content {
+  font-weight: bold !important;
+}
+
+/* 主要高亮样式 - 被长按的任务 */
+.task-bar.primary-highlight {
+  z-index: 1003 !important;
+  box-shadow:
+    0 12px 32px rgba(64, 158, 255, 0.6),
+    0 8px 20px rgba(0, 0, 0, 0.35) !important;
+  transform: translateY(-8px) scale(1.08) !important;
+  transition: all 0.3s ease !important;
+  cursor: grab !important;
+}
+
+/* 主要高亮TaskBar的内容加粗 */
+.task-bar.primary-highlight .task-bar-content {
+  font-weight: bold !important;
+}
+
 .task-bar.parent-task {
   position: relative;
   border-radius: 0; /* 移除圆角，使用线性设计 */
@@ -1723,6 +2461,23 @@ onUnmounted(() => {
   transform: translateY(-50%); /* 上下居中 */
   cursor: pointer !important; /* 允许双击编辑 */
   overflow: visible; /* 确保伪元素可见 */
+}
+
+/* 高亮的父任务覆盖默认样式 */
+.task-bar.parent-task.highlighted {
+  box-shadow:
+    0 8px 24px rgba(64, 158, 255, 0.5),
+    0 6px 16px rgba(0, 0, 0, 0.3) !important;
+  filter: brightness(1.2) drop-shadow(0 0 8px rgba(64, 158, 255, 0.4)) !important;
+  transform: translateY(-50%) translateY(-5px) scale(1.05) !important;
+}
+
+.task-bar.parent-task.primary-highlight {
+  box-shadow:
+    0 12px 32px rgba(64, 158, 255, 0.6),
+    0 8px 20px rgba(0, 0, 0, 0.35) !important;
+  filter: brightness(1.25) drop-shadow(0 0 12px rgba(64, 158, 255, 0.6)) !important;
+  transform: translateY(-50%) translateY(-8px) scale(1.08) !important;
 }
 
 /* 父级任务的标签 */
@@ -1791,6 +2546,78 @@ onUnmounted(() => {
   z-index: 1;
 }
 
+.task-avatar {
+  position: absolute;
+  left: calc(var(--handle-width, 5px) + 3px); /* 手柄宽度 + 3px 间距 */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f0f0f0;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 15;
+  pointer-events: none; /* 不阻止拖拽 */
+  flex-shrink: 0; /* 防止被压缩 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 默认头像样式（灰色背景） */
+.task-avatar.avatar-default {
+  background: var(--gantt-bg-tertiary, #e0e0e0);
+  color: var(--gantt-text-tertiary, #9e9e9e);
+}
+
+/* 文字头像样式 */
+.task-avatar .avatar-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gantt-text-white, #ffffff);
+  background: var(--gantt-primary-color, #409eff);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+/* 默认图标样式 */
+.task-avatar .avatar-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--gantt-text-tertiary, #9e9e9e);
+}
+
+/* 当 taskbar 较窄时，将 avatar 渲染到外框左边缘 */
+.task-avatar.avatar-outside {
+  left: -12px; /* 位于 taskbar 左侧外框边缘 */
+  z-index: 20; /* 提高层级确保在最上层 */
+  border-width: 2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* 当任务条较窄时，调整内容padding以避免与头像重叠 */
+.task-bar-content:has(.task-avatar) {
+  padding-left: 36px; /* 为头像留出空间 */
+}
+
+/* 当 avatar 在外框时，不需要额外的 padding */
+.task-bar-content:has(.task-avatar.avatar-outside) {
+  padding-left: 8px;
+}
+
 .task-name {
   white-space: nowrap;
   overflow: visible;
@@ -1812,17 +2639,18 @@ onUnmounted(() => {
 .resize-handle {
   position: absolute;
   top: 0;
-  width: 6px;
+  /* 宽度通过内联样式设置，默认10px */
   height: 100%;
   cursor: ew-resize;
   background: rgba(0, 0, 0, 0.1);
   border-radius: 2px;
-  transition: background 0.2s;
+  transition: all 0.2s;
   z-index: 2;
 }
 
 .resize-handle:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.25); /* 悬停时更明显 */
+  transform: scaleX(1.2); /* 悬停时稍微增宽 */
 }
 
 .resize-handle-left {
@@ -1841,7 +2669,7 @@ onUnmounted(() => {
 
 .task-bar.overflow-effect .resize-handle:hover {
   background: rgba(0, 0, 0, 0.3);
-  width: 8px; /* 悬停时稍微加宽 */
+  transform: scaleX(1.3); /* 悬停时进一步增宽 */
 }
 
 /* 溢出模式下左右handle的位置调整 */
@@ -2308,5 +3136,27 @@ onUnmounted(() => {
 
 :global(html[data-theme='dark']) .task-bar.week-view {
   border-color: var(--gantt-border-light, #555555);
+}
+
+/* 暗色主题下的头像样式 */
+:global(html[data-theme='dark']) .task-avatar {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 暗色主题下的默认头像 */
+:global(html[data-theme='dark']) .task-avatar.avatar-default {
+  background: var(--gantt-bg-tertiary, #4a5568);
+  color: var(--gantt-text-tertiary, #718096);
+}
+
+/* 暗色主题下的图标颜色 */
+:global(html[data-theme='dark']) .task-avatar .avatar-icon {
+  color: var(--gantt-text-tertiary, #718096);
+}
+
+:global(html[data-theme='dark']) .task-avatar.avatar-outside {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 </style>

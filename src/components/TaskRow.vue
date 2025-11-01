@@ -31,7 +31,6 @@ interface TaskRowSlotProps {
 interface Props {
   task: Task
   level: number
-  onDoubleClick?: (task: Task) => void
   isHovered?: boolean
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
@@ -85,13 +84,8 @@ const handleTaskRowDoubleClick = (e: MouseEvent) => {
   // 阻止事件冒泡
   e.stopPropagation()
 
-  // 优先调用外部传入的双击处理器
-  if (props.onDoubleClick && typeof props.onDoubleClick === 'function') {
-    props.onDoubleClick(props.task)
-  } else {
-    // 默认行为：发出双击事件给父组件
-    emit('dblclick', props.task)
-  }
+  // 发出双击事件给父组件
+  emit('dblclick', props.task)
 }
 
 // 处理悬停事件
@@ -480,7 +474,6 @@ onUnmounted(() => {
         :level="props.level + 1"
         :is-hovered="props.hoveredTaskId === child.id"
         :hovered-task-id="props.hoveredTaskId"
-        :on-double-click="props.onDoubleClick"
         :on-hover="props.onHover"
         :columns="props.columns"
         @toggle="emit('toggle', $event)"

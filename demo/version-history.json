@@ -230,5 +230,43 @@
       "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @Guduxwa</span>",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @Guduxwa</span>"
     ]
+  },
+  {
+    "version": "1.4.2",
+    "date": "2025-11-01",
+    "notes": [
+      "TaskBar增加头像显示",
+      "TaskBar展示信息显示可配置",
+      "TaskBar长按聚焦高亮",
+      "Timeline Range自动优化计算, 提升显示效果",
+      "TaskListConfig支持像素和百分比设置方式",
+      "客制化多语言扩展支持",
+      "暴露更多外部可以使用属性和事件",
+      "说明文档更新，可读性更强",
+      "增加NPM包应用示例",
+      "支持拖拽和拉伸TaskBar/Milestone接近边界自动扩充时间轴范围",
+      "支持通过属性配置限制TaskBar/Milestone拖拽和拉伸",
+      "增强Timeline时间轴的拖拽体验,增加防抖保护",
+      "SonarQube代码质量检查问题修改",
+      "缺陷修复",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @SHENGLONG749/@xu-yiqi/@yfwork的使用及反馈的宝贵意见</span>",
+
+      "Added avatar display on TaskBar",
+      "Configurable display information on TaskBar",
+      "Long-press to focus and highlight TaskBar",
+      "Automatically optimized Timeline Range calculation for better visual performance",
+      "TaskListConfig now supports both pixel and percentage-based sizing",
+      "Custom multi-language extension support",
+      "Expose more external properties and events",
+      "Documentation updated for better readability",
+      "Added NPM package application examples",
+      "Support dragging and stretching TaskBar/Milestone to automatically expand timeline range near boundaries",
+      "Support property-based configuration to limit dragging and stretching of TaskBar/Milestone",
+      "Enhance dragging experience on Timeline, adding debounce protection",
+      "SonarQube code quality inspection issue modification",
+      "Bugfix",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749/@xu-yiqi/@yfwork for their valuable use and feedback</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @Guduxwa</span>"
+    ]
   }
 ]

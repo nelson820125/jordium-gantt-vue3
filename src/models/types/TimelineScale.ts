@@ -49,9 +49,15 @@ export const SCALE_CONFIGS = {
     headerLevels: 2,
     formatters: { primary: 'yyyy年', secondary: 'MM月' },
   },
+  quarter: {
+    scale: TimelineScale.QUARTER,
+    cellWidth: 60, // 每个季度的宽度
+    headerLevels: 2,
+    formatters: { primary: 'yyyy年', secondary: 'Q季度' },
+  },
   year: {
     scale: TimelineScale.YEAR,
-    cellWidth: 360,
+    cellWidth: 180, // 每半年的宽度
     headerLevels: 2,
     formatters: { primary: 'yyyy年', secondary: '上半年|下半年' },
   },

@@ -22,15 +22,55 @@ export interface TaskListColumnConfig {
 export interface TaskListConfig {
   columns?: TaskListColumnConfig[]
   showAllColumns?: boolean // 是否显示所有列，默认true
-  defaultWidth?: number // 默认展开宽度，单位像素，默认320px
-  minWidth?: number // 最小宽度，单位像素，默认280px，不能小于280px
-  maxWidth?: number // 最大宽度，单位像素，默认1160px
+  defaultWidth?: number | string // 默认展开宽度，支持像素数字（如 320）或百分比字符串（如 '30%'），默认320px
+  minWidth?: number | string // 最小宽度，支持像素数字（如 280）或百分比字符串（如 '20%'），默认280px，不能小于280px
+  maxWidth?: number | string // 最大宽度，支持像素数字（如 1160）或百分比字符串（如 '80%'），默认1160px
 }
 
 // 默认宽度配置
 export const DEFAULT_TASK_LIST_WIDTH = 320 // 默认展开宽度
 export const DEFAULT_TASK_LIST_MIN_WIDTH = 280 // 最小宽度
 export const DEFAULT_TASK_LIST_MAX_WIDTH = 1160 // 最大宽度
+
+/**
+ * 解析宽度值（支持像素数字或百分比字符串）
+ * @param value 宽度值，可以是数字（像素）或字符串（百分比，如 '30%'）
+ * @param containerWidth 容器宽度（用于计算百分比）
+ * @param defaultValue 默认值
+ * @returns 解析后的像素值
+ */
+export function parseWidthValue(
+  value: number | string | undefined,
+  containerWidth: number,
+  defaultValue: number,
+): number {
+  if (value === undefined || value === null) {
+    return defaultValue
+  }
+
+  // 如果是数字，直接返回
+  if (typeof value === 'number') {
+    return value
+  }
+
+  // 如果是字符串，检查是否是百分比
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed.endsWith('%')) {
+      const percentage = parseFloat(trimmed)
+      if (!isNaN(percentage)) {
+        return Math.round((containerWidth * percentage) / 100)
+      }
+    }
+    // 尝试解析为数字
+    const parsed = parseFloat(trimmed)
+    if (!isNaN(parsed)) {
+      return parsed
+    }
+  }
+
+  return defaultValue
+}
 
 // 默认列配置
 export const DEFAULT_TASK_LIST_COLUMNS: TaskListColumnConfig[] = [

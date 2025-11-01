@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2025-11-01
+
+### Added
+- TaskBar增加头像显示
+- TaskBar展示信息显示可配置
+- TaskBar长按聚焦高亮
+- Timeline Range自动优化计算, 提升显示效果
+- TaskListConfig支持像素和百分比设置方式
+- 支持拖拽和拉伸TaskBar/Milestone接近边界自动扩充时间轴范围
+- 支持通过属性配置限制TaskBar/Milestone拖拽和拉伸
+- 暴露更多外部可以使用属性和事件
+- 增加NPM包应用示例
+- Added avatar display on TaskBar
+- Configurable display information on TaskBar
+- Long-press to focus and highlight TaskBar
+- Automatically optimized Timeline Range calculation for better visual performance
+- TaskListConfig now supports both pixel and percentage-based sizing
+- Support dragging and stretching TaskBar/Milestone to automatically expand timeline range near boundaries
+- Support property-based configuration to limit dragging and stretching of TaskBar/Milestone
+- Expose more external properties and events
+- Added NPM package application examples
+
+### Changed
+- 客制化多语言扩展支持
+- 说明文档更新，可读性更强
+- 增强Timeline时间轴的拖拽体验,增加防抖保护
+- Custom multi-language extension support
+- Documentation updated for better readability
+- Enhance dragging experience on Timeline, adding debounce protection
+
+### Fixed
+- SonarQube代码质量检查问题修改
+- 缺陷修复
+- Modification of SonarQube code quality inspection issues
+- Bugfix
+
 ## [1.4.1] - 2025-10-26
 
 ### Fixed

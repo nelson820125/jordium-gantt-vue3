@@ -4,6 +4,7 @@ export interface Task {
   name: string
   predecessor?: number[] // 前置任务ID数组
   assignee?: string
+  avatar?: string // 任务负责人头像URL
   startDate?: string
   endDate?: string
   progress?: number
@@ -23,6 +24,8 @@ export interface Task {
   timerEndTime?: number // 结束计时时间
   timerStartDesc?: string // 计时开始时填写的描述
   timerElapsedTime?: number
+  // 权限控制
+  isEditable?: boolean // 是否可编辑（可拖拽、拉伸），默认为true
   // 支持自定义属性 - 使用 unknown 允许任意类型
   [key: string]: unknown
 }
