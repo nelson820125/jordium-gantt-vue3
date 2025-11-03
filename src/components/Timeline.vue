@@ -729,8 +729,6 @@ const getCachedTimelineData = (): unknown => {
 // 获取虚拟滚动优化后的时间轴数据
 const optimizedTimelineData = computed(() => {
   const cachedData = getCachedTimelineData() as any
-  // TODO 测试后删除
-  console.log('optimizedTimelineData - cachedData: ', cachedData)
   // 只在小时视图中应用虚拟滚动
   if (currentTimeScale.value === TimelineScale.HOUR && Array.isArray(cachedData)) {
     const { startHour, endHour } = visibleHourRange.value
@@ -776,8 +774,6 @@ const optimizedTimelineData = computed(() => {
 // 计算完整时间线的总宽度（用于虚拟滚动容器）
 const totalTimelineWidth = computed(() => {
   const cachedData = getCachedTimelineData() as any
-  // TODO 测试后删除
-  console.log('totalTimelineWidth - cachedData: ', cachedData)
   if (currentTimeScale.value === TimelineScale.HOUR) {
     if (Array.isArray(cachedData)) {
       // 计算总小时数
@@ -800,8 +796,6 @@ const totalTimelineWidth = computed(() => {
       const totalWeeks = cachedData.reduce((total, month: { weeks?: unknown[] }) => {
         return total + (month.weeks?.length || 0)
       }, 0)
-      // TODO 测试后删除
-      console.log('total weeks: ', totalWeeks)
       return totalWeeks * 60
     } else if (currentTimeScale.value === TimelineScale.MONTH) {
       return cachedData.length * 60

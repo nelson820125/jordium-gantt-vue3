@@ -142,6 +142,7 @@ const formData = reactive<Task>({
   timerStartTime: undefined, // 计时器开始时间
   timerEndTime: undefined, // 计时器结束时间
   timerElapsedTime: 0, // 计时器已用时间
+  children: undefined, // 子任务列表
 })
 
 // 任务列表数据
@@ -392,6 +393,7 @@ const resetForm = () => {
     timerStartTime: undefined,
     timerEndTime: undefined,
     timerElapsedTime: 0,
+    children: undefined,
   })
 
   // 清除错误信息
