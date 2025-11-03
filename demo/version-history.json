@@ -250,7 +250,6 @@
       "SonarQube代码质量检查问题修改",
       "缺陷修复",
       "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @SHENGLONG749/@xu-yiqi/@yfwork的使用及反馈的宝贵意见</span>",
-
       "Added avatar display on TaskBar",
       "Configurable display information on TaskBar",
       "Long-press to focus and highlight TaskBar",
@@ -265,8 +264,17 @@
       "Enhance dragging experience on Timeline, adding debounce protection",
       "SonarQube code quality inspection issue modification",
       "Bugfix",
-      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749/@xu-yiqi/@yfwork for their valuable use and feedback</span>",
-      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @Guduxwa</span>"
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749/@xu-yiqi/@yfwork for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.2-patch1",
+    "date": "2025-11-03",
+    "notes": [
+      "缺陷修复：更新父级任务后，再次更新子级任务是发生无限循环调用的问题修复",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 Ky1in666@github的使用及反馈的宝贵意见</span>",
+      "Defect fix: Fixed the issue of infinite loop calls when updating child tasks after updating the parent task",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to Ky1in666@github for their valuable use and feedback</span>"
     ]
   }
 ]
