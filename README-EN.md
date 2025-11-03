@@ -2,7 +2,10 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
-    <img src="https://img.shields.io/npm/v/jordium-gantt-vue3.svg" alt="npm version">
+    <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
+  </a>
+  <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
+    <img src="https://img.shields.io/npm/dt/jordium-gantt-vue3?style=flat-square" alt="npm total">
   </a>
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
@@ -105,10 +108,7 @@ Create your first Gantt chart:
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart 
-      :tasks="tasks"
-      :milestones="milestones"
-    />
+    <GanttChart :tasks="tasks" :milestones="milestones" />
   </div>
 </template>
 
@@ -123,7 +123,7 @@ const tasks = ref([
     name: 'Project Kickoff',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
-    progress: 100
+    progress: 100,
   },
   {
     id: 2,
@@ -131,7 +131,7 @@ const tasks = ref([
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 80,
-    predecessor: [1]
+    predecessor: [1],
   },
   {
     id: 3,
@@ -139,8 +139,8 @@ const tasks = ref([
     startDate: '2025-01-21',
     endDate: '2025-02-05',
     progress: 50,
-    predecessor: [2]
-  }
+    predecessor: [2],
+  },
 ])
 
 const milestones = ref([
@@ -148,8 +148,8 @@ const milestones = ref([
     id: 101,
     name: 'Project Approval',
     date: '2025-01-01',
-    type: 'milestone'
-  }
+    type: 'milestone',
+  },
 ])
 </script>
 ```
@@ -158,6 +158,7 @@ const milestones = ref([
 <span><strong>Recommended: <a href="https://dovee.cc/a.php?anaxjgyz1ozZq2B">DOVE</a> VPN for fast and stable access.</strong></span> <span style="color:red;">(Note: Please use VPN services legally)</span>
 
 ## 🌞 NPM Package Usage Example
+
 Please refer to the npm-demo folder in the project.
 It is a standalone project that can be opened and run independently using your IDE.
 Before running, make sure to install the Element Plus library and the jordium-gantt-vue3 plugin package.
@@ -168,6 +169,7 @@ npm install element-plus
 npm install jordium-gantt-vue3
 npm run dev
 ```
+
 ---
 
 ## 📖 Component Guide
@@ -178,68 +180,69 @@ npm run dev
 
 #### Basic Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `tasks` | `Task[]` | `[]` | Array of task data |
-| `milestones` | `Task[]` | `[]` | Array of milestone data (Note: Type is Task[], must set type='milestone') |
-| `showToolbar` | `boolean` | `true` | Whether to show the toolbar |
-| `useDefaultDrawer` | `boolean` | `true` | Whether to use the built-in task edit drawer (TaskDrawer) |
-| `useDefaultMilestoneDialog` | `boolean` | `true` | Whether to use the built-in milestone edit dialog (MilestoneDialog) |
-| `autoSortByStartDate` | `boolean` | `false` | Whether to automatically sort tasks by start date |
-| `allowDragAndResize` | `boolean` | `true` | Whether to allow dragging and resizing tasks/milestones |
+| Prop                        | Type      | Default | Description                                                               |
+| --------------------------- | --------- | ------- | ------------------------------------------------------------------------- |
+| `tasks`                     | `Task[]`  | `[]`    | Array of task data                                                        |
+| `milestones`                | `Task[]`  | `[]`    | Array of milestone data (Note: Type is Task[], must set type='milestone') |
+| `showToolbar`               | `boolean` | `true`  | Whether to show the toolbar                                               |
+| `useDefaultDrawer`          | `boolean` | `true`  | Whether to use the built-in task edit drawer (TaskDrawer)                 |
+| `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
+| `autoSortByStartDate`       | `boolean` | `false` | Whether to automatically sort tasks by start date                         |
+| `allowDragAndResize`        | `boolean` | `true`  | Whether to allow dragging and resizing tasks/milestones                   |
 
 #### Configuration Object Props
 
 For complete configuration object documentation, see [⚙️ Configuration & Customization](#⚙️-configuration--customization) section.
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `toolbarConfig` | `ToolbarConfig` | `{}` | Toolbar configuration |
-| `taskListConfig` | `TaskListConfig` | `undefined` | Task list configuration |
-| `taskBarConfig` | `TaskBarConfig` | `undefined` | Task bar style configuration |
-| `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined` | Custom localization messages |
-| `workingHours` | `WorkingHours` | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | Working hours configuration |
+| Prop             | Type                         | Default                                                                 | Description                  |
+| ---------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------------------- |
+| `toolbarConfig`  | `ToolbarConfig`              | `{}`                                                                    | Toolbar configuration        |
+| `taskListConfig` | `TaskListConfig`             | `undefined`                                                             | Task list configuration      |
+| `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | Task bar style configuration |
+| `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | Custom localization messages |
+| `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | Working hours configuration  |
 
 #### Callback Props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `onTodayLocate` | `() => void` | Toolbar "Today" button click callback |
-| `onExportCsv` | `() => boolean \| void` | Toolbar "Export CSV" button click callback, return `false` to prevent default export |
-| `onExportPdf` | `() => void` | Toolbar "Export PDF" button click callback |
-| `onLanguageChange` | `(lang: 'zh-CN' \| 'en-US') => void` | Language switch callback |
-| `onThemeChange` | `(isDark: boolean) => void` | Theme switch callback |
-| `onFullscreenChange` | `(isFullscreen: boolean) => void` | Fullscreen toggle callback |
-| `onExpandAll` | `() => void` | Toolbar "Expand All" button click callback |
-| `onCollapseAll` | `() => void` | Toolbar "Collapse All" button click callback |
+| Prop                 | Type                                 | Description                                                                          |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `onTodayLocate`      | `() => void`                         | Toolbar "Today" button click callback                                                |
+| `onExportCsv`        | `() => boolean \| void`              | Toolbar "Export CSV" button click callback, return `false` to prevent default export |
+| `onExportPdf`        | `() => void`                         | Toolbar "Export PDF" button click callback                                           |
+| `onLanguageChange`   | `(lang: 'zh-CN' \| 'en-US') => void` | Language switch callback                                                             |
+| `onThemeChange`      | `(isDark: boolean) => void`          | Theme switch callback                                                                |
+| `onFullscreenChange` | `(isFullscreen: boolean) => void`    | Fullscreen toggle callback                                                           |
+| `onExpandAll`        | `() => void`                         | Toolbar "Expand All" button click callback                                           |
+| `onCollapseAll`      | `() => void`                         | Toolbar "Collapse All" button click callback                                         |
 
 #### Component Events
 
 For complete event documentation, see:
+
 - **Task-related events**: See [Task Management](#task-management) section below
 - **Milestone-related events**: See [Milestone Management](#milestone-management) section below
 
 **Event List Overview:**
 
-| Event Name | Parameters | Description |
-|------------|------------|-------------|
-| `add-task` | - | Clicked toolbar "Add Task" button |
-| `task-click` | `(task: Task, event: MouseEvent)` | Clicked task |
-| `task-double-click` | `(task: Task)` | Double-clicked task |
-| `task-added` | `{ task: Task }` | Triggered after task added |
-| `task-updated` | `{ task: Task }` | Triggered after task updated |
-| `task-deleted` | `{ task: Task }` | Triggered after task deleted |
-| `taskbar-drag-end` | `(task: Task)` | Task drag ended |
-| `taskbar-resize-end` | `(task: Task)` | Task resize ended |
-| `predecessor-added` | `{ targetTask, newTask }` | Added predecessor task |
-| `successor-added` | `{ targetTask, newTask }` | Added successor task |
-| `timer-started` | `(task: Task)` | Task timer started |
-| `timer-stopped` | `(task: Task)` | Task timer stopped |
-| `add-milestone` | - | Clicked toolbar "Add Milestone" button |
-| `milestone-saved` | `(milestone: Task)` | Milestone saved |
-| `milestone-deleted` | `{ milestoneId: number }` | Milestone deleted |
-| `milestone-icon-changed` | `{ milestoneId, icon }` | Milestone icon changed |
-| `milestone-drag-end` | `(milestone: Task)` | Milestone drag ended |
+| Event Name               | Parameters                        | Description                            |
+| ------------------------ | --------------------------------- | -------------------------------------- |
+| `add-task`               | -                                 | Clicked toolbar "Add Task" button      |
+| `task-click`             | `(task: Task, event: MouseEvent)` | Clicked task                           |
+| `task-double-click`      | `(task: Task)`                    | Double-clicked task                    |
+| `task-added`             | `{ task: Task }`                  | Triggered after task added             |
+| `task-updated`           | `{ task: Task }`                  | Triggered after task updated           |
+| `task-deleted`           | `{ task: Task }`                  | Triggered after task deleted           |
+| `taskbar-drag-end`       | `(task: Task)`                    | Task drag ended                        |
+| `taskbar-resize-end`     | `(task: Task)`                    | Task resize ended                      |
+| `predecessor-added`      | `{ targetTask, newTask }`         | Added predecessor task                 |
+| `successor-added`        | `{ targetTask, newTask }`         | Added successor task                   |
+| `timer-started`          | `(task: Task)`                    | Task timer started                     |
+| `timer-stopped`          | `(task: Task)`                    | Task timer stopped                     |
+| `add-milestone`          | -                                 | Clicked toolbar "Add Milestone" button |
+| `milestone-saved`        | `(milestone: Task)`               | Milestone saved                        |
+| `milestone-deleted`      | `{ milestoneId: number }`         | Milestone deleted                      |
+| `milestone-icon-changed` | `{ milestoneId, icon }`           | Milestone icon changed                 |
+| `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
 
 #### Example 1: Simplest Gantt Chart
 
@@ -261,8 +264,8 @@ const tasks = ref([
     name: 'Task 1',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
-    progress: 100
-  }
+    progress: 100,
+  },
 ])
 </script>
 ```
@@ -272,10 +275,7 @@ const tasks = ref([
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart 
-      :tasks="tasks"
-      :milestones="milestones"
-    />
+    <GanttChart :tasks="tasks" :milestones="milestones" />
   </div>
 </template>
 
@@ -290,8 +290,8 @@ const tasks = ref([
     name: 'Project Kickoff',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
-    progress: 100
-  }
+    progress: 100,
+  },
 ])
 
 const milestones = ref([
@@ -300,8 +300,8 @@ const milestones = ref([
     name: 'Project Approval',
     startDate: '2025-01-01',
     type: 'milestone',
-    icon: 'diamond'
-  }
+    icon: 'diamond',
+  },
 ])
 </script>
 ```
@@ -316,10 +316,10 @@ const milestones = ref([
       <button @click="addTask">Add Task</button>
       <button @click="addMilestone">Add Milestone</button>
     </div>
-    
+
     <!-- Gantt chart component with hidden built-in toolbar -->
     <div style="height: 600px;">
-      <GanttChart 
+      <GanttChart
         :tasks="tasks"
         :milestones="milestones"
         :show-toolbar="false"
@@ -344,7 +344,7 @@ const addTask = () => {
     name: 'New Task',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    progress: 0
+    progress: 0,
   }
   tasks.value.push(newTask)
 }
@@ -354,16 +354,16 @@ const addMilestone = () => {
     id: Date.now(),
     name: 'New Milestone',
     startDate: new Date().toISOString().split('T')[0],
-    type: 'milestone'
+    type: 'milestone',
   }
   milestones.value.push(newMilestone)
 }
 
-const handleTaskAdded = (e) => {
+const handleTaskAdded = e => {
   console.log('Task added:', e.task)
 }
 
-const handleMilestoneSaved = (milestone) => {
+const handleMilestoneSaved = milestone => {
   console.log('Milestone saved:', milestone)
 }
 </script>
@@ -377,54 +377,56 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 
 #### Task Data Structure
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `id` | `number` | ✅ | - | Unique task identifier |
-| `name` | `string` | ✅ | - | Task name |
-| `startDate` | `string` | - | - | Start date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm' |
-| `endDate` | `string` | - | - | End date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm' |
-| `progress` | `number` | - | `0` | Task progress, range 0-100 |
-| `predecessor` | `number[]` | - | - | Array of predecessor task IDs, standard format: `[1, 2, 3]`<br/>**Compatible formats**: Also supports string `'1,2,3'` or string array `['1', '2', '3']`, component will auto-parse |
-| `assignee` | `string` | - | - | Task assignee |
-| `avatar` | `string` | - | - | Avatar URL of task assignee |
-| `estimatedHours` | `number` | - | - | Estimated hours |
-| `actualHours` | `number` | - | - | Actual hours |
-| `parentId` | `number` | - | - | Parent task ID, used for task grouping |
-| `children` | `Task[]` | - | - | Array of child tasks |
-| `collapsed` | `boolean` | - | `false` | Whether child tasks are collapsed |
-| `isParent` | `boolean` | - | - | Whether this is a parent task |
-| `type` | `string` | - | - | Task type, 'milestone' for milestone, 'milestone-group' for milestone group |
-| `description` | `string` | - | - | Task description |
-| `icon` | `string` | - | `'diamond'` | Task icon (for milestones), options: 'diamond', 'flag', 'star', 'rocket', etc. |
-| `level` | `number` | - | `0` | Task level (auto-calculated) |
-| `isTimerRunning` | `boolean` | - | `false` | Whether timer is running |
-| `timerStartTime` | `number` | - | - | Timer start time (timestamp) |
-| `timerEndTime` | `number` | - | - | Timer end time (timestamp) |
-| `timerStartDesc` | `string` | - | - | Description filled when timer starts |
-| `timerElapsedTime` | `number` | - | `0` | Elapsed time (milliseconds) |
-| `isEditable` | `boolean` | - | `true` | Whether individual task is editable (draggable, resizable), overrides global `allowDragAndResize` |
-| `[key: string]` | `unknown` | - | - | Supports custom property extensions, can add any additional fields |
+| Field              | Type       | Required | Default     | Description                                                                                                                                                                         |
+| ------------------ | ---------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`               | `number`   | ✅       | -           | Unique task identifier                                                                                                                                                              |
+| `name`             | `string`   | ✅       | -           | Task name                                                                                                                                                                           |
+| `startDate`        | `string`   | -        | -           | Start date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                                                                                                                              |
+| `endDate`          | `string`   | -        | -           | End date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                                                                                                                                |
+| `progress`         | `number`   | -        | `0`         | Task progress, range 0-100                                                                                                                                                          |
+| `predecessor`      | `number[]` | -        | -           | Array of predecessor task IDs, standard format: `[1, 2, 3]`<br/>**Compatible formats**: Also supports string `'1,2,3'` or string array `['1', '2', '3']`, component will auto-parse |
+| `assignee`         | `string`   | -        | -           | Task assignee                                                                                                                                                                       |
+| `avatar`           | `string`   | -        | -           | Avatar URL of task assignee                                                                                                                                                         |
+| `estimatedHours`   | `number`   | -        | -           | Estimated hours                                                                                                                                                                     |
+| `actualHours`      | `number`   | -        | -           | Actual hours                                                                                                                                                                        |
+| `parentId`         | `number`   | -        | -           | Parent task ID, used for task grouping                                                                                                                                              |
+| `children`         | `Task[]`   | -        | -           | Array of child tasks                                                                                                                                                                |
+| `collapsed`        | `boolean`  | -        | `false`     | Whether child tasks are collapsed                                                                                                                                                   |
+| `isParent`         | `boolean`  | -        | -           | Whether this is a parent task                                                                                                                                                       |
+| `type`             | `string`   | -        | -           | Task type, 'milestone' for milestone, 'milestone-group' for milestone group                                                                                                         |
+| `description`      | `string`   | -        | -           | Task description                                                                                                                                                                    |
+| `icon`             | `string`   | -        | `'diamond'` | Task icon (for milestones), options: 'diamond', 'flag', 'star', 'rocket', etc.                                                                                                      |
+| `level`            | `number`   | -        | `0`         | Task level (auto-calculated)                                                                                                                                                        |
+| `isTimerRunning`   | `boolean`  | -        | `false`     | Whether timer is running                                                                                                                                                            |
+| `timerStartTime`   | `number`   | -        | -           | Timer start time (timestamp)                                                                                                                                                        |
+| `timerEndTime`     | `number`   | -        | -           | Timer end time (timestamp)                                                                                                                                                          |
+| `timerStartDesc`   | `string`   | -        | -           | Description filled when timer starts                                                                                                                                                |
+| `timerElapsedTime` | `number`   | -        | `0`         | Elapsed time (milliseconds)                                                                                                                                                         |
+| `isEditable`       | `boolean`  | -        | `true`      | Whether individual task is editable (draggable, resizable), overrides global `allowDragAndResize`                                                                                   |
+| `[key: string]`    | `unknown`  | -        | -           | Supports custom property extensions, can add any additional fields                                                                                                                  |
 
 > **Custom Property Extensions**: The Task interface supports adding arbitrary custom fields, such as: `priority`, `tags`, `status`, `department`, and other business-related fields.
-> 
+>
 > **Predecessor Field Notes**:
+>
 > - **Standard format** (recommended): `predecessor: [1, 2, 3]` - number array
-> **Compatible format 1**: `predecessor: '1,2,3'` - comma-separated string
+>   **Compatible format 1**: `predecessor: '1,2,3'` - comma-separated string
 > - **Compatible format 2**: `predecessor: ['1', '2', '3']` - string array
 > - Component will automatically parse all formats into number array
 > - No predecessors: use empty array `[]`, empty string `''`, or don't set this field
 
 #### Task-Related Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `tasks` | `Task[]` | `[]` | Array of task data |
-| `useDefaultDrawer` | `boolean` | `true` | Whether to use built-in task edit drawer (TaskDrawer) |
-| `taskBarConfig` | `TaskBarConfig` | `{}` | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
-| `taskListConfig` | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration) |
-| `autoSortByStartDate` | `boolean` | `false` | Whether to automatically sort tasks by start date |
+| Prop                  | Type             | Default     | Description                                                                                   |
+| --------------------- | ---------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `tasks`               | `Task[]`         | `[]`        | Array of task data                                                                            |
+| `useDefaultDrawer`    | `boolean`        | `true`      | Whether to use built-in task edit drawer (TaskDrawer)                                         |
+| `taskBarConfig`       | `TaskBarConfig`  | `{}`        | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
+| `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
+| `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
 
 **Configuration Notes**:
+
 - **Default mode**: `useDefaultDrawer=true` (default), double-click task to auto-open built-in TaskDrawer
 - **Custom editor**: `useDefaultDrawer=false` disables built-in drawer, listen to `@task-double-click` event to open custom editor
 - **Read-only mode**: `useDefaultDrawer=false` and don't listen to `@task-double-click` event, user double-click task has no response
@@ -433,22 +435,23 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 
 > **💡 Event-Driven Architecture**: Component adopts pure event-driven design. All user operations (add, edit, delete, drag, etc.) will trigger corresponding events for easy external listening and handling.
 
-| Event Name | Parameters | When Triggered | Description |
-|------------|------------|----------------|-------------|
-| `add-task` | - | When clicking toolbar "Add Task" button | Can be used for custom add task logic. If `useDefaultDrawer=true`, component will auto-open built-in TaskDrawer |
-| `task-click` | `(task: Task, event: MouseEvent) => void` | When clicking task bar | Triggered on single-click task |
-| `task-double-click` | `(task: Task) => void` | When double-clicking task bar | Double-click task **always triggers**. When `useDefaultDrawer=true`, component will additionally open built-in editor; when `false`, won't open. Event triggering is independent of property value |
-| `task-added` | `{ task: Task }` | After task added | Triggered after adding task via built-in TaskDrawer. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing (like calling API to save) |
-| `task-updated` | `{ task: Task }` | After task updated | Triggered after updating task via built-in TaskDrawer or drag. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing |
-| `task-deleted` | `{ task: Task }` | After task deleted | Triggered after deleting task via built-in TaskDrawer. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing |
-| `taskbar-drag-end` | `(task: Task) => void` | When task bar drag ends | Task position changed, startDate and endDate updated. **Note**: Component has auto-updated `tasks` data |
-| `taskbar-resize-end` | `(task: Task) => void` | When task bar resize ends | Task duration changed, endDate updated. **Note**: Component has auto-updated `tasks` data |
-| `predecessor-added` | `{ targetTask: Task, newTask: Task }` | After adding predecessor via context menu | `targetTask` is the task to which predecessor is added, `newTask` is the newly created predecessor task |
-| `successor-added` | `{ targetTask: Task, newTask: Task }` | After adding successor via context menu | `targetTask` is the original task, `newTask` is the newly created successor task (its predecessor already contains targetTask.id) |
-| `timer-started` | `(task: Task) => void` | When task timer starts | Start recording task hours |
-| `timer-stopped` | `(task: Task) => void` | When task timer stops | Stop recording task hours |
+| Event Name           | Parameters                                | When Triggered                            | Description                                                                                                                                                                                              |
+| -------------------- | ----------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `add-task`           | -                                         | When clicking toolbar "Add Task" button   | Can be used for custom add task logic. If `useDefaultDrawer=true`, component will auto-open built-in TaskDrawer                                                                                          |
+| `task-click`         | `(task: Task, event: MouseEvent) => void` | When clicking task bar                    | Triggered on single-click task                                                                                                                                                                           |
+| `task-double-click`  | `(task: Task) => void`                    | When double-clicking task bar             | Double-click task **always triggers**. When `useDefaultDrawer=true`, component will additionally open built-in editor; when `false`, won't open. Event triggering is independent of property value       |
+| `task-added`         | `{ task: Task }`                          | After task added                          | Triggered after adding task via built-in TaskDrawer. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing (like calling API to save) |
+| `task-updated`       | `{ task: Task }`                          | After task updated                        | Triggered after updating task via built-in TaskDrawer or drag. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing                  |
+| `task-deleted`       | `{ task: Task }`                          | After task deleted                        | Triggered after deleting task via built-in TaskDrawer. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing                          |
+| `taskbar-drag-end`   | `(task: Task) => void`                    | When task bar drag ends                   | Task position changed, startDate and endDate updated. **Note**: Component has auto-updated `tasks` data                                                                                                  |
+| `taskbar-resize-end` | `(task: Task) => void`                    | When task bar resize ends                 | Task duration changed, endDate updated. **Note**: Component has auto-updated `tasks` data                                                                                                                |
+| `predecessor-added`  | `{ targetTask: Task, newTask: Task }`     | After adding predecessor via context menu | `targetTask` is the task to which predecessor is added, `newTask` is the newly created predecessor task                                                                                                  |
+| `successor-added`    | `{ targetTask: Task, newTask: Task }`     | After adding successor via context menu   | `targetTask` is the original task, `newTask` is the newly created successor task (its predecessor already contains targetTask.id)                                                                        |
+| `timer-started`      | `(task: Task) => void`                    | When task timer starts                    | Start recording task hours                                                                                                                                                                               |
+| `timer-stopped`      | `(task: Task) => void`                    | When task timer stops                     | Stop recording task hours                                                                                                                                                                                |
 
 **Data Synchronization Notes**:
+
 - ✅ **Component auto-updates internally**: For all task CRUD operations, component will auto-update `props.tasks` data
 - ✅ **Events are for notification only**: External event listeners are mainly for: showing messages, calling backend APIs, updating other related data, etc.
 - ❌ **Avoid duplicate operations**: Don't modify `tasks` data again in event handlers, otherwise it will cause duplicate updates
@@ -458,7 +461,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart 
+    <GanttChart
       :tasks="tasks"
       @add-task="handleAddTask"
       @task-added="handleTaskAdded"
@@ -494,7 +497,7 @@ const tasks = ref<Task[]>([
     progress: 60,
     assignee: 'Bob',
     predecessor: [1], // Depends on task 1
-  }
+  },
 ])
 
 // Toolbar "Add Task" button click event
@@ -547,7 +550,7 @@ Tasks can configure predecessors via the `predecessor` field, and the component 
 
 ```vue
 <template>
-  <GanttChart 
+  <GanttChart
     :tasks="tasks"
     @predecessor-added="handlePredecessorAdded"
     @successor-added="handleSuccessorAdded"
@@ -567,7 +570,7 @@ const tasks = ref<Task[]>([
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
-    predecessor: [] // No predecessors
+    predecessor: [], // No predecessors
   },
   {
     id: 2,
@@ -575,7 +578,7 @@ const tasks = ref<Task[]>([
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 80,
-    predecessor: [1] // Depends on task 1 (Requirements Analysis)
+    predecessor: [1], // Depends on task 1 (Requirements Analysis)
   },
   {
     id: 3,
@@ -583,7 +586,7 @@ const tasks = ref<Task[]>([
     startDate: '2025-01-11',
     endDate: '2025-01-18',
     progress: 90,
-    predecessor: [1] // Depends on task 1
+    predecessor: [1], // Depends on task 1
   },
   {
     id: 4,
@@ -591,7 +594,7 @@ const tasks = ref<Task[]>([
     startDate: '2025-01-21',
     endDate: '2025-02-10',
     progress: 60,
-    predecessor: [2] // Depends on task 2 (System Design)
+    predecessor: [2], // Depends on task 2 (System Design)
   },
   {
     id: 5,
@@ -599,7 +602,7 @@ const tasks = ref<Task[]>([
     startDate: '2025-01-19',
     endDate: '2025-02-08',
     progress: 70,
-    predecessor: [2, 3] // Depends on both task 2 and 3
+    predecessor: [2, 3], // Depends on both task 2 and 3
   },
   {
     id: 6,
@@ -607,8 +610,8 @@ const tasks = ref<Task[]>([
     startDate: '2025-02-11',
     endDate: '2025-02-20',
     progress: 30,
-    predecessor: [4, 5] // Depends on frontend and backend development completion
-  }
+    predecessor: [4, 5], // Depends on frontend and backend development completion
+  },
 ])
 
 // Triggered when adding predecessor via context menu
@@ -630,6 +633,7 @@ const handleSuccessorAdded = (event: { targetTask: Task; newTask: Task }) => {
 ```
 
 **Dependency Relationship Notes**:
+
 - **`predecessor` field supports multiple formats**:
   - Standard format (recommended): `[1, 2, 3]` - number array
   - Compatible format 1: `'1,2,3'` - comma-separated string
@@ -655,9 +659,9 @@ Suitable for scenarios requiring complete custom control bar:
       <button @click="triggerAddMilestone">Add Milestone</button>
       <!-- Other custom buttons... -->
     </div>
-    
+
     <!-- Gantt chart component with hidden built-in toolbar -->
-    <GanttChart 
+    <GanttChart
       :tasks="tasks"
       :milestones="milestones"
       :show-toolbar="false"
@@ -698,7 +702,7 @@ const handleAddMilestone = () => {
   console.log('Preparing to add milestone (triggered by custom button)')
 }
 
-const handleTaskAdded = (e) => {
+const handleTaskAdded = e => {
   console.log('Task added:', e.task)
   // Call API to save...
 }
@@ -706,6 +710,7 @@ const handleTaskAdded = (e) => {
 ```
 
 > **💡 Flexibility Design**:
+>
 > - Show toolbar + default editor: Simplest out-of-the-box approach
 > - Hide toolbar + custom buttons + default editor: Custom control bar style while keeping default edit functionality
 > - Hide toolbar + custom buttons + custom editor: Fully customize all interaction logic
@@ -720,32 +725,34 @@ Milestones are used to mark important time points in a project, such as project 
 
 #### Milestone Data Structure
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `id` | `number` | ✅ | - | Unique milestone identifier |
-| `name` | `string` | ✅ | - | Milestone name |
-| `startDate` | `string` | ✅ | - | Milestone date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm' |
-| `endDate` | `string` | - | - | End date (usually not needed for milestones, auto-set to same as startDate) |
-| `assignee` | `string` | - | - | Assignee |
-| `type` | `string` | ✅ | `'milestone'` | Type identifier, must be set to 'milestone' |
-| `icon` | `string` | - | `'diamond'` | Milestone icon, options: 'diamond', 'flag', 'star', 'rocket', etc. |
-| `description` | `string` | - | - | Milestone description |
+| Field         | Type     | Required | Default       | Description                                                                 |
+| ------------- | -------- | -------- | ------------- | --------------------------------------------------------------------------- |
+| `id`          | `number` | ✅       | -             | Unique milestone identifier                                                 |
+| `name`        | `string` | ✅       | -             | Milestone name                                                              |
+| `startDate`   | `string` | ✅       | -             | Milestone date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                  |
+| `endDate`     | `string` | -        | -             | End date (usually not needed for milestones, auto-set to same as startDate) |
+| `assignee`    | `string` | -        | -             | Assignee                                                                    |
+| `type`        | `string` | ✅       | `'milestone'` | Type identifier, must be set to 'milestone'                                 |
+| `icon`        | `string` | -        | `'diamond'`   | Milestone icon, options: 'diamond', 'flag', 'star', 'rocket', etc.          |
+| `description` | `string` | -        | -             | Milestone description                                                       |
 
 > **Note**: The `milestones` prop type is `Task[]`, ensure each milestone object's `type` field is set to `'milestone'`.
 
 #### Milestone-Related Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `milestones` | `Task[]` | `[]` | Array of milestone data (type is Task[], ensure type='milestone') |
-| `useDefaultMilestoneDialog` | `boolean` | `true` | Whether to use built-in milestone edit dialog (MilestoneDialog) |
+| Prop                        | Type      | Default | Description                                                       |
+| --------------------------- | --------- | ------- | ----------------------------------------------------------------- |
+| `milestones`                | `Task[]`  | `[]`    | Array of milestone data (type is Task[], ensure type='milestone') |
+| `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use built-in milestone edit dialog (MilestoneDialog)   |
 
 **Configuration Notes**:
+
 - **Default mode**: `useDefaultMilestoneDialog=true` (default), double-click milestone to auto-open built-in MilestoneDialog
 - **Disable editor**: `useDefaultMilestoneDialog=false`, double-click milestone has no response (component doesn't open any editor)
 - **Custom editor**: Can listen to `onMilestoneDoubleClick` callback or related events to implement custom editing logic
 
 > **💡 Differences Between Milestones and Tasks**:
+>
 > - Milestone data is managed independently via `milestones` prop, separate from `tasks`
 > - Milestone object's `type` field must be set to `'milestone'`
 > - Milestones don't support child tasks, dependency relationships, and other complex structures
@@ -755,20 +762,20 @@ Milestones are used to mark important time points in a project, such as project 
 
 > **⚠️ Deprecated**: Please use the new event-driven API (see "Milestone Events" section below)
 
-
 #### Milestone Events
 
 > **💡 Event-Driven Architecture**: Milestone management adopts event-driven design. Using event API is recommended over callback functions.
 
-| Event Name | Parameters | When Triggered | Description |
-|------------|------------|----------------|-------------|
-| `add-milestone` | - | When clicking toolbar "Add Milestone" button | Can be used for custom add milestone logic. If `useDefaultMilestoneDialog=true`, component will auto-open built-in MilestoneDialog |
-| `milestone-saved` | `(milestone: Task) => void` | After milestone saved (add or edit) | Triggered after saving milestone via built-in MilestoneDialog. **Note**: Component has auto-updated `milestones` data, external only needs to listen to this event for additional processing (like calling API to save) |
-| `milestone-deleted` | `{ milestoneId: number }` | After milestone deleted | Triggered after deleting milestone via built-in MilestoneDialog. **Note**: Component has auto-updated `milestones` data, external only needs to listen to this event for additional processing |
-| `milestone-icon-changed` | `{ milestoneId: number, icon: string }` | After milestone icon changed | Triggered after modifying icon via built-in MilestoneDialog |
-| `milestone-drag-end` | `(milestone: Task) => void` | When milestone drag ends | Milestone date updated. **Note**: Component has auto-updated `milestones` data |
+| Event Name               | Parameters                              | When Triggered                               | Description                                                                                                                                                                                                             |
+| ------------------------ | --------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `add-milestone`          | -                                       | When clicking toolbar "Add Milestone" button | Can be used for custom add milestone logic. If `useDefaultMilestoneDialog=true`, component will auto-open built-in MilestoneDialog                                                                                      |
+| `milestone-saved`        | `(milestone: Task) => void`             | After milestone saved (add or edit)          | Triggered after saving milestone via built-in MilestoneDialog. **Note**: Component has auto-updated `milestones` data, external only needs to listen to this event for additional processing (like calling API to save) |
+| `milestone-deleted`      | `{ milestoneId: number }`               | After milestone deleted                      | Triggered after deleting milestone via built-in MilestoneDialog. **Note**: Component has auto-updated `milestones` data, external only needs to listen to this event for additional processing                          |
+| `milestone-icon-changed` | `{ milestoneId: number, icon: string }` | After milestone icon changed                 | Triggered after modifying icon via built-in MilestoneDialog                                                                                                                                                             |
+| `milestone-drag-end`     | `(milestone: Task) => void`             | When milestone drag ends                     | Milestone date updated. **Note**: Component has auto-updated `milestones` data                                                                                                                                          |
 
 **Data Synchronization Notes**:
+
 - ✅ **Component auto-updates internally**: For all milestone CRUD operations, component will auto-update `props.milestones` data
 - ✅ **Events are for notification only**: External event listeners are mainly for: showing messages, calling backend APIs, updating other related data, etc.
 - ❌ **Avoid duplicate operations**: Don't modify `milestones` data again in event handlers, otherwise it will cause duplicate updates
@@ -780,7 +787,7 @@ Using the new event API, component auto-manages data, more concise:
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart 
+    <GanttChart
       :milestones="milestones"
       @add-milestone="handleAddMilestone"
       @milestone-saved="handleMilestoneSaved"
@@ -805,15 +812,15 @@ const milestones = ref<Task[]>([
     type: 'milestone',
     icon: 'diamond',
     assignee: 'Project Manager',
-    description: 'Official project kickoff'
+    description: 'Official project kickoff',
   },
   {
     id: 102,
     name: 'Requirements Review',
     startDate: '2025-01-15',
     type: 'milestone',
-    icon: 'flag'
-  }
+    icon: 'flag',
+  },
 ])
 
 // Toolbar "Add Milestone" button click event
@@ -861,7 +868,7 @@ If you need to fully customize the milestone editing interface, you can disable 
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart 
+    <GanttChart
       :milestones="milestones"
       :use-default-milestone-dialog="false"
       @add-milestone="handleAddMilestone"
@@ -869,7 +876,7 @@ If you need to fully customize the milestone editing interface, you can disable 
       @milestone-deleted="handleMilestoneDeleted"
       @milestone-drag-end="handleMilestoneDrag"
     />
-    
+
     <!-- Custom Milestone Edit Dialog -->
     <CustomMilestoneDialog
       v-model:visible="customDialogVisible"
@@ -896,8 +903,8 @@ const milestones = ref<Task[]>([
     type: 'milestone',
     icon: 'diamond',
     assignee: 'Project Manager',
-    description: 'Official project kickoff'
-  }
+    description: 'Official project kickoff',
+  },
 ])
 
 const customDialogVisible = ref(false)
@@ -927,10 +934,10 @@ const handleCustomDialogSave = (milestone: Task) => {
     const newMilestone = {
       ...milestone,
       id: Date.now(), // Generate new ID
-      type: 'milestone'
+      type: 'milestone',
     }
     milestones.value.push(newMilestone)
-    
+
     // Call backend API to save
     // await api.createMilestone(newMilestone)
   } else {
@@ -939,11 +946,11 @@ const handleCustomDialogSave = (milestone: Task) => {
     if (index !== -1) {
       milestones.value[index] = { ...milestone }
     }
-    
+
     // Call backend API to update
     // await api.updateMilestone(milestone)
   }
-  
+
   customDialogVisible.value = false
 }
 
@@ -953,10 +960,10 @@ const handleCustomDialogDelete = (milestoneId: number) => {
   if (index !== -1) {
     milestones.value.splice(index, 1)
   }
-  
+
   // Call backend API to delete
   // await api.deleteMilestone(milestoneId)
-  
+
   customDialogVisible.value = false
 }
 
@@ -993,7 +1000,7 @@ const handleMilestoneDrag = (milestone: Task) => {
       <el-form-item label="Milestone Name">
         <el-input v-model="form.name" placeholder="Please enter milestone name" />
       </el-form-item>
-      
+
       <el-form-item label="Date">
         <el-date-picker
           v-model="form.startDate"
@@ -1002,11 +1009,11 @@ const handleMilestoneDrag = (milestone: Task) => {
           value-format="YYYY-MM-DD"
         />
       </el-form-item>
-      
+
       <el-form-item label="Assignee">
         <el-input v-model="form.assignee" placeholder="Please enter assignee" />
       </el-form-item>
-      
+
       <el-form-item label="Icon">
         <el-select v-model="form.icon" placeholder="Select icon">
           <el-option label="Diamond" value="diamond" />
@@ -1015,7 +1022,7 @@ const handleMilestoneDrag = (milestone: Task) => {
           <el-option label="Rocket" value="rocket" />
         </el-select>
       </el-form-item>
-      
+
       <el-form-item label="Description">
         <el-input
           v-model="form.description"
@@ -1025,12 +1032,10 @@ const handleMilestoneDrag = (milestone: Task) => {
         />
       </el-form-item>
     </el-form>
-    
+
     <template #footer>
       <div class="dialog-footer">
-        <el-button v-if="!isNew" type="danger" @click="handleDelete">
-          Delete
-        </el-button>
+        <el-button v-if="!isNew" type="danger" @click="handleDelete"> Delete </el-button>
         <el-button @click="handleClose">Cancel</el-button>
         <el-button type="primary" @click="handleSave">Save</el-button>
       </div>
@@ -1063,31 +1068,34 @@ const form = ref({
   assignee: '',
   icon: 'diamond',
   description: '',
-  type: 'milestone'
+  type: 'milestone',
 })
 
-watch(() => props.visible, (val) => {
-  dialogVisible.value = val
-  if (val) {
-    if (props.milestone) {
-      // Edit mode, fill data
-      form.value = { ...props.milestone }
-    } else {
-      // Add mode, reset form
-      form.value = {
-        id: 0,
-        name: '',
-        startDate: new Date().toISOString().split('T')[0],
-        assignee: '',
-        icon: 'diamond',
-        description: '',
-        type: 'milestone'
+watch(
+  () => props.visible,
+  val => {
+    dialogVisible.value = val
+    if (val) {
+      if (props.milestone) {
+        // Edit mode, fill data
+        form.value = { ...props.milestone }
+      } else {
+        // Add mode, reset form
+        form.value = {
+          id: 0,
+          name: '',
+          startDate: new Date().toISOString().split('T')[0],
+          assignee: '',
+          icon: 'diamond',
+          description: '',
+          type: 'milestone',
+        }
       }
     }
   }
-})
+)
 
-watch(dialogVisible, (val) => {
+watch(dialogVisible, val => {
   emit('update:visible', val)
 })
 
@@ -1112,6 +1120,7 @@ const handleDelete = () => {
 ```
 
 > **💡 Custom Dialog Notes**:
+>
 > - Set `use-default-milestone-dialog="false"` to disable built-in dialog
 > - Listen to `@add-milestone` event to open custom dialog
 > - Need to manually manage `milestones` array CRUD operations
@@ -1132,20 +1141,20 @@ Customize the toolbar functional buttons and time scale options.
 
 **Type Definition:**
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `showAddTask` | `boolean` | `true` | Show "Add Task" button |
-| `showAddMilestone` | `boolean` | `true` | Show "Add Milestone" button |
-| `showTodayLocate` | `boolean` | `true` | Show "Locate to Today" button |
-| `showExportCsv` | `boolean` | `true` | Show "Export CSV" button |
-| `showExportPdf` | `boolean` | `true` | Show "Export PDF" button |
-| `showLanguage` | `boolean` | `true` | Show "Language Switch" button (Chinese/English) |
-| `showTheme` | `boolean` | `true` | Show "Theme Switch" button (Light/Dark) |
-| `showFullscreen` | `boolean` | `true` | Show "Fullscreen" button |
-| `showTimeScale` | `boolean` | `true` | Show time scale button group (controls entire group visibility) |
+| Field                 | Type              | Default                                               | Description                                                                                                  |
+| --------------------- | ----------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `showAddTask`         | `boolean`         | `true`                                                | Show "Add Task" button                                                                                       |
+| `showAddMilestone`    | `boolean`         | `true`                                                | Show "Add Milestone" button                                                                                  |
+| `showTodayLocate`     | `boolean`         | `true`                                                | Show "Locate to Today" button                                                                                |
+| `showExportCsv`       | `boolean`         | `true`                                                | Show "Export CSV" button                                                                                     |
+| `showExportPdf`       | `boolean`         | `true`                                                | Show "Export PDF" button                                                                                     |
+| `showLanguage`        | `boolean`         | `true`                                                | Show "Language Switch" button (Chinese/English)                                                              |
+| `showTheme`           | `boolean`         | `true`                                                | Show "Theme Switch" button (Light/Dark)                                                                      |
+| `showFullscreen`      | `boolean`         | `true`                                                | Show "Fullscreen" button                                                                                     |
+| `showTimeScale`       | `boolean`         | `true`                                                | Show time scale button group (controls entire group visibility)                                              |
 | `timeScaleDimensions` | `TimelineScale[]` | `['hour', 'day', 'week', 'month', 'quarter', 'year']` | Set time scale dimensions to display, options: `'hour'`, `'day'`, `'week'`, `'month'`, `'quarter'`, `'year'` |
-| `defaultTimeScale` | `TimelineScale` | `'week'` | Default selected time scale |
-| `showExpandCollapse` | `boolean` | `true` | Show "Expand All/Collapse All" button (for parent-child task tree structure) |
+| `defaultTimeScale`    | `TimelineScale`   | `'week'`                                              | Default selected time scale                                                                                  |
+| `showExpandCollapse`  | `boolean`         | `true`                                                | Show "Expand All/Collapse All" button (for parent-child task tree structure)                                 |
 
 **TimelineScale Type Description:**
 
@@ -1155,22 +1164,19 @@ type TimelineScale = 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
 // Can also use constant form
 import { TimelineScale } from 'jordium-gantt-vue3'
 
-TimelineScale.HOUR    // 'hour' - Hour view
-TimelineScale.DAY     // 'day' - Day view
-TimelineScale.WEEK    // 'week' - Week view
-TimelineScale.MONTH   // 'month' - Month view
+TimelineScale.HOUR // 'hour' - Hour view
+TimelineScale.DAY // 'day' - Day view
+TimelineScale.WEEK // 'week' - Week view
+TimelineScale.MONTH // 'month' - Month view
 TimelineScale.QUARTER // 'quarter' - Quarter view
-TimelineScale.YEAR    // 'year' - Year view
+TimelineScale.YEAR // 'year' - Year view
 ```
 
 **Example 1: Complete Configuration (Show All Features)**
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :toolbar-config="toolbarConfig"
-  />
+  <GanttChart :tasks="tasks" :toolbar-config="toolbarConfig" />
 </template>
 
 <script setup lang="ts">
@@ -1179,20 +1185,26 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
-  showAddTask: true,               // Show add task button
-  showAddMilestone: true,          // Show add milestone button
-  showTodayLocate: true,           // Show locate to today button
-  showExportCsv: true,             // Show export CSV button
-  showExportPdf: true,             // Show export PDF button
-  showLanguage: true,              // Show language switch button
-  showTheme: true,                 // Show theme switch button
-  showFullscreen: true,            // Show fullscreen button
-  showTimeScale: true,             // Show time scale button group
-  timeScaleDimensions: [           // Show all time scale dimensions
-    'hour', 'day', 'week', 'month', 'quarter', 'year'
+  showAddTask: true, // Show add task button
+  showAddMilestone: true, // Show add milestone button
+  showTodayLocate: true, // Show locate to today button
+  showExportCsv: true, // Show export CSV button
+  showExportPdf: true, // Show export PDF button
+  showLanguage: true, // Show language switch button
+  showTheme: true, // Show theme switch button
+  showFullscreen: true, // Show fullscreen button
+  showTimeScale: true, // Show time scale button group
+  timeScaleDimensions: [
+    // Show all time scale dimensions
+    'hour',
+    'day',
+    'week',
+    'month',
+    'quarter',
+    'year',
   ],
-  defaultTimeScale: 'week',        // Default week view
-  showExpandCollapse: true         // Show expand/collapse button
+  defaultTimeScale: 'week', // Default week view
+  showExpandCollapse: true, // Show expand/collapse button
 }
 </script>
 ```
@@ -1204,20 +1216,23 @@ const toolbarConfig: ToolbarConfig = {
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
-  showAddTask: true,               // Keep add task
-  showAddMilestone: true,          // Keep add milestone
-  showTodayLocate: true,           // Keep locate today
-  showExportCsv: false,            // Hide export CSV
-  showExportPdf: false,            // Hide export PDF
-  showLanguage: false,             // Hide language switch (fixed to one language)
-  showTheme: true,                 // Keep theme switch
-  showFullscreen: true,            // Keep fullscreen
-  showTimeScale: true,             // Show time scale
-  timeScaleDimensions: [           // Only show day/week/month scales
-    'day', 'week', 'month'
+  showAddTask: true, // Keep add task
+  showAddMilestone: true, // Keep add milestone
+  showTodayLocate: true, // Keep locate today
+  showExportCsv: false, // Hide export CSV
+  showExportPdf: false, // Hide export PDF
+  showLanguage: false, // Hide language switch (fixed to one language)
+  showTheme: true, // Keep theme switch
+  showFullscreen: true, // Keep fullscreen
+  showTimeScale: true, // Show time scale
+  timeScaleDimensions: [
+    // Only show day/week/month scales
+    'day',
+    'week',
+    'month',
   ],
-  defaultTimeScale: 'week',        // Default week view
-  showExpandCollapse: true         // Keep expand/collapse
+  defaultTimeScale: 'week', // Default week view
+  showExpandCollapse: true, // Keep expand/collapse
 }
 </script>
 ```
@@ -1235,9 +1250,9 @@ const toolbarConfig: ToolbarConfig = {
     TimelineScale.DAY,
     TimelineScale.WEEK,
     TimelineScale.MONTH,
-    TimelineScale.QUARTER
+    TimelineScale.QUARTER,
   ],
-  defaultTimeScale: TimelineScale.MONTH  // Default month view
+  defaultTimeScale: TimelineScale.MONTH, // Default month view
 }
 </script>
 ```
@@ -1249,23 +1264,24 @@ const toolbarConfig: ToolbarConfig = {
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
-  showAddTask: false,              // Hide all edit buttons
+  showAddTask: false, // Hide all edit buttons
   showAddMilestone: false,
-  showTodayLocate: true,           // Only keep navigation features
+  showTodayLocate: true, // Only keep navigation features
   showExportCsv: false,
   showExportPdf: false,
   showLanguage: false,
   showTheme: false,
   showFullscreen: false,
-  showTimeScale: true,             // Keep time scale switch
+  showTimeScale: true, // Keep time scale switch
   timeScaleDimensions: ['week', 'month'],
   defaultTimeScale: 'month',
-  showExpandCollapse: false        // Hide expand/collapse
+  showExpandCollapse: false, // Hide expand/collapse
 }
 </script>
 ```
 
 > **💡 Configuration Recommendations**：
+>
 > - **Default configuration**：When not passed, all buttons are shown by default
 > - **Show as needed**: Hide unnecessary feature buttons based on business requirements
 > - **Time scale**：`timeScaleDimensions` controls which time dimensions to display, recommend selecting 2-4 common dimensions
@@ -1277,32 +1293,29 @@ Customize task list display columns, width limits, etc. Task list is located on 
 
 **Type Definition：**
 
-| Field | Type | Default | Description |
-|--------|------|--------|------|
-| `columns` | `TaskListColumnConfig[]` | Default 8 columns | Task list column configuration array, defines which columns to display and their properties |
-| `showAllColumns` | `boolean` | `true` | Whether to show all columns. When `true`, ignores `visible` setting in `columns` |
-| `defaultWidth` | `number \| string` | `320` | Default expanded width. Supports pixel number (like `320`) or percentage string (like `'30%'`) |
-| `minWidth` | `number \| string` | `280` | Minimum width. Supports pixel number (like `280`) or percentage string (like `'20%'`). Cannot be less than 280px |
-| `maxWidth` | `number \| string` | `1160` | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`) |
+| Field            | Type                     | Default           | Description                                                                                                      |
+| ---------------- | ------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `columns`        | `TaskListColumnConfig[]` | Default 8 columns | Task list column configuration array, defines which columns to display and their properties                      |
+| `showAllColumns` | `boolean`                | `true`            | Whether to show all columns. When `true`, ignores `visible` setting in `columns`                                 |
+| `defaultWidth`   | `number \| string`       | `320`             | Default expanded width. Supports pixel number (like `320`) or percentage string (like `'30%'`)                   |
+| `minWidth`       | `number \| string`       | `280`             | Minimum width. Supports pixel number (like `280`) or percentage string (like `'20%'`). Cannot be less than 280px |
+| `maxWidth`       | `number \| string`       | `1160`            | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`)                           |
 
 **TaskListColumnConfig Type Definition：**
 
-| Field | Type | Required | Description |
-|--------|------|------|------|
-| `key` | `string` | ✅ | Unique column identifier, used to access fields in Task object and for internationalization |
-| `label` | `string` | - | Column display label (header text) |
-| `cssClass` | `string` | - | Custom CSS class name |
-| `width` | `number` | - | Column width (unit: pixels) |
-| `visible` | `boolean` | - | Whether to show this column, default `true`. This setting is invalid when `showAllColumns=true` |
+| Field      | Type      | Required | Description                                                                                     |
+| ---------- | --------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `key`      | `string`  | ✅       | Unique column identifier, used to access fields in Task object and for internationalization     |
+| `label`    | `string`  | -        | Column display label (header text)                                                              |
+| `cssClass` | `string`  | -        | Custom CSS class name                                                                           |
+| `width`    | `number`  | -        | Column width (unit: pixels)                                                                     |
+| `visible`  | `boolean` | -        | Whether to show this column, default `true`. This setting is invalid when `showAllColumns=true` |
 
 **Example1：Basic Configuration (Adjust Width)**
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :task-list-config="taskListConfig"
-  />
+  <GanttChart :tasks="tasks" :task-list-config="taskListConfig" />
 </template>
 
 <script setup lang="ts">
@@ -1311,9 +1324,9 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
-  defaultWidth: 450,      // Default width 450px (wider than default 320px)
-  minWidth: 300,          // Minimum width 300px
-  maxWidth: 1200,         // Maximum width 1200px
+  defaultWidth: 450, // Default width 450px (wider than default 320px)
+  minWidth: 300, // Minimum width 300px
+  maxWidth: 1200, // Maximum width 1200px
 }
 </script>
 ```
@@ -1322,10 +1335,7 @@ const taskListConfig: TaskListConfig = {
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :task-list-config="taskListConfig"
-  />
+  <GanttChart :tasks="tasks" :task-list-config="taskListConfig" />
 </template>
 
 <script setup lang="ts">
@@ -1334,9 +1344,9 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
-  defaultWidth: '25%',    // Default 25% of container width
-  minWidth: '15%',        // Minimum 15%
-  maxWidth: '60%',        // Maximum 60%
+  defaultWidth: '25%', // Default 25% of container width
+  minWidth: '15%', // Minimum 15%
+  maxWidth: '60%', // Maximum 60%
 }
 </script>
 ```
@@ -1347,10 +1357,7 @@ Based on business requirements, you can customize columns to display, column wid
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :task-list-config="taskListConfig"
-  />
+  <GanttChart :tasks="tasks" :task-list-config="taskListConfig" />
 </template>
 
 <script setup lang="ts">
@@ -1398,7 +1405,7 @@ const taskListConfig: TaskListConfig = {
   defaultWidth: 350,
   minWidth: 280,
   maxWidth: 500,
-  showAllColumns: false,  // Only show columns with visible=true
+  showAllColumns: false, // Only show columns with visible=true
 }
 </script>
 ```
@@ -1414,9 +1421,9 @@ import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 // Define configuration with custom columns
 const columns: TaskListColumnConfig[] = [
   { key: 'name', label: 'Task Name', visible: true },
-  { key: 'priority', label: 'Priority', width: 80, visible: true },      // Custom column
-  { key: 'department', label: 'Department', width: 100, visible: true },     // Custom column
-  { key: 'status', label: 'Status', width: 80, visible: true },          // Custom column
+  { key: 'priority', label: 'Priority', width: 80, visible: true }, // Custom column
+  { key: 'department', label: 'Department', width: 100, visible: true }, // Custom column
+  { key: 'status', label: 'Status', width: 80, visible: true }, // Custom column
   { key: 'assignee', label: 'Assignee', visible: true },
   { key: 'startDate', label: 'Start Date', visible: true },
   { key: 'endDate', label: 'End Date', visible: true },
@@ -1435,10 +1442,7 @@ Combine `ref` and `computed` to achieve dynamic show/hide and width adjustment o
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :task-list-config="taskListConfig"
-  />
+  <GanttChart :tasks="tasks" :task-list-config="taskListConfig" />
 </template>
 
 <script setup lang="ts">
@@ -1477,6 +1481,7 @@ const taskListConfig = computed<TaskListConfig>(() => ({
 ```
 
 > **💡 Configuration Notes**：
+>
 > - **Default behavior**：When not passed, show all 8 default columns with width of 320px
 > - **Width units**：Supports pixel (`number`) and percentage (`string`, like `'30%'`) methods
 > - **Percentage calculation**：Based on total width of Gantt chart container, responsive adjustment
@@ -1492,17 +1497,18 @@ Controls task bar display content and interaction behavior。
 
 **Configuration Fields：**
 
-| Field | Type | Default | Description |
-|--------|------|--------|------|
-| `showAvatar` | `boolean` | `true` | Whether to show avatar |
-| `showTitle` | `boolean` | `true` | Whether to show title text |
-| `showProgress` | `boolean` | `true` | Whether to show progress text |
-| `dragThreshold` | `number` | `5` | Drag trigger threshold (pixels) |
-| `resizeHandleWidth` | `number` | `5` | Resize handle width (pixels), max 15px |
-| `enableDragDelay` | `boolean` | `false` | Whether to enable drag delay (prevent accidental trigger) |
-| `dragDelayTime` | `number` | `150` | Drag delay time (milliseconds) |
+| Field               | Type      | Default | Description                                               |
+| ------------------- | --------- | ------- | --------------------------------------------------------- |
+| `showAvatar`        | `boolean` | `true`  | Whether to show avatar                                    |
+| `showTitle`         | `boolean` | `true`  | Whether to show title text                                |
+| `showProgress`      | `boolean` | `true`  | Whether to show progress text                             |
+| `dragThreshold`     | `number`  | `5`     | Drag trigger threshold (pixels)                           |
+| `resizeHandleWidth` | `number`  | `5`     | Resize handle width (pixels), max 15px                    |
+| `enableDragDelay`   | `boolean` | `false` | Whether to enable drag delay (prevent accidental trigger) |
+| `dragDelayTime`     | `number`  | `150`   | Drag delay time (milliseconds)                            |
 
 > **💡 Edit Permission Control**：
+>
 > - **Global control**: Use `<GanttChart :allow-drag-and-resize="false" />` to disable drag/resize for all tasks
 > - **Individual task control**: Set task object `isEditable: false` property to control individual task
 
@@ -1510,10 +1516,7 @@ Controls task bar display content and interaction behavior。
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :task-bar-config="taskBarConfig"
-  />
+  <GanttChart :tasks="tasks" :task-bar-config="taskBarConfig" />
 </template>
 
 <script setup lang="ts">
@@ -1539,10 +1542,7 @@ Disable edit operations for all tasks.
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :allow-drag-and-resize="false"
-  />
+  <GanttChart :tasks="tasks" :allow-drag-and-resize="false" />
 </template>
 ```
 
@@ -1608,6 +1608,7 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 }))
 </script>
 ```
+
 #### Timeline Container Auto-Fill Configuration
 
 The component has built-in intelligent timeline range calculation logic, ensuring that regardless of task data volume or task duration, the timeline always fills the container width, providing the best visual experience.
@@ -1615,6 +1616,7 @@ The component has built-in intelligent timeline range calculation logic, ensurin
 **Core Design Principles:**
 
 1. **Base Buffer Mechanism**: Add fixed buffers based on the actual time range of tasks, varying by view type
+
    - Hour view：±1 day task range
    - Day view: ±30 days before/after task range
    - Week view: ±8 weeks (approx. 2 months) before/after task range
@@ -1623,10 +1625,12 @@ The component has built-in intelligent timeline range calculation logic, ensurin
    - Year view: ±1 year before/after task range
 
 2. **Container Width Adaptation**: After base buffering, if calculated timeline width is less than container width, automatically extend the range
+
    - Calculate time units (days/weeks/months/quarters/years) needed for container
    - **Symmetrically extend** on both sides of base range to ensure timeline fills container
 
 3. **Empty Data Handling**: When no task data exists, calculate reasonable time range based on container width and time scale
+
    - Center on current date
    - Dynamically calculate time span to display based on container width
    - Ensure minimum display range (e.g., at least 60 days for day view, at least 20 weeks for week view)
@@ -1637,23 +1641,25 @@ The component has built-in intelligent timeline range calculation logic, ensurin
 
 **Calculation Pattern Reference Table:**
 
-| View | Unit Width | Base Buffer | Empty Data Min Range | Container Auto-Fill? |
-|------|-----------|--------------|----------------------|----------------|
-| Hour View | 30px/hour | ±1 day | 3 days | ✅ |
-| Day View | 30px/day | ±30 days | 60 days | ✅ |
-| Week View | 60px/week | ±2 months | 20 weeks | ✅ |
-| Month View | 60px/month | ±1 year | 3 years | ✅ |
-| Quarter View | 60px/quarter (240px/year) | ±1 year | 5 years | ✅ |
-| Year View | 360px/year | ±1 year | 5 years | ✅ |
+| View         | Unit Width                | Base Buffer | Empty Data Min Range | Container Auto-Fill? |
+| ------------ | ------------------------- | ----------- | -------------------- | -------------------- |
+| Hour View    | 30px/hour                 | ±1 day      | 3 days               | ✅                   |
+| Day View     | 30px/day                  | ±30 days    | 60 days              | ✅                   |
+| Week View    | 60px/week                 | ±2 months   | 20 weeks             | ✅                   |
+| Month View   | 60px/month                | ±1 year     | 3 years              | ✅                   |
+| Quarter View | 60px/quarter (240px/year) | ±1 year     | 5 years              | ✅                   |
+| Year View    | 360px/year                | ±1 year     | 5 years              | ✅                   |
 
 **Practical Application Scenarios:**
 
 - **Short-term Tasks** (e.g., 1-week project):
+
   - Won't result in narrow timeline, automatically extends to fill container
   - Day view: 1 week (7 days × 30px = 210px) → Extends to ≥1200px (approx. 40 days)
   - Week view: 1 week (60px) → Extends to ≥1200px (approx. 20 weeks)
 
 - **Long-term Projects** (e.g., 2-year project):
+
   - After adding fixed buffer, automatically adapts to container
   - Month view: 24 months + buffer → Extends to container width if needed
   - Quarter view: 8 quarters + buffer → Extends to container width if needed
@@ -1665,6 +1671,7 @@ The component has built-in intelligent timeline range calculation logic, ensurin
   - Quarter/Year view: Displays at least 5 years
 
 > **💡 Automation Advantages**:
+>
 > - No need to manually set `startDate` and `endDate`, component automatically calculates optimal range
 > - Responsive to container width changes, timeline automatically recalculates
 > - Different views independently optimized, auto-adjusts to best display effect when switching views
@@ -1679,10 +1686,7 @@ Component has built-in light and dark themes, can switch via toolbar button, als
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :on-theme-change="handleThemeChange"
-  />
+  <GanttChart :tasks="tasks" :on-theme-change="handleThemeChange" />
 </template>
 
 <script setup lang="ts">
@@ -1706,21 +1710,21 @@ Customize theme by overriding CSS variables:
   --gantt-success-color: #67c23a;
   --gantt-warning-color: #e6a23c;
   --gantt-danger-color: #f56c6c;
-  
+
   /* Background colors */
   --gantt-bg-primary: #ffffff;
   --gantt-bg-secondary: #f5f7fa;
   --gantt-bg-hover: #ecf5ff;
-  
+
   /* Text colors */
   --gantt-text-primary: #303133;
   --gantt-text-secondary: #606266;
   --gantt-text-placeholder: #c0c4cc;
-  
+
   /* Border colors */
   --gantt-border-color: #dcdfe6;
   --gantt-border-color-light: #e4e7ed;
-  
+
   /* Task bar colors */
   --gantt-task-bg: #409eff;
   --gantt-task-border: #66b1ff;
@@ -1732,13 +1736,13 @@ Customize theme by overriding CSS variables:
   --gantt-bg-primary: #1a1a1a;
   --gantt-bg-secondary: #2c2c2c;
   --gantt-bg-hover: #3a3a3a;
-  
+
   --gantt-text-primary: #e5e5e5;
   --gantt-text-secondary: #b0b0b0;
-  
+
   --gantt-border-color: #3a3a3a;
   --gantt-border-color-light: #4a4a4a;
-  
+
   --gantt-task-bg: #409eff;
   --gantt-task-border: #66b1ff;
   --gantt-task-text: #ffffff;
@@ -1751,10 +1755,7 @@ Component has built-in Chinese (zh-CN) and English (en-US), can switch via toolb
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :on-language-change="handleLanguageChange"
-  />
+  <GanttChart :tasks="tasks" :on-language-change="handleLanguageChange" />
 </template>
 
 <script setup lang="ts">
@@ -1772,10 +1773,7 @@ Override or extend default translations via `localeMessages` prop:
 
 ```vue
 <template>
-  <GanttChart 
-    :tasks="tasks"
-    :locale-messages="customMessages"
-  />
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
 </template>
 
 <script setup lang="ts">
@@ -1790,7 +1788,7 @@ const customMessages = {
   assignee: 'Assignee',
   estimatedHours: 'Estimated Hours',
   actualHours: 'Actual Hours'
-  
+
   // Toolbar related
   addTask: 'New Task',
   addMilestone: 'New Milestone',
@@ -1803,7 +1801,7 @@ const customMessages = {
   theme: 'Theme',
   expandAll: 'Expand All',
   collapseAll: 'Collapse All'
-  
+
   // Internal Task editor related
   title: 'Task Details',
   titleEdit: 'Edit Task',
@@ -1820,7 +1818,7 @@ const customMessages = {
   save: 'Save',
   cancel: 'Cancel',
   delete: 'Delete'
-  
+
   // Other texts
   days: 'days',
   hours: 'hours',
@@ -1832,6 +1830,7 @@ const customMessages = {
 ```
 
 > **💡 Tip**：
+>
 > - `localeMessages` adopts **deep merge** strategy, only need to pass fields that need to be overridden
 > - supports nested objects, like `taskList.name`, `toolbar.addTask`, etc.
 > - For complete translation keys, please refer to built-in `messages['zh-CN']` object in component
@@ -1848,44 +1847,44 @@ Used to customize task display content in task list (TaskRow) and timeline (Task
 
 **Slot Parameters：**
 
-| Parameter | Type | Source | Description |
-|--------|------|------|------|
-| `type` | `'task-row'` \| `'task-bar'` | Common | Slot call position identifier |
-| `task` | `Task` | Common | Current task object |
+| Parameter | Type                         | Source | Description                   |
+| --------- | ---------------------------- | ------ | ----------------------------- |
+| `type`    | `'task-row'` \| `'task-bar'` | Common | Slot call position identifier |
+| `task`    | `Task`                       | Common | Current task object           |
 
 **TaskRow specific parameters (when `type === 'task-row'`):**
 
-| Parameter | Type | Description |
-|--------|------|------|
-| `isRowContent` | `boolean` | Identified as row content |
-| `level` | `number` | Task level |
-| `indent` | `string` | Indent style |
-| `isHovered` | `boolean` | Whether hovering |
-| `hoveredTaskId` | `number \| null` | Current hovering task ID |
-| `isParent` | `boolean` | Whether parent task |
-| `hasChildren` | `boolean` | Whether has child tasks |
-| `collapsed` | `boolean` | Whether collapsed |
-| `formattedTimer` | `string` | Formatted timer text |
-| `timerRunning` | `boolean` | Whether timer is running |
-| `timerElapsed` | `number` | Elapsed time |
-| `isOvertime` | `number \| boolean \| undefined` | Whether overtime |
-| `overdueDays` | `number` | Overdue days |
-| `overtimeText` | `string` | Overtime text |
-| `overdueText` | `string` | Overdue text |
-| `daysText` | `string` | Days text |
-| `progressClass` | `string` | Progress CSS class name |
+| Parameter        | Type                             | Description               |
+| ---------------- | -------------------------------- | ------------------------- |
+| `isRowContent`   | `boolean`                        | Identified as row content |
+| `level`          | `number`                         | Task level                |
+| `indent`         | `string`                         | Indent style              |
+| `isHovered`      | `boolean`                        | Whether hovering          |
+| `hoveredTaskId`  | `number \| null`                 | Current hovering task ID  |
+| `isParent`       | `boolean`                        | Whether parent task       |
+| `hasChildren`    | `boolean`                        | Whether has child tasks   |
+| `collapsed`      | `boolean`                        | Whether collapsed         |
+| `formattedTimer` | `string`                         | Formatted timer text      |
+| `timerRunning`   | `boolean`                        | Whether timer is running  |
+| `timerElapsed`   | `number`                         | Elapsed time              |
+| `isOvertime`     | `number \| boolean \| undefined` | Whether overtime          |
+| `overdueDays`    | `number`                         | Overdue days              |
+| `overtimeText`   | `string`                         | Overtime text             |
+| `overdueText`    | `string`                         | Overdue text              |
+| `daysText`       | `string`                         | Days text                 |
+| `progressClass`  | `string`                         | Progress CSS class name   |
 
 **TaskBar specific parameters (when `type === 'task-bar'`):**
 
-| Parameter | Type | Description |
-|--------|------|------|
-| `status` | `object` | TaskStatus object, contains `type`, `color`, `bgColor`, `borderColor` |
-| `statusType` | `string` | StatusType：`'completed'`, `'delayed'`, `'in-progress'`, `'not-started'`, `'parent'` |
-| `isParent` | `boolean` | Whether parent task |
-| `progress` | `number` | TaskProgress（0-100） |
-| `currentTimeScale` | `TimelineScale` | Current time scale |
-| `rowHeight` | `number` | Row height (pixels) |
-| `dayWidth` | `number` | Width per day (pixels) |
+| Parameter          | Type            | Description                                                                          |
+| ------------------ | --------------- | ------------------------------------------------------------------------------------ |
+| `status`           | `object`        | TaskStatus object, contains `type`, `color`, `bgColor`, `borderColor`                |
+| `statusType`       | `string`        | StatusType：`'completed'`, `'delayed'`, `'in-progress'`, `'not-started'`, `'parent'` |
+| `isParent`         | `boolean`       | Whether parent task                                                                  |
+| `progress`         | `number`        | TaskProgress（0-100）                                                                |
+| `currentTimeScale` | `TimelineScale` | Current time scale                                                                   |
+| `rowHeight`        | `number`        | Row height (pixels)                                                                  |
+| `dayWidth`         | `number`        | Width per day (pixels)                                                               |
 
 **Usage Example：**
 
@@ -1894,11 +1893,7 @@ Used to customize task display content in task list (TaskRow) and timeline (Task
   <GanttChart :tasks="tasks">
     <template #custom-task-content="slotProps">
       <!-- Render different content based on type -->
-      <CustomTaskContent
-        :task="slotProps.task"
-        :type="slotProps.type"
-        :status="slotProps.status"
-      />
+      <CustomTaskContent :task="slotProps.task" :type="slotProps.type" :status="slotProps.status" />
     </template>
   </GanttChart>
 </template>
@@ -1916,8 +1911,8 @@ const tasks = ref<Task[]>([
     name: '<strong>Important Task</strong>',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
-    progress: 50
-  }
+    progress: 50,
+  },
 ])
 </script>
 ```
@@ -1949,7 +1944,7 @@ const props = defineProps<Props>()
     <div v-if="type === 'task-row'" class="task-row-content">
       <span v-html="task.name" />
     </div>
-    
+
     <!-- Rendering in TaskBar -->
     <div v-else-if="type === 'task-bar'" class="task-bar-content">
       <div class="task-icon" :style="{ color: status?.color }">📌</div>
@@ -1994,6 +1989,7 @@ const props = defineProps<Props>()
 ```
 
 > **💡 Usage Scenarios**：
+>
 > - Support HTML formatted task names
 > - Add custom icons, tags or badges
 > - Display different styles based on task status
@@ -2001,6 +1997,7 @@ const props = defineProps<Props>()
 > - Display additional business information
 
 > **⚠️ Notes**：
+>
 > - Slot content will be rendered in both TaskRow and TaskBar
 > - Need to distinguish rendering position based on `type` parameter
 > - TaskRow and TaskBar have different available space, need to adapt layout
