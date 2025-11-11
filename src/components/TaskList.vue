@@ -33,6 +33,37 @@ const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
 // 多语言支持
 const { t } = useI18n()
 
+// TaskList 容器引用
+const taskListRef = ref<HTMLElement | null>(null)
+
+// 获取列宽度样式（百分比转像素）
+const getColumnWidthStyle = (column: { width?: number | string }) => {
+  if (!column.width) return {}
+
+  let widthPx: string
+
+  // 如果是百分比，转换为像素
+  if (typeof column.width === 'string' && column.width.includes('%')) {
+    const containerWidth = taskListRef.value?.offsetWidth || 0
+    if (containerWidth > 0) {
+      const percentage = parseFloat(column.width) / 100
+      const pixels = Math.floor(containerWidth * percentage)
+      widthPx = `${pixels}px`
+    } else {
+      return {} // 容器宽度未知时返回空
+    }
+  } else {
+    // 像素值
+    widthPx = `${column.width}px`
+  }
+
+  return {
+    flex: `0 0 ${widthPx}`,
+    minWidth: widthPx,
+    maxWidth: widthPx,
+  }
+}
+
 // 计算可见的列配置
 const visibleColumns = computed(() => {
   const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
@@ -385,7 +416,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="task-list">
+  <div ref="taskListRef" class="task-list">
     <div class="task-list-header">
       <!-- 任务名称列，始终显示 -->
       <div class="col col-name">
@@ -397,13 +428,13 @@ onUnmounted(() => {
         :key="column.key"
         class="col"
         :class="column.cssClass || `col-${column.key}`"
-        :style="column.width ? { width: column.width + 'px' } : undefined"
+        :style="getColumnWidthStyle(column)"
       >
         {{ (t as any)[column.key] || column.label }}
       </div>
     </div>
     <div class="task-list-body" @scroll="handleTaskListScroll">
-      <TaskRow
+            <TaskRow
         v-for="task in localTasks"
         :key="task.id"
         :task="task"
@@ -412,6 +443,7 @@ onUnmounted(() => {
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
         :columns="visibleColumns"
+        :get-column-width-style="getColumnWidthStyle"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"

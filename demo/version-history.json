@@ -276,5 +276,15 @@
       "Defect fix: Fixed the issue of infinite loop calls when updating child tasks after updating the parent task",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to Ky1in666@github for their valuable use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.4.2-patch2",
+    "date": "2025-11-11",
+    "notes": [
+      "缺陷修复：TaskList配置列宽无效的问题修复",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @SHENGLONG749的使用及反馈的宝贵意见</span>",
+      "Defect fix: Fixed the issue of invalid column width configuration in TaskList",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749 for their valuable use and feedback</span>"
+    ]
   }
 ]

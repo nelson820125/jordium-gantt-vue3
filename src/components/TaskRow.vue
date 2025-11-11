@@ -35,6 +35,7 @@ interface Props {
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
   columns: TaskListColumnConfig[]
+  getColumnWidthStyle?: (column: { width?: number | string }) => object
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
@@ -410,6 +411,7 @@ onUnmounted(() => {
         :key="column.key"
         class="col"
         :class="column.cssClass || `col-${column.key}`"
+        :style="getColumnWidthStyle ? getColumnWidthStyle(column) : {}"
       >
         <!-- 里程碑分组显示空列 -->
         <template v-if="isMilestoneGroup">
@@ -476,6 +478,7 @@ onUnmounted(() => {
         :hovered-task-id="props.hoveredTaskId"
         :on-hover="props.onHover"
         :columns="props.columns"
+        :get-column-width-style="props.getColumnWidthStyle"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
         @start-timer="emit('start-timer', $event)"

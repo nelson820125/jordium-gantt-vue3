@@ -48,13 +48,13 @@ const toolbarConfig = {
 // TaskList列配置
 const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'predecessor', label: '前置任务', visible: true },
-  { key: 'assignee', label: '负责人', visible: true },
+  { key: 'assignee', label: '负责人', visible: true, width: 250 },
   { key: 'startDate', label: '开始日期', visible: true },
   { key: 'endDate', label: '结束日期', visible: true },
   { key: 'estimatedHours', label: '预估工时', visible: true },
   { key: 'actualHours', label: '实际工时', visible: true },
   { key: 'progress', label: '进度', visible: true },
-  { key: 'custom', label: '自定义列', visible: true, width: 120 }, // 添加默认宽度120px
+  { key: 'custom', label: '自定义列', visible: true, width: '30%' }, // 添加默认宽度120px
 ])
 
 // TaskList宽度配置

@@ -1572,7 +1572,6 @@ watch(
     const safeNewContainerWidth = newContainerWidth || 0
     const safeOldScrollLeft = oldScrollLeft || 0
     const safeOldContainerWidth = oldContainerWidth || 0
-
     // 如果容器宽度发生变化（包括Splitter拖拽、TaskList展开收起、窗口resize等）
     if (Math.abs(safeNewContainerWidth - safeOldContainerWidth) > 1 && safeOldContainerWidth > 0) {
       hasManualResize.value = true
@@ -1582,6 +1581,13 @@ watch(
       nextTick(() => {
         // computed会自动重新计算
       })
+
+      // 🔥 容器宽度变化时，标记初始化完成（修复 splitter 拖拽后半圆不显示的问题）
+      if (isInitializing.value) {
+        setTimeout(() => {
+          isInitializing.value = false
+        }, 300)
+      }
 
       // 延长禁用动画的时间，确保各种resize操作稳定
       setTimeout(() => {
@@ -1622,6 +1628,7 @@ watch(
       }, 200)
     }
   },
+  { immediate: true },
 )
 
 // 监听外部hideBubbles属性变化，确保Timeline的容器变化能及时反应

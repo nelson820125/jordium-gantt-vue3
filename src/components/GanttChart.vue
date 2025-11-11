@@ -299,22 +299,45 @@ function onMouseDown(e: MouseEvent) {
   taskListBodyProposedWidth.value = window.innerWidth * 0.8 - 6 // 减去splitter宽度
 
   // 获取左侧面板的最小宽度
-  taskListBodyWidthLimit.value = Math.min(taskListBodyProposedWidth.value, taskListBodyWidth.value)
+  taskListBodyWidthLimit.value = Math.min(taskListBodyProposedWidth.value,
+    taskListBodyWidthLimit.value)
 
   // 广播拖拽开始事件，通知其他组件暂停悬停效果
   window.dispatchEvent(new CustomEvent('splitter-drag-start'))
 
-  // 在拖拽期间禁用页面选择
+  // 在拖拽期间禁用页面选择和所有指针事件
   document.body.style.userSelect = 'none'
   document.body.style.webkitUserSelect = 'none'
   document.body.style.cursor = 'col-resize'
+  document.body.style.pointerEvents = 'none' // 禁止所有指针事件
+
+  // 全局事件拦截器：在捕获阶段拦截所有事件（除了 mousemove 和 mouseup）
+  const blockAllEvents = (ev: Event) => {
+    if (ev.type !== 'mousemove' && ev.type !== 'mouseup') {
+      ev.preventDefault()
+      ev.stopPropagation()
+      ev.stopImmediatePropagation()
+    }
+  }
+
+  // 在捕获阶段添加事件监听，确保最先拦截
+  document.addEventListener('mousedown', blockAllEvents, { capture: true })
+  document.addEventListener('click', blockAllEvents, { capture: true })
+  document.addEventListener('dblclick', blockAllEvents, { capture: true })
+  document.addEventListener('mouseover', blockAllEvents, { capture: true })
+  document.addEventListener('mouseout', blockAllEvents, { capture: true })
+  document.addEventListener('mouseenter', blockAllEvents, { capture: true })
+  document.addEventListener('mouseleave', blockAllEvents, { capture: true })
+  document.addEventListener('wheel', blockAllEvents, { capture: true, passive: false })
+  document.addEventListener('contextmenu', blockAllEvents, { capture: true })
 
   function onMouseMove(ev: MouseEvent) {
     if (!dragging.value) return
 
-    // 阻止默认行为，防止滚动等
+    // 强制阻止所有默认行为和事件传播
     ev.preventDefault()
     ev.stopPropagation()
+    ev.stopImmediatePropagation()
 
     const delta = ev.clientX - startX
     const proposedWidth = startWidth + delta
@@ -327,13 +350,25 @@ function onMouseDown(e: MouseEvent) {
   function onMouseUp() {
     dragging.value = false
 
+    // 移除全局事件拦截器
+    document.removeEventListener('mousedown', blockAllEvents, { capture: true })
+    document.removeEventListener('click', blockAllEvents, { capture: true })
+    document.removeEventListener('dblclick', blockAllEvents, { capture: true })
+    document.removeEventListener('mouseover', blockAllEvents, { capture: true })
+    document.removeEventListener('mouseout', blockAllEvents, { capture: true })
+    document.removeEventListener('mouseenter', blockAllEvents, { capture: true })
+    document.removeEventListener('mouseleave', blockAllEvents, { capture: true })
+    document.removeEventListener('wheel', blockAllEvents, { capture: true })
+    document.removeEventListener('contextmenu', blockAllEvents, { capture: true })
+
     // 广播拖拽结束事件，通知其他组件恢复悬停效果
     window.dispatchEvent(new CustomEvent('splitter-drag-end'))
 
-    // 恢复页面选择和光标
+    // 恢复页面选择、光标和指针事件
     document.body.style.userSelect = ''
     document.body.style.webkitUserSelect = ''
     document.body.style.cursor = ''
+    document.body.style.pointerEvents = ''
 
     taskListBodyWidth.value = getTaskListMaxWidth() // TaskList默认宽度
     ganttPanelLeftMinWidth.value = getTaskListMinWidth() // 左侧面板最小宽度

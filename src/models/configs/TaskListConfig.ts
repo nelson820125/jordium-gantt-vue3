@@ -15,7 +15,7 @@ export interface TaskListColumnConfig {
   key: string // 用于国际化的key，也可以作为识别符
   label?: string // 显示标签
   cssClass?: string // CSS类名
-  width?: number // 可选的列宽度
+  width?: number | string // 列宽度，支持像素（120）或百分比（'15%'）
   visible?: boolean // 是否显示，默认true
 }
 

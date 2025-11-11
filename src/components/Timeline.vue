@@ -631,6 +631,7 @@ const timelineContainerWidth = ref(0)
 // 半圆气泡控制状态
 const hideBubbles = ref(true) // 初始时隐藏半圆，等待初始滚动完成
 const isInitialScrolling = ref(true) // 跟踪初始滚动状态
+let hideBubblesTimeout: number | null = null // 半圆显示恢复定时器
 
 // 虚拟滚动相关状态
 const HOUR_WIDTH = 40 // 每小时40px
@@ -945,6 +946,15 @@ const handleSplitterDragStart = () => {
 const handleSplitterDragEnd = () => {
   isSplitterDragging.value = false
 
+  // 拖拽结束后，手动触发一次容器宽度更新
+  const timelineContainer = document.querySelector('.timeline') as HTMLElement
+  if (timelineContainer) {
+    const newWidth = timelineContainer.clientWidth
+    if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
+      timelineContainerWidth.value = newWidth
+    }
+  }
+
   // Splitter拖拽结束后，强制重新计算半圆显示状态
   // 因为Timeline容器宽度可能发生了变化
   hideBubbles.value = true
@@ -964,9 +974,15 @@ const handleTimelineContainerResized = () => {
   taskBarPositions.value = {}
   taskBarRenderKey.value++
 
+  // 清除之前的定时器，避免多次触发冲突
+  if (hideBubblesTimeout) {
+    clearTimeout(hideBubblesTimeout)
+  }
+
   // 延迟恢复显示，确保容器变化完全生效
-  setTimeout(() => {
+  hideBubblesTimeout = setTimeout(() => {
     hideBubbles.value = false
+    hideBubblesTimeout = null
     // 再次更新SVG尺寸，确保关系线容器大小正确
     updateSvgSize()
   }, 300)
@@ -2053,9 +2069,15 @@ onMounted(() => {
             // 短时间隐藏后重新显示，让TaskBar重新计算边界
             hideBubbles.value = true
 
+            // 清除之前的定时器，避免多次触发冲突
+            if (hideBubblesTimeout) {
+              clearTimeout(hideBubblesTimeout)
+            }
+
             // 延迟恢复显示，确保宽度变化完全生效
-            setTimeout(() => {
+            hideBubblesTimeout = setTimeout(() => {
               hideBubbles.value = false
+              hideBubblesTimeout = null
             }, 300) // 增加到300ms，确保resize完全结束
           }
         }
@@ -2546,12 +2568,19 @@ watch(
 )
 
 // 监听滚动变化，重新计算里程碑位置
-watch([timelineScrollLeft, timelineContainerWidth], computeAllMilestonesPositions)
+watch([timelineScrollLeft, timelineContainerWidth], () => {
+  // 拖拽 splitter 时跳过计算
+  if (isSplitterDragging.value) return
+  computeAllMilestonesPositions()
+})
 
 // 监听容器宽度变化，重新计算时间线范围以填充容器
 watch(
   timelineContainerWidth,
   (newWidth, oldWidth) => {
+    // ⚠️ 拖拽 splitter 时跳过重新计算，避免频繁生成 timelineData
+    if (isSplitterDragging.value) return
+
     // 只在容器宽度从 0 变为有效值，或容器宽度发生显著变化时重新计算
     if (!oldWidth || oldWidth === 0 || Math.abs(newWidth - oldWidth) > 50) {
       if (newWidth > 0) {
@@ -2593,6 +2622,9 @@ watch(
 
 // 监听timelineData或容器宽度变化，强制TaskBar重新渲染以更新关系线位置
 watch([timelineData, timelineContainerWidth], () => {
+  // ⚠️ 拖拽 splitter 时跳过 TaskBar 重新渲染，避免频繁更新
+  if (isSplitterDragging.value) return
+
   // 清空位置信息
   taskBarPositions.value = {}
   // 更新渲染key强制TaskBar重新渲染
