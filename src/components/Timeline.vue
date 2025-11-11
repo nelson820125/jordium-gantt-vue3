@@ -2118,6 +2118,9 @@ const handleTimelineBodyScroll = (event: Event) => {
 
   const scrollTop = target.scrollTop
 
+  // 拖拽时不同步滚动事件，避免性能问题
+  if (isDragging.value) return
+
   // 同步垂直滚动到TaskList
   if (scrollTop >= 0) {
     window.dispatchEvent(
@@ -2142,8 +2145,12 @@ watch(
 // 拖拽滑动相关状态
 const isDragging = ref(false)
 const startX = ref(0)
+const startY = ref(0)
 const startScrollLeft = ref(0)
+const startScrollTop = ref(0)
 const timelineContainer = ref<HTMLElement | null>(null)
+const timelineBodyElement = ref<HTMLElement | null>(null) // 缓存timeline-body元素引用
+let rafId: number | null = null // requestAnimationFrame ID
 
 // 边界滚动相关状态
 const isAutoScrolling = ref(false)
@@ -2239,7 +2246,14 @@ const handleMouseDown = (event: MouseEvent) => {
 
   isDragging.value = true
   startX.value = event.pageX
+  startY.value = event.pageY
   startScrollLeft.value = timelineContainer.value?.scrollLeft || 0
+
+  // 获取并缓存timeline-body元素的scrollTop（支持垂直滚动）
+  if (!timelineBodyElement.value && timelineContainer.value) {
+    timelineBodyElement.value = timelineContainer.value.querySelector('.timeline-body') as HTMLElement
+  }
+  startScrollTop.value = timelineBodyElement.value?.scrollTop || 0
 
   // 添加鼠标样式
   if (timelineContainer.value) {
@@ -2255,19 +2269,55 @@ const handleMouseDown = (event: MouseEvent) => {
   document.addEventListener('mouseup', handleMouseUp)
 }
 
-// 鼠标移动时拖拽滑动
+// 鼠标移动时拖拽滑动（支持水平和垂直方向）
 const handleMouseMove = (event: MouseEvent) => {
   if (!isDragging.value || !timelineContainer.value) return
 
   event.preventDefault()
-  const x = event.pageX
-  const walk = (x - startX.value) * 1.5 // 拖拽速度倍数
-  timelineContainer.value.scrollLeft = startScrollLeft.value - walk
+
+  // 取消之前的 RAF
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+  }
+
+  // 使用 requestAnimationFrame 批处理滚动更新
+  rafId = requestAnimationFrame(() => {
+    if (!timelineContainer.value) return
+
+    // 计算水平和垂直移动距离
+    const x = event.pageX
+    const y = event.pageY
+    const walkX = (x - startX.value) * 1.5 // 水平拖拽速度倍数
+    const walkY = (y - startY.value) * 1.5 // 垂直拖拽速度倍数
+
+    // 水平滚动（timeline容器）
+    timelineContainer.value.scrollLeft = startScrollLeft.value - walkX
+
+    // 垂直滚动（timeline-body元素）- 使用缓存的元素引用
+    if (timelineBodyElement.value) {
+      const newScrollTop = startScrollTop.value - walkY
+      timelineBodyElement.value.scrollTop = newScrollTop
+
+      // 直接同步 TaskList 的滚动位置，避免通过事件触发
+      const taskListBody = document.querySelector('.task-list-body') as HTMLElement
+      if (taskListBody) {
+        taskListBody.scrollTop = newScrollTop
+      }
+    }
+
+    rafId = null
+  })
 }
 
 // 鼠标抬起结束拖拽
 const handleMouseUp = () => {
   isDragging.value = false
+
+  // 取消任何待处理的 RAF
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
 
   if (timelineContainer.value) {
     timelineContainer.value.style.cursor = 'grab'
