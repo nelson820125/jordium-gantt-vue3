@@ -36,6 +36,12 @@ const { t } = useI18n()
 // TaskList 容器引用
 const taskListRef = ref<HTMLElement | null>(null)
 
+// 缓存容器宽度，避免频繁读取 offsetWidth 导致强制重排
+const cachedContainerWidth = ref(0)
+
+// 使用 ResizeObserver 监听容器宽度变化
+let containerResizeObserver: ResizeObserver | null = null
+
 // 获取列宽度样式（百分比转像素）
 const getColumnWidthStyle = (column: { width?: number | string }) => {
   if (!column.width) return {}
@@ -44,7 +50,7 @@ const getColumnWidthStyle = (column: { width?: number | string }) => {
 
   // 如果是百分比，转换为像素
   if (typeof column.width === 'string' && column.width.includes('%')) {
-    const containerWidth = taskListRef.value?.offsetWidth || 0
+    const containerWidth = cachedContainerWidth.value || 0
     if (containerWidth > 0) {
       const percentage = parseFloat(column.width) / 100
       const pixels = Math.floor(containerWidth * percentage)
@@ -89,6 +95,14 @@ const handleSplitterDragStart = () => {
 // 处理拖拽结束事件
 const handleSplitterDragEnd = () => {
   isSplitterDragging.value = false
+
+  // ⚠️ 拖拽结束后，手动更新一次容器宽度，触发列宽重新计算
+  if (taskListRef.value) {
+    const newWidth = taskListRef.value.offsetWidth
+    if (Math.abs(newWidth - cachedContainerWidth.value) > 1) {
+      cachedContainerWidth.value = newWidth
+    }
+  }
 }
 
 // 处理任务行悬停事件
@@ -386,6 +400,23 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
 }
 
 onMounted(async () => {
+  // 初始化 ResizeObserver 监听容器宽度变化
+  if (taskListRef.value) {
+    containerResizeObserver = new ResizeObserver((entries) => {
+      // ⚠️ 拖拽期间跳过更新，避免高频重新计算列宽
+      // TaskList的列宽不需要在拖拽期间实时更新，只需在拖拽结束后更新一次
+      if (isSplitterDragging.value) {
+        return
+      }
+
+      for (const entry of entries) {
+        // 使用 contentRect.width 避免强制重排
+        cachedContainerWidth.value = entry.contentRect.width
+      }
+    })
+    containerResizeObserver.observe(taskListRef.value)
+  }
+
   window.addEventListener('task-updated', handleTaskUpdated as EventListener)
   window.addEventListener('task-added', handleTaskAdded as EventListener)
   window.addEventListener('request-task-list', handleRequestTaskList as EventListener)
@@ -401,6 +432,12 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // 清理 ResizeObserver
+  if (containerResizeObserver) {
+    containerResizeObserver.disconnect()
+    containerResizeObserver = null
+  }
+
   window.removeEventListener('task-updated', handleTaskUpdated as EventListener)
   window.removeEventListener('task-added', handleTaskAdded as EventListener)
   window.removeEventListener('request-task-list', handleRequestTaskList as EventListener)

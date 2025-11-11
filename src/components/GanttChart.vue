@@ -136,35 +136,45 @@ interface Props {
 const ganttRootRef = ref<HTMLElement | null>(null)
 const ganttContainerWidth = ref(1920) // 默认使用常见的屏幕宽度作为初始值
 
-// 监听容器宽度变化
-const updateContainerWidth = () => {
-  if (ganttRootRef.value) {
-    const newWidth = ganttRootRef.value.clientWidth
-    if (newWidth !== ganttContainerWidth.value) {
-      ganttContainerWidth.value = newWidth
-      // 容器宽度变化时，重新计算 TaskList 的宽度限制
-      ganttPanelLeftMinWidth.value = getTaskListMinWidth()
-      taskListBodyWidth.value = getTaskListMaxWidth()
-      taskListBodyProposedWidth.value = getTaskListMaxWidth()
-      taskListBodyWidthLimit.value = getTaskListMaxWidth()
+// ResizeObserver 用于监听容器宽度变化
+let ganttRootResizeObserver: ResizeObserver | null = null
 
-      // 确保当前宽度在新的限制范围内
-      const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
-      if (adjustedWidth !== leftPanelWidth.value) {
-        leftPanelWidth.value = adjustedWidth
-      }
+// 监听容器宽度变化
+const updateContainerWidth = (newWidth: number) => {
+  if (newWidth !== ganttContainerWidth.value) {
+    ganttContainerWidth.value = newWidth
+    // 容器宽度变化时，重新计算 TaskList 的宽度限制
+    ganttPanelLeftMinWidth.value = getTaskListMinWidth()
+    taskListBodyWidth.value = getTaskListMaxWidth()
+    taskListBodyProposedWidth.value = getTaskListMaxWidth()
+    taskListBodyWidthLimit.value = getTaskListMaxWidth()
+
+    // 确保当前宽度在新的限制范围内
+    const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
+    if (adjustedWidth !== leftPanelWidth.value) {
+      leftPanelWidth.value = adjustedWidth
     }
   }
 }
 
 onMounted(() => {
-  updateContainerWidth()
-  // 监听窗口大小变化
-  window.addEventListener('resize', updateContainerWidth)
+  if (ganttRootRef.value) {
+    // 使用 ResizeObserver 监听容器宽度变化，避免频繁读取 clientWidth
+    ganttRootResizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // 使用 contentRect.width，避免强制重排
+        updateContainerWidth(entry.contentRect.width)
+      }
+    })
+    ganttRootResizeObserver.observe(ganttRootRef.value)
+  }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateContainerWidth)
+  if (ganttRootResizeObserver) {
+    ganttRootResizeObserver.disconnect()
+    ganttRootResizeObserver = null
+  }
 })
 
 // TaskList最小宽度，支持通过taskListConfig配置（支持像素和百分比）
@@ -331,9 +341,11 @@ function onMouseDown(e: MouseEvent) {
   document.addEventListener('wheel', blockAllEvents, { capture: true, passive: false })
   document.addEventListener('contextmenu', blockAllEvents, { capture: true })
 
+  // ⚠️ 使用requestAnimationFrame节流，但移除阈值检测，确保每帧都更新
+  let rafId: number | null = null
+
   function onMouseMove(ev: MouseEvent) {
     if (!dragging.value) return
-
     // 强制阻止所有默认行为和事件传播
     ev.preventDefault()
     ev.stopPropagation()
@@ -341,14 +353,28 @@ function onMouseDown(e: MouseEvent) {
 
     const delta = ev.clientX - startX
     const proposedWidth = startWidth + delta
-
-    // 直接使用面板宽度限制检查，无需复杂的坐标计算
     const finalWidth = checkWidthLimits(proposedWidth)
-    leftPanelWidth.value = finalWidth
+
+    // 取消之前的帧请求
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId)
+    }
+
+    // 在下一帧更新（节流到60fps，避免过度触发响应式系统）
+    rafId = requestAnimationFrame(() => {
+      leftPanelWidth.value = finalWidth
+      rafId = null
+    })
   }
 
   function onMouseUp() {
     dragging.value = false
+
+    // 取消未完成的帧请求
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
 
     // 移除全局事件拦截器
     document.removeEventListener('mousedown', blockAllEvents, { capture: true })
@@ -480,10 +506,8 @@ onMounted(() => {
     // 监听右侧面板（timeline 的可视容器）的宽度
     const rightPanel = document.querySelector('.gantt-panel-right')
     if (rightPanel) {
-      // 初始化宽度
-      timelineContainerWidth.value = rightPanel.clientWidth
-
-      // 使用 ResizeObserver 监听宽度变化
+      // 使用 ResizeObserver 自动更新宽度，避免直接读取clientWidth造成强制重排
+      // ResizeObserver 会在开始观察时立即触发一次回调，提供初始宽度
       resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           timelineContainerWidth.value = entry.contentRect.width
@@ -2162,6 +2186,7 @@ function handleMilestoneDialogDelete(milestoneId: number) {
       <div
         v-if="isTaskListVisible"
         class="gantt-panel gantt-panel-left"
+        :class="{ dragging: dragging }"
         :style="{ width: leftPanelWidth + 'px' }"
       >
         <TaskList
@@ -2317,6 +2342,12 @@ function handleMilestoneDialogDelete(milestoneId: number) {
 .gantt-panel-left {
   /* width 由js控制 */
   min-width: 320px;
+  /* ⚠️ 拖拽时禁用transition，提升响应速度 */
+  transition: none;
+}
+
+.gantt-panel-left:not(.dragging) {
+  /* 非拖拽时保留平滑过渡效果（如toggle时） */
   transition: width 0.1s;
 }
 

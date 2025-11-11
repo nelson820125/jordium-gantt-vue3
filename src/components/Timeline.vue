@@ -627,6 +627,7 @@ let scrollTimeout: number | null = null
 // 粘性效果所需的滚动位置信息
 const timelineScrollLeft = ref(0)
 const timelineContainerWidth = ref(0)
+const timelineScrollWidth = ref(0) // 缓存scrollWidth，避免在滚动事件中频繁读取造成强制重排
 
 // 半圆气泡控制状态
 const hideBubbles = ref(true) // 初始时隐藏半圆，等待初始滚动完成
@@ -643,6 +644,9 @@ const timelineDataCache = new Map<string, unknown>()
 // 初始化状态
 const isInitialLoad = ref(true)
 
+// 节流的容器宽度（用于虚拟滚动范围计算，避免每次微小变化都触发）
+const throttledContainerWidth = ref(0)
+
 // 计算小时视图的可视区域范围
 const visibleHourRange = computed(() => {
   if (currentTimeScale.value !== TimelineScale.HOUR) {
@@ -650,7 +654,7 @@ const visibleHourRange = computed(() => {
   }
 
   const scrollLeft = timelineScrollLeft.value
-  const containerWidth = timelineContainerWidth.value
+  const containerWidth = throttledContainerWidth.value || timelineContainerWidth.value
 
   // 首次加载时，使用更大的初始渲染范围
   if (isInitialLoad.value && scrollLeft === 0) {
@@ -734,17 +738,25 @@ const optimizedTimelineData = computed(() => {
   if (currentTimeScale.value === TimelineScale.HOUR && Array.isArray(cachedData)) {
     const { startHour, endHour } = visibleHourRange.value
 
-    return (cachedData as any[])
-      .map((day: any) => {
-        // 计算当前天相对于时间线开始的小时偏移
-        const dayStart = new Date(timelineConfig.value.startDate)
-        dayStart.setHours(0, 0, 0, 0)
-        const currentDay = new Date(day.year, day.month - 1, day.day)
-        currentDay.setHours(0, 0, 0, 0)
-        const daysDiff = Math.floor(
-          (currentDay.getTime() - dayStart.getTime()) / (1000 * 60 * 60 * 24),
-        )
-        const totalHourOffset = daysDiff * 24
+    // 🚀 性能优化：只处理可见范围内的天数，而不是遍历全部365天
+    const dayStart = new Date(timelineConfig.value.startDate)
+    dayStart.setHours(0, 0, 0, 0)
+
+    // 计算可见范围对应的起始和结束天数
+    const startDay = Math.floor(startHour / 24)
+    const endDay = Math.ceil(endHour / 24)
+
+    // 只处理可见天数范围 + 少量缓冲
+    const visibleDays = (cachedData as any[]).slice(
+      Math.max(0, startDay - 1),
+      Math.min(cachedData.length, endDay + 1),
+    )
+
+    return visibleDays
+      .map((day: any, index: number) => {
+        // 使用相对于切片起始的索引计算偏移
+        const actualDayIndex = Math.max(0, startDay - 1) + index
+        const totalHourOffset = actualDayIndex * 24
 
         // 计算当前天应该显示的小时范围
         const dayStartHour = Math.max(0, startHour - totalHourOffset)
@@ -763,6 +775,7 @@ const optimizedTimelineData = computed(() => {
             dayStartHour,
             dayEndHour,
             visibleRange: { startHour, endHour },
+            actualDayIndex,
           },
         }
       })
@@ -813,9 +826,18 @@ const totalTimelineWidth = computed(() => {
   return 0
 })
 
+// 使用 watch 同步计算出的时间轴宽度到 scrollWidth 缓存
+// 避免读取 DOM 的 scrollWidth 属性
+// 注意：不使用 immediate: true，避免在初始化时出现函数未定义的问题
+// 会在 onMounted 中手动初始化一次
+watch(totalTimelineWidth, (newWidth) => {
+  timelineScrollWidth.value = newWidth
+})
+
 // 容器高度状态管理
 const timelineBodyHeight = ref(0)
 let resizeObserver: ResizeObserver | null = null
+let containerResizeObserver: ResizeObserver | null = null
 
 // 里程碑位置信息管理（用于推挤效果）
 const milestonePositions = ref<
@@ -940,20 +962,14 @@ const getOtherMilestonesInfo = (currentId: number) => {
 // 处理拖拽开始事件
 const handleSplitterDragStart = () => {
   isSplitterDragging.value = true
+
+  // ⚠️ 拖拽期间暂停ResizeObserver，避免高频触发
+  // ResizeObserver已经在回调中检查isSplitterDragging，这里作为双重保护
 }
 
 // 处理拖拽结束事件
 const handleSplitterDragEnd = () => {
   isSplitterDragging.value = false
-
-  // 拖拽结束后，手动触发一次容器宽度更新
-  const timelineContainer = document.querySelector('.timeline') as HTMLElement
-  if (timelineContainer) {
-    const newWidth = timelineContainer.clientWidth
-    if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
-      timelineContainerWidth.value = newWidth
-    }
-  }
 
   // Splitter拖拽结束后，强制重新计算半圆显示状态
   // 因为Timeline容器宽度可能发生了变化
@@ -966,7 +982,6 @@ const handleSplitterDragEnd = () => {
 // 处理Timeline容器resize事件（如TaskList切换等）
 const handleTimelineContainerResized = () => {
   // Timeline容器大小发生变化，需要强制重新计算半圆显示状态
-
   // 立即隐藏半圆，让TaskBar重新计算边界
   hideBubbles.value = true
 
@@ -1061,7 +1076,7 @@ const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
 }
 
 // 生成时间轴数据
-const generateTimelineData = (): any => {
+function generateTimelineData(): any {
   // 使用缓存版本提升性能
   return getCachedTimelineData()
 }
@@ -1072,7 +1087,7 @@ const clearTimelineCache = () => {
 }
 
 // 生成日视图时间轴数据 (原有逻辑)
-const generateDayTimelineData = () => {
+function generateDayTimelineData() {
   const months: unknown[] = []
   const currentDate = new Date(timelineConfig.value.startDate)
 
@@ -1113,7 +1128,7 @@ const generateDayTimelineData = () => {
 }
 
 // 判断是否为工作时间
-const isWorkingHour = (hour: number, dayOfWeek: number) => {
+function isWorkingHour(hour: number, dayOfWeek: number) {
   // 周末（周六=6，周日=0）直接返回false，保持周末样式
   if (dayOfWeek === 0 || dayOfWeek === 6) {
     return false
@@ -1142,7 +1157,7 @@ const isWorkingHour = (hour: number, dayOfWeek: number) => {
 }
 
 // 生成小时视图时间轴数据
-const generateHourTimelineData = () => {
+function generateHourTimelineData() {
   const days: unknown[] = []
   const currentDate = new Date(timelineConfig.value.startDate)
 
@@ -1184,7 +1199,7 @@ const generateHourTimelineData = () => {
 }
 
 // 生成周视图时间轴数据
-const generateWeekTimelineData = () => {
+function generateWeekTimelineData() {
   const allWeeks: unknown[] = []
   // 首先生成所有周
   const startDate = new Date(timelineConfig.value.startDate)
@@ -1251,7 +1266,7 @@ const generateWeekTimelineData = () => {
 }
 
 // 生成一周内的7个子列（用于精确定位）
-const generateSubDaysForWeek = (weekStart: Date) => {
+function generateSubDaysForWeek(weekStart: Date) {
   const subDays = []
   for (let i = 0; i < 7; i++) {
     const date = new Date(weekStart)
@@ -1265,7 +1280,7 @@ const generateSubDaysForWeek = (weekStart: Date) => {
 }
 
 // 判断周是否包含今天
-const isWeekContainsToday = (weekStart: Date, weekEnd: Date) => {
+function isWeekContainsToday(weekStart: Date, weekEnd: Date) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return today >= weekStart && today <= weekEnd
@@ -1400,7 +1415,7 @@ const updateTimeScale = (scale: TimelineScale) => {
 }
 
 // 判断是否为今天
-const isToday = (date: Date) => {
+function isToday(date: Date) {
   const today = new Date()
   return (
     date.getDate() === today.getDate() &&
@@ -1632,11 +1647,17 @@ const scrollToTodayCenter = (retry = 0) => {
     todayPosition = daysDiff * dayWidth.value
   }
 
-  // 优先查找 .timeline-body 作为滚动容器，否则回退到 .timeline
-  const scrollContainer = document.querySelector('.timeline') as HTMLElement
+  // 使用缓存的 timelineContainer 和 containerWidth，避免 querySelector 和 clientWidth 读取造成强制重排
+  if (!timelineContainer.value) {
+    // 容器未准备好，递归重试
+    if (retry < 10) {
+      setTimeout(() => scrollToTodayCenter(retry + 1), 60)
+    }
+    return
+  }
 
-  const containerWidth = scrollContainer.clientWidth
-  // 若宽度为0，递归重试，最多10次
+  const containerWidth = timelineContainerWidth.value
+  // 若宽度为0，说明 ResizeObserver 还未触发，递归重试，最多10次
   if (containerWidth === 0 && retry < 10) {
     setTimeout(() => scrollToTodayCenter(retry + 1), 60)
     return
@@ -1644,10 +1665,10 @@ const scrollToTodayCenter = (retry = 0) => {
 
   // 计算将今日列置于中间的滚动位置
   const centeredScrollPosition = todayPosition - containerWidth / 2 + 15
-  if (typeof scrollContainer.scrollTo === 'function') {
-    scrollContainer.scrollTo({ left: Math.max(0, centeredScrollPosition), behavior: 'smooth' })
+  if (typeof timelineContainer.value.scrollTo === 'function') {
+    timelineContainer.value.scrollTo({ left: Math.max(0, centeredScrollPosition), behavior: 'smooth' })
   } else {
-    scrollContainer.scrollLeft = Math.max(0, centeredScrollPosition)
+    timelineContainer.value.scrollLeft = Math.max(0, centeredScrollPosition)
   }
 
   // 滚动结束后延迟显示半圆，并标记初始化完成
@@ -1772,15 +1793,13 @@ const scrollToTasks = () => {
   }
   totalDays += day
 
-  // 计算滚动位置（每个日期30px宽度）
-  const timelinePanel = document.querySelector('.gantt-panel-right')
-  const timelinePanelW = timelinePanel?.clientWidth
-  const scrollPosition = (totalDays - 1) * 30 - (timelinePanelW ? timelinePanelW / 2 : 200)
+  // 使用缓存的容器宽度，避免强制重排
+  const containerWidth = timelineContainerWidth.value || 400 // 默认值以防还未初始化
+  const scrollPosition = (totalDays - 1) * 30 - containerWidth / 2
 
-  // 滚动到指定位置
-  const timeline = document.querySelector('.timeline')
-  if (timeline) {
-    timeline.scrollLeft = Math.max(0, scrollPosition)
+  // 使用缓存的 timelineContainer，避免 querySelector
+  if (timelineContainer.value) {
+    timelineContainer.value.scrollLeft = Math.max(0, scrollPosition)
   }
 }
 
@@ -1809,17 +1828,16 @@ const scrollToToday = () => {
   // 计算今天在时间线中的像素位置（每天30px宽度）
   const todayPosition = daysDiff * 30
 
-  // 获取时间线容器宽度
-  const timeline = document.querySelector('.timeline') as HTMLElement
-  if (!timeline) return
+  // 使用缓存的 timelineContainer 和 containerWidth，避免强制重排
+  if (!timelineContainer.value) return
 
-  const containerWidth = timeline.clientWidth
+  const containerWidth = timelineContainerWidth.value
 
   // 计算居中滚动位置
   const centeredScrollPosition = todayPosition - containerWidth / 2 + 15
 
   // 滚动到指定位置，确保今日列在中间
-  timeline.scrollTo({
+  timelineContainer.value.scrollTo({
     left: Math.max(0, centeredScrollPosition),
     behavior: 'smooth',
   })
@@ -1878,12 +1896,17 @@ const bodyContentRef = ref<HTMLElement | null>(null)
 const svgWidth = ref(0)
 const svgHeight = ref(0)
 
+// ResizeObserver 用于监听 bodyContent 宽度变化
+let bodyContentResizeObserver: ResizeObserver | null = null
+
+// 缓存 bodyContent 的位置，避免频繁调用 getBoundingClientRect
+const bodyContentPosition = ref({ left: 0, top: 0, timestamp: 0 })
+const BODY_POSITION_CACHE_TTL = 100 // 100ms 缓存有效期
+
 function updateSvgSize() {
-  if (bodyContentRef.value) {
-    svgWidth.value = bodyContentRef.value.offsetWidth
-    // 使用计算的内容高度，确保SVG覆盖所有任务行
-    svgHeight.value = contentHeight.value
-  }
+  // 宽度已经通过 ResizeObserver 自动更新，这里只需要更新高度
+  // 使用计算的内容高度，确保SVG覆盖所有任务行
+  svgHeight.value = contentHeight.value
 }
 
 function handleBarMounted(payload: {
@@ -1894,11 +1917,33 @@ function handleBarMounted(payload: {
   height: number
 }) {
   if (!bodyContentRef.value) return
-  const baseRect = bodyContentRef.value.getBoundingClientRect()
+
+  const now = Date.now()
+  let baseLeft = 0
+  let baseTop = 0
+
+  // 检查缓存是否有效
+  if (now - bodyContentPosition.value.timestamp < BODY_POSITION_CACHE_TTL) {
+    // 使用缓存的位置
+    baseLeft = bodyContentPosition.value.left
+    baseTop = bodyContentPosition.value.top
+  } else {
+    // 缓存过期，读取 DOM 并更新缓存
+    const baseRect = bodyContentRef.value.getBoundingClientRect()
+    baseLeft = baseRect.left
+    baseTop = baseRect.top
+
+    bodyContentPosition.value = {
+      left: baseLeft,
+      top: baseTop,
+      timestamp: now,
+    }
+  }
+
   // 统一坐标系：以bodyContent为基准
   taskBarPositions.value[payload.id] = {
-    left: payload.left - baseRect.left,
-    top: payload.top - baseRect.top,
+    left: payload.left - baseLeft,
+    top: payload.top - baseTop,
     width: payload.width,
     height: payload.height,
   }
@@ -1930,8 +1975,8 @@ const handleScrollToPosition = (targetScrollLeft: number) => {
     // 开始自动滚动时隐藏半圆
     hideBubbles.value = true
 
-    // 确保滚动位置在有效范围内
-    const maxScrollLeft = timelineContainer.value.scrollWidth - timelineContainer.value.clientWidth
+    // 使用缓存的值避免强制重排
+    const maxScrollLeft = timelineScrollWidth.value - timelineContainerWidth.value
     const clampedScrollLeft = Math.max(0, Math.min(targetScrollLeft, maxScrollLeft))
 
     // 平滑滚动到目标位置
@@ -2001,6 +2046,9 @@ const links = computed(() => {
 })
 
 onMounted(() => {
+  // 初始化 timelineScrollWidth
+  timelineScrollWidth.value = totalTimelineWidth.value
+
   // 等待下一帧，确保DOM和数据都已渲染
   nextTick(() => {
     setTimeout(() => {
@@ -2041,8 +2089,7 @@ onMounted(() => {
     const timelineBody = document.querySelector('.timeline-body') as HTMLElement
     const timelineContainer = document.querySelector('.timeline') as HTMLElement
     if (timelineBody) {
-      timelineBodyHeight.value = timelineBody.clientHeight
-
+      // 使用ResizeObserver自动更新高度，避免直接读取clientHeight造成强制重排
       resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           timelineBodyHeight.value = entry.contentRect.height
@@ -2054,31 +2101,39 @@ onMounted(() => {
 
     // 初始化滚动位置信息，使用正确的滚动容器
     if (timelineContainer) {
-      timelineScrollLeft.value = timelineContainer.scrollLeft
-      timelineContainerWidth.value = timelineContainer.clientWidth
+      // 使用ResizeObserver自动更新容器宽度，避免直接读取clientWidth造成强制重排
+      // scrollLeft在第一次scroll事件时会自动更新，这里不需要初始化
 
       // 为容器宽度变化创建独立的ResizeObserver
-      const containerResizeObserver = new ResizeObserver(entries => {
+      containerResizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           const newWidth = entry.contentRect.width
-          // 当容器宽度发生变化时，立即更新宽度并重新计算半圆显示
+
+          // 当容器宽度发生变化时，立即更新宽度
+          // ⚠️ 即使在拖拽期间也要更新，因为TaskBar需要实时响应containerWidth变化
           if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
             timelineContainerWidth.value = newWidth
 
-            // 对于容器宽度变化，我们需要立即重新计算半圆状态
-            // 短时间隐藏后重新显示，让TaskBar重新计算边界
-            hideBubbles.value = true
+            // scrollWidth 会在下一次滚动事件中自动更新
+            // 不在这里读取，避免触发强制重排
 
-            // 清除之前的定时器，避免多次触发冲突
-            if (hideBubblesTimeout) {
-              clearTimeout(hideBubblesTimeout)
+            // ⚠️ 拖拽期间不触发半圆隐藏/显示动画，避免闪烁
+            if (!isSplitterDragging.value) {
+              // 对于容器宽度变化，我们需要立即重新计算半圆状态
+              // 短时间隐藏后重新显示，让TaskBar重新计算边界
+              hideBubbles.value = true
+
+              // 清除之前的定时器，避免多次触发冲突
+              if (hideBubblesTimeout) {
+                clearTimeout(hideBubblesTimeout)
+              }
+
+              // 延迟恢复显示，确保宽度变化完全生效
+              hideBubblesTimeout = setTimeout(() => {
+                hideBubbles.value = false
+                hideBubblesTimeout = null
+              }, 300) // 增加到300ms，确保resize完全结束
             }
-
-            // 延迟恢复显示，确保宽度变化完全生效
-            hideBubblesTimeout = setTimeout(() => {
-              hideBubbles.value = false
-              hideBubblesTimeout = null
-            }, 300) // 增加到300ms，确保resize完全结束
           }
         }
       })
@@ -2087,6 +2142,16 @@ onMounted(() => {
       // 将容器ResizeObserver也存储起来，用于清理
       if (!resizeObserver) {
         resizeObserver = containerResizeObserver
+      }
+
+      // 监听bodyContent宽度变化，避免在updateSvgSize中读取offsetWidth造成强制重排
+      if (bodyContentRef.value) {
+        bodyContentResizeObserver = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            svgWidth.value = entry.contentRect.width
+          }
+        })
+        bodyContentResizeObserver.observe(bodyContentRef.value)
       }
     }
   })
@@ -2284,14 +2349,15 @@ const handleTimelineScroll = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target) return
 
+  // 使用缓存的值避免强制重排，只读取scrollLeft（这是滚动事件必需的）
   const scrollLeft = target.scrollLeft
-  const scrollWidth = target.scrollWidth
-  const clientWidth = target.clientWidth
+  const scrollWidth = timelineScrollWidth.value
+  const clientWidth = timelineContainerWidth.value
   const maxScroll = scrollWidth - clientWidth
 
   // 立即更新关键滚动位置信息（用于虚拟滚动）
   timelineScrollLeft.value = scrollLeft
-  timelineContainerWidth.value = clientWidth
+  // timelineContainerWidth 已经通过ResizeObserver更新，这里不需要再次赋值
 
   // 标记初始化完成（第一次滚动后）
   if (isInitialLoad.value && scrollLeft > 0) {
@@ -2349,7 +2415,8 @@ const startAutoScroll = (direction: 'left' | 'right') => {
     if (!timelineContainer.value || !isAutoScrolling.value) return
 
     const currentScrollLeft = timelineContainer.value.scrollLeft
-    const maxScrollLeft = timelineContainer.value.scrollWidth - timelineContainer.value.clientWidth
+    // 使用缓存的值避免强制重排
+    const maxScrollLeft = timelineScrollWidth.value - timelineContainerWidth.value
 
     let newScrollLeft
     if (direction === 'left') {
@@ -2404,8 +2471,7 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
     startAutoScroll('left')
   } else if (
     relativeX >= containerRect.width - EDGE_SCROLL_ZONE &&
-    timelineContainer.value.scrollLeft <
-      timelineContainer.value.scrollWidth - timelineContainer.value.clientWidth
+    timelineContainer.value.scrollLeft < timelineScrollWidth.value - timelineContainerWidth.value
   ) {
     // 检查是否在右边界滚动区域
     startAutoScroll('right')
@@ -2440,6 +2506,12 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
+  }
+
+  // 清理bodyContentResizeObserver
+  if (bodyContentResizeObserver) {
+    bodyContentResizeObserver.disconnect()
+    bodyContentResizeObserver = null
   }
 
   // 清理window事件监听器
@@ -2580,7 +2652,6 @@ watch(
   (newWidth, oldWidth) => {
     // ⚠️ 拖拽 splitter 时跳过重新计算，避免频繁生成 timelineData
     if (isSplitterDragging.value) return
-
     // 只在容器宽度从 0 变为有效值，或容器宽度发生显著变化时重新计算
     if (!oldWidth || oldWidth === 0 || Math.abs(newWidth - oldWidth) > 50) {
       if (newWidth > 0) {
@@ -2620,9 +2691,11 @@ watch(
   { immediate: true },
 )
 
-// 监听timelineData或容器宽度变化，强制TaskBar重新渲染以更新关系线位置
-watch([timelineData, timelineContainerWidth], () => {
-  // ⚠️ 拖拽 splitter 时跳过 TaskBar 重新渲染，避免频繁更新
+// ⚠️ 监听timelineData变化，强制TaskBar重新渲染以更新关系线位置
+// 注意：只监听timelineData，不监听timelineContainerWidth
+// 因为TaskBar会通过computed自动响应containerWidth变化，不需要强制重新渲染
+watch(timelineData, () => {
+  // 拖拽 splitter 时跳过 TaskBar 重新渲染
   if (isSplitterDragging.value) return
 
   // 清空位置信息
@@ -2658,38 +2731,27 @@ watch(
 const handleMilestoneClickLocate = (event: CustomEvent) => {
   const { scrollLeft, smooth } = event.detail
 
-  // 获取Timeline容器 - 尝试两个可能的滚动容器
-  const timelineMain = document.querySelector('.timeline') as HTMLElement
-  const timelineBody = document.querySelector('.timeline-body') as HTMLElement
-
-  // 选择有滚动能力的容器
-  let scrollContainer: HTMLElement | null = null
-  if (timelineMain && timelineMain.scrollWidth > timelineMain.clientWidth) {
-    scrollContainer = timelineMain
-  } else if (timelineBody && timelineBody.scrollWidth > timelineBody.clientWidth) {
-    scrollContainer = timelineBody
-  }
-
-  if (scrollContainer) {
-    // 确保滚动位置在有效范围内
-    const maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth
+  // 使用缓存的timelineContainer，避免querySelector
+  if (timelineContainer.value) {
+    // 使用缓存的值避免强制重排
+    const maxScrollLeft = timelineScrollWidth.value - timelineContainerWidth.value
     const targetScrollLeft = Math.min(Math.max(0, scrollLeft), maxScrollLeft)
 
     if (smooth) {
       // 平滑滚动
-      scrollContainer.scrollTo({
+      timelineContainer.value.scrollTo({
         left: targetScrollLeft,
         behavior: 'smooth',
       })
     } else {
       // 立即滚动
-      scrollContainer.scrollLeft = targetScrollLeft
+      timelineContainer.value.scrollLeft = targetScrollLeft
     }
   }
 }
 
 // 生成月度视图时间轴数据
-const generateMonthTimelineData = () => {
+function generateMonthTimelineData() {
   // 根据时间刻度动态调整时间范围
   let startDate: Date, endDate: Date
 
@@ -2820,7 +2882,7 @@ const generateMonthTimelineData = () => {
 }
 
 // 生成季度视图时间轴数据
-const generateQuarterTimelineData = () => {
+function generateQuarterTimelineData() {
   // 使用从 GanttChart 传入的日期范围（已包含正确的 buffer 和容器填充逻辑）
   const startDate = timelineConfig.value.startDate
   const endDate = timelineConfig.value.endDate
@@ -2865,14 +2927,14 @@ const generateQuarterTimelineData = () => {
 }
 
 // 判断季度是否包含今天
-const isQuarterContainsToday = (startDate: Date, endDate: Date) => {
+function isQuarterContainsToday(startDate: Date, endDate: Date) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return today >= startDate && today <= endDate
 }
 
 // 生成年度视图时间轴数据
-const generateYearTimelineData = () => {
+function generateYearTimelineData() {
   // 使用从 GanttChart 传入的日期范围（已包含正确的 buffer 和容器填充逻辑）
   const startDate = timelineConfig.value.startDate
   const endDate = timelineConfig.value.endDate
@@ -3557,7 +3619,7 @@ const handleAddSuccessor = (task: Task) => {
                 :container-width="timelineContainerWidth"
                 :hide-bubbles="hideBubbles"
                 :timeline-data="
-                  currentTimeScale === TimelineScale.HOUR ? optimizedTimelineData : timelineData
+                  currentTimeScale === TimelineScale.HOUR ? [] : timelineData
                 "
                 :current-time-scale="currentTimeScale"
                 :task-bar-config="props.taskBarConfig"
