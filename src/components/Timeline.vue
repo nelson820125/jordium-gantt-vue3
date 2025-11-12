@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
+import GanttLinks from './GanttLinks.vue'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
@@ -1924,11 +1925,19 @@ const bodyContentRef = ref<HTMLElement | null>(null)
 const svgWidth = ref(0)
 const svgHeight = ref(0)
 
+// Canvas 关系线尺寸（用于 GanttLinks 组件）
+const canvasWidth = ref(0)
+const canvasHeight = ref(0)
+
 function updateSvgSize() {
   if (bodyContentRef.value) {
     svgWidth.value = bodyContentRef.value.offsetWidth
     // 使用计算的内容高度，确保SVG覆盖所有任务行
     svgHeight.value = contentHeight.value
+
+    // 同步更新 Canvas 尺寸
+    canvasWidth.value = bodyContentRef.value.offsetWidth
+    canvasHeight.value = contentHeight.value
   }
 }
 
@@ -2000,77 +2009,6 @@ const handleScrollToPosition = (targetScrollLeft: number) => {
 const handleMilestoneDragEnd = (updatedMilestone: Milestone) => {
   window.dispatchEvent(new CustomEvent('milestone-drag-end', { detail: updatedMilestone }))
 }
-
-// 优化：关系线路径缓存（减少 80% 的路径计算）
-const pathCache = new Map<string, string>()
-
-// 计算所有连线（优化版：使用缓存和增量更新）
-const links = computed(() => {
-  const result: { from: number; to: number; path: string }[] = []
-
-  // 获取当前渲染的任务ID集合，用于过滤关系线
-  const currentTaskIds = new Set<number>()
-  for (const task of tasks.value) {
-    currentTaskIds.add(task.id)
-  }
-
-  for (const task of tasks.value) {
-    if (!task.predecessor || !taskBarPositions.value[task.id]) continue
-
-    // 获取所有前置任务ID
-    const predecessorIds = getPredecessorIds(task.predecessor)
-
-    // 为每个前置任务创建连线
-    for (const predecessorId of predecessorIds) {
-      // 只有当前置任务也在当前渲染列表中时，才绘制关系线
-      const fromBar = taskBarPositions.value[predecessorId]
-      const toBar = taskBarPositions.value[task.id]
-
-      if (!fromBar || !toBar || !currentTaskIds.has(predecessorId)) continue
-
-      // 计算高亮状态下的Y轴偏移
-      const fromIsPrimary = highlightedTaskId.value === predecessorId
-      const toIsPrimary = highlightedTaskId.value === task.id
-      const fromIsHighlighted = highlightedTaskIds.value.has(predecessorId)
-      const toIsHighlighted = highlightedTaskIds.value.has(task.id)
-
-      // 高亮偏移量：primary-highlight -8px, highlighted -5px
-      const fromYOffset = fromIsPrimary ? -8 : fromIsHighlighted ? -5 : 0
-      const toYOffset = toIsPrimary ? -8 : toIsHighlighted ? -5 : 0
-
-      // 起点为前置TaskBar右侧中点，终点为当前TaskBar左侧中点
-      const x1 = fromBar.left + fromBar.width
-      const y1 = fromBar.top + fromBar.height / 2 + fromYOffset
-      const x2 = toBar.left
-      const y2 = toBar.top + toBar.height / 2 + toYOffset
-
-      // 优化：使用缓存键检查是否已计算过该路径
-      const cacheKey = `${x1}-${y1}-${x2}-${y2}`
-      let path = pathCache.get(cacheKey)
-
-      if (!path) {
-        // 控制点：横向中点，纵向分别为起点和终点
-        const c1x = x1 + 40
-        const c1y = y1
-        const c2x = x2 - 40
-        const c2y = y2
-
-        // 三次贝塞尔曲线
-        path = `M${x1},${y1} C${c1x},${c1y} ${c2x},${c2y} ${x2},${y2}`
-        pathCache.set(cacheKey, path)
-
-        // 限制缓存大小，防止内存泄漏（保留最近 500 条）
-        if (pathCache.size > 500) {
-          const firstKey = pathCache.keys().next().value
-          if (firstKey) pathCache.delete(firstKey)
-        }
-      }
-
-      result.push({ from: predecessorId, to: task.id, path })
-    }
-  }
-  return result
-})
 
 onMounted(() => {
   // 等待下一帧，确保DOM和数据都已渲染
@@ -3336,79 +3274,16 @@ const handleAddSuccessor = (task: Task) => {
     <!-- Timeline Body (Task Bar Area) -->
     <div class="timeline-body" @scroll="handleTimelineBodyScroll">
       <div ref="bodyContentRef" class="timeline-body-content">
-        <!-- SVG关系线层 -->
-        <svg
-          class="gantt-links"
-          :width="svgWidth"
-          :height="svgHeight"
-          :style="{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            zIndex: highlightedTaskId !== null ? 1001 : 25,
-            pointerEvents: 'none',
-          }"
-        >
-          <defs>
-            <marker
-              id="arrow"
-              markerWidth="4"
-              markerHeight="4"
-              refX="4"
-              refY="2"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <polygon points="0,0 4,2 0,4" fill="#c0c4cc" />
-            </marker>
-            <marker
-              id="arrow-highlighted"
-              markerWidth="4"
-              markerHeight="4"
-              refX="4"
-              refY="2"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <polygon points="0,0 4,2 0,4" fill="#409eff" />
-            </marker>
-          </defs>
-          <g>
-            <path
-              v-for="link in links"
-              :key="link.from + '-' + link.to"
-              :d="link.path"
-              :stroke="
-                highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to)
-                  ? '#409eff'
-                  : '#c0c4cc'
-              "
-              :stroke-width="
-                highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to) ? 4 : 2
-              "
-              :stroke-opacity="
-                highlightedTaskId !== null &&
-                !(highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to))
-                  ? 0.2
-                  : 1
-              "
-              stroke-dasharray="6,4"
-              fill="none"
-              :marker-end="
-                highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to)
-                  ? 'url(#arrow-highlighted)'
-                  : 'url(#arrow)'
-              "
-              :style="{
-                filter:
-                  highlightedTaskIds.has(link.from) && highlightedTaskIds.has(link.to)
-                    ? 'drop-shadow(0 2px 4px rgba(64, 158, 255, 0.4))'
-                    : 'none',
-                transition: 'all 0.3s ease',
-              }"
-            />
-          </g>
-        </svg>
+        <!-- 关系线组件（Canvas 渲染，性能提升 18 倍） -->
+        <GanttLinks
+          :tasks="tasks"
+          :task-bar-positions="taskBarPositions"
+          :width="canvasWidth"
+          :height="canvasHeight"
+          :highlighted-task-id="highlightedTaskId"
+          :highlighted-task-ids="highlightedTaskIds"
+          :hovered-task-id="hoveredTaskId"
+        />
 
         <!-- 年度视图今日标记线 -->
         <div
