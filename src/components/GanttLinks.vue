@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 
@@ -44,11 +44,16 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 // requestAnimationFrame 防抖控制
 let rafId: number | null = null
 let pendingRedraw = false
+let themeObserver: MutationObserver | null = null
 
 // 当前主题（用于分隔线颜色）
-const isDarkTheme = computed(() => {
-  return document.documentElement.getAttribute('data-theme') === 'dark'
-})
+const isDarkTheme = ref(document.documentElement.getAttribute('data-theme') === 'dark')
+
+// 监听主题变化
+const updateTheme = () => {
+  isDarkTheme.value = document.documentElement.getAttribute('data-theme') === 'dark'
+  scheduleRedraw()
+}
 
 /**
  * 绘制关系线到 Canvas
@@ -58,25 +63,29 @@ const drawLinks = () => {
   const canvas = canvasRef.value
   if (!canvas) return
 
-  // 适配高清屏（Retina）
-  const dpr = window.devicePixelRatio || 1
-  const rect = canvas.getBoundingClientRect()
-
-  // 设置实际像素尺寸
-  canvas.width = rect.width * dpr
-  canvas.height = rect.height * dpr
-  const ctx = canvas.getContext('2d', { alpha: true }) // 启用透明背景
+  const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) {
     // eslint-disable-next-line no-console
     console.error('❌ Canvas context 获取失败，可能是尺寸超限')
     return
   }
 
-  // 缩放上下文以适配高清屏
-  ctx.scale(dpr, dpr)
+  // 适配高清屏（Retina）
+  const dpr = window.devicePixelRatio || 1
+  const displayWidth = props.width
+  const displayHeight = props.height
+
+  // 只在尺寸变化时更新 canvas 尺寸
+  const pixelWidth = displayWidth * dpr
+  const pixelHeight = displayHeight * dpr
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    canvas.width = pixelWidth
+    canvas.height = pixelHeight
+    ctx.scale(dpr, dpr)
+  }
 
   // 清空画布（透明）
-  ctx.clearRect(0, 0, rect.width, rect.height)
+  ctx.clearRect(0, 0, displayWidth, displayHeight)
 
   // 绘制月份分隔线（在关系线之前，作为背景）
   if (props.showVerticalLines && props.verticalLines && props.verticalLines.length > 0) {
@@ -93,9 +102,9 @@ const drawLinks = () => {
     for (const line of props.verticalLines) {
       const localX = line.left - props.offsetLeft
       // 只绘制在 Canvas 可见范围内的线
-      if (localX >= 0 && localX <= rect.width) {
+      if (localX >= 0 && localX <= displayWidth) {
         ctx.moveTo(localX, 0)
-        ctx.lineTo(localX, rect.height)
+        ctx.lineTo(localX, displayHeight)
       }
     }
     ctx.stroke()
@@ -114,7 +123,7 @@ const drawLinks = () => {
 
   // 虚拟渲染：计算 Canvas 覆盖的范围
   const canvasStartX = props.offsetLeft
-  const canvasEndX = props.offsetLeft + rect.width
+  const canvasEndX = props.offsetLeft + displayWidth
 
   // 定义线条数据类型
   interface LineData {
@@ -135,24 +144,16 @@ const drawLinks = () => {
   const normalLines: LineData[] = []
   const fadedLines: LineData[] = [] // 高亮模式下的普通线条（半透明）
 
-  // 收集所有关系线数据并分组
-  let totalRelations = 0 // 总关系数
-  let culledRelations = 0 // 被裁剪的关系数
-  let drawnRelations = 0 // 实际绘制的关系数
-
   for (const task of props.tasks) {
     if (!task.predecessor || !props.taskBarPositions[task.id]) continue
 
     const predecessorIds = getPredecessorIds(task.predecessor)
 
     for (const predecessorId of predecessorIds) {
-      totalRelations++
-
       const fromBar = props.taskBarPositions[predecessorId]
       const toBar = props.taskBarPositions[task.id]
 
       if (!fromBar || !toBar || !currentTaskIds.has(predecessorId)) {
-        culledRelations++
         continue
       }
 
@@ -163,11 +164,8 @@ const drawLinks = () => {
       const lineMinX = Math.min(fromX, toX)
       const lineMaxX = Math.max(fromX, toX)
       if (lineMaxX < canvasStartX || lineMinX > canvasEndX) {
-        culledRelations++
         continue // 完全在 Canvas 外，跳过
       }
-
-      drawnRelations++
 
       // 判断高亮状态
       const fromIsPrimary = props.highlightedTaskId === predecessorId
@@ -204,7 +202,6 @@ const drawLinks = () => {
 
       // 预计算箭头角度
       const arrowAngle = Math.atan2(y2 - c2y, x2 - c2x)
-
       const lineData: LineData = { x1, y1, x2, y2, c1x, c1y, c2x, c2y, arrowAngle }
 
       // 根据状态分组
@@ -363,7 +360,7 @@ const scheduleRedraw = () => {
 watch(
   [
     () => props.taskBarPositions,
-    () => props.tasks.length,
+    () => props.tasks,
     () => props.highlightedTaskId,
     () => props.highlightedTaskIds,
     () => props.hoveredTaskId,
@@ -382,6 +379,21 @@ watch(
 
 // 组件挂载后初始化绘制
 onMounted(() => {
+  // 监听主题变化
+  themeObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.attributeName === 'data-theme') {
+        updateTheme()
+        break
+      }
+    }
+  })
+
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  })
+
   nextTick(() => {
     drawLinks()
   })
@@ -389,6 +401,12 @@ onMounted(() => {
 
 // 组件卸载时清理
 onUnmounted(() => {
+  // 清理主题观察器
+  if (themeObserver) {
+    themeObserver.disconnect()
+    themeObserver = null
+  }
+
   // 取消待处理的 RAF
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
