@@ -3283,6 +3283,8 @@ const handleAddSuccessor = (task: Task) => {
           :highlighted-task-id="highlightedTaskId"
           :highlighted-task-ids="highlightedTaskIds"
           :hovered-task-id="hoveredTaskId"
+          :vertical-lines="monthFirstVerticalLines"
+          :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
         />
 
         <!-- 年度视图今日标记线 -->
@@ -3291,17 +3293,6 @@ const handleAddSuccessor = (task: Task) => {
           class="today-line-year-view"
           :style="{
             left: `${getTodayLinePositionInYearView}px`,
-            height: `${contentHeight}px`,
-          }"
-        ></div>
-
-        <!-- 月份1号竖直线（周视图） - 优化：使用预计算的位置数组 -->
-        <div
-          v-for="(line, index) in monthFirstVerticalLines"
-          :key="`vline-${index}`"
-          class="month-first-vertical-line"
-          :style="{
-            left: `${line.left}px`,
             height: `${contentHeight}px`,
           }"
         ></div>
@@ -3872,22 +3863,6 @@ const handleAddSuccessor = (task: Task) => {
 :global(html[data-theme='dark']) .flag-content {
   background-color: var(--gantt-primary-light, #66b1ff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-
-/* 月份1号竖直线样式 */
-.month-first-vertical-line {
-  position: absolute;
-  top: 0;
-  width: 1px;
-  background-color: var(--gantt-primary, #409eff);
-  opacity: 0.6;
-  z-index: 5;
-  pointer-events: none;
-}
-
-/* 暗色主题下的竖直线 */
-:global(html[data-theme='dark']) .month-first-vertical-line {
-  background-color: var(--gantt-primary-light, #66b1ff);
 }
 
 /* 周视图背景列样式 */

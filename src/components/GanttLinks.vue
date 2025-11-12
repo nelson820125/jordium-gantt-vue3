@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 
@@ -11,6 +11,12 @@ interface TaskBarPosition {
   height: number
 }
 
+// 定义月份分隔线位置类型
+interface VerticalLine {
+  left: number
+  label?: string
+}
+
 // 定义 Props
 interface Props {
   tasks: Task[]
@@ -20,12 +26,23 @@ interface Props {
   highlightedTaskId: number | null
   highlightedTaskIds: Set<number>
   hoveredTaskId: number | null
+  // 月份分隔线配置
+  verticalLines?: VerticalLine[]
+  showVerticalLines?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  verticalLines: () => [],
+  showVerticalLines: true,
+})
 
 // Canvas 引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+
+// 当前主题（用于分隔线颜色）
+const isDarkTheme = computed(() => {
+  return document.documentElement.getAttribute('data-theme') === 'dark'
+})
 
 /**
  * 绘制关系线到 Canvas
@@ -51,6 +68,26 @@ const drawLinks = () => {
 
   // 清空画布
   ctx.clearRect(0, 0, rect.width, rect.height)
+
+  // 绘制月份分隔线（在关系线之前，作为背景）
+  if (props.showVerticalLines && props.verticalLines && props.verticalLines.length > 0) {
+    ctx.save()
+
+    // 使用与旗帜一致的主题色：浅色模式 #409eff，暗色模式 #66b1ff
+    const lineColor = isDarkTheme.value ? '#66b1ff' : '#409eff'
+    ctx.strokeStyle = lineColor
+    ctx.lineWidth = 1
+
+    // 绘制每条垂直线
+    for (const line of props.verticalLines) {
+      ctx.beginPath()
+      ctx.moveTo(line.left, 0)
+      ctx.lineTo(line.left, rect.height)
+      ctx.stroke()
+    }
+
+    ctx.restore()
+  }
 
   // 获取当前渲染的任务ID集合
   const currentTaskIds = new Set<number>()
