@@ -3651,13 +3651,14 @@ const handleAddSuccessor = (task: Task) => {
   display: flex;
   flex-direction: column;
   background: var(--gantt-bg-primary, #ffffff);
-  overflow-x: auto;
+  overflow-x: auto; /* 横向滚动，显示滚动条 */
+  overflow-y: hidden; /* 纵向滚动，但不显示滚动条 */
   width: 100%;
   cursor: grab;
   transition: background-color 0.3s ease;
   position: relative; /* 为覆盖层定位 */
 
-  /* Webkit浏览器滚动条样式 */
+  /* Webkit浏览器滚动条样式 - 只显示横向滚动条 */
   scrollbar-width: thin;
   scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
 }
@@ -3934,44 +3935,21 @@ const handleAddSuccessor = (task: Task) => {
 
 .timeline-body {
   flex: 1;
-  overflow: auto;
+  overflow-x: hidden; /* 禁用横向滚动，由父容器.timeline处理 */
+  overflow-y: auto; /* 只保留纵向滚动 */
   position: relative;
   width: fit-content;
   background: var(--gantt-bg-primary, #ffffff);
   cursor: grab;
   transition: background-color 0.3s ease;
 
-  /* Webkit浏览器滚动条样式 */
-  scrollbar-width: thin;
-  scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
-}
-
-.timeline-body:active {
-  cursor: grabbing;
+  /* 隐藏滚动条但保留滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 .timeline-body::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.timeline-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.timeline-body::-webkit-scrollbar-thumb {
-  background-color: var(--gantt-scrollbar-thumb);
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.timeline-body::-webkit-scrollbar-thumb:hover {
-  background-color: var(--gantt-scrollbar-thumb-hover);
-}
-
-.timeline-body::-webkit-scrollbar-corner {
-  background: transparent;
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .timeline-body-content {
