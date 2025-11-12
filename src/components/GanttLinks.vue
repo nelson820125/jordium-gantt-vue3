@@ -23,6 +23,7 @@ interface Props {
   taskBarPositions: Record<number, TaskBarPosition>
   width: number
   height: number
+  offsetLeft?: number // Canvas 在全局坐标系中的偏移量（用于虚拟渲染）
   highlightedTaskId: number | null
   highlightedTaskIds: Set<number>
   hoveredTaskId: number | null
@@ -34,6 +35,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   verticalLines: () => [],
   showVerticalLines: true,
+  offsetLeft: 0,
 })
 
 // Canvas 引用
@@ -56,9 +58,6 @@ const drawLinks = () => {
   const canvas = canvasRef.value
   if (!canvas) return
 
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
   // 适配高清屏（Retina）
   const dpr = window.devicePixelRatio || 1
   const rect = canvas.getBoundingClientRect()
@@ -66,11 +65,17 @@ const drawLinks = () => {
   // 设置实际像素尺寸
   canvas.width = rect.width * dpr
   canvas.height = rect.height * dpr
+  const ctx = canvas.getContext('2d', { alpha: true }) // 启用透明背景
+  if (!ctx) {
+    // eslint-disable-next-line no-console
+    console.error('❌ Canvas context 获取失败，可能是尺寸超限')
+    return
+  }
 
   // 缩放上下文以适配高清屏
   ctx.scale(dpr, dpr)
 
-  // 清空画布
+  // 清空画布（透明）
   ctx.clearRect(0, 0, rect.width, rect.height)
 
   // 绘制月份分隔线（在关系线之前，作为背景）
@@ -83,10 +88,15 @@ const drawLinks = () => {
     ctx.lineWidth = 1
 
     // 优化：一次性绘制所有垂直线，避免多次 stroke() 调用
+    // 虚拟渲染：减去偏移量，转换为 Canvas 局部坐标
     ctx.beginPath()
     for (const line of props.verticalLines) {
-      ctx.moveTo(line.left, 0)
-      ctx.lineTo(line.left, rect.height)
+      const localX = line.left - props.offsetLeft
+      // 只绘制在 Canvas 可见范围内的线
+      if (localX >= 0 && localX <= rect.width) {
+        ctx.moveTo(localX, 0)
+        ctx.lineTo(localX, rect.height)
+      }
     }
     ctx.stroke()
 
@@ -101,6 +111,10 @@ const drawLinks = () => {
 
   // 是否处于高亮模式
   const isHighlightMode = props.highlightedTaskId !== null
+
+  // 虚拟渲染：计算 Canvas 覆盖的范围
+  const canvasStartX = props.offsetLeft
+  const canvasEndX = props.offsetLeft + rect.width
 
   // 定义线条数据类型
   interface LineData {
@@ -122,16 +136,38 @@ const drawLinks = () => {
   const fadedLines: LineData[] = [] // 高亮模式下的普通线条（半透明）
 
   // 收集所有关系线数据并分组
+  let totalRelations = 0 // 总关系数
+  let culledRelations = 0 // 被裁剪的关系数
+  let drawnRelations = 0 // 实际绘制的关系数
+
   for (const task of props.tasks) {
     if (!task.predecessor || !props.taskBarPositions[task.id]) continue
 
     const predecessorIds = getPredecessorIds(task.predecessor)
 
     for (const predecessorId of predecessorIds) {
+      totalRelations++
+
       const fromBar = props.taskBarPositions[predecessorId]
       const toBar = props.taskBarPositions[task.id]
 
-      if (!fromBar || !toBar || !currentTaskIds.has(predecessorId)) continue
+      if (!fromBar || !toBar || !currentTaskIds.has(predecessorId)) {
+        culledRelations++
+        continue
+      }
+
+      // 虚拟渲染：跳过不在 Canvas 覆盖范围内的关系线
+      // 如果起点和终点都在 Canvas 外，跳过
+      const fromX = fromBar.left + fromBar.width
+      const toX = toBar.left
+      const lineMinX = Math.min(fromX, toX)
+      const lineMaxX = Math.max(fromX, toX)
+      if (lineMaxX < canvasStartX || lineMinX > canvasEndX) {
+        culledRelations++
+        continue // 完全在 Canvas 外，跳过
+      }
+
+      drawnRelations++
 
       // 判断高亮状态
       const fromIsPrimary = props.highlightedTaskId === predecessorId
@@ -149,11 +185,17 @@ const drawLinks = () => {
       const fromYOffset = fromIsPrimary ? -8 : fromIsHighlighted ? -5 : 0
       const toYOffset = toIsPrimary ? -8 : toIsHighlighted ? -5 : 0
 
-      // 计算坐标
-      const x1 = fromBar.left + fromBar.width
-      const y1 = fromBar.top + fromBar.height / 2 + fromYOffset
-      const x2 = toBar.left
-      const y2 = toBar.top + toBar.height / 2 + toYOffset
+      // 计算坐标（全局坐标）
+      const globalX1 = fromBar.left + fromBar.width
+      const globalY1 = fromBar.top + fromBar.height / 2 + fromYOffset
+      const globalX2 = toBar.left
+      const globalY2 = toBar.top + toBar.height / 2 + toYOffset
+
+      // 转换为 Canvas 局部坐标
+      const x1 = globalX1 - props.offsetLeft
+      const y1 = globalY1
+      const x2 = globalX2 - props.offsetLeft
+      const y2 = globalY2
 
       const c1x = x1 + 40
       const c1y = y1
@@ -329,6 +371,7 @@ watch(
     () => props.height,
     () => props.verticalLines,
     () => props.showVerticalLines,
+    () => props.offsetLeft, // 监听虚拟渲染的偏移量变化
   ],
   () => {
     // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
@@ -369,6 +412,7 @@ defineExpose({
       top: 0,
       width: `${width}px`,
       height: `${height}px`,
+      transform: `translateX(${offsetLeft}px)`,
       zIndex: highlightedTaskId !== null ? 1001 : 25,
       pointerEvents: 'none',
     }"
@@ -378,5 +422,7 @@ defineExpose({
 <style scoped>
 .gantt-links-canvas {
   display: block;
+  background: transparent; /* 确保背景透明 */
+  opacity: 1; /* 确保不透明度为 100% */
 }
 </style>

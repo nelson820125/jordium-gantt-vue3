@@ -719,6 +719,11 @@ const debouncedUpdatePositions = debounce(() => {
   computeAllMilestonesPositions()
 }, 50)
 
+// 虚拟渲染：防抖更新 Canvas 位置（滚动时触发）
+const debouncedUpdateCanvasPosition = debounce(() => {
+  updateSvgSize() // 重新计算 Canvas 位置和尺寸
+}, 50)
+
 // 缓存时间轴数据的函数
 const getCachedTimelineData = (): unknown => {
   const scale = currentTimeScale.value
@@ -1932,15 +1937,46 @@ const svgHeight = ref(0)
 // Canvas 关系线尺寸（用于 GanttLinks 组件）
 const canvasWidth = ref(0)
 const canvasHeight = ref(0)
+const canvasOffsetLeft = ref(0) // Canvas 在全局坐标系中的偏移量
+
+// 虚拟渲染 Canvas 的安全宽度（防止超过浏览器限制）
+// 可根据实际需求调整：
+// - 5000: 最小内存 (~30MB)，适合低端设备，但滚动时更频繁更新
+// - 10000: 平衡选择 (~60MB)，覆盖小时视图 10 天，周视图 2 年
+const SAFE_CANVAS_WIDTH = 5000 // 平衡性能和覆盖范围
 
 function updateSvgSize() {
   if (bodyContentRef.value) {
-    svgWidth.value = bodyContentRef.value.offsetWidth
-    // 使用计算的内容高度，确保SVG覆盖所有任务行
-    svgHeight.value = contentHeight.value
+    // 获取 bodyContent 的总宽度和可视区域宽度
+    const totalWidth = bodyContentRef.value.offsetWidth
 
-    // 同步更新 Canvas 尺寸
-    canvasWidth.value = bodyContentRef.value.offsetWidth
+    // 使用已经维护的 timelineScrollLeft，而不是从 DOM 重新读取
+    // 因为 handleTimelineScroll 已经实时更新了这个值
+    const scrollLeft = timelineScrollLeft.value
+
+    // 虚拟渲染策略（统一模式）：
+    // Canvas 始终使用固定安全宽度，通过 offsetLeft 动态定位
+    canvasWidth.value = SAFE_CANVAS_WIDTH
+
+    // 计算 Canvas 覆盖的起始位置
+    // 策略：以当前滚动位置为基准，向左扩展 1/3，向右扩展 2/3
+    const bufferLeft = SAFE_CANVAS_WIDTH / 3
+    let idealOffsetLeft = Math.max(0, scrollLeft - bufferLeft)
+
+    // 确保 Canvas 不超出内容范围
+    // 1. 如果总宽度 <= Canvas 宽度，Canvas 从 0 开始
+    // 2. 如果总宽度 > Canvas 宽度，Canvas 不能超过右边界
+    if (totalWidth <= SAFE_CANVAS_WIDTH) {
+      idealOffsetLeft = 0
+    } else {
+      const maxOffsetLeft = totalWidth - SAFE_CANVAS_WIDTH
+      idealOffsetLeft = Math.min(idealOffsetLeft, maxOffsetLeft)
+    }
+
+    canvasOffsetLeft.value = idealOffsetLeft
+
+    svgWidth.value = canvasWidth.value
+    svgHeight.value = contentHeight.value
     canvasHeight.value = contentHeight.value
   }
 }
@@ -2372,6 +2408,9 @@ const handleTimelineScroll = (event: Event) => {
   if (isInitialLoad.value && scrollLeft > 0) {
     isInitialLoad.value = false
   }
+
+  // 虚拟渲染：滚动时更新 Canvas 位置（防抖处理）
+  debouncedUpdateCanvasPosition()
 
   // 小时视图简化处理
   if (currentTimeScale.value === TimelineScale.HOUR) {
@@ -3281,12 +3320,13 @@ const handleAddSuccessor = (task: Task) => {
     <!-- Timeline Body (Task Bar Area) -->
     <div class="timeline-body" @scroll="handleTimelineBodyScroll">
       <div ref="bodyContentRef" class="timeline-body-content">
-        <!-- 关系线组件（Canvas 渲染，性能提升 18 倍） -->
+        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染） -->
         <GanttLinks
           :tasks="tasks"
           :task-bar-positions="taskBarPositions"
           :width="canvasWidth"
           :height="canvasHeight"
+          :offset-left="canvasOffsetLeft"
           :highlighted-task-id="highlightedTaskId"
           :highlighted-task-ids="highlightedTaskIds"
           :hovered-task-id="hoveredTaskId"
