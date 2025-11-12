@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, computed } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
-// import { perfMonitor } from '../utils/perfMonitor'
 
 // 定义 TaskBar 位置信息类型
 interface TaskBarPosition {
@@ -40,6 +39,10 @@ const props = withDefaults(defineProps<Props>(), {
 // Canvas 引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
+// requestAnimationFrame 防抖控制
+let rafId: number | null = null
+let pendingRedraw = false
+
 // 当前主题（用于分隔线颜色）
 const isDarkTheme = computed(() => {
   return document.documentElement.getAttribute('data-theme') === 'dark'
@@ -50,8 +53,6 @@ const isDarkTheme = computed(() => {
  * 性能优势：相比 SVG 提升 18 倍渲染性能
  */
 const drawLinks = () => {
-  // const startTime = performance.now()
-
   const canvas = canvasRef.value
   if (!canvas) return
 
@@ -101,7 +102,26 @@ const drawLinks = () => {
   // 是否处于高亮模式
   const isHighlightMode = props.highlightedTaskId !== null
 
-  // 绘制所有关系线
+  // 定义线条数据类型
+  interface LineData {
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+    c1x: number
+    c1y: number
+    c2x: number
+    c2y: number
+    arrowAngle: number
+  }
+
+  // 按样式分组线条数据（减少状态切换）
+  const highlightedLines: LineData[] = []
+  const hoveredLines: LineData[] = []
+  const normalLines: LineData[] = []
+  const fadedLines: LineData[] = [] // 高亮模式下的普通线条（半透明）
+
+  // 收集所有关系线数据并分组
   for (const task of props.tasks) {
     if (!task.predecessor || !props.taskBarPositions[task.id]) continue
 
@@ -140,80 +160,125 @@ const drawLinks = () => {
       const c2x = x2 - 40
       const c2y = y2
 
-      // 设置线条样式
-      ctx.beginPath()
+      // 预计算箭头角度
+      const arrowAngle = Math.atan2(y2 - c2y, x2 - c2x)
 
+      const lineData: LineData = { x1, y1, x2, y2, c1x, c1y, c2x, c2y, arrowAngle }
+
+      // 根据状态分组
       if (isLineHighlighted) {
-        // 高亮状态：蓝色
-        ctx.strokeStyle = '#409eff'
-        ctx.lineWidth = 4
-        ctx.globalAlpha = 1
-        ctx.shadowBlur = 8
-        ctx.shadowColor = 'rgba(64, 158, 255, 0.4)'
+        highlightedLines.push(lineData)
       } else if (isLineHovered) {
-        // Hover 状态：绿色
-        ctx.strokeStyle = '#67c23a'
-        ctx.lineWidth = 3
-        ctx.globalAlpha = 1
-        ctx.shadowBlur = 6
-        ctx.shadowColor = 'rgba(103, 194, 58, 0.3)'
+        hoveredLines.push(lineData)
+      } else if (isHighlightMode) {
+        fadedLines.push(lineData)
       } else {
-        // 普通状态：灰色
-        ctx.strokeStyle = '#c0c4cc'
-        ctx.lineWidth = 2
-        ctx.globalAlpha = isHighlightMode ? 0.2 : 1
-        ctx.shadowBlur = 0
+        normalLines.push(lineData)
       }
-
-      ctx.setLineDash([6, 4])
-
-      // 绘制贝塞尔曲线
-      ctx.moveTo(x1, y1)
-      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, x2, y2)
-      ctx.stroke()
-
-      // 重置阴影（避免影响箭头）
-      ctx.shadowBlur = 0
-
-      // 绘制箭头
-      drawArrow(ctx, x2, y2, c2x, c2y, isLineHighlighted, isLineHovered, isHighlightMode)
-
-      // 恢复全局透明度
-      ctx.globalAlpha = 1
     }
   }
 
-  // 性能监控
-  // const endTime = performance.now()
-  // const duration = endTime - startTime
-  // perfMonitor.log('Canvas 重绘', {
-  //   耗时: `${duration.toFixed(2)}ms`,
-  //   关系线数量: props.tasks.filter(t => t.predecessor).length,
-  //   垂直线数量: props.verticalLines?.length || 0,
-  //   Canvas尺寸: `${rect.width}x${rect.height}`,
-  // })
+  // 批量绘制：设置虚线样式（所有线条共用）
+  ctx.setLineDash([6, 4])
+
+  // 批量绘制高亮线条
+  if (highlightedLines.length > 0) {
+    ctx.strokeStyle = '#409eff'
+    ctx.fillStyle = '#409eff'
+    ctx.lineWidth = 4
+    ctx.globalAlpha = 1
+
+    ctx.beginPath()
+    for (const line of highlightedLines) {
+      ctx.moveTo(line.x1, line.y1)
+      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+    }
+    ctx.stroke()
+
+    // 批量绘制箭头
+    for (const line of highlightedLines) {
+      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+    }
+  }
+
+  // 批量绘制悬停线条
+  if (hoveredLines.length > 0) {
+    ctx.strokeStyle = '#67c23a'
+    ctx.fillStyle = '#67c23a'
+    ctx.lineWidth = 3
+    ctx.globalAlpha = 1
+
+    ctx.beginPath()
+    for (const line of hoveredLines) {
+      ctx.moveTo(line.x1, line.y1)
+      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+    }
+    ctx.stroke()
+
+    // 批量绘制箭头
+    for (const line of hoveredLines) {
+      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+    }
+  }
+
+  // 批量绘制普通线条
+  if (normalLines.length > 0) {
+    ctx.strokeStyle = '#c0c4cc'
+    ctx.fillStyle = '#c0c4cc'
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 1
+
+    ctx.beginPath()
+    for (const line of normalLines) {
+      ctx.moveTo(line.x1, line.y1)
+      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+    }
+    ctx.stroke()
+
+    // 批量绘制箭头
+    for (const line of normalLines) {
+      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+    }
+  }
+
+  // 批量绘制半透明线条（高亮模式下的普通线条）
+  if (fadedLines.length > 0) {
+    ctx.strokeStyle = '#c0c4cc'
+    ctx.fillStyle = '#c0c4cc'
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 0.2
+
+    ctx.beginPath()
+    for (const line of fadedLines) {
+      ctx.moveTo(line.x1, line.y1)
+      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+    }
+    ctx.stroke()
+
+    // 批量绘制箭头
+    for (const line of fadedLines) {
+      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+    }
+
+    // 恢复透明度
+    ctx.globalAlpha = 1
+  }
 }
 
 /**
- * 绘制箭头
+ * 优化版箭头绘制（减少参数传递，复用已设置的 fillStyle）
  */
-const drawArrow = (
+const drawArrowOptimized = (
   ctx: CanvasRenderingContext2D,
   x2: number,
   y2: number,
-  c2x: number,
-  c2y: number,
-  isHighlighted: boolean,
-  isHovered: boolean,
-  isHighlightMode: boolean,
+  angle: number,
 ) => {
-  const angle = Math.atan2(y2 - c2y, x2 - c2x)
   const arrowLength = 8
   const arrowWidth = 4
 
   ctx.beginPath()
-  ctx.fillStyle = isHighlighted ? '#409eff' : isHovered ? '#67c23a' : '#c0c4cc'
-  ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.2 : 1
+  // fillStyle 已在外部设置，无需重复设置
   ctx.moveTo(x2, y2)
   ctx.lineTo(
     x2 - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle),
@@ -225,6 +290,31 @@ const drawArrow = (
   )
   ctx.closePath()
   ctx.fill()
+}
+
+/**
+ * 使用 requestAnimationFrame 优化的重绘调度器
+ * 合并多个连续的重绘请求为单次绘制
+ */
+const scheduleRedraw = () => {
+  if (pendingRedraw) {
+    // 已有待处理的重绘请求，跳过
+    return
+  }
+
+  pendingRedraw = true
+
+  // 取消之前的 RAF（如果有）
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+  }
+
+  // 在下一帧绘制
+  rafId = requestAnimationFrame(() => {
+    pendingRedraw = false
+    rafId = null
+    drawLinks()
+  })
 }
 
 // 监听相关状态变化，自动重绘 Canvas
@@ -240,24 +330,9 @@ watch(
     () => props.verticalLines,
     () => props.showVerticalLines,
   ],
-  (newVals, oldVals) => {
-    // 记录是什么触发了重绘
-    // const changes: string[] = []
-    // if (newVals[0] !== oldVals[0]) changes.push('taskBarPositions')
-    // if (newVals[1] !== oldVals[1]) changes.push('tasks.length')
-    // if (newVals[2] !== oldVals[2]) changes.push('highlightedTaskId')
-    // if (newVals[3] !== oldVals[3]) changes.push('highlightedTaskIds')
-    // if (newVals[4] !== oldVals[4]) changes.push('hoveredTaskId')
-    // if (newVals[5] !== oldVals[5]) changes.push('width')
-    // if (newVals[6] !== oldVals[6]) changes.push('height')
-    // if (newVals[7] !== oldVals[7]) changes.push('verticalLines')
-    // if (newVals[8] !== oldVals[8]) changes.push('showVerticalLines')
-
-    // perfMonitor.log('Canvas 触发重绘', { 变化属性: changes.join(', ') })
-
-    nextTick(() => {
-      drawLinks()
-    })
+  () => {
+    // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
+    scheduleRedraw()
   },
   { deep: false }, // shallowRef 不需要 deep
 )
@@ -267,6 +342,15 @@ onMounted(() => {
   nextTick(() => {
     drawLinks()
   })
+})
+
+// 组件卸载时清理
+onUnmounted(() => {
+  // 取消待处理的 RAF
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
 })
 
 // 暴露方法供父组件调用
