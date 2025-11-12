@@ -3474,26 +3474,6 @@ const handleAddSuccessor = (task: Task) => {
             <div
               v-for="(task, index) in tasks"
               :key="task.id"
-              v-memo="[
-                task.id,
-                task.startDate,
-                task.endDate,
-                task.progress,
-                task.name,
-                task.type,
-                task.isParent,
-                hoveredTaskId === task.id,
-                highlightedTaskIds.has(task.id),
-                highlightedTaskId === task.id,
-                isInHighlightMode,
-                dayWidth,
-                timelineScrollLeft,
-                hideBubbles,
-                currentTimeScale,
-                taskBarRenderKey,
-                props.allowDragAndResize,
-                index
-              ]"
               class="task-row"
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
               :style="{ top: `${index * 51}px` }"
