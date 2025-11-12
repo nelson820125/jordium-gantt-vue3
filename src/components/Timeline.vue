@@ -3428,7 +3428,7 @@ const handleAddSuccessor = (task: Task) => {
                   :style="{ height: `${contentHeight}px`, width: '60px' }"
                 >
                   <!-- 周内的7个子列 -->
-                  <!-- <div
+                  <div
                     v-for="(subDay, dayIndex) in week.subDays || []"
                     :key="`subday-col-${dayIndex}`"
                     class="sub-day-column"
@@ -3436,8 +3436,8 @@ const handleAddSuccessor = (task: Task) => {
                       weekend: subDay.dayOfWeek === 0 || subDay.dayOfWeek === 6,
                       today: isToday(subDay.date),
                     }"
-                    :style="{ height: `${contentHeight}px`, width: '8.57px' }"
-                  ></div> -->
+                    :style="{ height: `${contentHeight}px`, width: `${dayWidth}px` }"
+                  ></div>
                 </div>
               </div>
 
