@@ -2,6 +2,7 @@
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
+// import { perfMonitor } from '../utils/perfMonitor'
 
 // 定义 TaskBar 位置信息类型
 interface TaskBarPosition {
@@ -49,6 +50,8 @@ const isDarkTheme = computed(() => {
  * 性能优势：相比 SVG 提升 18 倍渲染性能
  */
 const drawLinks = () => {
+  // const startTime = performance.now()
+
   const canvas = canvasRef.value
   if (!canvas) return
 
@@ -78,13 +81,13 @@ const drawLinks = () => {
     ctx.strokeStyle = lineColor
     ctx.lineWidth = 1
 
-    // 绘制每条垂直线
+    // 优化：一次性绘制所有垂直线，避免多次 stroke() 调用
+    ctx.beginPath()
     for (const line of props.verticalLines) {
-      ctx.beginPath()
       ctx.moveTo(line.left, 0)
       ctx.lineTo(line.left, rect.height)
-      ctx.stroke()
     }
+    ctx.stroke()
 
     ctx.restore()
   }
@@ -179,6 +182,16 @@ const drawLinks = () => {
       ctx.globalAlpha = 1
     }
   }
+
+  // 性能监控
+  // const endTime = performance.now()
+  // const duration = endTime - startTime
+  // perfMonitor.log('Canvas 重绘', {
+  //   耗时: `${duration.toFixed(2)}ms`,
+  //   关系线数量: props.tasks.filter(t => t.predecessor).length,
+  //   垂直线数量: props.verticalLines?.length || 0,
+  //   Canvas尺寸: `${rect.width}x${rect.height}`,
+  // })
 }
 
 /**
@@ -224,8 +237,24 @@ watch(
     () => props.hoveredTaskId,
     () => props.width,
     () => props.height,
+    () => props.verticalLines,
+    () => props.showVerticalLines,
   ],
-  () => {
+  (newVals, oldVals) => {
+    // 记录是什么触发了重绘
+    // const changes: string[] = []
+    // if (newVals[0] !== oldVals[0]) changes.push('taskBarPositions')
+    // if (newVals[1] !== oldVals[1]) changes.push('tasks.length')
+    // if (newVals[2] !== oldVals[2]) changes.push('highlightedTaskId')
+    // if (newVals[3] !== oldVals[3]) changes.push('highlightedTaskIds')
+    // if (newVals[4] !== oldVals[4]) changes.push('hoveredTaskId')
+    // if (newVals[5] !== oldVals[5]) changes.push('width')
+    // if (newVals[6] !== oldVals[6]) changes.push('height')
+    // if (newVals[7] !== oldVals[7]) changes.push('verticalLines')
+    // if (newVals[8] !== oldVals[8]) changes.push('showVerticalLines')
+
+    // perfMonitor.log('Canvas 触发重绘', { 变化属性: changes.join(', ') })
+
     nextTick(() => {
       drawLinks()
     })

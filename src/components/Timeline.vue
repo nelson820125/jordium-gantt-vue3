@@ -1019,8 +1019,8 @@ const handleTimelineContainerResized = () => {
 
 // 处理任务行悬停事件
 const handleTaskRowHover = (taskId: number | null) => {
-  // 如果正在拖拽Splitter，则不响应悬停事件
-  if (isSplitterDragging.value) {
+  // 如果正在拖拽Splitter或拖动滚动，则不响应悬停事件
+  if (isSplitterDragging.value || isDragging.value) {
     return
   }
 
@@ -1047,6 +1047,10 @@ const contentHeight = computed(() => {
 
 // 监听TaskList的悬停事件
 const handleTaskListHover = (event: CustomEvent) => {
+  // 如果正在拖动滚动，则不响应悬停事件
+  if (isDragging.value) {
+    return
+  }
   hoveredTaskId.value = event.detail
 }
 
@@ -2340,6 +2344,9 @@ const handleMouseUp = () => {
     timelineContainer.value.style.cursor = 'grab'
     timelineContainer.value.style.userSelect = 'auto'
   }
+
+  // 清空 hover 状态，避免拖动结束后立即触发 hover 重绘
+  hoveredTaskId.value = null
 
   // 移除全局事件监听器
   document.removeEventListener('mousemove', handleMouseMove)
