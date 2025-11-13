@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2-patch3] - 2025-11-13
+
+### Added
+- 支持视图上下/左右拖拽
+- Support for vertical/horizontal dragging of the view
+
+### Enhancement
+- 性能优化：canvas绘制性能优化
+- 性能优化：拖拽视图性能优化，拖拽期间禁止重绘canvas
+- 性能优化：周视图月开始分隔线实现使用canvas替代dom
+- 性能优化：使用canvas替代svg links实现
+- 性能优化：路径缓存+防抖+shallowRef计算
+- Performance Optimization: Canvas drawing performance optimization
+- Performance Optimization: View dragging performance optimization, disabling canvas redraw during dragging
+- Performance Optimization: Weekly view month start separator line implemented using canvas instead of DOM
+- Performance Optimization: Using canvas instead of SVG links implementation
+- Performance Optimization: Path caching + debounce + shallowRef calculation
+
+## [1.4.2-patch1] - 2025-11-03
+
+### Fixed
+- 缺陷修复：更新父级任务后，再次更新子级任务是发生无限循环调用的问题修复
+- Defect fix: Fixed the issue of infinite loop calls when updating child tasks after updating the parent task
+
 ## [1.4.2-patch2] - 2025-11-11
 
 ### Fixed

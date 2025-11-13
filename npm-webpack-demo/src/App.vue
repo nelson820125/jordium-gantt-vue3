@@ -1,90 +1,5 @@
-<template>
-  <div>
-    <div style="height: 600px;">
-      <GanttChart 
-        :tasks="tasks" 
-        :milestones="milestones"
-        :task-list-config="taskListConfig"
-        :toolbar-config="toolbarConfig"
-        :use-default-drawer="false"
-        :use-default-milestone-dialog="false"
-        :locale-messages="customMessages"
-        :allow-drag-and-resize="true"
-        @add-task="showAddTaskDrawer = true"
-        @add-milestone="showAddMilestoneDialog = true"
-        @task-double-click="onTaskDblclick"
-        @task-click="onTaskClick"
-        @milestone-double-click="onMilestoneDblclick"
-      >
-    </GanttChart>
-    </div>
-    <!-- 自定义添加任务按钮 -->
-    <div>
-      <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
-      <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
-    </div>
-    
-    <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
-    <div v-if="showAddTaskDrawer" class="drawer-overlay" @click="showAddTaskDrawer = false">
-      <div class="drawer-container" @click.stop>
-        <div class="drawer-header">
-          <h3>自定义添加任务组件</h3>
-          <button class="close-btn" @click="showAddTaskDrawer = false">×</button>
-        </div>
-        
-        <div class="drawer-body">
-          <div class="form-item">
-            <label>任务名称:</label>
-            <input v-model="newTask.name" type="text" placeholder="请输入任务名称" />
-          </div>
-          
-          <div class="form-item">
-            <label>开始日期:</label>
-            <input v-model="newTask.startDate" type="date" />
-          </div>
-          
-          <div class="form-item">
-            <label>结束日期:</label>
-            <input v-model="newTask.endDate" type="date" />
-          </div>
-        </div>
-        
-        <div class="drawer-footer">
-          <button class="btn btn-primary" @click="addTask">确定</button>
-          <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 自定义Dialog组件基于element plus -->
-    <el-dialog 
-      title="自定义添加里程碑组件 - Element Plus" 
-      v-model="showAddMilestoneDialog" 
-      width="400px"
-      @close="newTask = { name: '', startDate: '', endDate: '' }"
-    >
-      <template #default>
-        <div class="form-item">
-          <label>任务名称:</label>
-          <el-input v-model="newTask.name" placeholder="请输入任务名称" />
-        </div>
-
-        <div class="form-item">
-          <label>日期:</label>
-          <el-date-picker v-model="newTask.startDate" type="date" value-format="YYYY-MM-DD" />
-        </div>
-      </template>
-
-      <template #footer>
-        <el-button @click="addMilestone">确定</el-button>
-        <el-button @click="showAddMilestoneDialog = false">取消</el-button>
-      </template>
-    </el-dialog>  
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
@@ -121,7 +36,7 @@ const tasks = ref([
     department: '管理部',
     departmentCode: 'D001',
     type: 'task',
-  }
+  },
 ])
 
 const milestones = ref([
@@ -130,8 +45,8 @@ const milestones = ref([
     name: '项目立项',
     startDate: '2025-10-29',
     type: 'milestone',
-    icon: 'diamond'
-  }
+    icon: 'diamond',
+  },
 ])
 
 const customMessages = {
@@ -142,13 +57,13 @@ const customMessages = {
   'en-US': {
     department: 'Department',
     departmentCode: 'Department Code',
-  }
+  },
 }
 // const tasks = ref([])
 
 // const milestones = ref([])
-const showAddTaskDrawer = ref(false);
-const showAddMilestoneDialog = ref(false);
+const showAddTaskDrawer = ref(false)
+const showAddMilestoneDialog = ref(false)
 
 // 定义可动态配置的列
 const availableColumns = ref<TaskListColumnConfig[]>([
@@ -164,7 +79,7 @@ const taskListConfig = {
   defaultWidth: '50%',  // 默认展开宽度50%
   minWidth: '300px',      // 最小宽度300px（默认280px）
   maxWidth: '1200px',      // 最大宽度1200px（默认1160px）
-  columns: availableColumns.value
+  columns: availableColumns.value,
 }
 
 // toolbar配置示例
@@ -179,18 +94,17 @@ const toolbarConfig: ToolbarConfig = {
   showFullscreen: true,            // 显示全屏按钮
   showTimeScale: true,             // 显示时间刻度按钮组
   timeScaleDimensions: [           // 显示所有时间刻度维度
-    'hour', 'day', 'week', 'month', 'quarter', 'year'
+    'hour', 'day', 'week', 'month', 'quarter', 'year',
   ],
   defaultTimeScale: 'week',        // 默认选中周视图
-  showExpandCollapse: false         // 显示展开/折叠按钮
+  showExpandCollapse: false,         // 显示展开/折叠按钮
 }
-
 
 const newTask = ref({
   name: '',
   startDate: '',
-  endDate: ''
-});
+  endDate: '',
+})
 
 const addTask = () => {
   tasks.value.push({
@@ -202,10 +116,10 @@ const addTask = () => {
     department: '未分配',
     departmentCode: 'D000',
     type: 'task',
-  });
-  newTask.value = { name: '', startDate: '', endDate: '' };
-  showAddTaskDrawer.value = false;
-};
+  })
+  newTask.value = { name: '', startDate: '', endDate: '' }
+  showAddTaskDrawer.value = false
+}
 
 const addMilestone = () => {
   milestones.value.push({
@@ -213,11 +127,11 @@ const addMilestone = () => {
     name: newTask.value.name,
     startDate: newTask.value.startDate,
     type: 'milestone',
-    icon: 'diamond'
-  });
+    icon: 'diamond',
+  })
   console.log('milestones: ', milestones.value)
-  newTask.value = { name: '', startDate: '', endDate: '' };
-  showAddMilestoneDialog.value = false;
+  newTask.value = { name: '', startDate: '', endDate: '' }
+  showAddMilestoneDialog.value = false
 }
 
 const onTaskDblclick = (task: any) => {
@@ -230,6 +144,91 @@ const onMilestoneDblclick = (milestone: any) => {
   alert(`双击里程碑: ${milestone.name}`)
 }
 </script>
+
+<template>
+  <div>
+    <div style="height: 600px;">
+      <GanttChart
+        :tasks="tasks"
+        :milestones="milestones"
+        :task-list-config="taskListConfig"
+        :toolbar-config="toolbarConfig"
+        :use-default-drawer="false"
+        :use-default-milestone-dialog="false"
+        :locale-messages="customMessages"
+        :allow-drag-and-resize="true"
+        @add-task="showAddTaskDrawer = true"
+        @add-milestone="showAddMilestoneDialog = true"
+        @task-double-click="onTaskDblclick"
+        @task-click="onTaskClick"
+        @milestone-double-click="onMilestoneDblclick"
+      >
+    </GanttChart>
+    </div>
+    <!-- 自定义添加任务按钮 -->
+    <div>
+      <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
+      <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
+    </div>
+
+    <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
+    <div v-if="showAddTaskDrawer" class="drawer-overlay" @click="showAddTaskDrawer = false">
+      <div class="drawer-container" @click.stop>
+        <div class="drawer-header">
+          <h3>自定义添加任务组件</h3>
+          <button class="close-btn" @click="showAddTaskDrawer = false">×</button>
+        </div>
+
+        <div class="drawer-body">
+          <div class="form-item">
+            <label>任务名称:</label>
+            <input v-model="newTask.name" type="text" placeholder="请输入任务名称" />
+          </div>
+
+          <div class="form-item">
+            <label>开始日期:</label>
+            <input v-model="newTask.startDate" type="date" />
+          </div>
+
+          <div class="form-item">
+            <label>结束日期:</label>
+            <input v-model="newTask.endDate" type="date" />
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button class="btn btn-primary" @click="addTask">确定</button>
+          <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 自定义Dialog组件基于element plus -->
+    <el-dialog
+      v-model="showAddMilestoneDialog"
+      title="自定义添加里程碑组件 - Element Plus"
+      width="400px"
+      @close="newTask = { name: '', startDate: '', endDate: '' }"
+    >
+      <template #default>
+        <div class="form-item">
+          <label>任务名称:</label>
+          <el-input v-model="newTask.name" placeholder="请输入任务名称" />
+        </div>
+
+        <div class="form-item">
+          <label>日期:</label>
+          <el-date-picker v-model="newTask.startDate" type="date" value-format="YYYY-MM-DD" />
+        </div>
+      </template>
+
+      <template #footer>
+        <el-button @click="addMilestone">确定</el-button>
+        <el-button @click="showAddMilestoneDialog = false">取消</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
 
 <style scoped>
 /* 抽屉遮罩层 */
