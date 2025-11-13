@@ -910,7 +910,7 @@ function taskDebug(item: any) {
 .app-container {
   width: 100%;
   height: 100%;
-  padding: 20px;
+  padding: 10px;
   box-sizing: border-box;
   background: var(--gantt-bg-secondary, #f0f2f5);
   display: flex;
@@ -922,7 +922,7 @@ function taskDebug(item: any) {
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #e4e7ed);
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   overflow: hidden;
@@ -1453,7 +1453,6 @@ function taskDebug(item: any) {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  margin-bottom: 24px;
 }
 
 .license-info {

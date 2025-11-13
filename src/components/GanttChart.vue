@@ -137,6 +137,32 @@ const ganttRootRef = ref<HTMLElement | null>(null)
 const ganttContainerWidth = ref(1920) // 默认使用常见的屏幕宽度作为初始值
 
 // 监听容器宽度变化
+// 节流函数工具
+const throttle = <T extends (...args: unknown[]) => unknown>(func: T, delay: number): T => {
+  let lastCall = 0
+  let timeoutId: number | null = null
+
+  return ((...args: Parameters<T>) => {
+    const now = Date.now()
+    const remaining = delay - (now - lastCall)
+
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+
+    if (remaining <= 0) {
+      lastCall = now
+      func(...args)
+    } else {
+      timeoutId = window.setTimeout(() => {
+        lastCall = Date.now()
+        func(...args)
+        timeoutId = null
+      }, remaining)
+    }
+  }) as T
+}
+
 const updateContainerWidth = () => {
   if (ganttRootRef.value) {
     const newWidth = ganttRootRef.value.clientWidth
@@ -157,14 +183,17 @@ const updateContainerWidth = () => {
   }
 }
 
+// 创建节流版本的 updateContainerWidth，避免频繁调用
+const throttledUpdateContainerWidth = throttle(updateContainerWidth, 100)
+
 onMounted(() => {
   updateContainerWidth()
-  // 监听窗口大小变化
-  window.addEventListener('resize', updateContainerWidth)
+  // 使用节流版本监听窗口大小变化
+  window.addEventListener('resize', throttledUpdateContainerWidth)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateContainerWidth)
+  window.removeEventListener('resize', throttledUpdateContainerWidth)
 })
 
 // TaskList最小宽度，支持通过taskListConfig配置（支持像素和百分比）
