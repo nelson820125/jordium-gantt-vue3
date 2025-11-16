@@ -2,11 +2,22 @@
   "name": "jordium-gantt-vue3",
   "version": "1.4.2-patch.3",
   "type": "module",
-  "main": "dist/jordium-gantt-vue3.cjs.js",
-  "module": "dist/jordium-gantt-vue3.es.js",
-  "types": "dist/jordium-gantt-vue3.d.ts",
+  "main": "npm-package/dist/jordium-gantt-vue3.cjs.js",
+  "module": "npm-package/dist/jordium-gantt-vue3.es.js",
+  "types": "npm-package/dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./npm-package/dist/index.d.ts",
+      "require": "./npm-package/dist/jordium-gantt-vue3.cjs.js",
+      "import": "./npm-package/dist/jordium-gantt-vue3.es.js"
+    },
+    "./styles": "./npm-package/dist/jordium-gantt-vue3-styles.js",
+    "./styles.js": "./npm-package/dist/jordium-gantt-vue3-styles.js",
+    "./index.css": "./npm-package/dist/assets/jordium-gantt-vue3.css",
+    "./npm-package/*": "./npm-package/*"
+  },
   "files": [
-    "dist"
+    "npm-package"
   ],
   "license": "MIT",
   "repository": {

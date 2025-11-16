@@ -935,7 +935,7 @@ function confirmTimer(desc: string) {
           <button
             v-if="isEdit && task"
             type="button"
-            class="btn btn-danger"
+            class="gantt-btn gantt-btn-danger"
             :disabled="submitting"
             @click="handleDelete"
           >
@@ -958,10 +958,10 @@ function confirmTimer(desc: string) {
           />
         </div>
         <div class="footer-right">
-          <button type="button" class="btn btn-default" @click="handleClose">{{ t.cancel }}</button>
+          <button type="button" class="gantt-btn gantt-btn-default" @click="handleClose">{{ t.cancel }}</button>
           <button
             type="button"
-            class="btn btn-primary"
+            class="gantt-btn gantt-btn-primary"
             :disabled="submitting"
             @click="handleSubmit"
           >

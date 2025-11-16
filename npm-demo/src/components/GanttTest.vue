@@ -162,8 +162,8 @@ const onMilestoneDblclick = (milestone) => {
         </div>
 
         <div class="drawer-footer">
-          <button class="btn btn-primary" @click="addTask">确定</button>
-          <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
+          <button class="gantt-btn gantt-btn-primary" @click="addTask">确定</button>
+          <button class="gantt-btn gantt-btn-default" @click="showAddTaskDrawer = false">取消</button>
         </div>
       </div>
     </div>
@@ -311,23 +311,23 @@ const onMilestoneDblclick = (milestone) => {
   transition: all 0.3s;
 }
 
-.btn-primary {
+.gantt-btn-primary {
   background: #409eff;
   color: white;
   border-color: #409eff;
 }
 
-.btn-primary:hover {
+.gantt-btn-primary:hover {
   background: #66b1ff;
   border-color: #66b1ff;
 }
 
-.btn-default {
+.gantt-btn-default {
   background: white;
   color: #606266;
 }
 
-.btn-default:hover {
+.gantt-btn-default:hover {
   color: #409eff;
   border-color: #409eff;
 }

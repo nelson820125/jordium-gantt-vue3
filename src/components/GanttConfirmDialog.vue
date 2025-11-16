@@ -28,23 +28,23 @@ const onNo = () => emit('no')
       </div>
       <div class="gantt-confirm-footer">
         <template v-if="props.type === 'yes-no-cancel'">
-          <button type="button" class="btn btn-default" @click="onCancel">
+          <button type="button" class="gantt-btn gantt-btn-default" @click="onCancel">
             {{ props.cancelText }}
           </button>
           <div class="gantt-confirm-footer-right">
-            <button type="button" class="btn btn-warning" @click="onNo">
+            <button type="button" class="gantt-btn gantt-btn-warning" @click="onNo">
               {{ props.noText }}
             </button>
-            <button type="button" class="btn btn-danger" @click="onYes">
+            <button type="button" class="gantt-btn gantt-btn-danger" @click="onYes">
               {{ props.yesText }}
             </button>
           </div>
         </template>
         <template v-else>
-          <button type="button" class="btn btn-default" @click="onCancel">
+          <button type="button" class="gantt-btn gantt-btn-default" @click="onCancel">
             {{ props.cancelText }}
           </button>
-          <button type="button" class="btn btn-danger" @click="onConfirm">
+          <button type="button" class="gantt-btn gantt-btn-danger" @click="onConfirm">
             {{ props.confirmText }}
           </button>
         </template>

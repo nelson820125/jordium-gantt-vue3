@@ -15,7 +15,7 @@ const generateCssExportPlugin = () => {
 export default defineConfig({
   plugins: [vue(), generateCssExportPlugin()],
   build: {
-    outDir: '../npm-package/dist',
+    outDir: './npm-package/dist',
     emptyOutDir: true,
     lib: {
       entry: './src/index.ts',
