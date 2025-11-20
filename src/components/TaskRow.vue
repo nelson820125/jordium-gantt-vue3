@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, useSlots } from 'vue'
-import type { CSSProperties } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
@@ -36,7 +35,7 @@ interface Props {
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
   columns: TaskListColumnConfig[]
-  getColumnWidthStyle?: (column: { width?: number | string }) => CSSProperties
+  getColumnWidthStyle?: (column: { width?: number | string }) => object
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
