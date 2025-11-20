@@ -286,5 +286,25 @@
       "Defect fix: Fixed the issue of invalid column width configuration in TaskList",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749 for their valuable use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.4.2-patch3",
+    "date": "2025-11-13",
+    "notes": [
+      "新增：支持视图上下/左右拖拽",
+      "性能优化：canvas绘制性能优化",
+      "性能优化：拖拽视图性能优化，拖拽期间禁止重绘canvas",
+      "性能优化：周视图月开始分隔线实现使用canvas替代dom",
+      "性能优化：使用canvas替代svg links实现",
+      "性能优化：路径缓存+防抖+shallowRef计算",
+      "Added: Support for vertical/horizontal dragging of the view",
+      "Performance Optimization: Canvas drawing performance optimization",
+      "Performance Optimization: View dragging performance optimization, disabling canvas redraw during dragging",
+      "Performance Optimization: Weekly view month start separator line implemented using canvas instead of DOM",
+      "Performance Optimization: Using canvas instead of SVG links implementation",
+      "Performance Optimization: Path caching + debounce + shallowRef calculation",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @qiuchengw的专业贡献</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @qiuchengw for his professional contribution</span>"
+    ]
   }
 ]

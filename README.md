@@ -1769,53 +1769,56 @@ const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
 
 <script setup lang="ts">
 const customMessages = {
-  // 任务列表相关
-  name: '任务名称（自定义）',
-  startDate: '开始日期',
-  endDate: '结束日期',
-  duration: '工期',
-  progress: '完成度',
-  predecessor: '前置任务',
-  assignee: '负责人',
-  estimatedHours: '预估工时',
-  actualHours: '实际工时'
+  "zh-CN": {
+    // 任务列表相关
+    name: '任务名称（自定义）',
+    startDate: '开始日期',
+    endDate: '结束日期',
+    duration: '工期',
+    progress: '完成度',
+    predecessor: '前置任务',
+    assignee: '负责人',
+    estimatedHours: '预估工时',
+    actualHours: '实际工时'
 
-  // 工具栏相关
-  addTask: '新建任务',
-  addMilestone: '新建里程碑',
-  today: '今天',
-  exportCsv: '导出 CSV',
-  exportPdf: '导出 PDF',
-  fullscreen: '全屏',
-  exitFullscreen: '退出全屏',
-  language: '语言',
-  theme: '主题',
-  expandAll: '全部展开',
-  collapseAll: '全部折叠'
+    // 工具栏相关
+    addTask: '新建任务',
+    addMilestone: '新建里程碑',
+    today: '今天',
+    exportCsv: '导出 CSV',
+    exportPdf: '导出 PDF',
+    fullscreen: '全屏',
+    exitFullscreen: '退出全屏',
+    language: '语言',
+    theme: '主题',
+    expandAll: '全部展开',
+    collapseAll: '全部折叠'
 
-  // 内置任务编辑器相关
-  title: '任务详情',
-  titleEdit: '编辑任务',
-  titleNew: '新建任务',
-  name: '任务名称',
-  startDate: '开始日期',
-  endDate: '结束日期',
-  assignee: '负责人',
-  predecessor: '前置任务',
-  description: '描述',
-  estimatedHours: '预估工时',
-  actualHours: '实际工时',
-  progress: '进度',
-  save: '保存',
-  cancel: '取消',
-  delete: '删除'
+    // 内置任务编辑器相关
+    title: '任务详情',
+    titleEdit: '编辑任务',
+    titleNew: '新建任务',
+    name: '任务名称',
+    startDate: '开始日期',
+    endDate: '结束日期',
+    assignee: '负责人',
+    predecessor: '前置任务',
+    description: '描述',
+    estimatedHours: '预估工时',
+    actualHours: '实际工时',
+    progress: '进度',
+    save: '保存',
+    cancel: '取消',
+    delete: '删除'
 
-  // 其他文本
-  days: '天',
-  hours: '小时',
-  overtime: '超时',
-  overdue: '逾期',
-  // ... 更多自定义翻译
+    // 其他文本
+    days: '天',
+    hours: '小时',
+    overtime: '超时',
+    overdue: '逾期',
+    // ... 更多自定义翻译
+  },
+  "en-US": {......}
 }
 </script>
 ```

@@ -1778,53 +1778,56 @@ Override or extend default translations via `localeMessages` prop:
 
 <script setup lang="ts">
 const customMessages = {
-  // Task list related
-  name: 'Task Name (Custom)',
-  startDate: 'Start Date',
-  endDate: 'End Date',
-  duration: 'Duration',
-  progress: 'Completion',
-  predecessor: 'Predecessors',
-  assignee: 'Assignee',
-  estimatedHours: 'Estimated Hours',
-  actualHours: 'Actual Hours'
+  "zh-CN": {
+    // Task list related
+    name: 'Task Name (Custom)',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    duration: 'Duration',
+    progress: 'Completion',
+    predecessor: 'Predecessors',
+    assignee: 'Assignee',
+    estimatedHours: 'Estimated Hours',
+    actualHours: 'Actual Hours'
 
-  // Toolbar related
-  addTask: 'New Task',
-  addMilestone: 'New Milestone',
-  today: 'Today',
-  exportCsv: 'Export CSV',
-  exportPdf: 'Export PDF',
-  fullscreen: 'Fullscreen',
-  exitFullscreen: 'Exit Fullscreen',
-  language: 'Language',
-  theme: 'Theme',
-  expandAll: 'Expand All',
-  collapseAll: 'Collapse All'
+    // Toolbar related
+    addTask: 'New Task',
+    addMilestone: 'New Milestone',
+    today: 'Today',
+    exportCsv: 'Export CSV',
+    exportPdf: 'Export PDF',
+    fullscreen: 'Fullscreen',
+    exitFullscreen: 'Exit Fullscreen',
+    language: 'Language',
+    theme: 'Theme',
+    expandAll: 'Expand All',
+    collapseAll: 'Collapse All'
 
-  // Internal Task editor related
-  title: 'Task Details',
-  titleEdit: 'Edit Task',
-  titleNew: 'New Task',
-  name: 'Task Name',
-  startDate: 'Start Date',
-  endDate: 'End Date',
-  assignee: 'Assignee',
-  predecessor: 'Predecessors',
-  description: 'Description',
-  estimatedHours: 'Estimated Hours',
-  actualHours: 'Actual Hours',
-  progress: 'Progress',
-  save: 'Save',
-  cancel: 'Cancel',
-  delete: 'Delete'
+    // Internal Task editor related
+    title: 'Task Details',
+    titleEdit: 'Edit Task',
+    titleNew: 'New Task',
+    name: 'Task Name',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    assignee: 'Assignee',
+    predecessor: 'Predecessors',
+    description: 'Description',
+    estimatedHours: 'Estimated Hours',
+    actualHours: 'Actual Hours',
+    progress: 'Progress',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete'
 
-  // Other texts
-  days: 'days',
-  hours: 'hours',
-  overtime: 'overtime',
-  overdue: 'overdue',
-  // ... More custom translations
+    // Other texts
+    days: 'days',
+    hours: 'hours',
+    overtime: 'overtime',
+    overdue: 'overdue',
+    // ... More custom translations
+  },
+  "en-US": {......}
 }
 </script>
 ```
