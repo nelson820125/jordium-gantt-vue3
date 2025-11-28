@@ -315,10 +315,12 @@
       "性能优化：大数据量任务渲染性能优化",
       "性能优化：虚拟渲染优化",
       "新增：大数据加载演示",
+      "修复：jspdf弱点升级",
       "Performance Optimization: TaskList and Timeline add virtualized scrolling support, greatly reducing node count and redraw overhead",
       "Performance Optimization: Large data volume task rendering performance optimization",
       "Performance Optimization: Virtualized rendering optimization",
-      "Added: Large data loading demonstration"
+      "Added: Large data loading demonstration",
+      "Fix: jspdf vulnerabilies"
     ]
   }
 ]

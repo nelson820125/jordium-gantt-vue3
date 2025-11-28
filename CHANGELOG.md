@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance Optimization: Large data volume task rendering performance optimization
 - Performance Optimization: Virtualized rendering optimization
 
+### Fixed
+- jspdf弱点升级
+- jspdf vulnerabilies
+
 ## [1.4.2-patch3] - 2025-11-13
 
 ### Added
