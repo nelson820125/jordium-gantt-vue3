@@ -36,6 +36,7 @@ interface Props {
   onHover?: (taskId: number | null) => void
   columns: TaskListColumnConfig[]
   getColumnWidthStyle?: (column: { width?: number | string }) => object
+  disableChildrenRender?: boolean
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
@@ -468,7 +469,7 @@ onUnmounted(() => {
         </template>
       </div>
     </div>
-    <template v-if="hasChildren && !props.task.collapsed && !isMilestoneGroup">
+    <template v-if="!props.disableChildrenRender && hasChildren && !props.task.collapsed && !isMilestoneGroup">
       <TaskRow
         v-for="child in props.task.children"
         :key="child.id"
@@ -479,6 +480,7 @@ onUnmounted(() => {
         :on-hover="props.onHover"
         :columns="props.columns"
         :get-column-width-style="props.getColumnWidthStyle"
+        :disable-children-render="props.disableChildrenRender"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
         @start-timer="emit('start-timer', $event)"
