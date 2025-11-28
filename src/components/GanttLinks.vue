@@ -24,6 +24,7 @@ interface Props {
   width: number
   height: number
   offsetLeft?: number // Canvas 在全局坐标系中的偏移量（用于虚拟渲染）
+  offsetTop?: number // Canvas 在垂直方向的偏移量（用于虚拟渲染）
   highlightedTaskId: number | null
   highlightedTaskIds: Set<number>
   hoveredTaskId: number | null
@@ -36,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
   verticalLines: () => [],
   showVerticalLines: true,
   offsetLeft: 0,
+  offsetTop: 0,
 })
 
 // Canvas 引用
@@ -124,6 +126,8 @@ const drawLinks = () => {
   // 虚拟渲染：计算 Canvas 覆盖的范围
   const canvasStartX = props.offsetLeft
   const canvasEndX = props.offsetLeft + displayWidth
+  const canvasStartY = props.offsetTop
+  const canvasEndY = props.offsetTop + displayHeight
 
   // 定义线条数据类型
   interface LineData {
@@ -157,16 +161,6 @@ const drawLinks = () => {
         continue
       }
 
-      // 虚拟渲染：跳过不在 Canvas 覆盖范围内的关系线
-      // 如果起点和终点都在 Canvas 外，跳过
-      const fromX = fromBar.left + fromBar.width
-      const toX = toBar.left
-      const lineMinX = Math.min(fromX, toX)
-      const lineMaxX = Math.max(fromX, toX)
-      if (lineMaxX < canvasStartX || lineMinX > canvasEndX) {
-        continue // 完全在 Canvas 外，跳过
-      }
-
       // 判断高亮状态
       const fromIsPrimary = props.highlightedTaskId === predecessorId
       const toIsPrimary = props.highlightedTaskId === task.id
@@ -189,11 +183,26 @@ const drawLinks = () => {
       const globalX2 = toBar.left
       const globalY2 = toBar.top + toBar.height / 2 + toYOffset
 
+      // 虚拟渲染：跳过不在 Canvas 覆盖范围内的关系线
+      // 如果起点和终点都在 Canvas 外，跳过
+      const lineMinX = Math.min(globalX1, globalX2)
+      const lineMaxX = Math.max(globalX1, globalX2)
+      const lineMinY = Math.min(globalY1, globalY2)
+      const lineMaxY = Math.max(globalY1, globalY2)
+      if (
+        lineMaxX < canvasStartX ||
+        lineMinX > canvasEndX ||
+        lineMaxY < canvasStartY ||
+        lineMinY > canvasEndY
+      ) {
+        continue // 完全在 Canvas 外，跳过
+      }
+
       // 转换为 Canvas 局部坐标
       const x1 = globalX1 - props.offsetLeft
-      const y1 = globalY1
+      const y1 = globalY1 - props.offsetTop
       const x2 = globalX2 - props.offsetLeft
-      const y2 = globalY2
+      const y2 = globalY2 - props.offsetTop
 
       const c1x = x1 + 40
       const c1y = y1
@@ -369,6 +378,7 @@ watch(
     () => props.verticalLines,
     () => props.showVerticalLines,
     () => props.offsetLeft, // 监听虚拟渲染的偏移量变化
+    () => props.offsetTop,
   ],
   () => {
     // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
@@ -430,7 +440,7 @@ defineExpose({
       top: 0,
       width: `${width}px`,
       height: `${height}px`,
-      transform: `translateX(${offsetLeft}px)`,
+      transform: `translate(${offsetLeft}px, ${offsetTop}px)`,
       zIndex: highlightedTaskId !== null ? 1001 : 25,
       pointerEvents: 'none',
     }"

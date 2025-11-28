@@ -240,6 +240,29 @@ const messages = {
       },
     },
     disableTaskbarFocusMode: '关闭聚焦功能',
+    dataSourceAlreadyLoaded: '{name} 已是当前数据源',
+    dataSourceLoadSuccess: '已加载 {name}',
+    dataSourceLoadFailed: '{name} 加载失败',
+    dataSourceSwitch: {
+      title: '数据源切换',
+      subtitle: '对比常规与超大数据集的初始化体验',
+      loading: '数据加载中，请稍候...',
+      alreadyLoaded: '{name} 已是当前数据源',
+      loadSuccess: '已加载 {name}',
+      loadFailed: '{name} 加载失败',
+      sources: {
+        normal: {
+          label: '常规数据源',
+          description: 'data.json · 含完整前/后置依赖，适合功能演示',
+          badge: 'data.json',
+        },
+        large: {
+          label: '超大数据源',
+          description: 'data-large-1m.json · 百万级任务，验证虚拟渲染性能',
+          badge: 'data-large-1m.json',
+        },
+      },
+    },
   },
   'en-US': {
     dateNotSet: 'Not set',
@@ -478,6 +501,29 @@ const messages = {
       },
     },
     disableTaskbarFocusMode: 'Disable Focus Mode',
+    dataSourceAlreadyLoaded: '{name} is already active',
+    dataSourceLoadSuccess: '{name} loaded successfully',
+    dataSourceLoadFailed: '{name} failed to load',
+    dataSourceSwitch: {
+      title: 'Data Sources',
+      subtitle: 'Compare default vs. mega dataset initialization',
+      loading: 'Loading data, please wait…',
+      alreadyLoaded: '{name} is already active',
+      loadSuccess: '{name} loaded successfully',
+      loadFailed: '{name} failed to load',
+      sources: {
+        normal: {
+          label: 'Standard Dataset',
+          description: 'data.json · Full predecessor graph for feature demos',
+          badge: 'data.json',
+        },
+        large: {
+          label: 'Massive Dataset',
+          description: 'data-large-1m.json · Million-level tasks to stress virtual rendering',
+          badge: 'data-large-1m.json',
+        },
+      },
+    },
   },
 }
 

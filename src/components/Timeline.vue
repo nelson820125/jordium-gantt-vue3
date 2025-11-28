@@ -746,12 +746,12 @@ const debounce = <T extends (...args: unknown[]) => void>(func: T, wait: number)
 // 优化的滚动处理器（增加防抖时间到 50ms）
 const debouncedUpdatePositions = debounce(() => {
   computeAllMilestonesPositions()
-}, 50)
+}, 200)
 
 // 虚拟渲染：防抖更新 Canvas 位置（滚动时触发）
 const debouncedUpdateCanvasPosition = debounce(() => {
   updateSvgSize() // 重新计算 Canvas 位置和尺寸
-}, 50)
+}, 200)
 
 // 防抖更新纵向滚动位置
 const debouncedUpdateVerticalScroll = debounce((scrollTop: number) => {
@@ -1972,17 +1972,20 @@ const svgHeight = ref(0)
 const canvasWidth = ref(0)
 const canvasHeight = ref(0)
 const canvasOffsetLeft = ref(0) // Canvas 在全局坐标系中的偏移量
+const canvasOffsetTop = ref(0)
 
 // 虚拟渲染 Canvas 的安全宽度（防止超过浏览器限制）
 // 可根据实际需求调整：
 // - 5000: 最小内存 (~30MB)，适合低端设备，但滚动时更频繁更新
 // - 10000: 平衡选择 (~60MB)，覆盖小时视图 10 天，周视图 2 年
 const SAFE_CANVAS_WIDTH = 5000 // 平衡性能和覆盖范围
+const SAFE_CANVAS_HEIGHT = 5000
 
 function updateSvgSize() {
   if (bodyContentRef.value) {
     // 获取 bodyContent 的总宽度和可视区域宽度
     const totalWidth = bodyContentRef.value.offsetWidth
+    const totalHeight = contentHeight.value
 
     // 使用已经维护的 timelineScrollLeft，而不是从 DOM 重新读取
     // 因为 handleTimelineScroll 已经实时更新了这个值
@@ -2009,9 +2012,23 @@ function updateSvgSize() {
 
     canvasOffsetLeft.value = idealOffsetLeft
 
+    const clampedHeight = Math.min(totalHeight, SAFE_CANVAS_HEIGHT)
+    canvasHeight.value = clampedHeight
     svgWidth.value = canvasWidth.value
-    svgHeight.value = contentHeight.value
-    canvasHeight.value = contentHeight.value
+    svgHeight.value = clampedHeight
+
+    const scrollTop = timelineBodyScrollTop.value
+    const bufferTop = clampedHeight / 3
+    let idealOffsetTop = Math.max(0, scrollTop - bufferTop)
+
+    if (totalHeight <= clampedHeight) {
+      idealOffsetTop = 0
+    } else {
+      const maxOffsetTop = totalHeight - clampedHeight
+      idealOffsetTop = Math.min(idealOffsetTop, maxOffsetTop)
+    }
+
+    canvasOffsetTop.value = idealOffsetTop
   }
 }
 
@@ -2035,7 +2052,9 @@ function handleBarMounted(payload: {
       height: payload.height,
     },
   }
-  updateSvgSize()
+  setTimeout(() => {
+    updateSvgSize()
+  }, 200)
 }
 
 // 向上传递 TaskBar 拖拽/拉伸事件
@@ -2200,6 +2219,8 @@ const handleTaskListVerticalScroll = (event: CustomEvent) => {
   // 立即更新纵向滚动位置（用于虚拟滚动计算）
   timelineBodyScrollTop.value = scrollTop
 
+  debouncedUpdateCanvasPosition()
+
   if (timelineBodyElement.value && Math.abs(timelineBodyElement.value.scrollTop - scrollTop) > 1) {
     // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
     timelineBodyElement.value.scrollTop = scrollTop
@@ -2215,6 +2236,8 @@ const handleTimelineBodyScroll = (event: Event) => {
 
   // 立即更新纵向滚动位置（用于虚拟滚动计算）
   timelineBodyScrollTop.value = scrollTop
+
+  debouncedUpdateCanvasPosition()
 
   // 拖拽时不同步滚动事件，避免性能问题
   if (isDragging.value) return
@@ -2830,7 +2853,7 @@ watch([timelineData, timelineContainerWidth], () => {
     nextTick(() => {
       setTimeout(() => {
         updateSvgSize()
-      }, 50)
+      }, 200)
     })
     taskBarRenderTimer = null
   }, 100)
@@ -3368,6 +3391,7 @@ const handleAddSuccessor = (task: Task) => {
           :width="canvasWidth"
           :height="canvasHeight"
           :offset-left="canvasOffsetLeft"
+          :offset-top="canvasOffsetTop"
           :highlighted-task-id="highlightedTaskId"
           :highlighted-task-ids="highlightedTaskIds"
           :hovered-task-id="hoveredTaskId"
