@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, useSlots } from 'vue'
+import type { StyleValue } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
@@ -35,7 +36,7 @@ interface Props {
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
   columns: TaskListColumnConfig[]
-  getColumnWidthStyle?: (column: { width?: number | string }) => object
+  getColumnWidthStyle?: (column: { width?: number | string }) => StyleValue
   disableChildrenRender?: boolean
 }
 const props = defineProps<Props>()
@@ -412,7 +413,7 @@ onUnmounted(() => {
         :key="column.key"
         class="col"
         :class="column.cssClass || `col-${column.key}`"
-        :style="getColumnWidthStyle ? getColumnWidthStyle(column) : {}"
+        :style="getColumnWidthStyle ? getColumnWidthStyle(column) : undefined"
       >
         <!-- 里程碑分组显示空列 -->
         <template v-if="isMilestoneGroup">

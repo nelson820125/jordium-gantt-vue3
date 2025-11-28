@@ -157,15 +157,20 @@ const dayWidth = computed(() => {
   }
 })
 
-// 获取任务数据的日期范围（用于月度视图时间轴范围计算）
-const getTasksDateRange = () => {
+type TaskDateRange = { minDate: Date; maxDate: Date } | null
+let cachedTaskDateRange: TaskDateRange = null
+
+const invalidateTaskDateRangeCache = () => {
+  cachedTaskDateRange = null
+}
+
+const computeTasksDateRange = (): TaskDateRange => {
   if (!tasks.value || tasks.value.length === 0) {
     return null
   }
 
   const dates: Date[] = []
 
-  // 收集所有任务的开始和结束日期
   const collectDatesFromTask = (task: Task) => {
     if (task.startDate) {
       dates.push(new Date(task.startDate))
@@ -174,7 +179,6 @@ const getTasksDateRange = () => {
       dates.push(new Date(task.endDate))
     }
 
-    // 递归处理子任务 - 使用 for 循环代替 forEach
     if (task.children && task.children.length > 0) {
       for (const child of task.children) {
         collectDatesFromTask(child)
@@ -182,7 +186,6 @@ const getTasksDateRange = () => {
     }
   }
 
-  // 使用 for...of 循环代替 forEach
   for (const task of tasks.value) {
     collectDatesFromTask(task)
   }
@@ -191,7 +194,6 @@ const getTasksDateRange = () => {
     return null
   }
 
-  // 过滤有效日期并直接获取最小/最大时间戳
   let minTime = Infinity
   let maxTime = -Infinity
   for (const date of dates) {
@@ -206,10 +208,20 @@ const getTasksDateRange = () => {
     return null
   }
 
-  const minDate = new Date(minTime)
-  const maxDate = new Date(maxTime)
+  return {
+    minDate: new Date(minTime),
+    maxDate: new Date(maxTime),
+  }
+}
 
-  return { minDate, maxDate }
+// 获取任务数据的日期范围（用于月度/年度视图时间轴范围计算）
+const getTasksDateRange = () => {
+  if (cachedTaskDateRange) {
+    return cachedTaskDateRange
+  }
+
+  cachedTaskDateRange = computeTasksDateRange()
+  return cachedTaskDateRange
 }
 
 // 获取小时视图的时间范围
@@ -752,11 +764,6 @@ const debouncedUpdatePositions = debounce(() => {
 const debouncedUpdateCanvasPosition = debounce(() => {
   updateSvgSize() // 重新计算 Canvas 位置和尺寸
 }, 200)
-
-// 防抖更新纵向滚动位置
-const debouncedUpdateVerticalScroll = debounce((scrollTop: number) => {
-  timelineBodyScrollTop.value = scrollTop
-}, 16) // 使用16ms约等于60fps，保证流畅性
 
 // 缓存时间轴数据的函数
 const getCachedTimelineData = (): unknown => {
@@ -2765,6 +2772,7 @@ const convertTaskToMilestone = (task: Task): Milestone => {
 watch(
   () => tasks.value.length,
   () => {
+    invalidateTaskDateRangeCache()
     computeAllMilestonesPositions()
   },
   { immediate: true },
@@ -2813,6 +2821,9 @@ const updateTimelineRange = () => {
 watch(
   () => tasks.value?.length,
   (newLength, oldLength) => {
+    if (newLength !== oldLength) {
+      invalidateTaskDateRangeCache()
+    }
     // 当任务从无到有时，重新计算时间范围
     if (oldLength === 0 && newLength > 0) {
       debouncedUpdateTimelineRange(50)
@@ -2863,6 +2874,7 @@ watch([timelineData, timelineContainerWidth], () => {
 watch(
   () => tasks.value,
   newTasks => {
+    invalidateTaskDateRangeCache()
     // 优化：使用 for 循环直接构建 Set，避免 map 创建临时数组
     const currentTaskIds = new Set<number>()
     for (const task of newTasks) {

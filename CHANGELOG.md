@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2025-11-28
+
+### Added
+- 大数据加载演示
+- Large data loading demonstration
+
+### Enhancement
+- 性能优化：TaskList和Timeline增加虚拟滚动支持，大幅降低节点数和重绘开销
+- 性能优化：大数据量任务渲染性能优化
+- 性能优化：虚拟渲染优化
+- Performance Optimization: TaskList and Timeline add virtualized scrolling support, greatly reducing node count and redraw overhead
+- Performance Optimization: Large data volume task rendering performance optimization
+- Performance Optimization: Virtualized rendering optimization
+
 ## [1.4.2-patch3] - 2025-11-13
 
 ### Added
