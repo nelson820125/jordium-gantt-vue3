@@ -1200,23 +1200,21 @@ const handleMouseUp = () => {
   document.removeEventListener('mouseup', handleMouseUp)
 }
 
+// ResizeObserver 引用（在组件卸载时清理）
+let nameResizeObserver: ResizeObserver | null = null
+
 onMounted(() => {
   nextTick(() => {
     reportBarPosition()
 
     // 使用 ResizeObserver 监听任务名称宽度变化
     if (taskBarNameRef.value) {
-      const nameResizeObserver = new ResizeObserver((entries) => {
+      nameResizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           nameTextWidth.value = entry.contentRect.width
         }
       })
       nameResizeObserver.observe(taskBarNameRef.value)
-
-      // 组件卸载时清理
-      onUnmounted(() => {
-        nameResizeObserver.disconnect()
-      })
     }
   })
 
@@ -1245,6 +1243,12 @@ onMounted(() => {
 
   // 清理函数
   onUnmounted(() => {
+    // 清理 ResizeObserver
+    if (nameResizeObserver) {
+      nameResizeObserver.disconnect()
+      nameResizeObserver = null
+    }
+
     window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
     window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
     window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
