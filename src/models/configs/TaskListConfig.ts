@@ -22,6 +22,7 @@ export interface TaskListColumnConfig {
 export interface TaskListConfig {
   columns?: TaskListColumnConfig[]
   showAllColumns?: boolean // 是否显示所有列，默认true
+  showTaskIcon?: boolean // 是否显示任务图标，默认true
   defaultWidth?: number | string // 默认展开宽度，支持像素数字（如 320）或百分比字符串（如 '30%'），默认320px
   minWidth?: number | string // 最小宽度，支持像素数字（如 280）或百分比字符串（如 '20%'），默认280px，不能小于280px
   maxWidth?: number | string // 最大宽度，支持像素数字（如 1160）或百分比字符串（如 '80%'），默认1160px

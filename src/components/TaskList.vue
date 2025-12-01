@@ -574,6 +574,7 @@ onUnmounted(() => {
         :columns="visibleColumns"
         :get-column-width-style="getColumnWidthStyle"
         :disable-children-render="true"
+        :show-task-icon="props.taskListConfig?.showTaskIcon"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"
