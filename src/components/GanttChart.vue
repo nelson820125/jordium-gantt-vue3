@@ -70,6 +70,9 @@ const emit = defineEmits([
   'milestone-saved',
   'milestone-deleted',
   'milestone-icon-changed',
+  // 任务关系事件
+  'add-predecessor',
+  'add-successor',
 ])
 
 const { showMessage } = useMessage()
@@ -1968,6 +1971,9 @@ function handleTimelineEditTask(task: Task) {
 function handleAddPredecessor(targetTask: Task) {
   if (!targetTask) return
 
+  // 触发事件供外部使用
+  emit('add-predecessor', targetTask)
+
   // 1. 记录要添加前置任务的目标任务
   taskToAddPredecessorTo.value = targetTask
 
@@ -2000,6 +2006,10 @@ function handleAddPredecessor(targetTask: Task) {
 // 处理添加后置任务事件
 function handleAddSuccessor(targetTask: Task) {
   if (!targetTask) return
+
+  // 触发事件供外部使用
+  emit('add-successor', targetTask)
+
   // 记录要添加后置任务的目标任务
   taskToAddSuccessorTo.value = targetTask
   // 构造新任务，parentId 与目标任务一致，predecessor 仅包含目标任务 id
