@@ -63,6 +63,7 @@ const emit = defineEmits([
   'task-deleted',
   'task-added',
   'task-updated',
+  'task-collapse-change', // 任务折叠状态变化事件
   // 工具栏事件
   'add-task',
   'add-milestone',
@@ -567,6 +568,9 @@ const handleTaskCollapseChange = (task: Task) => {
 
   // 触发Timeline重新计算
   updateTaskTrigger.value++
+
+  // 向外发出折叠状态变化事件
+  emit('task-collapse-change', task)
 }
 
 // 全部展开任务
@@ -711,6 +715,11 @@ const expandTaskListText = computed(() => t.value.expandTaskList)
 
 // 为TaskList提供层级数据（保持原始层级结构，只扁平化里程碑）
 const tasksForTaskList = computed(() => {
+  // 通过条件判断访问触发器，确保折叠状态变化时重新计算
+  if (updateTaskTrigger.value >= 0) {
+    // 触发器起作用，继续执行计算逻辑
+  }
+
   const result: Task[] = []
 
   // 如果有里程碑，创建里程碑分组行（扁平化显示）
