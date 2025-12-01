@@ -306,5 +306,21 @@
       "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @qiuchengw的专业贡献</span>",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @qiuchengw for his professional contribution</span>"
     ]
+  },
+  {
+    "version": "1.4.3",
+    "date": "2025-11-28",
+    "notes": [
+      "性能优化：TaskList和Timeline增加虚拟滚动支持，大幅降低节点数和重绘开销",
+      "性能优化：大数据量任务渲染性能优化",
+      "性能优化：虚拟渲染优化",
+      "新增：大数据加载演示",
+      "修复：jspdf弱点升级",
+      "Performance Optimization: TaskList and Timeline add virtualized scrolling support, greatly reducing node count and redraw overhead",
+      "Performance Optimization: Large data volume task rendering performance optimization",
+      "Performance Optimization: Virtualized rendering optimization",
+      "Added: Large data loading demonstration",
+      "Fix: jspdf vulnerabilies"
+    ]
   }
 ]

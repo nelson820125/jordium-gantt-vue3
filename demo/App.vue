@@ -3,7 +3,8 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import GanttChart from '../src/components/GanttChart.vue'
 // import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
-import demoData from './data.json'
+import normalData from './data.json'
+import largeData from './data-large-1m.json'
 import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
@@ -21,6 +22,100 @@ const { t, formatTranslation } = useI18n()
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
+
+const rawDataSources = [
+  {
+    key: 'normal',
+    fileName: 'data.json',
+    payload: normalData,
+  },
+  {
+    key: 'large',
+    fileName: 'data-large-1m.json',
+    payload: largeData,
+  },
+] as const
+
+type DataSourceKey = (typeof rawDataSources)[number]['key']
+type RawDataSource = (typeof rawDataSources)[number]
+
+const dataSourceOptions = computed(() => {
+  const dsTranslations = t.value.dataSourceSwitch?.sources ?? {}
+  return rawDataSources.map(source => {
+    const optionTexts = dsTranslations[source.key as keyof typeof dsTranslations] || {}
+    return {
+      ...source,
+      label: optionTexts.label || source.fileName,
+      description: optionTexts.description || '',
+      badge: optionTexts.badge || source.fileName,
+    }
+  })
+})
+
+const currentDataSource = ref<DataSourceKey>('large')
+const dataLoading = ref(false)
+
+const cloneData = <T>(data: T): T => {
+  const globalClone = (globalThis as unknown as { structuredClone?: <K>(value: K) => K }).structuredClone
+  if (typeof globalClone === 'function') {
+    return globalClone(data)
+  }
+  return JSON.parse(JSON.stringify(data)) as T
+}
+
+const findRawDataSource = (key: DataSourceKey) => rawDataSources.find(source => source.key === key)
+
+const applyDataSource = (source: RawDataSource) => {
+  const payload = source.payload as { tasks?: Task[]; milestones?: Task[] }
+  tasks.value = cloneData(payload.tasks ?? [])
+  milestones.value = cloneData(payload.milestones ?? [])
+}
+
+const getSourceTexts = (key: DataSourceKey) => {
+  const dsTranslations = t.value.dataSourceSwitch?.sources ?? {}
+  return dsTranslations[key as keyof typeof dsTranslations] || { label: key }
+}
+
+const switchDataSource = async (
+  key: DataSourceKey,
+  options: { silent?: boolean; force?: boolean } = {},
+) => {
+  if (dataLoading.value) return
+
+  const source = findRawDataSource(key)
+  if (!source) return
+
+  const sourceTexts = getSourceTexts(key)
+  const displayName = sourceTexts.label || source.fileName
+
+  if (!options.force && currentDataSource.value === key && tasks.value.length > 0) {
+    showMessage(formatTranslation('dataSourceAlreadyLoaded', { name: displayName }), 'info', {
+      closable: true,
+    })
+    return
+  }
+
+  currentDataSource.value = key
+  dataLoading.value = true
+
+  try {
+    await nextTick()
+    applyDataSource(source)
+    if (!options.silent) {
+      showMessage(formatTranslation('dataSourceLoadSuccess', { name: displayName }), 'success', {
+        closable: false,
+      })
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('切换数据源失败', error)
+    showMessage(formatTranslation('dataSourceLoadFailed', { name: displayName }), 'error', {
+      closable: true,
+    })
+  } finally {
+    dataLoading.value = false
+  }
+}
 
 // MilestoneDialog状态管理
 const showMilestoneDialog = ref(false)
@@ -110,6 +205,7 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 
 // 配置面板折叠状态
 const isConfigPanelCollapsed = ref(false)
+const isDataSourcePanelCollapsed = ref(false)
 
 // TaskList 配置区域折叠状态（默认收起）
 const isTaskListConfigCollapsed = ref(true)
@@ -120,6 +216,10 @@ const isTaskBarConfigCollapsed = ref(true)
 // 切换配置面板折叠状态
 const toggleConfigPanel = () => {
   isConfigPanelCollapsed.value = !isConfigPanelCollapsed.value
+}
+
+const toggleDataSourcePanel = () => {
+  isDataSourcePanelCollapsed.value = !isDataSourcePanelCollapsed.value
 }
 
 // 切换 TaskList 配置区域
@@ -377,8 +477,7 @@ function handleMilestoneDragEnd(newMilestone) {
 }
 
 onMounted(() => {
-  tasks.value = demoData.tasks as Task[]
-  milestones.value = demoData.milestones as Task[]
+  switchDataSource(currentDataSource.value, { silent: true, force: true })
 })
 
 // 清理被删除任务的predecessor依赖关系
@@ -480,6 +579,64 @@ function taskDebug(item: any) {
     </h1>
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
+    <div class="data-source-panel" :class="{ collapsed: isDataSourcePanelCollapsed }">
+      <div class="data-source-header" @click="toggleDataSourcePanel">
+        <h3 class="config-title">
+          <svg
+            class="data-source-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M4 4h16a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2zm16 6H4v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10zm-5 4h4v4h-4v-4z"
+              fill="currentColor"
+            />
+          </svg>
+          {{ t.dataSourceSwitch?.title }} - {{ t.dataSourceSwitch?.subtitle }}
+        </h3>
+        <button class="collapse-button" :class="{ collapsed: isDataSourcePanelCollapsed }">
+          <svg
+            class="collapse-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              :d="isDataSourcePanelCollapsed ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <transition name="config-content">
+        <div v-show="!isDataSourcePanelCollapsed" class="data-source-content">
+          <div class="data-source-buttons">
+            <button
+              v-for="source in dataSourceOptions"
+              :key="source.key"
+              class="data-source-button"
+              :class="{ active: currentDataSource === source.key }"
+              :disabled="dataLoading && currentDataSource === source.key"
+              @click="switchDataSource(source.key)"
+            >
+              <div class="ds-label-row">
+                <span class="ds-label">{{ source.label }}</span>
+                <span class="ds-file">{{ source.badge }}</span>
+              </div>
+              <div class="ds-desc">{{ source.description }}</div>
+            </button>
+            <span v-if="dataLoading" class="data-loading-hint">
+              {{ t.dataSourceSwitch?.loading }}
+            </span>
+          </div>
+        </div>
+      </transition>
+    </div>
+
     <!-- 配置说明面板 - 可折叠 -->
     <div class="config-panel" :class="{ collapsed: isConfigPanelCollapsed }">
       <div class="config-header" @click="toggleConfigPanel">
@@ -505,7 +662,7 @@ function taskDebug(item: any) {
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M7 10l5 5 5-5"
+              :d="isConfigPanelCollapsed ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
@@ -917,6 +1074,106 @@ function taskDebug(item: any) {
   flex-direction: column;
 }
 
+.data-source-panel {
+  background: var(--gantt-bg-primary, #ffffff);
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.data-source-panel.collapsed {
+  padding-bottom: 12px;
+}
+
+.data-source-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  justify-content: space-between;
+}
+
+.data-source-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.data-source-content {
+  padding-top: 4px;
+}
+
+.data-source-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.data-source-button {
+  flex: 1 1 220px;
+  min-width: 200px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--gantt-bg-secondary, #f9fafc);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.data-source-button:hover {
+  border-color: var(--gantt-primary-color, #409eff);
+  box-shadow: 0 2px 10px rgba(64, 158, 255, 0.15);
+}
+
+.data-source-button.active {
+  border-color: var(--gantt-primary-color, #409eff);
+  background: rgba(64, 158, 255, 0.08);
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.25);
+}
+
+.data-source-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ds-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ds-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gantt-text-primary, #333);
+}
+
+.ds-file {
+  font-size: 12px;
+  color: var(--gantt-text-muted, #909399);
+}
+
+.ds-desc {
+  font-size: 13px;
+  color: var(--gantt-text-secondary, #666);
+  line-height: 1.4;
+}
+
+.data-loading-hint {
+  font-size: 13px;
+  color: var(--gantt-primary-color, #409eff);
+  font-weight: 500;
+}
+
 /* TaskList列配置面板样式 - 可折叠 */
 .config-panel {
   background: var(--gantt-bg-primary, #ffffff);
@@ -964,14 +1221,16 @@ function taskDebug(item: any) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
   border: none;
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
   color: var(--gantt-text-secondary, #666);
+}
+
+.collapse-button.collapsed {
+  transform: rotate(90deg);
 }
 
 .collapse-button:hover {
@@ -983,10 +1242,6 @@ function taskDebug(item: any) {
   width: 20px;
   height: 20px;
   transition: transform 0.3s ease;
-}
-
-.collapse-button.collapsed .collapse-icon {
-  transform: rotate(-90deg);
 }
 
 /* 过渡动画 */
@@ -1477,6 +1732,36 @@ function taskDebug(item: any) {
 :global(html[data-theme='dark']) .config-panel {
   background: var(--gantt-bg-primary, #2d3748);
   border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .data-source-panel {
+  background: var(--gantt-bg-primary, #2d3748);
+  border-color: var(--gantt-border-color, #4a5568);
+  box-shadow: none;
+}
+
+:global(html[data-theme='dark']) .data-source-sub {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .data-source-button {
+  background: var(--gantt-bg-secondary, #1a202c);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .data-source-button.active {
+  background: rgba(64, 158, 255, 0.18);
+  border-color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .ds-label,
+:global(html[data-theme='dark']) .ds-desc,
+:global(html[data-theme='dark']) .ds-file {
+  color: var(--gantt-text-primary, #e2e8f0);
+}
+
+:global(html[data-theme='dark']) .ds-file {
+  color: var(--gantt-text-muted, #a0aec0);
 }
 
 :global(html[data-theme='dark']) .config-title {

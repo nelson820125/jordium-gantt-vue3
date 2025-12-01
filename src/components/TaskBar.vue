@@ -119,6 +119,25 @@ const createLocalToday = (): Date => {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
+// 缓存今天的日期，避免频繁创建
+// 每分钟更新一次缓存（对于日期判断来说足够了）
+const cachedToday = ref(createLocalToday())
+let todayCacheTimer: number | null = null
+
+onMounted(() => {
+  // 每60秒更新一次今天的日期缓存
+  todayCacheTimer = window.setInterval(() => {
+    cachedToday.value = createLocalToday()
+  }, 60000)
+})
+
+onUnmounted(() => {
+  if (todayCacheTimer !== null) {
+    clearInterval(todayCacheTimer)
+    todayCacheTimer = null
+  }
+})
+
 const formatDateToLocalString = (date: Date): string => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -223,7 +242,7 @@ const taskBarStyle = computed(() => {
 
   const startDate = createLocalDate(currentStartDate)
   const endDate = createLocalDate(currentEndDate)
-  const baseStart = createLocalDate(props.startDate)
+  const baseStart = parsedBaseStartDate.value
   if (!startDate || !endDate || !baseStart) {
     return {
       left: '0px',
@@ -392,6 +411,24 @@ const taskBarStyle = computed(() => {
   }
 })
 
+// 缓存 TaskBar 的位置信息，减少 DOM 读取频率
+const cachedPosition = ref({
+  left: 0,
+  top: 0,
+  width: 0,
+  height: 0,
+  timestamp: 0,
+})
+
+// 位置缓存有效期（毫秒）
+const POSITION_CACHE_TTL = 100 // 100ms 内使用缓存值
+
+// 缓存解析后的结束日期，避免在 taskStatus 中重复解析
+const parsedEndDate = computed(() => createLocalDate(props.task.endDate || ''))
+
+// 缓存解析后的基准开始日期
+const parsedBaseStartDate = computed(() => createLocalDate(props.startDate))
+
 // 计算任务状态和颜色
 const taskStatus = computed(() => {
   // 父级任务(Story类型)使用与新建按钮一致的配色
@@ -404,8 +441,9 @@ const taskStatus = computed(() => {
     }
   }
 
-  const today = createLocalToday()
-  const endDate = createLocalDate(props.task.endDate || '')
+  // 使用缓存的今天日期，避免频繁创建日期对象
+  const today = cachedToday.value
+  const endDate = parsedEndDate.value
   const progress = props.task.progress || 0
 
   // 已完成
@@ -556,6 +594,8 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
   const timelineContainer = document.querySelector('.timeline') as HTMLElement
   if (!timelineContainer || !barRef.value) return
 
+  // 在 mousedown 事件中读取位置是合理的（不是高频操作）
+  // 这个值用于计算拖拽偏移量，只在开始拖拽时读取一次
   const barRect = barRef.value.getBoundingClientRect()
 
   // 计算鼠标相对于TaskBar的位置
@@ -595,17 +635,57 @@ const handleAutoScroll = (event: CustomEvent) => {
   }
 }
 
+// 使用缓存机制减少 DOM 读取频率，但保证位置准确性
+let reportPositionScheduled = false
+
 function reportBarPosition() {
-  if (barRef.value) {
+  // 如果已经安排了本帧的位置报告，则跳过
+  if (reportPositionScheduled) return
+
+  reportPositionScheduled = true
+
+  requestAnimationFrame(() => {
+    reportPositionScheduled = false
+
+    if (!barRef.value) return
+
+    const now = Date.now()
+
+    // 如果缓存未过期，使用缓存值
+    if (now - cachedPosition.value.timestamp < POSITION_CACHE_TTL) {
+      emit('bar-mounted', {
+        id: props.task.id,
+        left: cachedPosition.value.left,
+        top: cachedPosition.value.top,
+        width: cachedPosition.value.width,
+        height: cachedPosition.value.height,
+      })
+      return
+    }
+
+    // 缓存过期或首次调用，读取 DOM 并更新缓存
+    // TaskBar 传递绝对位置（相对于视口），Timeline 会将其转换为相对位置
     const rect = barRef.value.getBoundingClientRect()
-    emit('bar-mounted', {
-      id: props.task.id,
+
+    // 计算并缓存位置
+    const position = {
       left: rect.left,
       top: rect.top,
       width: rect.width,
       height: rect.height,
+    }
+
+    // 更新缓存
+    cachedPosition.value = {
+      ...position,
+      timestamp: now,
+    }
+
+    emit('bar-mounted', {
+      id: props.task.id,
+      ...position,
     })
-  }
+  })
 }
 
 // 拖拽时的实时日期提示框状态
@@ -1123,8 +1203,20 @@ const handleMouseUp = () => {
 onMounted(() => {
   nextTick(() => {
     reportBarPosition()
+
+    // 使用 ResizeObserver 监听任务名称宽度变化
     if (taskBarNameRef.value) {
-      nameTextWidth.value = taskBarNameRef.value.getBoundingClientRect().width
+      const nameResizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          nameTextWidth.value = entry.contentRect.width
+        }
+      })
+      nameResizeObserver.observe(taskBarNameRef.value)
+
+      // 组件卸载时清理
+      onUnmounted(() => {
+        nameResizeObserver.disconnect()
+      })
     }
   })
 
@@ -1395,7 +1487,7 @@ const stickyStyles = computed(() => {
   } else if (nameNeedsRightSticky) {
     const offset = rightBoundary - taskLeft - nameWidth
     // name 右侧磁吸时应始终保持与右边框固定距离，需要减去右侧手柄宽度
-    nameLeft = `${offset - handleWidth - 3}px` // 考虑手柄宽度 + 间距
+    nameLeft = `${offset - handleWidth - 10}px` // 考虑手柄宽度 + 间距
     namePosition = 'absolute'
     nameTop = '2px'
   }
@@ -1431,7 +1523,7 @@ const stickyStyles = computed(() => {
     progressTop = '18px'
   } else if (progressNeedsRightSticky) {
     const offset = rightBoundary - taskLeft - progressWidth
-    // progress 右侧磁吸时应始终保持与右边框固定距离，需要减去右侧手柄宽度
+    // 右侧磁吸时应始终保持与右边框固定距离，需要减去右侧手柄宽度
     progressLeft = `${offset - handleWidth - 3}px` // 考虑手柄宽度 + 间距
     progressPosition = 'absolute'
     progressTop = '18px'

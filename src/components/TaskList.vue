@@ -35,6 +35,20 @@ const { t } = useI18n()
 
 // TaskList 容器引用
 const taskListRef = ref<HTMLElement | null>(null)
+const taskListBodyRef = ref<HTMLElement | null>(null)
+
+// 缓存容器宽度，避免频繁读取 offsetWidth 导致强制重排
+const cachedContainerWidth = ref(0)
+
+// 使用 ResizeObserver 监听容器宽度变化
+let containerResizeObserver: ResizeObserver | null = null
+let bodyResizeObserver: ResizeObserver | null = null
+
+// 纵向虚拟滚动相关状态
+const ROW_HEIGHT = 51 // 每行高度（与TaskList Row一致）
+const VERTICAL_BUFFER = 5 // 上下额外渲染的缓冲行数
+const taskListScrollTop = ref(0)
+const taskListBodyHeight = ref(0)
 
 // 获取列宽度样式（百分比转像素）
 const getColumnWidthStyle = (column: { width?: number | string }) => {
@@ -44,7 +58,7 @@ const getColumnWidthStyle = (column: { width?: number | string }) => {
 
   // 如果是百分比，转换为像素
   if (typeof column.width === 'string' && column.width.includes('%')) {
-    const containerWidth = taskListRef.value?.offsetWidth || 0
+    const containerWidth = cachedContainerWidth.value || 0
     if (containerWidth > 0) {
       const percentage = parseFloat(column.width) / 100
       const pixels = Math.floor(containerWidth * percentage)
@@ -89,6 +103,14 @@ const handleSplitterDragStart = () => {
 // 处理拖拽结束事件
 const handleSplitterDragEnd = () => {
   isSplitterDragging.value = false
+
+  // ⚠️ 拖拽结束后，手动更新一次容器宽度，触发列宽重新计算
+  if (taskListRef.value) {
+    const newWidth = taskListRef.value.offsetWidth
+    if (Math.abs(newWidth - cachedContainerWidth.value) > 1) {
+      cachedContainerWidth.value = newWidth
+    }
+  }
 }
 
 // 处理任务行悬停事件
@@ -228,6 +250,61 @@ const getAllTasks = (taskList: Task[]): Task[] => {
   return allTasks
 }
 
+// 获取当前折叠状态下的可见任务列表
+const getFlattenedVisibleTasks = (
+  taskList: Task[],
+  level = 0,
+): Array<{ task: Task; level: number }> => {
+  const result: Array<{ task: Task; level: number }> = []
+
+  for (const task of taskList) {
+    result.push({ task, level })
+
+    const isMilestoneGroup = task.type === 'milestone-group'
+
+    if (!isMilestoneGroup && task.children && task.children.length > 0 && !task.collapsed) {
+      result.push(...getFlattenedVisibleTasks(task.children, level + 1))
+    }
+  }
+
+  return result
+}
+
+// 扁平化后的可见任务列表
+const flattenedTasks = computed(() => getFlattenedVisibleTasks(localTasks.value))
+
+// 计算可视区域任务范围
+const visibleTaskRange = computed(() => {
+  const scrollTop = taskListScrollTop.value
+  const containerHeight = taskListBodyHeight.value || 600
+
+  const startIndex = Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER
+  const endIndex = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER
+
+  const total = flattenedTasks.value.length
+  const clampedStart = Math.min(Math.max(0, startIndex), total)
+  const clampedEnd = Math.min(total, Math.max(clampedStart + 1, endIndex))
+
+  return {
+    startIndex: clampedStart,
+    endIndex: clampedEnd,
+  }
+})
+
+// 虚拟列表中需要渲染的任务
+const visibleTasks = computed(() => {
+  const { startIndex, endIndex } = visibleTaskRange.value
+  return flattenedTasks.value.slice(startIndex, endIndex)
+})
+
+// Spacer 高度用于撑起滚动区域
+const totalContentHeight = computed(() => flattenedTasks.value.length * ROW_HEIGHT)
+const startSpacerHeight = computed(() => visibleTaskRange.value.startIndex * ROW_HEIGHT)
+const endSpacerHeight = computed(() => {
+  const visibleHeight = visibleTasks.value.length * ROW_HEIGHT
+  return Math.max(0, totalContentHeight.value - startSpacerHeight.value - visibleHeight)
+})
+
 // 监听外部传入的 tasks 数据变化
 watch(
   () => props.tasks,
@@ -331,16 +408,23 @@ const handleTaskListScroll = (event: Event) => {
 
   const scrollTop = target.scrollTop
 
+  taskListScrollTop.value = scrollTop
+
   // 同步垂直滚动到Timeline
   window.dispatchEvent(
     new CustomEvent('task-list-vertical-scroll', {
       detail: { scrollTop },
     }),
   )
-} // 处理Timeline垂直滚动同步
+}
+
+// 处理Timeline垂直滚动同步
 const handleTimelineVerticalScroll = (event: CustomEvent) => {
   const { scrollTop } = event.detail
-  const taskListBodyElement = document.querySelector('.task-list-body') as HTMLElement
+  const taskListBodyElement = taskListBodyRef.value
+
+  taskListScrollTop.value = scrollTop
+
   if (taskListBodyElement && Math.abs(taskListBodyElement.scrollTop - scrollTop) > 1) {
     // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
     taskListBodyElement.scrollTop = scrollTop
@@ -358,6 +442,7 @@ const handleTaskRowContextMenu = (event: { task: Task; position: { x: number; y:
       }),
     )
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('TaskList - Failed to dispatch context-menu event', error)
   }
 }
@@ -386,6 +471,37 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
 }
 
 onMounted(async () => {
+  // 初始化 ResizeObserver 监听容器宽度变化
+  if (taskListRef.value) {
+    containerResizeObserver = new ResizeObserver((entries) => {
+      // ⚠️ 拖拽期间跳过更新，避免高频重新计算列宽
+      // TaskList的列宽不需要在拖拽期间实时更新，只需在拖拽结束后更新一次
+      if (isSplitterDragging.value) {
+        return
+      }
+
+      for (const entry of entries) {
+        // 使用 contentRect.width 避免强制重排
+        cachedContainerWidth.value = entry.contentRect.width
+      }
+    })
+    containerResizeObserver.observe(taskListRef.value)
+  }
+
+  // 监听TaskList body高度变化，提供虚拟滚动所需尺寸
+  if (taskListBodyRef.value) {
+    taskListBodyHeight.value = taskListBodyRef.value.clientHeight
+    taskListScrollTop.value = taskListBodyRef.value.scrollTop
+
+    bodyResizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        taskListBodyHeight.value = entry.contentRect.height
+      }
+    })
+
+    bodyResizeObserver.observe(taskListBodyRef.value)
+  }
+
   window.addEventListener('task-updated', handleTaskUpdated as EventListener)
   window.addEventListener('task-added', handleTaskAdded as EventListener)
   window.addEventListener('request-task-list', handleRequestTaskList as EventListener)
@@ -401,6 +517,17 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // 清理 ResizeObserver
+  if (containerResizeObserver) {
+    containerResizeObserver.disconnect()
+    containerResizeObserver = null
+  }
+
+  if (bodyResizeObserver) {
+    bodyResizeObserver.disconnect()
+    bodyResizeObserver = null
+  }
+
   window.removeEventListener('task-updated', handleTaskUpdated as EventListener)
   window.removeEventListener('task-added', handleTaskAdded as EventListener)
   window.removeEventListener('request-task-list', handleRequestTaskList as EventListener)
@@ -433,17 +560,20 @@ onUnmounted(() => {
         {{ (t as any)[column.key] || column.label }}
       </div>
     </div>
-    <div class="task-list-body" @scroll="handleTaskListScroll">
-            <TaskRow
-        v-for="task in localTasks"
+    <div ref="taskListBodyRef" class="task-list-body" @scroll="handleTaskListScroll">
+      <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
+
+      <TaskRow
+        v-for="{ task, level } in visibleTasks"
         :key="task.id"
         :task="task"
-        :level="0"
+        :level="level"
         :is-hovered="hoveredTaskId === task.id"
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
         :columns="visibleColumns"
         :get-column-width-style="getColumnWidthStyle"
+        :disable-children-render="true"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"
@@ -457,6 +587,8 @@ onUnmounted(() => {
           <slot name="custom-task-content" v-bind="rowScope" />
         </template>
       </TaskRow>
+
+      <div class="task-list-body-spacer" :style="{ height: `${endSpacerHeight}px` }"></div>
     </div>
   </div>
 </template>
@@ -509,12 +641,16 @@ onUnmounted(() => {
   width: max-content;
   background: var(--gantt-bg-primary);
   flex: 1;
-  overflow-x: hidden; /* 让body部分可以滚动 */
-  overflow-y: auto; /* 允许垂直滚动 */
+  overflow-x: hidden; /* 允许横向滚动，确保列完整展示 */
+  overflow-y: auto;
 
   /* Webkit浏览器滚动条样式 */
   scrollbar-width: thin;
   scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+.task-list-body-spacer {
+  width: 100%;
 }
 
 .task-list-body::-webkit-scrollbar {

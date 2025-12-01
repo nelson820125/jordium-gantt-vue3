@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, useSlots } from 'vue'
-import type { CSSProperties } from 'vue'
+import type { StyleValue } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
@@ -36,7 +36,8 @@ interface Props {
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
   columns: TaskListColumnConfig[]
-  getColumnWidthStyle?: (column: { width?: number | string }) => CSSProperties
+  getColumnWidthStyle?: (column: { width?: number | string }) => StyleValue
+  disableChildrenRender?: boolean
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
@@ -412,7 +413,7 @@ onUnmounted(() => {
         :key="column.key"
         class="col"
         :class="column.cssClass || `col-${column.key}`"
-        :style="getColumnWidthStyle ? getColumnWidthStyle(column) : {}"
+        :style="getColumnWidthStyle ? getColumnWidthStyle(column) : undefined"
       >
         <!-- 里程碑分组显示空列 -->
         <template v-if="isMilestoneGroup">
@@ -469,7 +470,7 @@ onUnmounted(() => {
         </template>
       </div>
     </div>
-    <template v-if="hasChildren && !props.task.collapsed && !isMilestoneGroup">
+    <template v-if="!props.disableChildrenRender && hasChildren && !props.task.collapsed && !isMilestoneGroup">
       <TaskRow
         v-for="child in props.task.children"
         :key="child.id"
@@ -480,6 +481,7 @@ onUnmounted(() => {
         :on-hover="props.onHover"
         :columns="props.columns"
         :get-column-width-style="props.getColumnWidthStyle"
+        :disable-children-render="props.disableChildrenRender"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
         @start-timer="emit('start-timer', $event)"

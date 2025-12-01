@@ -157,15 +157,20 @@ const dayWidth = computed(() => {
   }
 })
 
-// 获取任务数据的日期范围（用于月度视图时间轴范围计算）
-const getTasksDateRange = () => {
+type TaskDateRange = { minDate: Date; maxDate: Date } | null
+let cachedTaskDateRange: TaskDateRange = null
+
+const invalidateTaskDateRangeCache = () => {
+  cachedTaskDateRange = null
+}
+
+const computeTasksDateRange = (): TaskDateRange => {
   if (!tasks.value || tasks.value.length === 0) {
     return null
   }
 
   const dates: Date[] = []
 
-  // 收集所有任务的开始和结束日期
   const collectDatesFromTask = (task: Task) => {
     if (task.startDate) {
       dates.push(new Date(task.startDate))
@@ -174,7 +179,6 @@ const getTasksDateRange = () => {
       dates.push(new Date(task.endDate))
     }
 
-    // 递归处理子任务 - 使用 for 循环代替 forEach
     if (task.children && task.children.length > 0) {
       for (const child of task.children) {
         collectDatesFromTask(child)
@@ -182,7 +186,6 @@ const getTasksDateRange = () => {
     }
   }
 
-  // 使用 for...of 循环代替 forEach
   for (const task of tasks.value) {
     collectDatesFromTask(task)
   }
@@ -191,7 +194,6 @@ const getTasksDateRange = () => {
     return null
   }
 
-  // 过滤有效日期并直接获取最小/最大时间戳
   let minTime = Infinity
   let maxTime = -Infinity
   for (const date of dates) {
@@ -206,10 +208,20 @@ const getTasksDateRange = () => {
     return null
   }
 
-  const minDate = new Date(minTime)
-  const maxDate = new Date(maxTime)
+  return {
+    minDate: new Date(minTime),
+    maxDate: new Date(maxTime),
+  }
+}
 
-  return { minDate, maxDate }
+// 获取任务数据的日期范围（用于月度/年度视图时间轴范围计算）
+const getTasksDateRange = () => {
+  if (cachedTaskDateRange) {
+    return cachedTaskDateRange
+  }
+
+  cachedTaskDateRange = computeTasksDateRange()
+  return cachedTaskDateRange
 }
 
 // 获取小时视图的时间范围
@@ -657,6 +669,11 @@ let hideBubblesTimeout: number | null = null // 半圆显示恢复定时器
 const HOUR_WIDTH = 40 // 每小时40px
 const VIRTUAL_BUFFER = 10 // 减少缓冲区以提升滑动性能
 
+// 纵向虚拟滚动相关状态
+const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
+const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
+const timelineBodyScrollTop = ref(0) // 纵向滚动位置
+
 // 数据缓存
 const timelineDataCache = new Map<string, unknown>()
 
@@ -701,6 +718,30 @@ const visibleHourRange = computed(() => {
   }
 })
 
+// 计算纵向可视区域的任务范围
+const visibleTaskRange = computed(() => {
+  const scrollTop = timelineBodyScrollTop.value
+  const containerHeight = timelineBodyHeight.value || 600
+
+  // 计算可视区域的开始和结束任务索引
+  const startIndex = Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER
+  const endIndex = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER
+
+  return {
+    startIndex: Math.max(0, startIndex),
+    endIndex: Math.min(tasks.value.length, Math.max(startIndex + 1, endIndex)),
+  }
+})
+
+// 获取虚拟滚动优化后的可见任务列表
+const visibleTasks = computed(() => {
+  const { startIndex, endIndex } = visibleTaskRange.value
+  return tasks.value.slice(startIndex, endIndex).map((task, index) => ({
+    task,
+    originalIndex: startIndex + index,
+  }))
+})
+
 // 防抖处理滚动事件（优化：增加防抖时间）
 const debounce = <T extends (...args: unknown[]) => void>(func: T, wait: number): T => {
   let timeout: number | null = null
@@ -717,12 +758,12 @@ const debounce = <T extends (...args: unknown[]) => void>(func: T, wait: number)
 // 优化的滚动处理器（增加防抖时间到 50ms）
 const debouncedUpdatePositions = debounce(() => {
   computeAllMilestonesPositions()
-}, 50)
+}, 200)
 
 // 虚拟渲染：防抖更新 Canvas 位置（滚动时触发）
 const debouncedUpdateCanvasPosition = debounce(() => {
   updateSvgSize() // 重新计算 Canvas 位置和尺寸
-}, 50)
+}, 200)
 
 // 缓存时间轴数据的函数
 const getCachedTimelineData = (): unknown => {
@@ -1938,17 +1979,20 @@ const svgHeight = ref(0)
 const canvasWidth = ref(0)
 const canvasHeight = ref(0)
 const canvasOffsetLeft = ref(0) // Canvas 在全局坐标系中的偏移量
+const canvasOffsetTop = ref(0)
 
 // 虚拟渲染 Canvas 的安全宽度（防止超过浏览器限制）
 // 可根据实际需求调整：
 // - 5000: 最小内存 (~30MB)，适合低端设备，但滚动时更频繁更新
 // - 10000: 平衡选择 (~60MB)，覆盖小时视图 10 天，周视图 2 年
 const SAFE_CANVAS_WIDTH = 5000 // 平衡性能和覆盖范围
+const SAFE_CANVAS_HEIGHT = 5000
 
 function updateSvgSize() {
   if (bodyContentRef.value) {
     // 获取 bodyContent 的总宽度和可视区域宽度
     const totalWidth = bodyContentRef.value.offsetWidth
+    const totalHeight = contentHeight.value
 
     // 使用已经维护的 timelineScrollLeft，而不是从 DOM 重新读取
     // 因为 handleTimelineScroll 已经实时更新了这个值
@@ -1975,9 +2019,23 @@ function updateSvgSize() {
 
     canvasOffsetLeft.value = idealOffsetLeft
 
+    const clampedHeight = Math.min(totalHeight, SAFE_CANVAS_HEIGHT)
+    canvasHeight.value = clampedHeight
     svgWidth.value = canvasWidth.value
-    svgHeight.value = contentHeight.value
-    canvasHeight.value = contentHeight.value
+    svgHeight.value = clampedHeight
+
+    const scrollTop = timelineBodyScrollTop.value
+    const bufferTop = clampedHeight / 3
+    let idealOffsetTop = Math.max(0, scrollTop - bufferTop)
+
+    if (totalHeight <= clampedHeight) {
+      idealOffsetTop = 0
+    } else {
+      const maxOffsetTop = totalHeight - clampedHeight
+      idealOffsetTop = Math.min(idealOffsetTop, maxOffsetTop)
+    }
+
+    canvasOffsetTop.value = idealOffsetTop
   }
 }
 
@@ -2001,7 +2059,9 @@ function handleBarMounted(payload: {
       height: payload.height,
     },
   }
-  updateSvgSize()
+  setTimeout(() => {
+    updateSvgSize()
+  }, 200)
 }
 
 // 向上传递 TaskBar 拖拽/拉伸事件
@@ -2162,6 +2222,12 @@ onMounted(() => {
 // 处理TaskList垂直滚动同步
 const handleTaskListVerticalScroll = (event: CustomEvent) => {
   const { scrollTop } = event.detail
+
+  // 立即更新纵向滚动位置（用于虚拟滚动计算）
+  timelineBodyScrollTop.value = scrollTop
+
+  debouncedUpdateCanvasPosition()
+
   if (timelineBodyElement.value && Math.abs(timelineBodyElement.value.scrollTop - scrollTop) > 1) {
     // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
     timelineBodyElement.value.scrollTop = scrollTop
@@ -2174,6 +2240,11 @@ const handleTimelineBodyScroll = (event: Event) => {
   if (!target) return
 
   const scrollTop = target.scrollTop
+
+  // 立即更新纵向滚动位置（用于虚拟滚动计算）
+  timelineBodyScrollTop.value = scrollTop
+
+  debouncedUpdateCanvasPosition()
 
   // 拖拽时不同步滚动事件，避免性能问题
   if (isDragging.value) return
@@ -2701,6 +2772,7 @@ const convertTaskToMilestone = (task: Task): Milestone => {
 watch(
   () => tasks.value.length,
   () => {
+    invalidateTaskDateRangeCache()
     computeAllMilestonesPositions()
   },
   { immediate: true },
@@ -2749,6 +2821,9 @@ const updateTimelineRange = () => {
 watch(
   () => tasks.value?.length,
   (newLength, oldLength) => {
+    if (newLength !== oldLength) {
+      invalidateTaskDateRangeCache()
+    }
     // 当任务从无到有时，重新计算时间范围
     if (oldLength === 0 && newLength > 0) {
       debouncedUpdateTimelineRange(50)
@@ -2789,7 +2864,7 @@ watch([timelineData, timelineContainerWidth], () => {
     nextTick(() => {
       setTimeout(() => {
         updateSvgSize()
-      }, 50)
+      }, 200)
     })
     taskBarRenderTimer = null
   }, 100)
@@ -2799,6 +2874,7 @@ watch([timelineData, timelineContainerWidth], () => {
 watch(
   () => tasks.value,
   newTasks => {
+    invalidateTaskDateRangeCache()
     // 优化：使用 for 循环直接构建 Set，避免 map 创建临时数组
     const currentTaskIds = new Set<number>()
     for (const task of newTasks) {
@@ -3327,6 +3403,7 @@ const handleAddSuccessor = (task: Task) => {
           :width="canvasWidth"
           :height="canvasHeight"
           :offset-left="canvasOffsetLeft"
+          :offset-top="canvasOffsetTop"
           :highlighted-task-id="highlightedTaskId"
           :highlighted-task-ids="highlightedTaskIds"
           :hovered-task-id="hoveredTaskId"
@@ -3510,13 +3587,13 @@ const handleAddSuccessor = (task: Task) => {
         <!-- 同时需要考虑左侧TaskList包含1px的bottom border -->
         <div class="task-bar-container" :style="{ height: `${contentHeight}px` }">
           <div class="task-rows" :style="{ height: `${contentHeight}px` }">
-            <!-- 使用v-memo减少渲染 -->
+            <!-- 使用虚拟滚动渲染可见任务 -->
             <div
-              v-for="(task, index) in tasks"
+              v-for="{ task, originalIndex } in visibleTasks"
               :key="task.id"
               class="task-row"
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
-              :style="{ top: `${index * 51}px` }"
+              :style="{ top: `${originalIndex * 51}px` }"
               @mouseenter="handleTaskRowHover(task.id)"
               @mouseleave="handleTaskRowHover(null)"
             >
