@@ -2996,7 +2996,7 @@ onUnmounted(() => {
   padding: 12px;
   border-radius: 8px;
   font-size: 12px;
-  z-index: 10000; /* 确保在最上层 */
+  z-index: 9999999999; /* 确保在最上层 */
   max-width: 250px;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.4),
@@ -3049,7 +3049,7 @@ onUnmounted(() => {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  z-index: 10001;
+  z-index: 999999999;
   box-shadow: 0 2px 12px rgba(0, 123, 255, 0.4);
   pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.2);
