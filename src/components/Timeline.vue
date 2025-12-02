@@ -653,12 +653,16 @@ const DISABLE_REACTIVE_PROPS_TO_TASKBAR = true // 设为 true 测试是否是 Vu
 
 const dragLinkMode = ref<'predecessor' | 'successor' | null>(null) // 当前拖拽模式
 const linkDragSourceTask = shallowRef<Task | null>(null) // 拖拽起始任务（使用 shallowRef 优化性能）
-const linkDragCurrentX = ref(0) // 当前鼠标X坐标
-const linkDragCurrentY = ref(0) // 当前鼠标Y坐标
+const linkDragCurrentX = ref(0) // 当前鼠标X坐标（保留用于兼容）
+const linkDragCurrentY = ref(0) // 当前鼠标Y坐标（保留用于兼容）
 const linkDragTargetTask = shallowRef<Task | null>(null) // 当前悬停的目标任务（使用 shallowRef 优化性能）
-const isValidLinkTarget = ref(false) // 是否是有效的连接目标
-const linkValidationError = ref<string>('') // 连接验证失败的原因
+const isValidLinkTarget = ref(false) // 是否是有效的连接目标（保留用于 handleLinkDragEnd）
+const linkValidationError = ref<string>('') // 连接验证失败的原因（保留用于兼容）
 const linkAutoScrollInterval = ref<number | null>(null) // 自动滚动定时器
+
+// 🚀 非响应式拖拽状态（用于高频更新，避免 Vue 响应式开销）
+let nonReactiveIsValidTarget = false
+let nonReactiveErrorMessage = ''
 
 // 🔧 调试用：用于传递给 TaskBar 的静态替代值（避免触发 Vue 更新）
 const staticDragLinkMode = computed(() =>
@@ -734,12 +738,16 @@ const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'success
   // 启动帧监控
   startFrameMonitor()
 
-  // 初始化鼠标坐标
-  updateLinkDragCoordinates(event.mouseEvent.clientX, event.mouseEvent.clientY)
+  // 初始化鼠标坐标（使用非响应式版本）
+  updateLinkDragCoordinatesNonReactive(event.mouseEvent.clientX, event.mouseEvent.clientY)
 
   linkDragTargetTask.value = null
   isValidLinkTarget.value = false
   linkValidationError.value = ''
+  // 🚀 重置非响应式状态
+  nonReactiveTargetTask = null
+  nonReactiveIsValidTarget = false
+  nonReactiveErrorMessage = ''
 
   // 启动自动滚动检测
   startLinkAutoScroll()
@@ -760,13 +768,40 @@ let linkDragRafId: number | null = null
 let pendingMouseX = 0
 let pendingMouseY = 0
 
-// 🚀 优化后的 RAF 回调：在一帧内批量处理坐标更新和目标检测
+// 🚀 非响应式拖拽坐标（避免 Vue 响应式系统开销）
+let currentDragX = 0
+let currentDragY = 0
+
+// 🔧 调试开关：逐步启用各操作以定位性能瓶颈
+const DEBUG_ENABLE_COORD_UPDATE = true   // 坐标更新 ✅ 不是瓶颈
+const DEBUG_ENABLE_TARGET_DETECT = true  // 目标检测 ✅ 不是瓶颈
+const DEBUG_ENABLE_CANVAS_DRAW = true    // Canvas 绘制 - 测试中
+
+// 🚀 优化后的 RAF 回调：在一帧内批量处理坐标更新、目标检测和绘制
 const processLinkDragFrame = () => {
   linkDragRafId = null
 
-  // 批量更新：坐标 + 目标检测
-  updateLinkDragCoordinates(pendingMouseX, pendingMouseY)
-  detectLinkTarget(pendingMouseX, pendingMouseY)
+  // 🔧 调试：逐步启用各操作
+  if (DEBUG_ENABLE_COORD_UPDATE) {
+    updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
+  }
+
+  if (DEBUG_ENABLE_TARGET_DETECT) {
+    detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
+  }
+
+  if (DEBUG_ENABLE_CANVAS_DRAW) {
+    if (linkDragGuideRef.value && linkDragSourceTask.value) {
+      linkDragGuideRef.value.draw(
+        getLinkDragStartX(),
+        getLinkDragStartY(),
+        currentDragX,
+        currentDragY,
+        nonReactiveIsValidTarget,
+        nonReactiveErrorMessage,
+      )
+    }
+  }
 }
 
 // 全局鼠标移动处理（🚀 优化：使用 RAF 统一调度，避免每次 mousemove 都触发响应式更新）
@@ -826,13 +861,13 @@ let bodyRectCacheTime = 0
 const BODY_RECT_CACHE_DURATION = 200 // 200ms 缓存（优化：增加缓存时间）
 let bodyRectInvalidated = false // 缓存失效标记（滚动时失效）
 
-// 快速更新鼠标坐标（无节流，确保引导线跟随）
-const updateLinkDragCoordinates = (mouseX: number, mouseY: number) => {
+// 🚀 非响应式坐标更新（完全绕过 Vue 响应式系统）
+const updateLinkDragCoordinatesNonReactive = (mouseX: number, mouseY: number) => {
   const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
 
   if (!bodyContentRef.value) {
-    linkDragCurrentX.value = mouseX
-    linkDragCurrentY.value = mouseY
+    currentDragX = mouseX
+    currentDragY = mouseY
 
     if (ENABLE_PERF_MONITOR) {
       perfStats.coordUpdateCount++
@@ -850,8 +885,8 @@ const updateLinkDragCoordinates = (mouseX: number, mouseY: number) => {
     bodyRectCacheTime = now
     bodyRectInvalidated = false
   }
-  linkDragCurrentX.value = mouseX - cachedBodyRect.left
-  linkDragCurrentY.value = mouseY - cachedBodyRect.top
+  currentDragX = mouseX - cachedBodyRect.left
+  currentDragY = mouseY - cachedBodyRect.top
 
   if (ENABLE_PERF_MONITOR) {
     perfStats.coordUpdateCount++
@@ -868,6 +903,7 @@ const updateLinkDragCoordinates = (mouseX: number, mouseY: number) => {
           ? (perfStats.targetDetectTotalTime / perfStats.targetDetectCount).toFixed(3)
           : 0
 
+      // eslint-disable-next-line no-console
       console.log(
         `[LinkDrag Perf] 坐标更新: ${perfStats.coordUpdateCount}次, 平均${avgCoordTime}ms | ` +
           `目标检测: ${perfStats.targetDetectCount}次, 平均${avgTargetTime}ms`,
@@ -909,7 +945,12 @@ const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor
   document.removeEventListener('mouseup', handleGlobalMouseUp)
 
   // 停止自动滚动
-  stopLinkAutoScroll()  // 如果有有效目标，创建连接
+  stopLinkAutoScroll()
+
+  // 🚀 清除 LinkDragGuide 画布
+  linkDragGuideRef.value?.clear()
+
+  // 如果有有效目标，创建连接
   if (linkDragTargetTask.value && isValidLinkTarget.value) {
     createLink(event.task, linkDragTargetTask.value, event.type)
   }
@@ -1048,6 +1089,102 @@ const detectLinkTarget = (mouseX: number, mouseY: number) => {
     }
   }
 }
+
+// 🚀 非响应式目标检测（完全绕过 Vue 响应式系统）
+// 缓存当前检测到的目标任务（用于 handleLinkDragEnd）
+let nonReactiveTargetTask: Task | null = null
+
+const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
+  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
+
+  if (!linkDragSourceTask.value || !bodyContentRef.value) return
+
+  // 使用缓存的 rect
+  if (!cachedBodyRect) {
+    cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
+    bodyRectCacheTime = Date.now()
+  }
+
+  const relativeX = mouseX - cachedBodyRect.left
+  const relativeY = mouseY - cachedBodyRect.top
+
+  let foundTaskId: number | null = null
+  const isPredecessorMode = dragLinkMode.value === 'predecessor'
+  const halfSize = (ANCHOR_SIZE + ANCHOR_TOLERANCE) / 2
+  const expandedHalfSize = halfSize + 10
+
+  for (const taskIdStr in taskBarPositions.value) {
+    const pos = taskBarPositions.value[taskIdStr]
+    const taskId = Number(taskIdStr)
+
+    if (
+      relativeY < pos.top - expandedHalfSize ||
+      relativeY > pos.top + pos.height + expandedHalfSize
+    ) {
+      continue
+    }
+
+    if (isPredecessorMode) {
+      const anchorX = pos.left + pos.width
+      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
+        continue
+      }
+      const anchorY = pos.top + pos.height / 2
+      if (
+        relativeX >= anchorX - halfSize &&
+        relativeX <= anchorX + halfSize &&
+        relativeY >= anchorY - halfSize &&
+        relativeY <= anchorY + halfSize
+      ) {
+        foundTaskId = taskId
+        break
+      }
+    } else {
+      const anchorX = pos.left
+      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
+        continue
+      }
+      const anchorY = pos.top + pos.height / 2
+      if (
+        relativeX >= anchorX - halfSize &&
+        relativeX <= anchorX + halfSize &&
+        relativeY >= anchorY - halfSize &&
+        relativeY <= anchorY + halfSize
+      ) {
+        foundTaskId = taskId
+        break
+      }
+    }
+  }
+
+  const foundTarget = foundTaskId !== null ? taskIdMap.get(foundTaskId) || null : null
+  const currentTargetId = nonReactiveTargetTask?.id ?? null
+  const newTargetId = foundTarget?.id ?? null
+
+  if (currentTargetId !== newTargetId) {
+    nonReactiveTargetTask = foundTarget
+
+    if (foundTarget && linkDragSourceTask.value) {
+      const validation = validateLink(linkDragSourceTask.value, foundTarget, dragLinkMode.value!)
+      nonReactiveIsValidTarget = validation.valid
+      nonReactiveErrorMessage = validation.error || ''
+      // 🚀 同步更新响应式变量（仅在目标变化时，用于 handleLinkDragEnd）
+      isValidLinkTarget.value = validation.valid
+      linkDragTargetTask.value = foundTarget
+    } else {
+      nonReactiveIsValidTarget = false
+      nonReactiveErrorMessage = ''
+      isValidLinkTarget.value = false
+      linkDragTargetTask.value = null
+    }
+  }
+
+  if (ENABLE_PERF_MONITOR) {
+    perfStats.targetDetectCount++
+    perfStats.targetDetectTotalTime += performance.now() - startTime
+  }
+}
+
 // 验证连接是否有效（返回 { valid: boolean, error?: string }）
 const validateLink = (
   sourceTask: Task,
@@ -1248,6 +1385,9 @@ const cleanupLinkDrag = () => {
     cancelAnimationFrame(mouseMoveRafId)
     mouseMoveRafId = null
   }
+
+  // 🚀 清除 LinkDragGuide 画布
+  linkDragGuideRef.value?.clear()
 
   // 移除全局监听器
   document.removeEventListener('keydown', handleLinkDragEscape)
@@ -2614,6 +2754,8 @@ const taskBarPositions = shallowRef<
 const taskBarRenderKey = ref(0)
 
 const bodyContentRef = ref<HTMLElement | null>(null)
+// 🚀 LinkDragGuide 命令式 API 引用
+const linkDragGuideRef = ref<InstanceType<typeof LinkDragGuide> | null>(null)
 const svgWidth = ref(0)
 const svgHeight = ref(0)
 
@@ -4078,20 +4220,14 @@ const handleAddSuccessor = (task: Task) => {
           :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
         />
 
-        <!-- 连接线拖拽引导线 -->
+        <!-- 连接线拖拽引导线 - 🚀 优化：使用命令式 API，由 RAF 直接调用 draw() -->
         <LinkDragGuide
-          v-if="dragLinkMode && linkDragSourceTask"
-          :active="true"
-          :start-x="getLinkDragStartX()"
-          :start-y="getLinkDragStartY()"
-          :end-x="linkDragCurrentX"
-          :end-y="linkDragCurrentY"
+          ref="linkDragGuideRef"
+          :active="!!dragLinkMode && !!linkDragSourceTask"
           :width="canvasWidth"
           :height="canvasHeight"
           :offset-left="canvasOffsetLeft"
           :offset-top="canvasOffsetTop"
-          :is-valid-target="isValidLinkTarget"
-          :error-message="linkValidationError"
         />
 
         <!-- 年度视图今日标记线 -->
