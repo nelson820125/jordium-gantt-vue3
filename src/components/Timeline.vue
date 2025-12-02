@@ -648,31 +648,98 @@ const setHighlightTask = (taskId: number) => {
 }
 
 // ==================== 连接线拖拽状态管理 ====================
+// 🔧 调试开关：禁用传递给 TaskBar 的响应式 props 以测试 Vue 渲染性能影响
+const DISABLE_REACTIVE_PROPS_TO_TASKBAR = true // 设为 true 测试是否是 Vue 渲染导致卡顿
+
 const dragLinkMode = ref<'predecessor' | 'successor' | null>(null) // 当前拖拽模式
-const linkDragSourceTask = ref<Task | null>(null) // 拖拽起始任务
+const linkDragSourceTask = shallowRef<Task | null>(null) // 拖拽起始任务（使用 shallowRef 优化性能）
 const linkDragCurrentX = ref(0) // 当前鼠标X坐标
 const linkDragCurrentY = ref(0) // 当前鼠标Y坐标
-const linkDragTargetTask = ref<Task | null>(null) // 当前悬停的目标任务
+const linkDragTargetTask = shallowRef<Task | null>(null) // 当前悬停的目标任务（使用 shallowRef 优化性能）
 const isValidLinkTarget = ref(false) // 是否是有效的连接目标
+const linkValidationError = ref<string>('') // 连接验证失败的原因
 const linkAutoScrollInterval = ref<number | null>(null) // 自动滚动定时器
+
+// 🔧 调试用：用于传递给 TaskBar 的静态替代值（避免触发 Vue 更新）
+const staticDragLinkMode = computed(() =>
+  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? null : dragLinkMode.value,
+)
+const staticLinkDragSourceTaskId = computed(() =>
+  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? null : linkDragSourceTask.value?.id,
+)
+const staticLinkDragTargetTaskId = computed(() =>
+  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? null : linkDragTargetTask.value?.id,
+)
+const staticIsValidLinkTarget = computed(() =>
+  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? false : isValidLinkTarget.value,
+)
+
+// 任务查找缓存 Map（优化性能，避免每次都遍历数组）
+const taskIdMap = new Map<number, Task>()
+
+// 性能监控开关（开发调试用）
+const ENABLE_PERF_MONITOR = true
+let perfStats = {
+  coordUpdateCount: 0,
+  coordUpdateTotalTime: 0,
+  targetDetectCount: 0,
+  targetDetectTotalTime: 0,
+  lastReportTime: 0,
+}
+
+// 帧时间监控（诊断主线程阻塞）
+let frameMonitorId: number | null = null
+let lastFrameTime = 0
+let longFrameCount = 0
+let frameCount = 0
+
+const startFrameMonitor = () => {
+  lastFrameTime = performance.now()
+  longFrameCount = 0
+  frameCount = 0
+
+  const checkFrame = () => {
+    const now = performance.now()
+    const frameTime = now - lastFrameTime
+    frameCount++
+
+    // 超过 30ms 的帧被认为是"长帧"（正常应该是 ~16ms）
+    if (frameTime > 30) {
+      longFrameCount++
+      // eslint-disable-next-line no-console
+      console.warn(`[Frame Monitor] 长帧检测: ${frameTime.toFixed(1)}ms`)
+    }
+
+    lastFrameTime = now
+    frameMonitorId = requestAnimationFrame(checkFrame)
+  }
+
+  frameMonitorId = requestAnimationFrame(checkFrame)
+}
+
+const stopFrameMonitor = () => {
+  if (frameMonitorId !== null) {
+    cancelAnimationFrame(frameMonitorId)
+    frameMonitorId = null
+    // eslint-disable-next-line no-console
+    console.log(`[Frame Monitor] 统计: ${frameCount}帧, 长帧数: ${longFrameCount} (${(longFrameCount / frameCount * 100).toFixed(1)}%)`)
+  }
+}
 
 // 开始连接线拖拽
 const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
   dragLinkMode.value = event.type
   linkDragSourceTask.value = event.task
 
-  // 将视口坐标转换为相对于 bodyContent 的坐标
-  if (!bodyContentRef.value) {
-    linkDragCurrentX.value = event.mouseEvent.clientX
-    linkDragCurrentY.value = event.mouseEvent.clientY
-  } else {
-    const baseRect = bodyContentRef.value.getBoundingClientRect()
-    linkDragCurrentX.value = event.mouseEvent.clientX - baseRect.left
-    linkDragCurrentY.value = event.mouseEvent.clientY - baseRect.top
-  }
+  // 启动帧监控
+  startFrameMonitor()
+
+  // 初始化鼠标坐标
+  updateLinkDragCoordinates(event.mouseEvent.clientX, event.mouseEvent.clientY)
 
   linkDragTargetTask.value = null
   isValidLinkTarget.value = false
+  linkValidationError.value = ''
 
   // 启动自动滚动检测
   startLinkAutoScroll()
@@ -685,40 +752,55 @@ const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'success
   document.addEventListener('mouseup', handleGlobalMouseUp)
 }
 
-// 使用 requestAnimationFrame 节流鼠标移动处理
-let mouseMoveRafId: number | null = null
-let lastMouseX = 0
-let lastMouseY = 0
+// 目标检测的 RAF 节流（保留用于兼容性）
+let targetDetectionRafId: number | null = null
 
-// 全局鼠标移动处理
+// 🚀 优化：统一 RAF 调度（坐标更新 + 目标检测在同一帧处理）
+let linkDragRafId: number | null = null
+let pendingMouseX = 0
+let pendingMouseY = 0
+
+// 🚀 优化后的 RAF 回调：在一帧内批量处理坐标更新和目标检测
+const processLinkDragFrame = () => {
+  linkDragRafId = null
+
+  // 批量更新：坐标 + 目标检测
+  updateLinkDragCoordinates(pendingMouseX, pendingMouseY)
+  detectLinkTarget(pendingMouseX, pendingMouseY)
+}
+
+// 全局鼠标移动处理（🚀 优化：使用 RAF 统一调度，避免每次 mousemove 都触发响应式更新）
 const handleGlobalMouseMove = (e: MouseEvent) => {
   if (!dragLinkMode.value) return
 
-  // 保存最新的鼠标位置
-  lastMouseX = e.clientX
-  lastMouseY = e.clientY
+  // 🚀 记录最新鼠标位置，但不立即更新
+  pendingMouseX = e.clientX
+  pendingMouseY = e.clientY
 
-  // 如果已经有待处理的更新，直接返回
-  if (mouseMoveRafId !== null) return
+  // 🚀 如果已有 RAF 待处理，跳过（下一帧会使用最新坐标）
+  if (linkDragRafId !== null) {
+    return
+  }
 
-  // 使用 requestAnimationFrame 节流
-  mouseMoveRafId = requestAnimationFrame(() => {
-    mouseMoveRafId = null
-    handleLinkDragMove({
-      mouseX: lastMouseX,
-      mouseY: lastMouseY,
-    })
-  })
+  // 🚀 调度下一帧处理
+  linkDragRafId = requestAnimationFrame(processLinkDragFrame)
 }
 
 // 全局鼠标释放处理
 const handleGlobalMouseUp = () => {
   if (!dragLinkMode.value) return
 
-  // 取消待处理的 mousemove
-  if (mouseMoveRafId !== null) {
-    cancelAnimationFrame(mouseMoveRafId)
-    mouseMoveRafId = null
+  // 停止帧监控
+  stopFrameMonitor()
+
+  // 🚀 取消待处理的 RAF
+  if (linkDragRafId !== null) {
+    cancelAnimationFrame(linkDragRafId)
+    linkDragRafId = null
+  }
+  if (targetDetectionRafId !== null) {
+    cancelAnimationFrame(targetDetectionRafId)
+    targetDetectionRafId = null
   }
 
   // 触发拖拽结束
@@ -741,27 +823,79 @@ const handleLinkDragEscape = (e: KeyboardEvent) => {
 // 缓存 bodyContent 的位置信息（避免频繁调用 getBoundingClientRect）
 let cachedBodyRect: DOMRect | null = null
 let bodyRectCacheTime = 0
-const BODY_RECT_CACHE_DURATION = 50 // 50ms 缓存
+const BODY_RECT_CACHE_DURATION = 200 // 200ms 缓存（优化：增加缓存时间）
+let bodyRectInvalidated = false // 缓存失效标记（滚动时失效）
 
-// 拖拽过程中更新鼠标位置
-const handleLinkDragMove = (event: { mouseX: number; mouseY: number }) => {
-  // 将视口坐标转换为相对于 bodyContent 的坐标
+// 快速更新鼠标坐标（无节流，确保引导线跟随）
+const updateLinkDragCoordinates = (mouseX: number, mouseY: number) => {
+  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
+
   if (!bodyContentRef.value) {
-    linkDragCurrentX.value = event.mouseX
-    linkDragCurrentY.value = event.mouseY
-  } else {
-    // 使用缓存的 rect 或获取新的
-    const now = Date.now()
-    if (!cachedBodyRect || now - bodyRectCacheTime > BODY_RECT_CACHE_DURATION) {
-      cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
-      bodyRectCacheTime = now
+    linkDragCurrentX.value = mouseX
+    linkDragCurrentY.value = mouseY
+
+    if (ENABLE_PERF_MONITOR) {
+      perfStats.coordUpdateCount++
+      perfStats.coordUpdateTotalTime += performance.now() - startTime
     }
-    linkDragCurrentX.value = event.mouseX - cachedBodyRect.left
-    linkDragCurrentY.value = event.mouseY - cachedBodyRect.top
+    return
   }
 
-  // 检测目标任务（使用原始视口坐标）
-  detectLinkTarget(event.mouseX, event.mouseY)
+  // 使用缓存的 rect 或获取新的
+  const now = Date.now()
+  const shouldRefreshRect =
+    !cachedBodyRect || bodyRectInvalidated || now - bodyRectCacheTime > BODY_RECT_CACHE_DURATION
+  if (shouldRefreshRect) {
+    cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
+    bodyRectCacheTime = now
+    bodyRectInvalidated = false
+  }
+  linkDragCurrentX.value = mouseX - cachedBodyRect.left
+  linkDragCurrentY.value = mouseY - cachedBodyRect.top
+
+  if (ENABLE_PERF_MONITOR) {
+    perfStats.coordUpdateCount++
+    perfStats.coordUpdateTotalTime += performance.now() - startTime
+
+    // 每秒输出一次性能统计
+    if (now - perfStats.lastReportTime > 1000) {
+      const avgCoordTime =
+        perfStats.coordUpdateCount > 0
+          ? (perfStats.coordUpdateTotalTime / perfStats.coordUpdateCount).toFixed(3)
+          : 0
+      const avgTargetTime =
+        perfStats.targetDetectCount > 0
+          ? (perfStats.targetDetectTotalTime / perfStats.targetDetectCount).toFixed(3)
+          : 0
+
+      console.log(
+        `[LinkDrag Perf] 坐标更新: ${perfStats.coordUpdateCount}次, 平均${avgCoordTime}ms | ` +
+          `目标检测: ${perfStats.targetDetectCount}次, 平均${avgTargetTime}ms`,
+      )
+
+      // 重置统计
+      perfStats.coordUpdateCount = 0
+      perfStats.coordUpdateTotalTime = 0
+      perfStats.targetDetectCount = 0
+      perfStats.targetDetectTotalTime = 0
+      perfStats.lastReportTime = now
+    }
+  }
+}
+
+// 拖拽过程中更新鼠标位置（🚀 优化：使用统一 RAF 调度）
+const handleLinkDragMove = (event: { mouseX: number; mouseY: number }) => {
+  // 🚀 记录最新鼠标位置
+  pendingMouseX = event.mouseX
+  pendingMouseY = event.mouseY
+
+  // 🚀 如果已有 RAF 待处理，跳过
+  if (linkDragRafId !== null) {
+    return
+  }
+
+  // 🚀 调度下一帧处理
+  linkDragRafId = requestAnimationFrame(processLinkDragFrame)
 }
 
 // 结束连接线拖拽
@@ -787,87 +921,187 @@ const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor
   isValidLinkTarget.value = false
 }
 
-// 检测鼠标位置下的目标任务
+// 触点碰撞检测常量
+const ANCHOR_SIZE = 8 // 触点视觉大小（px）
+const ANCHOR_TOLERANCE = 4 // 碰撞容差（px），扩大点击区域
+
+// 检测鼠标位置下的目标任务（使用 taskBarPositions 数据，无 DOM 查询）
 const detectLinkTarget = (mouseX: number, mouseY: number) => {
-  if (!linkDragSourceTask.value) return
+  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
 
-  // 使用 elementFromPoint 直接获取鼠标下的元素（性能更好）
-  const element = document.elementFromPoint(mouseX, mouseY)
-  let foundTarget: Task | null = null
+  if (!linkDragSourceTask.value || !bodyContentRef.value) return
 
-  if (element) {
-    // 向上查找最近的 .task-bar 元素
-    const taskBar = element.closest('.task-bar') as HTMLElement
-    if (taskBar && taskBar.dataset.taskId) {
-      const taskId = parseInt(taskBar.dataset.taskId)
-      // 只有当目标任务变化时才查找（避免重复的 find 操作）
-      if (!foundTarget || foundTarget.id !== taskId) {
-        foundTarget = tasks.value.find(t => t.id === taskId) || null
+  // 使用缓存的 rect（优化：避免重复调用 getBoundingClientRect）
+  if (!cachedBodyRect) {
+    cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
+    bodyRectCacheTime = Date.now()
+  }
+
+  const relativeX = mouseX - cachedBodyRect.left
+  const relativeY = mouseY - cachedBodyRect.top
+
+  let foundTaskId: number | null = null
+  const isPredecessorMode = dragLinkMode.value === 'predecessor'
+  const halfSize = (ANCHOR_SIZE + ANCHOR_TOLERANCE) / 2
+  const expandedHalfSize = halfSize + 10 // 扩展检测区域，提前过滤
+
+  let skippedCount = 0 // 统计跳过的任务数
+  let checkedCount = 0 // 统计检查的任务数
+
+  // 优化：使用 for...in 替代 Object.entries，减少临时对象创建
+  // 优化：提前计算常量，减少循环内计算
+  for (const taskIdStr in taskBarPositions.value) {
+    const pos = taskBarPositions.value[taskIdStr]
+    const taskId = Number(taskIdStr)
+
+    // 快速粗略检测：鼠标是否在任务条附近（提前过滤，避免详细计算）
+    if (
+      relativeY < pos.top - expandedHalfSize ||
+      relativeY > pos.top + pos.height + expandedHalfSize
+    ) {
+      skippedCount++
+      continue // 垂直方向不在任务条附近，跳过
+    }
+
+    // 根据拖拽模式检测对应的触点（优化：内联 isPointInAnchor 逻辑，减少函数调用）
+    if (isPredecessorMode) {
+      // 前置模式：检测目标任务的右触点
+      const anchorX = pos.left + pos.width
+
+      // 水平方向粗略检测
+      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
+        skippedCount++
+        continue
+      }
+
+      checkedCount++
+      const anchorY = pos.top + pos.height / 2
+
+      if (
+        relativeX >= anchorX - halfSize &&
+        relativeX <= anchorX + halfSize &&
+        relativeY >= anchorY - halfSize &&
+        relativeY <= anchorY + halfSize
+      ) {
+        foundTaskId = taskId
+        break
+      }
+    } else {
+      // 后置模式：检测目标任务的左触点
+      const anchorX = pos.left
+
+      // 水平方向粗略检测
+      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
+        skippedCount++
+        continue
+      }
+
+      checkedCount++
+      const anchorY = pos.top + pos.height / 2
+
+      if (
+        relativeX >= anchorX - halfSize &&
+        relativeX <= anchorX + halfSize &&
+        relativeY >= anchorY - halfSize &&
+        relativeY <= anchorY + halfSize
+      ) {
+        foundTaskId = taskId
+        break
       }
     }
   }
 
-  // 只有当目标任务真正变化时才更新和验证
-  if (foundTarget?.id !== linkDragTargetTask.value?.id) {
+  // 优化：使用 Map 缓存查找任务对象，避免每次遍历数组
+  const foundTarget = foundTaskId !== null ? taskIdMap.get(foundTaskId) || null : null
+
+  // 当目标任务变化时才更新和验证（包括从有目标变为无目标，或从无目标变为有目标）
+  const currentTargetId = linkDragTargetTask.value?.id ?? null
+  const newTargetId = foundTarget?.id ?? null
+
+  if (currentTargetId !== newTargetId) {
     linkDragTargetTask.value = foundTarget
 
     // 验证连接的有效性
     if (foundTarget && linkDragSourceTask.value) {
-      isValidLinkTarget.value = validateLink(
-        linkDragSourceTask.value,
-        foundTarget,
-        dragLinkMode.value!
-      )
+      const validation = validateLink(linkDragSourceTask.value, foundTarget, dragLinkMode.value!)
+      isValidLinkTarget.value = validation.valid
+      linkValidationError.value = validation.error || ''
     } else {
+      // 无目标或无源任务时，清除验证状态和错误消息
       isValidLinkTarget.value = false
+      linkValidationError.value = ''
+    }
+  }
+
+  if (ENABLE_PERF_MONITOR) {
+    perfStats.targetDetectCount++
+    perfStats.targetDetectTotalTime += performance.now() - startTime
+
+    // 每100次检测输出一次详细统计
+    if (perfStats.targetDetectCount % 100 === 0) {
+      const totalTasks = Object.keys(taskBarPositions.value).length
+      console.log(
+        `[LinkDrag Target] 任务总数: ${totalTasks}, ` +
+          `跳过: ${skippedCount}, 检查: ${checkedCount}, ` +
+          `命中: ${foundTaskId !== null ? 1 : 0}`,
+      )
     }
   }
 }
-// 验证连接是否有效
-const validateLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 'successor'): boolean => {
+// 验证连接是否有效（返回 { valid: boolean, error?: string }）
+const validateLink = (
+  sourceTask: Task,
+  targetTask: Task,
+  mode: 'predecessor' | 'successor',
+): { valid: boolean; error?: string } => {
   // 1. 不能连接到自己
   if (sourceTask.id === targetTask.id) {
-    return false
+    return { valid: false, error: '不能连接到自己' }
   }
 
   // 2. 不能连接父级任务或里程碑
   if (targetTask.isParent || targetTask.type === 'milestone') {
-    return false
+    return { valid: false, error: '不能连接到父级任务或里程碑' }
   }
 
   // 3. 不能创建循环依赖
   if (mode === 'predecessor') {
-    // 如果目标任务已经依赖源任务（直接或间接），会形成循环
+    // predecessor模式：从B的左触点拖拽到A，要建立 A→B 的关系
+    // 检查：如果B已经（直接或间接）依赖A，会形成循环
     if (hasCircularDependency(targetTask.id, sourceTask.id)) {
-      return false
+      return { valid: false, error: '会产生循环依赖' }
     }
   } else {
-    // successor模式：源任务不能已经依赖目标任务
+    // successor模式：从A的右触点拖拽到B，要建立 A→B 的关系
+    // 检查：如果A已经（直接或间接）依赖B，会形成循环
     if (hasCircularDependency(sourceTask.id, targetTask.id)) {
-      return false
+      return { valid: false, error: '会产生循环依赖' }
     }
   }
 
   // 4. 检查是否已存在该连接
+  // 注意：A→B 的关系存储在 B.predecessor 中，值为 [A.id]
   if (mode === 'predecessor') {
-    // 检查目标任务的前置任务列表
-    if (targetTask.predecessor) {
-      const predecessorIds = getPredecessorIds(targetTask.predecessor)
-      if (predecessorIds.includes(sourceTask.id)) {
-        return false // 已存在
-      }
-    }
-  } else {
-    // successor模式：检查源任务的前置任务列表
+    // predecessor模式：从B的左触点拖拽到A，要建立 A→B 的关系
+    // 检查 B.predecessor 中是否已包含 A.id
     if (sourceTask.predecessor) {
       const predecessorIds = getPredecessorIds(sourceTask.predecessor)
       if (predecessorIds.includes(targetTask.id)) {
-        return false // 已存在
+        return { valid: false, error: '关系已存在' }
+      }
+    }
+  } else {
+    // successor模式：从A的右触点拖拽到B，要建立 A→B 的关系
+    // 检查 B.predecessor 中是否已包含 A.id
+    if (targetTask.predecessor) {
+      const predecessorIds = getPredecessorIds(targetTask.predecessor)
+      if (predecessorIds.includes(sourceTask.id)) {
+        return { valid: false, error: '关系已存在' }
       }
     }
   }
 
-  return true
+  return { valid: true }
 }
 
 // 检查循环依赖
@@ -934,6 +1168,10 @@ const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 's
 
 // 启动自动滚动检测
 const startLinkAutoScroll = () => {
+  // 诊断：暂时禁用自动滚动
+  const DISABLE_AUTO_SCROLL = true
+  if (DISABLE_AUTO_SCROLL) return
+
   linkAutoScrollInterval.value = window.setInterval(() => {
     if (!timelineContainerElement.value || !bodyContentRef.value) return
 
@@ -2441,7 +2679,9 @@ function updateSvgSize() {
 
     canvasOffsetTop.value = idealOffsetTop
   }
-}function handleBarMounted(payload: {
+}
+
+function handleBarMounted(payload: {
   id: number
   left: number
   top: number
@@ -2646,6 +2886,9 @@ const handleTimelineBodyScroll = (event: Event) => {
   // 立即更新纵向滚动位置（用于虚拟滚动计算）
   timelineBodyScrollTop.value = scrollTop
 
+  // 优化：滚动时失效 bodyRect 缓存（用于连接线拖拽）
+  bodyRectInvalidated = true
+
   debouncedUpdateCanvasPosition()
 
   // 拖拽时不同步滚动事件，避免性能问题
@@ -2668,6 +2911,22 @@ watch(
     nextTick(() => {
       updateSvgSize()
     })
+  },
+  { immediate: true },
+)
+
+// 优化：监听任务变化，更新任务 ID Map 缓存
+watch(
+  tasks,
+  newTasks => {
+    taskIdMap.clear()
+    const addTaskToMap = (task: Task) => {
+      taskIdMap.set(task.id, task)
+      if (task.children && task.children.length > 0) {
+        task.children.forEach(addTaskToMap)
+      }
+    }
+    newTasks.forEach(addTaskToMap)
   },
   { immediate: true },
 )
@@ -2871,6 +3130,9 @@ const handleTimelineScroll = (event: Event) => {
 
   // 立即更新关键滚动位置信息（用于虚拟滚动）
   timelineScrollLeft.value = scrollLeft
+
+  // 优化：滚动时失效 bodyRect 缓存（用于连接线拖拽）
+  bodyRectInvalidated = true
 
   // 只在容器宽度未初始化时更新
   if (timelineContainerWidth.value === 0) {
@@ -3829,6 +4091,7 @@ const handleAddSuccessor = (task: Task) => {
           :offset-left="canvasOffsetLeft"
           :offset-top="canvasOffsetTop"
           :is-valid-target="isValidLinkTarget"
+          :error-message="linkValidationError"
         />
 
         <!-- 年度视图今日标记线 -->
@@ -4113,10 +4376,14 @@ const handleAddSuccessor = (task: Task) => {
                 :is-highlighted="highlightedTaskIds.has(task.id)"
                 :is-primary-highlight="highlightedTaskId === task.id"
                 :is-in-highlight-mode="isInHighlightMode"
-                :drag-link-mode="dragLinkMode"
-                :is-link-drag-source="linkDragSourceTask?.id === task.id"
-                :is-valid-link-target="linkDragTargetTask?.id === task.id && isValidLinkTarget"
-                :is-invalid-link-target="linkDragTargetTask?.id === task.id && !isValidLinkTarget"
+                :drag-link-mode="staticDragLinkMode"
+                :is-link-drag-source="staticLinkDragSourceTaskId === task.id"
+                :is-valid-link-target="
+                  staticLinkDragTargetTaskId === task.id && staticIsValidLinkTarget === true
+                "
+                :is-invalid-link-target="
+                  staticLinkDragTargetTaskId === task.id && staticIsValidLinkTarget === false
+                "
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"
                 @click="handleTaskBarClick(task, $event)"
