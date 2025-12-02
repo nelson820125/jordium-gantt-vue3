@@ -12,19 +12,25 @@ interface Props {
   offsetLeft?: number
   offsetTop?: number
   isValidTarget?: boolean // 是否是合法的连接目标
+  errorMessage?: string // 错误提示消息
 }
 
 const props = withDefaults(defineProps<Props>(), {
   offsetLeft: 0,
   offsetTop: 0,
   isValidTarget: true,
+  errorMessage: '',
 })
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
-// 使用 requestAnimationFrame 节流重绘
-let rafId: number | null = null
-let pendingDraw = false
+// 性能监控
+const ENABLE_PERF_MONITOR = true
+const SKIP_ACTUAL_DRAW = false // 调试开关：跳过实际绘制，只打印日志
+let drawCount = 0
+let drawTotalTime = 0
+let lastReportTime = 0
+let lastCallTime = 0 // 上次调用时间，用于计算间隔
 
 // 缓存 canvas 上下文和尺寸信息，避免重复初始化
 let cachedCtx: CanvasRenderingContext2D | null = null
@@ -72,29 +78,21 @@ const initCanvas = () => {
 /**
  * 绘制拖拽引导线
  * 使用贝塞尔曲线，与 GanttLinks 保持一致的视觉风格
+ * 立即绘制，不使用RAF节流，确保跟随鼠标
  */
 const drawGuideLine = () => {
-  // 如果已经有待处理的绘制请求，取消标记
-  if (rafId !== null) {
-    pendingDraw = true
-    return
-  }
-
-  // 使用 requestAnimationFrame 确保在下一帧绘制
-  rafId = requestAnimationFrame(() => {
-    rafId = null
-    performDraw()
-
-    // 如果在绘制期间又有新的请求，再次绘制
-    if (pendingDraw) {
-      pendingDraw = false
-      drawGuideLine()
-    }
-  })
+  performDraw()
 }
 
 const performDraw = () => {
   if (!props.active) return
+
+  // 调试模式：跳过实际绘制
+  if (SKIP_ACTUAL_DRAW) {
+    return
+  }
+
+  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
 
   const ctx = initCanvas()
   if (!ctx) return
@@ -121,29 +119,22 @@ const performDraw = () => {
 
   if (!isInBounds) return
 
-  // 贝塞尔曲线控制点（与 GanttLinks 一致）
-  const c1x = localX1 + 40
-  const c1y = localY1
-  const c2x = localX2 - 40
-  const c2y = localY2
-
   ctx.save()
 
   // 根据是否是合法目标设置颜色
   const color = props.isValidTarget ? '#67c23a' : '#f56c6c'
   ctx.strokeStyle = color
   ctx.lineWidth = 3
-  ctx.setLineDash([8, 4])
   ctx.globalAlpha = 0.8
 
-  // 绘制贝塞尔曲线
+  // 绘制直线
   ctx.beginPath()
   ctx.moveTo(localX1, localY1)
-  ctx.bezierCurveTo(c1x, c1y, c2x, c2y, localX2, localY2)
+  ctx.lineTo(localX2, localY2)
   ctx.stroke()
 
   // 绘制箭头
-  const arrowAngle = Math.atan2(localY2 - c2y, localX2 - c2x)
+  const arrowAngle = Math.atan2(localY2 - localY1, localX2 - localX1)
   const arrowLength = 8
   const arrowWidth = 4
 
@@ -162,7 +153,44 @@ const performDraw = () => {
   ctx.closePath()
   ctx.fill()
 
+  // 绘制错误提示文字（当连接无效且有错误消息时）
+  if (!props.isValidTarget && props.errorMessage) {
+    const textX = (localX1 + localX2) / 2
+    const textY = (localY1 + localY2) / 2 - 10
+
+    // 文字背景
+    ctx.font = '12px Arial, sans-serif'
+    const textMetrics = ctx.measureText(props.errorMessage)
+    const textWidth = textMetrics.width
+    const padding = 8
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+    ctx.fillRect(textX - textWidth / 2 - padding, textY - 12, textWidth + padding * 2, 24)
+
+    // 文字内容
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(props.errorMessage, textX, textY)
+  }
+
   ctx.restore()
+
+  if (ENABLE_PERF_MONITOR) {
+    drawCount++
+    drawTotalTime += performance.now() - startTime
+
+    const now = Date.now()
+    if (now - lastReportTime > 1000) {
+      const avgTime = drawCount > 0 ? (drawTotalTime / drawCount).toFixed(3) : 0
+      // eslint-disable-next-line no-console
+      console.log(`[LinkDragGuide Perf] 绘制次数: ${drawCount}/秒, 平均耗时: ${avgTime}ms`)
+
+      drawCount = 0
+      drawTotalTime = 0
+      lastReportTime = now
+    }
+  }
 }
 
 /**
@@ -177,12 +205,9 @@ const clearCanvas = () => {
 
 // 组件卸载时清除缓存
 onUnmounted(() => {
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
   cachedCtx = null
 })
+
 watch(
   [
     () => props.active,
@@ -191,6 +216,7 @@ watch(
     () => props.endX,
     () => props.endY,
     () => props.isValidTarget,
+    () => props.errorMessage,
   ],
   () => {
     if (props.active) {
@@ -199,6 +225,7 @@ watch(
       clearCanvas()
     }
   },
+  { flush: 'sync' }, // 同步执行，立即响应坐标变化
 )
 
 // 监听尺寸变化，需要重新初始化 canvas（尺寸变化频率低）
@@ -216,14 +243,6 @@ watch(
 onMounted(() => {
   if (props.active) {
     drawGuideLine()
-  }
-})
-
-// 组件卸载时取消待处理的动画帧
-onUnmounted(() => {
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
   }
 })
 </script>
