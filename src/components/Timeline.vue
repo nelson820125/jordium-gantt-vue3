@@ -8,6 +8,7 @@ import LinkDragGuide from './LinkDragGuide.vue'
 import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
+import { perfMonitor } from '../utils/perfMonitor'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
@@ -648,9 +649,6 @@ const setHighlightTask = (taskId: number) => {
 }
 
 // ==================== 连接线拖拽状态管理 ====================
-// 🔧 调试开关：禁用传递给 TaskBar 的响应式 props 以测试 Vue 渲染性能影响
-const DISABLE_REACTIVE_PROPS_TO_TASKBAR = false // 设为 false 以启用正常的响应式 props（link anchor 需要此功能）
-
 const dragLinkMode = ref<'predecessor' | 'successor' | null>(null) // 当前拖拽模式
 const linkDragSourceTask = shallowRef<Task | null>(null) // 拖拽起始任务（使用 shallowRef 优化性能）
 const linkDragTargetTask = shallowRef<Task | null>(null) // 当前悬停的目标任务（使用 shallowRef 优化性能）
@@ -662,71 +660,11 @@ const linkAutoScrollInterval = ref<number | null>(null) // 自动滚动定时器
 let nonReactiveIsValidTarget = false
 let nonReactiveErrorMessage = ''
 
-// 🔧 调试用：用于传递给 TaskBar 的静态替代值（避免触发 Vue 更新）
-const staticDragLinkMode = computed(() =>
-  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? null : dragLinkMode.value,
-)
-const staticLinkDragSourceTaskId = computed(() =>
-  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? null : linkDragSourceTask.value?.id,
-)
-const staticLinkDragTargetTaskId = computed(() =>
-  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? null : linkDragTargetTask.value?.id,
-)
-const staticIsValidLinkTarget = computed(() =>
-  DISABLE_REACTIVE_PROPS_TO_TASKBAR ? false : isValidLinkTarget.value,
-)
-
 // 任务查找缓存 Map（优化性能，避免每次都遍历数组）
 const taskIdMap = new Map<number, Task>()
 
 // 性能监控开关（开发调试用）
 const ENABLE_PERF_MONITOR = true
-const perfStats = {
-  coordUpdateCount: 0,
-  coordUpdateTotalTime: 0,
-  targetDetectCount: 0,
-  targetDetectTotalTime: 0,
-  lastReportTime: 0,
-}
-
-// 帧时间监控（诊断主线程阻塞）
-let frameMonitorId: number | null = null
-let lastFrameTime = 0
-let longFrameCount = 0
-let frameCount = 0
-
-const startFrameMonitor = () => {
-  lastFrameTime = performance.now()
-  longFrameCount = 0
-  frameCount = 0
-
-  const checkFrame = () => {
-    const now = performance.now()
-    const frameTime = now - lastFrameTime
-    frameCount++
-
-    // 超过 30ms 的帧被认为是"长帧"（正常应该是 ~16ms）
-    if (frameTime > 30) {
-      longFrameCount++
-      // eslint-disable-next-line no-console
-      console.warn(`[Frame Monitor] 长帧检测: ${frameTime.toFixed(1)}ms`)
-    }
-
-    lastFrameTime = now
-    frameMonitorId = requestAnimationFrame(checkFrame)
-  }
-
-  frameMonitorId = requestAnimationFrame(checkFrame)
-}
-
-const stopFrameMonitor = () => {
-  if (frameMonitorId !== null) {
-    cancelAnimationFrame(frameMonitorId)
-    frameMonitorId = null
-    // eslint-disable-next-line no-console
-    console.log(`[Frame Monitor] 统计: ${frameCount}帧, 长帧数: ${longFrameCount} (${(longFrameCount / frameCount * 100).toFixed(1)}%)`)
-  }
-}
 
 // 开始连接线拖拽
 const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
@@ -734,7 +672,7 @@ const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'success
   linkDragSourceTask.value = event.task
 
   // 启动帧监控
-  startFrameMonitor()
+  perfMonitor.startFrameMonitor()
 
   // 初始化鼠标坐标（使用非响应式版本）
   updateLinkDragCoordinatesNonReactive(event.mouseEvent.clientX, event.mouseEvent.clientY)
@@ -781,11 +719,23 @@ const processLinkDragFrame = () => {
 
   // 🔧 调试：逐步启用各操作
   if (DEBUG_ENABLE_COORD_UPDATE) {
-    updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
+    if (ENABLE_PERF_MONITOR) {
+      const startTime = performance.now()
+      updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
+      perfMonitor.recordLinkDragCoordUpdate(performance.now() - startTime)
+    } else {
+      updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
+    }
   }
 
   if (DEBUG_ENABLE_TARGET_DETECT) {
-    detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
+    if (ENABLE_PERF_MONITOR) {
+      const startTime = performance.now()
+      detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
+      perfMonitor.recordLinkDragTargetDetect(performance.now() - startTime)
+    } else {
+      detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
+    }
   }
 
   if (DEBUG_ENABLE_CANVAS_DRAW) {
@@ -824,7 +774,7 @@ const handleGlobalMouseUp = () => {
   if (!dragLinkMode.value) return
 
   // 停止帧监控
-  stopFrameMonitor()
+  perfMonitor.stopFrameMonitor()
 
   // 🚀 取消待处理的 RAF
   if (linkDragRafId !== null) {
@@ -859,22 +809,14 @@ let bodyRectCacheTime = 0
 const BODY_RECT_CACHE_DURATION = 200 // 200ms 缓存（优化：增加缓存时间）
 let bodyRectInvalidated = false // 缓存失效标记（滚动时失效）
 
-// 🚀 非响应式坐标更新（完全绕过 Vue 响应式系统）
-const updateLinkDragCoordinatesNonReactive = (mouseX: number, mouseY: number) => {
-  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
-
+// 🚀 坐标更新辅助函数（提取重复逻辑）
+const updateCoordinates = (mouseX: number, mouseY: number): void => {
   if (!bodyContentRef.value) {
     currentDragX = mouseX
     currentDragY = mouseY
-
-    if (ENABLE_PERF_MONITOR) {
-      perfStats.coordUpdateCount++
-      perfStats.coordUpdateTotalTime += performance.now() - startTime
-    }
     return
   }
 
-  // 使用缓存的 rect 或获取新的
   const now = Date.now()
   const shouldRefreshRect =
     !cachedBodyRect || bodyRectInvalidated || now - bodyRectCacheTime > BODY_RECT_CACHE_DURATION
@@ -885,36 +827,11 @@ const updateLinkDragCoordinatesNonReactive = (mouseX: number, mouseY: number) =>
   }
   currentDragX = mouseX - cachedBodyRect.left
   currentDragY = mouseY - cachedBodyRect.top
+}
 
-  if (ENABLE_PERF_MONITOR) {
-    perfStats.coordUpdateCount++
-    perfStats.coordUpdateTotalTime += performance.now() - startTime
-
-    // 每秒输出一次性能统计
-    if (now - perfStats.lastReportTime > 1000) {
-      const avgCoordTime =
-        perfStats.coordUpdateCount > 0
-          ? (perfStats.coordUpdateTotalTime / perfStats.coordUpdateCount).toFixed(3)
-          : 0
-      const avgTargetTime =
-        perfStats.targetDetectCount > 0
-          ? (perfStats.targetDetectTotalTime / perfStats.targetDetectCount).toFixed(3)
-          : 0
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `[LinkDrag Perf] 坐标更新: ${perfStats.coordUpdateCount}次, 平均${avgCoordTime}ms | ` +
-          `目标检测: ${perfStats.targetDetectCount}次, 平均${avgTargetTime}ms`,
-      )
-
-      // 重置统计
-      perfStats.coordUpdateCount = 0
-      perfStats.coordUpdateTotalTime = 0
-      perfStats.targetDetectCount = 0
-      perfStats.targetDetectTotalTime = 0
-      perfStats.lastReportTime = now
-    }
-  }
+// 🚀 非响应式坐标更新（完全绕过 Vue 响应式系统）
+const updateLinkDragCoordinatesNonReactive = (mouseX: number, mouseY: number) => {
+  updateCoordinates(mouseX, mouseY)
 }
 
 // 拖拽过程中更新鼠标位置（🚀 优化：使用统一 RAF 调度）
@@ -964,25 +881,17 @@ const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor
 const ANCHOR_SIZE = 8 // 触点视觉大小（px）
 const ANCHOR_TOLERANCE = 4 // 碰撞容差（px），扩大点击区域
 
-// 🚀 非响应式目标检测（完全绕过 Vue 响应式系统）
-// 缓存当前检测到的目标任务（用于 handleLinkDragEnd）
-let nonReactiveTargetTask: Task | null = null
-
-const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
-  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
-
-  if (!linkDragSourceTask.value || !bodyContentRef.value) return
-
+// 🚀 目标检测辅助函数（提取重复逻辑）
+const detectTargetTaskId = (mouseX: number, mouseY: number): number | null => {
   // 使用缓存的 rect
   if (!cachedBodyRect) {
-    cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
+    cachedBodyRect = bodyContentRef.value!.getBoundingClientRect()
     bodyRectCacheTime = Date.now()
   }
 
   const relativeX = mouseX - cachedBodyRect.left
   const relativeY = mouseY - cachedBodyRect.top
 
-  let foundTaskId: number | null = null
   const isPredecessorMode = dragLinkMode.value === 'predecessor'
   const halfSize = (ANCHOR_SIZE + ANCHOR_TOLERANCE) / 2
   const expandedHalfSize = halfSize + 10
@@ -998,40 +907,27 @@ const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
       continue
     }
 
-    if (isPredecessorMode) {
-      const anchorX = pos.left + pos.width
-      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
-        continue
-      }
-      const anchorY = pos.top + pos.height / 2
-      if (
-        relativeX >= anchorX - halfSize &&
-        relativeX <= anchorX + halfSize &&
-        relativeY >= anchorY - halfSize &&
-        relativeY <= anchorY + halfSize
-      ) {
-        foundTaskId = taskId
-        break
-      }
-    } else {
-      const anchorX = pos.left
-      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
-        continue
-      }
-      const anchorY = pos.top + pos.height / 2
-      if (
-        relativeX >= anchorX - halfSize &&
-        relativeX <= anchorX + halfSize &&
-        relativeY >= anchorY - halfSize &&
-        relativeY <= anchorY + halfSize
-      ) {
-        foundTaskId = taskId
-        break
-      }
+    const anchorX = isPredecessorMode ? pos.left + pos.width : pos.left
+    if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
+      continue
+    }
+
+    const anchorY = pos.top + pos.height / 2
+    if (
+      relativeX >= anchorX - halfSize &&
+      relativeX <= anchorX + halfSize &&
+      relativeY >= anchorY - halfSize &&
+      relativeY <= anchorY + halfSize
+    ) {
+      return taskId
     }
   }
 
-  const foundTarget = foundTaskId !== null ? taskIdMap.get(foundTaskId) || null : null
+  return null
+}
+
+// 🚀 更新目标任务的状态
+const updateTargetTaskState = (foundTarget: Task | null): void => {
   const currentTargetId = nonReactiveTargetTask?.id ?? null
   const newTargetId = foundTarget?.id ?? null
 
@@ -1042,7 +938,6 @@ const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
       const validation = validateLink(linkDragSourceTask.value, foundTarget, dragLinkMode.value!)
       nonReactiveIsValidTarget = validation.valid
       nonReactiveErrorMessage = validation.error || ''
-      // 🚀 同步更新响应式变量（仅在目标变化时，用于 handleLinkDragEnd）
       isValidLinkTarget.value = validation.valid
       linkDragTargetTask.value = foundTarget
     } else {
@@ -1052,11 +947,19 @@ const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
       linkDragTargetTask.value = null
     }
   }
+}
 
-  if (ENABLE_PERF_MONITOR) {
-    perfStats.targetDetectCount++
-    perfStats.targetDetectTotalTime += performance.now() - startTime
-  }
+// 🚀 非响应式目标检测（完全绕过 Vue 响应式系统）
+// 缓存当前检测到的目标任务（用于 handleLinkDragEnd）
+let nonReactiveTargetTask: Task | null = null
+
+const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
+  if (!linkDragSourceTask.value || !bodyContentRef.value) return
+
+  const foundTaskId = detectTargetTaskId(mouseX, mouseY)
+  const foundTarget = foundTaskId !== null ? taskIdMap.get(foundTaskId) || null : null
+
+  updateTargetTaskState(foundTarget)
 }
 
 // 验证连接是否有效（返回 { valid: boolean, error?: string }）
@@ -4395,13 +4298,13 @@ const handleAddSuccessor = (task: Task) => {
                 :is-highlighted="highlightedTaskIds.has(task.id)"
                 :is-primary-highlight="highlightedTaskId === task.id"
                 :is-in-highlight-mode="isInHighlightMode"
-                :drag-link-mode="staticDragLinkMode"
-                :is-link-drag-source="staticLinkDragSourceTaskId === task.id"
+                :drag-link-mode="dragLinkMode"
+                :is-link-drag-source="linkDragSourceTask?.id === task.id"
                 :is-valid-link-target="
-                  staticLinkDragTargetTaskId === task.id && staticIsValidLinkTarget === true
+                  linkDragTargetTask?.id === task.id && isValidLinkTarget === true
                 "
                 :is-invalid-link-target="
-                  staticLinkDragTargetTaskId === task.id && staticIsValidLinkTarget === false
+                  linkDragTargetTask?.id === task.id && isValidLinkTarget === false
                 "
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"

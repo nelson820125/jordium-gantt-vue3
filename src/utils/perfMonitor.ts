@@ -33,6 +33,38 @@ const drawStats: DrawStats = {
 
 const MAX_RECENT_DRAWS = 100 // 保留最近 100 次绘制记录
 
+// ==================== 连接线拖拽性能监控 ====================
+interface LinkDragStats {
+  coordUpdateCount: number
+  coordUpdateTotalTime: number
+  targetDetectCount: number
+  targetDetectTotalTime: number
+  lastReportTime: number
+}
+
+const linkDragStats: LinkDragStats = {
+  coordUpdateCount: 0,
+  coordUpdateTotalTime: 0,
+  targetDetectCount: 0,
+  targetDetectTotalTime: 0,
+  lastReportTime: 0,
+}
+
+// ==================== 帧时间监控 ====================
+interface FrameMonitorStats {
+  frameMonitorId: number | null
+  lastFrameTime: number
+  longFrameCount: number
+  frameCount: number
+}
+
+const frameMonitorStats: FrameMonitorStats = {
+  frameMonitorId: null,
+  lastFrameTime: 0,
+  longFrameCount: 0,
+  frameCount: 0,
+}
+
 export const perfMonitor = {
   /**
    * 记录性能日志（自动节流）
@@ -259,5 +291,137 @@ export const perfMonitor = {
         'color: #67c23a; font-weight: bold; font-size: 16px;',
       )
     }, durationMs)
+  },
+
+  // ==================== 连接线拖拽性能监控 API ====================
+
+  /**
+   * 记录坐标更新操作
+   * @param duration 操作耗时（毫秒）
+   * @returns 是否应该输出性能报告（每秒输出一次）
+   */
+  recordLinkDragCoordUpdate(duration: number): boolean {
+    linkDragStats.coordUpdateCount++
+    linkDragStats.coordUpdateTotalTime += duration
+
+    const now = Date.now()
+    if (now - linkDragStats.lastReportTime > 1000) {
+      const avgCoordTime =
+        linkDragStats.coordUpdateCount > 0
+          ? (linkDragStats.coordUpdateTotalTime / linkDragStats.coordUpdateCount).toFixed(3)
+          : 0
+      const avgTargetTime =
+        linkDragStats.targetDetectCount > 0
+          ? (linkDragStats.targetDetectTotalTime / linkDragStats.targetDetectCount).toFixed(3)
+          : 0
+
+      // eslint-disable-next-line no-console
+      console.log(
+        `[LinkDrag Perf] 坐标更新: ${linkDragStats.coordUpdateCount}次, 平均${avgCoordTime}ms | ` +
+          `目标检测: ${linkDragStats.targetDetectCount}次, 平均${avgTargetTime}ms`,
+      )
+
+      this.resetLinkDragStats()
+      linkDragStats.lastReportTime = now
+      return true
+    }
+
+    return false
+  },
+
+  /**
+   * 记录目标检测操作
+   * @param duration 操作耗时（毫秒）
+   */
+  recordLinkDragTargetDetect(duration: number): void {
+    linkDragStats.targetDetectCount++
+    linkDragStats.targetDetectTotalTime += duration
+  },
+
+  /**
+   * 重置连接线拖拽性能统计
+   */
+  resetLinkDragStats(): void {
+    linkDragStats.coordUpdateCount = 0
+    linkDragStats.coordUpdateTotalTime = 0
+    linkDragStats.targetDetectCount = 0
+    linkDragStats.targetDetectTotalTime = 0
+  },
+
+  /**
+   * 获取连接线拖拽性能统计数据
+   */
+  getLinkDragStats() {
+    return {
+      coordUpdateCount: linkDragStats.coordUpdateCount,
+      coordUpdateTotalTime: linkDragStats.coordUpdateTotalTime,
+      targetDetectCount: linkDragStats.targetDetectCount,
+      targetDetectTotalTime: linkDragStats.targetDetectTotalTime,
+    }
+  },
+
+  // ==================== 帧时间监控 API ====================
+
+  /**
+   * 启动帧时间监控（诊断主线程阻塞）
+   * @param longFrameThreshold 长帧阈值（毫秒），默认 30ms
+   */
+  startFrameMonitor(longFrameThreshold = 30): void {
+    frameMonitorStats.lastFrameTime = performance.now()
+    frameMonitorStats.longFrameCount = 0
+    frameMonitorStats.frameCount = 0
+
+    const checkFrame = () => {
+      const now = performance.now()
+      const frameTime = now - frameMonitorStats.lastFrameTime
+      frameMonitorStats.frameCount++
+
+      // 超过阈值的帧被认为是"长帧"
+      if (frameTime > longFrameThreshold) {
+        frameMonitorStats.longFrameCount++
+        // eslint-disable-next-line no-console
+        console.warn(`[Frame Monitor] 长帧检测: ${frameTime.toFixed(1)}ms`)
+      }
+
+      frameMonitorStats.lastFrameTime = now
+      frameMonitorStats.frameMonitorId = requestAnimationFrame(checkFrame)
+    }
+
+    frameMonitorStats.frameMonitorId = requestAnimationFrame(checkFrame)
+  },
+
+  /**
+   * 停止帧时间监控并输出统计信息
+   */
+  stopFrameMonitor(): void {
+    if (frameMonitorStats.frameMonitorId !== null) {
+      cancelAnimationFrame(frameMonitorStats.frameMonitorId)
+      frameMonitorStats.frameMonitorId = null
+
+      const percentage =
+        frameMonitorStats.frameCount > 0
+          ? (frameMonitorStats.longFrameCount / frameMonitorStats.frameCount * 100).toFixed(1)
+          : 0
+
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Frame Monitor] 统计: ${frameMonitorStats.frameCount}帧, ` +
+          `长帧数: ${frameMonitorStats.longFrameCount} (${percentage}%)`,
+      )
+    }
+  },
+
+  /**
+   * 获取帧时间监控统计数据
+   */
+  getFrameMonitorStats() {
+    return {
+      frameCount: frameMonitorStats.frameCount,
+      longFrameCount: frameMonitorStats.longFrameCount,
+      percentage:
+        frameMonitorStats.frameCount > 0
+          ? (frameMonitorStats.longFrameCount / frameMonitorStats.frameCount * 100).toFixed(1)
+          : 0,
+    }
   },
 }

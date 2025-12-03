@@ -17,12 +17,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
-// 性能监控
-const ENABLE_PERF_MONITOR = false // 生产环境关闭
-let drawCount = 0
-let drawTotalTime = 0
-let lastReportTime = 0
-
 // 缓存 canvas 上下文和尺寸信息，避免重复初始化
 let cachedCtx: CanvasRenderingContext2D | null = null
 let cachedWidth = 0
@@ -75,8 +69,6 @@ const initCanvas = () => {
  * @param isValidTarget 是否是合法的连接目标
  * @param errorMessage 错误提示消息
  */
-// 🔧 调试开关：跳过实际绘制
-const DEBUG_SKIP_ACTUAL_DRAW = false
 const USE_SIMPLE_LINE = true  // true = 使用简单直线替代贝塞尔曲线（性能更好）
 
 const draw = (
@@ -87,14 +79,10 @@ const draw = (
   isValidTarget = true,
   errorMessage = '',
 ) => {
-  // 🔧 调试：跳过实际绘制
-  if (DEBUG_SKIP_ACTUAL_DRAW) return
-
-  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
-
   const ctx = initCanvas()
   if (!ctx) {
-    console.warn('[LinkDragGuide] initCanvas returned null')
+    // eslint-disable-next-line no-console
+    console.error('[LinkDragGuide] initCanvas returned null')
     return
   }
 
@@ -132,8 +120,10 @@ const draw = (
   const color = isValidTarget ? '#67c23a' : '#f56c6c'
   ctx.strokeStyle = color
   ctx.lineWidth = 3
-  // 🔧 测试：移除虚线，看是否是虚线+贝塞尔曲线导致的性能问题
-  // ctx.setLineDash([8, 4])
+  // 虚线绘制也会导致巨大的性能开销，慎用
+  if (!USE_SIMPLE_LINE) {
+    ctx.setLineDash([8, 4])
+  }
   ctx.globalAlpha = 0.8
 
   // 绘制直线
@@ -190,22 +180,6 @@ const draw = (
   }
 
   ctx.restore()
-
-  if (ENABLE_PERF_MONITOR) {
-    drawCount++
-    drawTotalTime += performance.now() - startTime
-
-    const now = Date.now()
-    if (now - lastReportTime > 1000) {
-      const avgTime = drawCount > 0 ? (drawTotalTime / drawCount).toFixed(3) : 0
-      // eslint-disable-next-line no-console
-      console.log(`[LinkDragGuide Perf] 绘制次数: ${drawCount}/秒, 平均耗时: ${avgTime}ms`)
-
-      drawCount = 0
-      drawTotalTime = 0
-      lastReportTime = now
-    }
-  }
 }
 
 /**
