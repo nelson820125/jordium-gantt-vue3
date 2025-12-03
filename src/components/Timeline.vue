@@ -67,6 +67,8 @@ const emit = defineEmits<{
   'stop-timer': [task: Task]
   'add-predecessor': [task: Task] // 新增：添加前置任务事件
   'add-successor': [task: Task] // 新增：添加后置任务事件
+  'predecessor-added': [{ targetTask: Task; newTask: Task }] // 前置任务已添加
+  'successor-added': [{ targetTask: Task; newTask: Task }] // 后置任务已添加
   delete: [task: Task, deleteChildren?: boolean]
 }>()
 
@@ -693,9 +695,6 @@ const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'success
   document.addEventListener('mouseup', handleGlobalMouseUp)
 }
 
-// 目标检测的 RAF 节流（保留用于兼容性）
-let targetDetectionRafId: number | null = null
-
 // 🚀 优化：统一 RAF 调度（坐标更新 + 目标检测在同一帧处理）
 let linkDragRafId: number | null = null
 let pendingMouseX = 0
@@ -777,10 +776,6 @@ const handleGlobalMouseUp = () => {
   if (linkDragRafId !== null) {
     cancelAnimationFrame(linkDragRafId)
     linkDragRafId = null
-  }
-  if (targetDetectionRafId !== null) {
-    cancelAnimationFrame(targetDetectionRafId)
-    targetDetectionRafId = null
   }
 
   // 触发拖拽结束
@@ -870,7 +865,8 @@ const ANCHOR_SIZE = 8 // 触点视觉大小（px）
 const ANCHOR_TOLERANCE = 4 // 碰撞容差（px），扩大点击区域
 
 // 🚀 目标检测辅助函数（提取重复逻辑）
-const detectTargetTaskId = (mouseX: number, mouseY: number): number | null => {
+// 返回 { taskId: number, anchorType: 'left' | 'right' } 或 null
+const detectTargetTaskId = (mouseX: number, mouseY: number): { taskId: number; anchorType: 'left' | 'right' } | null => {
   // 使用缓存的 rect
   if (!cachedBodyRect) {
     cachedBodyRect = bodyContentRef.value!.getBoundingClientRect()
@@ -880,7 +876,6 @@ const detectTargetTaskId = (mouseX: number, mouseY: number): number | null => {
   const relativeX = mouseX - cachedBodyRect.left
   const relativeY = mouseY - cachedBodyRect.top
 
-  const isPredecessorMode = dragLinkMode.value === 'predecessor'
   const halfSize = (ANCHOR_SIZE + ANCHOR_TOLERANCE) / 2
   const expandedHalfSize = halfSize + 10
 
@@ -895,19 +890,28 @@ const detectTargetTaskId = (mouseX: number, mouseY: number): number | null => {
       continue
     }
 
-    const anchorX = isPredecessorMode ? pos.left + pos.width : pos.left
-    if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
-      continue
-    }
-
     const anchorY = pos.top + pos.height / 2
+
+    // 检查左侧触点（predecessor）
+    const leftAnchorX = pos.left
     if (
-      relativeX >= anchorX - halfSize &&
-      relativeX <= anchorX + halfSize &&
+      relativeX >= leftAnchorX - halfSize &&
+      relativeX <= leftAnchorX + halfSize &&
       relativeY >= anchorY - halfSize &&
       relativeY <= anchorY + halfSize
     ) {
-      return taskId
+      return { taskId, anchorType: 'left' }
+    }
+
+    // 检查右侧触点（successor）
+    const rightAnchorX = pos.left + pos.width
+    if (
+      relativeX >= rightAnchorX - halfSize &&
+      relativeX <= rightAnchorX + halfSize &&
+      relativeY >= anchorY - halfSize &&
+      relativeY <= anchorY + halfSize
+    ) {
+      return { taskId, anchorType: 'right' }
     }
   }
 
@@ -915,7 +919,7 @@ const detectTargetTaskId = (mouseX: number, mouseY: number): number | null => {
 }
 
 // 🚀 更新目标任务的状态
-const updateTargetTaskState = (foundTarget: Task | null): void => {
+const updateTargetTaskState = (foundTarget: Task | null, anchorType?: 'left' | 'right'): void => {
   const currentTargetId = nonReactiveTargetTask?.id ?? null
   const newTargetId = foundTarget?.id ?? null
 
@@ -923,7 +927,12 @@ const updateTargetTaskState = (foundTarget: Task | null): void => {
     nonReactiveTargetTask = foundTarget
 
     if (foundTarget && linkDragSourceTask.value) {
-      const validation = validateLink(linkDragSourceTask.value, foundTarget, dragLinkMode.value!)
+      const validation = validateLink(
+        linkDragSourceTask.value,
+        foundTarget,
+        dragLinkMode.value!,
+        anchorType,
+      )
       nonReactiveIsValidTarget = validation.valid
       nonReactiveErrorMessage = validation.error || ''
       isValidLinkTarget.value = validation.valid
@@ -944,10 +953,11 @@ let nonReactiveTargetTask: Task | null = null
 const detectLinkTargetNonReactive = (mouseX: number, mouseY: number) => {
   if (!linkDragSourceTask.value || !bodyContentRef.value) return
 
-  const foundTaskId = detectTargetTaskId(mouseX, mouseY)
-  const foundTarget = foundTaskId !== null ? taskIdMap.get(foundTaskId) || null : null
+  const result = detectTargetTaskId(mouseX, mouseY)
+  const foundTarget = result !== null ? taskIdMap.get(result.taskId) || null : null
+  const anchorType = result?.anchorType
 
-  updateTargetTaskState(foundTarget)
+  updateTargetTaskState(foundTarget, anchorType)
 }
 
 // 验证连接是否有效（返回 { valid: boolean, error?: string }）
@@ -955,7 +965,18 @@ const validateLink = (
   sourceTask: Task,
   targetTask: Task,
   mode: 'predecessor' | 'successor',
+  targetAnchorType?: 'left' | 'right',
 ): { valid: boolean; error?: string } => {
+  // 0. 检查触点方向是否正确
+  if (targetAnchorType) {
+    if (mode === 'predecessor' && targetAnchorType !== 'right') {
+      return { valid: false, error: '前置任务应连接到右侧触点' }
+    }
+    if (mode === 'successor' && targetAnchorType !== 'left') {
+      return { valid: false, error: '后置任务应连接到左侧触点' }
+    }
+  }
+
   // 1. 不能连接到自己
   if (sourceTask.id === targetTask.id) {
     return { valid: false, error: '不能连接到自己' }
@@ -1048,6 +1069,8 @@ const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 's
       }
       // 触发任务更新事件
       updateTask(targetTask)
+      // 发射 predecessor-added 事件
+      emit('predecessor-added', { targetTask, newTask: sourceTask })
     }
   } else {
     // 后置模式：将目标任务的 ID 添加到源任务的前置任务列表
@@ -1064,6 +1087,8 @@ const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 's
       }
       // 触发任务更新事件
       updateTask(targetTask)
+      // 发射 successor-added 事件
+      emit('successor-added', { targetTask: sourceTask, newTask: targetTask })
     }
   }
 }
@@ -1154,10 +1179,10 @@ const cleanupLinkDrag = () => {
   // 清除缓存
   cachedBodyRect = null
 
-  // 取消待处理的 mousemove
-  if (mouseMoveRafId !== null) {
-    cancelAnimationFrame(mouseMoveRafId)
-    mouseMoveRafId = null
+  // 取消待处理的 RAF
+  if (linkDragRafId !== null) {
+    cancelAnimationFrame(linkDragRafId)
+    linkDragRafId = null
   }
 
   // 🚀 清除 LinkDragGuide 画布
@@ -2854,7 +2879,7 @@ const startScrollLeft = ref(0)
 const startScrollTop = ref(0)
 const timelineContainer = ref<HTMLElement | null>(null)
 const timelineBodyElement = ref<HTMLElement | null>(null) // 缓存timeline-body元素引用
-let rafId: number | null = null // requestAnimationFrame ID
+let scrollRafId: number | null = null // 时间轴拖拽滚动的 RAF ID
 
 // 边界滚动相关状态
 const isAutoScrolling = ref(false)
@@ -2980,12 +3005,12 @@ const handleMouseMove = (event: MouseEvent) => {
   event.preventDefault()
 
   // 取消之前的 RAF
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId)
   }
 
   // 使用 requestAnimationFrame 批处理滚动更新
-  rafId = requestAnimationFrame(() => {
+  scrollRafId = requestAnimationFrame(() => {
     if (!timelineContainer.value) return
 
     // 计算水平和垂直移动距离
@@ -3009,7 +3034,7 @@ const handleMouseMove = (event: MouseEvent) => {
       }
     }
 
-    rafId = null
+    scrollRafId = null
   })
 }
 
@@ -3018,9 +3043,9 @@ const handleMouseUp = () => {
   isDragging.value = false
 
   // 取消任何待处理的 RAF
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId)
+    scrollRafId = null
   }
 
   if (timelineContainer.value) {
