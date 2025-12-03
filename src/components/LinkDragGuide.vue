@@ -136,7 +136,7 @@ const draw = (
   // ctx.setLineDash([8, 4])
   ctx.globalAlpha = 0.8
 
-  // 绘制贝塞尔曲线
+  // 绘制直线
   ctx.beginPath()
   ctx.moveTo(localX1, localY1)
 
@@ -151,7 +151,7 @@ const draw = (
   ctx.stroke()
 
   // 绘制箭头
-  const arrowAngle = Math.atan2(localY2 - c2y, localX2 - c2x)
+  const arrowAngle = Math.atan2(localY2 - localY1, localX2 - localX1)
   const arrowLength = 8
   const arrowWidth = 4
 
