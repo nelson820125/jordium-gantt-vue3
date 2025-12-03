@@ -64,6 +64,7 @@ const emit = defineEmits([
   'task-added',
   'task-updated',
   'task-collapse-change', // 任务折叠状态变化事件
+  'link-deleted', // 链接删除事件
   // 工具栏事件
   'add-task',
   'add-milestone',
@@ -2156,6 +2157,39 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
   emit('task-deleted', { task })
 }
 
+// 处理链接删除事件
+function handleLinkDeleted(event: {
+  sourceTaskId: number
+  targetTaskId: number
+  updatedTask: Task
+}) {
+  if (props.tasks) {
+    // 在 tasks 树中找到目标任务并更新
+    const updateTaskInTree = (taskList: Task[]): boolean => {
+      for (let i = 0; i < taskList.length; i++) {
+        if (taskList[i].id === event.targetTaskId) {
+          // 使用新对象替换，确保响应式更新
+          taskList[i] = { ...taskList[i], predecessor: event.updatedTask.predecessor }
+          return true
+        }
+        if (taskList[i].children && taskList[i].children!.length > 0) {
+          if (updateTaskInTree(taskList[i].children!)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+    updateTaskInTree(props.tasks)
+  }
+
+  // 触发任务更新事件
+  emit('task-updated', { task: event.updatedTask })
+
+  // 向外部发送链接删除事件
+  emit('link-deleted', event)
+}
+
 // 处理里程碑双击事件
 function handleMilestoneDoubleClick(milestone: Milestone) {
   // 先触发外部事件，让外部可以自定义处理
@@ -2291,6 +2325,7 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           @predecessor-added="handlePredecessorAdded"
           @successor-added="handleSuccessorAdded"
           @delete="handleTaskDelete"
+          @link-deleted="handleLinkDeleted"
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
             <slot name="custom-task-content" v-bind="barScope" />

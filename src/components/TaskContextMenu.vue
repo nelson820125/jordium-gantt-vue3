@@ -4,6 +4,7 @@ import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
 import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
+import { getPredecessorIds } from '../utils/predecessorUtils'
 
 // 定义Props接口
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
     y: number
   }
   task: Task | null
+  allTasks?: Task[] // 所有任务列表，用于查找链接的任务名称
 }
 
 const props = defineProps<Props>()
@@ -23,6 +25,7 @@ const emit = defineEmits([
   'add-predecessor',
   'add-successor',
   'delete', // 新增delete事件
+  'delete-link', // 删除链接事件
   'close',
 ])
 
@@ -134,6 +137,51 @@ const handleDeleteNo = () => {
 // 新增：是否显示计时菜单项（非story类型才显示）
 const showTimerMenu = computed(() => props.task?.type !== 'story')
 
+// 子菜单状态管理
+const showDeleteLinksSubmenu = ref(false)
+let submenuHideTimer: number | null = null
+
+// 计算当前任务的所有链接（前置和后置）
+const taskLinks = computed(() => {
+  const links: Array<{ type: 'predecessor' | 'successor'; taskId: number; taskName: string }> = []
+
+  if (!props.task || !props.allTasks) return links
+
+  // 获取前置任务链接
+  if (props.task.predecessor) {
+    const predecessorIds = getPredecessorIds(props.task.predecessor)
+    for (const id of predecessorIds) {
+      const task = props.allTasks.find(t => t.id === id)
+      if (task) {
+        links.push({
+          type: 'predecessor',
+          taskId: id,
+          taskName: task.name || `任务 ${id}`,
+        })
+      }
+    }
+  }
+
+  // 获取后置任务链接（当前任务作为其他任务的前置）
+  for (const task of props.allTasks) {
+    if (task.predecessor && task.id !== props.task.id) {
+      const predecessorIds = getPredecessorIds(task.predecessor)
+      if (predecessorIds.includes(props.task.id)) {
+        links.push({
+          type: 'successor',
+          taskId: task.id,
+          taskName: task.name || `任务 ${task.id}`,
+        })
+      }
+    }
+  }
+
+  return links
+})
+
+// 是否有链接可删除
+const hasLinks = computed(() => taskLinks.value.length > 0)
+
 // 监听菜单可见状态和位置变化
 watch(
   [() => props.visible, () => props.position],
@@ -243,6 +291,42 @@ const handleAddSuccessor = () => {
   }
 }
 
+// 处理删除链接点击
+const handleDeleteLink = (link: { type: 'predecessor' | 'successor'; taskId: number }) => {
+  // 清理定时器
+  if (submenuHideTimer) {
+    clearTimeout(submenuHideTimer)
+    submenuHideTimer = null
+  }
+
+  // 立即隐藏子菜单
+  showDeleteLinksSubmenu.value = false
+
+  // 发送删除事件
+  emit('delete-link', {
+    sourceTaskId: link.type === 'predecessor' ? link.taskId : props.task!.id,
+    targetTaskId: link.type === 'predecessor' ? props.task!.id : link.taskId,
+  })
+
+  // 关闭整个菜单
+  emit('close')
+}
+
+// 处理子菜单鼠标进入/离开
+const handleSubmenuMouseEnter = () => {
+  if (submenuHideTimer) {
+    clearTimeout(submenuHideTimer)
+    submenuHideTimer = null
+  }
+  showDeleteLinksSubmenu.value = true
+}
+
+const handleSubmenuMouseLeave = () => {
+  submenuHideTimer = window.setTimeout(() => {
+    showDeleteLinksSubmenu.value = false
+  }, 200)
+}
+
 // 处理点击其他地方关闭菜单
 const handleClickOutside = (event: MouseEvent) => {
   if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
@@ -267,6 +351,10 @@ onUnmounted(() => {
   // 移除事件监听
   document.removeEventListener('mousedown', handleClickOutside)
   document.removeEventListener('keydown', handleKeyDown)
+  // 清理子菜单定时器
+  if (submenuHideTimer) {
+    clearTimeout(submenuHideTimer)
+  }
 })
 </script>
 
@@ -310,6 +398,43 @@ onUnmounted(() => {
           <i class="menu-icon successor-icon"></i>
         </div>
         {{ t.addSuccessor }}
+      </div>
+      <!-- 删除链接菜单（带子菜单） -->
+      <div
+        v-if="hasLinks"
+        class="menu-item menu-item-with-submenu"
+        @mouseenter="handleSubmenuMouseEnter"
+        @mouseleave="handleSubmenuMouseLeave"
+      >
+        <div class="icon-wrapper">
+          <i class="menu-icon link-delete-icon"></i>
+        </div>
+        {{ t.deleteLinks }}
+        <i class="submenu-arrow">›</i>
+        <!-- 子菜单 -->
+        <div
+          v-if="showDeleteLinksSubmenu"
+          class="submenu"
+          @mouseenter="handleSubmenuMouseEnter"
+          @mouseleave="handleSubmenuMouseLeave"
+        >
+          <!-- eslint-disable vue/no-v-html -->
+          <div
+            v-for="link in taskLinks"
+            :key="`${link.type}-${link.taskId}`"
+            class="menu-item submenu-item"
+            @click.stop="handleDeleteLink(link)"
+          >
+            <span
+              v-html="
+                link.type === 'predecessor'
+                  ? t.predecessorLink.replace('{name}', link.taskName)
+                  : t.successorLink.replace('{name}', link.taskName)
+              "
+            ></span>
+          </div>
+          <!-- eslint-enable vue/no-v-html -->
+        </div>
       </div>
       <div class="menu-divider"></div>
       <div class="menu-item menu-item-danger" @click="handleDeleteClick">
@@ -587,5 +712,86 @@ onUnmounted(() => {
   margin: 4px 0;
   width: 92%;
   margin-left: 4%;
+}
+
+/* 带子菜单的菜单项 */
+.menu-item-with-submenu {
+  position: relative;
+  padding-right: 30px;
+}
+
+.submenu-arrow {
+  position: absolute;
+  right: 12px;
+  font-style: normal;
+  font-size: 16px;
+  color: #999;
+}
+
+.submenu {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  margin-left: 4px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 200px;
+  z-index: 10001;
+  border: 1px solid #e4e7ed;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.submenu-item {
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.submenu-item:hover {
+  background-color: #fef0f0;
+  color: #f56c6c;
+}
+
+/* 链接删除图标 */
+.link-delete-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+.link-delete-icon::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 2px;
+  background-color: currentColor;
+  top: 50%;
+  left: 3px;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.link-delete-icon::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 2px;
+  background-color: currentColor;
+  top: 50%;
+  left: 3px;
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+/* 暗色主题下的子菜单 */
+:global(html[data-theme='dark']) .submenu {
+  background-color: #2c2c2c;
+  border-color: #444444;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+:global(html[data-theme='dark']) .submenu-item:hover {
+  background-color: #3a1f1f;
+  color: #f56c6c;
 }
 </style>

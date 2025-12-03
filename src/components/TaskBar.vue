@@ -44,6 +44,8 @@ interface Props {
   isValidLinkTarget?: boolean
   // 是否是无效的连接目标
   isInvalidLinkTarget?: boolean
+  // 所有任务列表（用于右键菜单删除链接功能）
+  allTasks?: Task[]
 }
 
 interface TaskStatus {
@@ -80,6 +82,7 @@ const emit = defineEmits([
   'add-predecessor',
   'add-successor',
   'delete',
+  'delete-link',
   'context-menu',
   'long-press',
   'link-drag-start',
@@ -2242,6 +2245,12 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
   closeContextMenu()
 }
 
+// 处理删除链接事件
+const handleDeleteLink = (event: { sourceTaskId: number; targetTaskId: number }) => {
+  emit('delete-link', event)
+  closeContextMenu()
+}
+
 // 连接线触点事件处理
 const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
   emit('link-drag-start', event)
@@ -2494,12 +2503,14 @@ onUnmounted(() => {
       :visible="contextMenuVisible"
       :task="contextMenuTask"
       :position="contextMenuPosition"
+      :all-tasks="allTasks"
       @close="closeContextMenu"
       @start-timer="$emit('start-timer', props.task)"
       @stop-timer="$emit('stop-timer', props.task)"
       @add-predecessor="$emit('add-predecessor', props.task)"
       @add-successor="$emit('add-successor', props.task)"
       @delete="handleTaskDelete"
+      @delete-link="handleDeleteLink"
     />
   </div>
 

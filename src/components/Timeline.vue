@@ -70,6 +70,7 @@ const emit = defineEmits<{
   'predecessor-added': [{ targetTask: Task; newTask: Task }] // 前置任务已添加
   'successor-added': [{ targetTask: Task; newTask: Task }] // 后置任务已添加
   delete: [task: Task, deleteChildren?: boolean]
+  'link-deleted': [{ sourceTaskId: number; targetTaskId: number; updatedTask: Task }] // 链接已删除
 }>()
 
 // 多语言
@@ -3228,6 +3229,34 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
   emit('delete', task, deleteChildren)
 }
 
+// 处理删除链接事件
+const handleDeleteLink = (event: { sourceTaskId: number; targetTaskId: number }) => {
+  const targetTask = tasks.value.find(t => t.id === event.targetTaskId)
+  if (!targetTask || !targetTask.predecessor) return
+
+  const predecessorIds = getPredecessorIds(targetTask.predecessor)
+  const newIds = predecessorIds.filter(id => id !== event.sourceTaskId)
+
+  // 创建一个新的任务对象以触发响应式更新
+  const updatedTask = {
+    ...targetTask,
+    predecessor: newIds.length > 0 ? (newIds as any) : undefined,
+  }
+
+  // 触发链接删除事件，让 GanttChart 更新 tasks 数组
+  emit('link-deleted', {
+    sourceTaskId: event.sourceTaskId,
+    targetTaskId: event.targetTaskId,
+    updatedTask,
+  })
+
+  // 同时触发任务更新事件（兼容现有逻辑）
+  updateTask(updatedTask)
+
+  // 强制清除缓存，确保时间轴数据重新计算
+  clearTimelineCache()
+}
+
 // 月度视图中按年份分组的计算属性
 const groupMonthsByYear = computed(() => {
   if (currentTimeScale.value !== TimelineScale.MONTH) {
@@ -4307,6 +4336,7 @@ const handleAddSuccessor = (task: Task) => {
                 :is-invalid-link-target="
                   linkDragTargetTask?.id === task.id && isValidLinkTarget === false
                 "
+                :all-tasks="tasks"
                 @update:task="updateTask"
                 @bar-mounted="handleBarMounted"
                 @click="handleTaskBarClick(task, $event)"
@@ -4320,6 +4350,7 @@ const handleAddSuccessor = (task: Task) => {
                 @add-predecessor="handleAddPredecessor"
                 @add-successor="handleAddSuccessor"
                 @delete="handleTaskDelete"
+                @delete-link="handleDeleteLink"
                 @long-press="setHighlightTask"
                 @link-drag-start="handleLinkDragStart"
                 @link-drag-move="handleLinkDragMove"
