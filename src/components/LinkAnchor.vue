@@ -37,10 +37,17 @@ const isHoveredAnchor = ref(false)
 
 // 优化的显示逻辑
 const shouldShow = computed(() => {
+  // 在以下情况显示触点：
+  // 1. TaskBar 被悬停
+  // 2. 全局有拖拽操作进行中（其他任务正在拖拽连接线）
+  // 3. 当前是拖拽的源任务
+  // 4. 当前是拖拽的目标任务
+  // 5. 触点本身被悬停
   return (
     props.visible || // TaskBar 悬停
     props.globalDragging || // 全局拖拽进行中
     props.isDragSource || // 是拖拽的源任务
+    props.isDragTarget || // 是拖拽的目标任务
     isHoveredAnchor.value // 触点本身被悬停
   )
 })

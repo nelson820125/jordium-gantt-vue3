@@ -649,12 +649,10 @@ const setHighlightTask = (taskId: number) => {
 
 // ==================== 连接线拖拽状态管理 ====================
 // 🔧 调试开关：禁用传递给 TaskBar 的响应式 props 以测试 Vue 渲染性能影响
-const DISABLE_REACTIVE_PROPS_TO_TASKBAR = true // 设为 true 测试是否是 Vue 渲染导致卡顿
+const DISABLE_REACTIVE_PROPS_TO_TASKBAR = false // 设为 false 以启用正常的响应式 props（link anchor 需要此功能）
 
 const dragLinkMode = ref<'predecessor' | 'successor' | null>(null) // 当前拖拽模式
 const linkDragSourceTask = shallowRef<Task | null>(null) // 拖拽起始任务（使用 shallowRef 优化性能）
-const linkDragCurrentX = ref(0) // 当前鼠标X坐标（保留用于兼容）
-const linkDragCurrentY = ref(0) // 当前鼠标Y坐标（保留用于兼容）
 const linkDragTargetTask = shallowRef<Task | null>(null) // 当前悬停的目标任务（使用 shallowRef 优化性能）
 const isValidLinkTarget = ref(false) // 是否是有效的连接目标（保留用于 handleLinkDragEnd）
 const linkValidationError = ref<string>('') // 连接验证失败的原因（保留用于兼容）
@@ -683,7 +681,7 @@ const taskIdMap = new Map<number, Task>()
 
 // 性能监控开关（开发调试用）
 const ENABLE_PERF_MONITOR = true
-let perfStats = {
+const perfStats = {
   coordUpdateCount: 0,
   coordUpdateTotalTime: 0,
   targetDetectCount: 0,
@@ -966,130 +964,6 @@ const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor
 const ANCHOR_SIZE = 8 // 触点视觉大小（px）
 const ANCHOR_TOLERANCE = 4 // 碰撞容差（px），扩大点击区域
 
-// 检测鼠标位置下的目标任务（使用 taskBarPositions 数据，无 DOM 查询）
-const detectLinkTarget = (mouseX: number, mouseY: number) => {
-  const startTime = ENABLE_PERF_MONITOR ? performance.now() : 0
-
-  if (!linkDragSourceTask.value || !bodyContentRef.value) return
-
-  // 使用缓存的 rect（优化：避免重复调用 getBoundingClientRect）
-  if (!cachedBodyRect) {
-    cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
-    bodyRectCacheTime = Date.now()
-  }
-
-  const relativeX = mouseX - cachedBodyRect.left
-  const relativeY = mouseY - cachedBodyRect.top
-
-  let foundTaskId: number | null = null
-  const isPredecessorMode = dragLinkMode.value === 'predecessor'
-  const halfSize = (ANCHOR_SIZE + ANCHOR_TOLERANCE) / 2
-  const expandedHalfSize = halfSize + 10 // 扩展检测区域，提前过滤
-
-  let skippedCount = 0 // 统计跳过的任务数
-  let checkedCount = 0 // 统计检查的任务数
-
-  // 优化：使用 for...in 替代 Object.entries，减少临时对象创建
-  // 优化：提前计算常量，减少循环内计算
-  for (const taskIdStr in taskBarPositions.value) {
-    const pos = taskBarPositions.value[taskIdStr]
-    const taskId = Number(taskIdStr)
-
-    // 快速粗略检测：鼠标是否在任务条附近（提前过滤，避免详细计算）
-    if (
-      relativeY < pos.top - expandedHalfSize ||
-      relativeY > pos.top + pos.height + expandedHalfSize
-    ) {
-      skippedCount++
-      continue // 垂直方向不在任务条附近，跳过
-    }
-
-    // 根据拖拽模式检测对应的触点（优化：内联 isPointInAnchor 逻辑，减少函数调用）
-    if (isPredecessorMode) {
-      // 前置模式：检测目标任务的右触点
-      const anchorX = pos.left + pos.width
-
-      // 水平方向粗略检测
-      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
-        skippedCount++
-        continue
-      }
-
-      checkedCount++
-      const anchorY = pos.top + pos.height / 2
-
-      if (
-        relativeX >= anchorX - halfSize &&
-        relativeX <= anchorX + halfSize &&
-        relativeY >= anchorY - halfSize &&
-        relativeY <= anchorY + halfSize
-      ) {
-        foundTaskId = taskId
-        break
-      }
-    } else {
-      // 后置模式：检测目标任务的左触点
-      const anchorX = pos.left
-
-      // 水平方向粗略检测
-      if (relativeX < anchorX - expandedHalfSize || relativeX > anchorX + expandedHalfSize) {
-        skippedCount++
-        continue
-      }
-
-      checkedCount++
-      const anchorY = pos.top + pos.height / 2
-
-      if (
-        relativeX >= anchorX - halfSize &&
-        relativeX <= anchorX + halfSize &&
-        relativeY >= anchorY - halfSize &&
-        relativeY <= anchorY + halfSize
-      ) {
-        foundTaskId = taskId
-        break
-      }
-    }
-  }
-
-  // 优化：使用 Map 缓存查找任务对象，避免每次遍历数组
-  const foundTarget = foundTaskId !== null ? taskIdMap.get(foundTaskId) || null : null
-
-  // 当目标任务变化时才更新和验证（包括从有目标变为无目标，或从无目标变为有目标）
-  const currentTargetId = linkDragTargetTask.value?.id ?? null
-  const newTargetId = foundTarget?.id ?? null
-
-  if (currentTargetId !== newTargetId) {
-    linkDragTargetTask.value = foundTarget
-
-    // 验证连接的有效性
-    if (foundTarget && linkDragSourceTask.value) {
-      const validation = validateLink(linkDragSourceTask.value, foundTarget, dragLinkMode.value!)
-      isValidLinkTarget.value = validation.valid
-      linkValidationError.value = validation.error || ''
-    } else {
-      // 无目标或无源任务时，清除验证状态和错误消息
-      isValidLinkTarget.value = false
-      linkValidationError.value = ''
-    }
-  }
-
-  if (ENABLE_PERF_MONITOR) {
-    perfStats.targetDetectCount++
-    perfStats.targetDetectTotalTime += performance.now() - startTime
-
-    // 每100次检测输出一次详细统计
-    if (perfStats.targetDetectCount % 100 === 0) {
-      const totalTasks = Object.keys(taskBarPositions.value).length
-      console.log(
-        `[LinkDrag Target] 任务总数: ${totalTasks}, ` +
-          `跳过: ${skippedCount}, 检查: ${checkedCount}, ` +
-          `命中: ${foundTaskId !== null ? 1 : 0}`,
-      )
-    }
-  }
-}
-
 // 🚀 非响应式目标检测（完全绕过 Vue 响应式系统）
 // 缓存当前检测到的目标任务（用于 handleLinkDragEnd）
 let nonReactiveTargetTask: Task | null = null
@@ -1305,10 +1179,6 @@ const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 's
 
 // 启动自动滚动检测
 const startLinkAutoScroll = () => {
-  // 诊断：暂时禁用自动滚动
-  const DISABLE_AUTO_SCROLL = true
-  if (DISABLE_AUTO_SCROLL) return
-
   linkAutoScrollInterval.value = window.setInterval(() => {
     if (!timelineContainerElement.value || !bodyContentRef.value) return
 
@@ -1317,15 +1187,13 @@ const startLinkAutoScroll = () => {
 
     if (!verticalContainer) return
 
-    const bodyContent = bodyContentRef.value
     const rect = horizontalContainer.getBoundingClientRect()
     const SCROLL_ZONE = 80 // 边缘滚动区域宽度（增大以提供更好的体验）
     const SCROLL_SPEED = 15 // 滚动速度
 
-    // 获取鼠标在视口中的实际位置（需要加上 bodyContent 的偏移）
-    const bodyRect = bodyContent.getBoundingClientRect()
-    const mouseX = linkDragCurrentX.value + bodyRect.left
-    const mouseY = linkDragCurrentY.value + bodyRect.top
+    // 获取鼠标在视口中的实际位置（使用非响应式坐标变量）
+    const mouseX = pendingMouseX // 直接使用最新的鼠标X坐标（视口坐标）
+    const mouseY = pendingMouseY // 直接使用最新的鼠标Y坐标（视口坐标）
 
     let scrolled = false
 
@@ -1357,10 +1225,25 @@ const startLinkAutoScroll = () => {
       }
     }
 
-    // 如果发生了滚动，需要更新鼠标相对坐标
+    // 如果发生了滚动，需要重新检测目标和更新引导线
     if (scrolled) {
+      // 标记缓存失效（滚动时需要重新获取位置）
+      bodyRectInvalidated = true
+
       // 触发重新检测目标（因为滚动可能改变了元素位置）
-      detectLinkTarget(mouseX, mouseY)
+      detectLinkTargetNonReactive(mouseX, mouseY)
+
+      // 更新引导线绘制
+      if (linkDragGuideRef.value && linkDragSourceTask.value) {
+        linkDragGuideRef.value.draw(
+          getLinkDragStartX(),
+          getLinkDragStartY(),
+          currentDragX,
+          currentDragY,
+          nonReactiveIsValidTarget,
+          nonReactiveErrorMessage,
+        )
+      }
     }
   }, 30) // 降低间隔以提供更流畅的滚动体验
 }
