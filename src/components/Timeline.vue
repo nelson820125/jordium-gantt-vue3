@@ -1048,39 +1048,36 @@ const hasCircularDependency = (taskId: number, targetId: number): boolean => {
 
 // 创建连接
 const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 'successor') => {
+  console.log("----> hello:", {
+    mode,
+    sourceTask,
+    targetTask,
+  })
   if (mode === 'predecessor') {
-    // 前置模式：将源任务添加到目标任务的前置任务列表
-    const predecessorIds = targetTask.predecessor ? getPredecessorIds(targetTask.predecessor) : []
-    if (!predecessorIds.includes(sourceTask.id)) {
-      predecessorIds.push(sourceTask.id)
-      // 将数组转换为适当的格式（数组或逗号分隔的字符串）
-      if (Array.isArray(targetTask.predecessor)) {
-        targetTask.predecessor = predecessorIds
-      } else {
-        targetTask.predecessor = predecessorIds.join(',')
-      }
+    // mode='predecessor' 表示从左侧 anchor 拖出
+    // 从左侧 anchor 拖到右侧：sourceTask 依赖 targetTask
+    // 实现：将 targetTask.id 添加到 sourceTask.predecessor 中
+    const predecessorIds = sourceTask.predecessor ? getPredecessorIds(sourceTask.predecessor) : []
+    if (!predecessorIds.includes(targetTask.id)) {
+      predecessorIds.push(targetTask.id)
+      sourceTask.predecessor = predecessorIds
       // 触发任务更新事件
-      updateTask(targetTask)
+      updateTask(sourceTask)
       // 发射 predecessor-added 事件
-      emit('predecessor-added', { targetTask, newTask: sourceTask })
+      emit('predecessor-added', { targetTask: sourceTask, newTask: targetTask })
     }
   } else {
-    // 后置模式：将目标任务的 ID 添加到源任务的前置任务列表
-    // 注意：这里实际是在源任务的 predecessor 中添加目标任务
-    // 因为"后置任务"的意思是：目标任务依赖于源任务
+    // mode='successor' 表示从右侧 anchor 拖出
+    // 从右侧 anchor 拖到左侧：sourceTask 是 targetTask 的前置任务
+    // 实现：将 sourceTask.id 添加到 targetTask.predecessor 中
     const predecessorIds = targetTask.predecessor ? getPredecessorIds(targetTask.predecessor) : []
     if (!predecessorIds.includes(sourceTask.id)) {
       predecessorIds.push(sourceTask.id)
-      // 将数组转换为适当的格式
-      if (Array.isArray(targetTask.predecessor)) {
-        targetTask.predecessor = predecessorIds
-      } else {
-        targetTask.predecessor = predecessorIds.join(',')
-      }
+      targetTask.predecessor = predecessorIds
       // 触发任务更新事件
       updateTask(targetTask)
       // 发射 successor-added 事件
-      emit('successor-added', { targetTask: sourceTask, newTask: targetTask })
+      emit('successor-added', { targetTask, newTask: sourceTask })
     }
   }
 }

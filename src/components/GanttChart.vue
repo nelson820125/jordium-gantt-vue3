@@ -2046,6 +2046,18 @@ function handleAddSuccessor(targetTask: Task) {
   taskDrawerVisible.value = true
 }
 
+// 处理前置任务已添加事件（拖拽连接完成）
+function handlePredecessorAdded(event: { targetTask: Task; newTask: Task }) {
+  // 直接转发事件给外部
+  emit('predecessor-added', event)
+}
+
+// 处理后置任务已添加事件（拖拽连接完成）
+function handleSuccessorAdded(event: { targetTask: Task; newTask: Task }) {
+  // 直接转发事件给外部
+  emit('successor-added', event)
+}
+
 // 新增Task插入到任务树中
 // 插入新任务到任务树（parentId 已在打开 TaskDrawer 时预设好）
 const insertTask = (tasks: Task[], newTask: Task) => {
@@ -2276,6 +2288,8 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           @stop-timer="handleStopTimer"
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
+          @predecessor-added="handlePredecessorAdded"
+          @successor-added="handleSuccessorAdded"
           @delete="handleTaskDelete"
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
