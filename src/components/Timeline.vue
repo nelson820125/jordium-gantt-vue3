@@ -688,9 +688,6 @@ const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'success
   // 启动自动滚动检测
   startLinkAutoScroll()
 
-  // 添加 ESC 键监听，允许取消拖拽
-  document.addEventListener('keydown', handleLinkDragEscape)
-
   // 在 Timeline 层级添加全局鼠标监听器（防止 LinkAnchor 因虚拟滚动卸载导致拖拽中断）
   document.addEventListener('mousemove', handleGlobalMouseMove)
   document.addEventListener('mouseup', handleGlobalMouseUp)
@@ -795,14 +792,6 @@ const handleGlobalMouseUp = () => {
   }
 }
 
-// 处理 ESC 键取消拖拽
-const handleLinkDragEscape = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && dragLinkMode.value) {
-    cleanupLinkDrag()
-    document.removeEventListener('keydown', handleLinkDragEscape)
-  }
-}
-
 // 缓存 bodyContent 的位置信息（避免频繁调用 getBoundingClientRect）
 let cachedBodyRect: DOMRect | null = null
 let bodyRectCacheTime = 0
@@ -854,8 +843,7 @@ const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor
   // 清除缓存的 rect
   cachedBodyRect = null
 
-  // 移除 ESC 键监听
-  document.removeEventListener('keydown', handleLinkDragEscape)  // 移除全局鼠标监听器
+  // 移除全局鼠标监听器
   document.removeEventListener('mousemove', handleGlobalMouseMove)
   document.removeEventListener('mouseup', handleGlobalMouseUp)
 
@@ -1176,7 +1164,6 @@ const cleanupLinkDrag = () => {
   linkDragGuideRef.value?.clear()
 
   // 移除全局监听器
-  document.removeEventListener('keydown', handleLinkDragEscape)
   document.removeEventListener('mousemove', handleGlobalMouseMove)
   document.removeEventListener('mouseup', handleGlobalMouseUp)
 
