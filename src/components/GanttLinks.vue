@@ -2,15 +2,7 @@
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
-
-// uni-app 类型声明
-declare global {
-  interface Window {
-    uni?: {
-      createCanvasContext: (canvasId: string) => CanvasRenderingContext2D & { draw?: () => void }
-    }
-  }
-}
+import { CanvasContextManager } from '../utils/canvasUtils'
 
 // 定义 TaskBar 位置信息类型
 interface TaskBarPosition {
@@ -52,6 +44,9 @@ const props = withDefaults(defineProps<Props>(), {
 // Canvas 引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
+// Canvas 上下文管理器
+const canvasManager = new CanvasContextManager()
+
 // requestAnimationFrame 防抖控制
 let rafId: number | null = null
 let pendingRedraw = false
@@ -71,22 +66,13 @@ const updateTheme = () => {
  * 性能优势：相比 SVG 提升 18 倍渲染性能
  */
 const drawLinks = () => {
-  const canvas = canvasRef.value
-  if (!canvas) return
-
-  // 判断是否在 uni-app 环境中
-  const isUniApp = typeof window !== 'undefined' && window.uni
-  let ctx: (CanvasRenderingContext2D & { draw?: () => void }) | null = null
-
-  if (isUniApp && window.uni) {
-    // uni-app 环境：使用 uni.createCanvasContext
-    // https://uniapp.dcloud.net.cn/component/canvas.html
-    // 这儿存在一个问题：如果一个应用多个gantt视图会存在id冲突问题，所以后期可以加上一个配置，外部传入canvas-id
-    ctx = window.uni.createCanvasContext('gantt-link-canvas')
-  } else {
-    // Web 环境：使用标准 Canvas API
-    ctx = canvas.getContext('2d', { alpha: true })
-  }
+  const ctx = canvasManager.getContext({
+    canvas: canvasRef.value,
+    canvasId: 'gantt-link-canvas',
+    width: props.width,
+    height: props.height,
+    contextOptions: { alpha: true },
+  })
 
   if (!ctx) {
     // eslint-disable-next-line no-console
@@ -96,18 +82,6 @@ const drawLinks = () => {
 
   const displayWidth = props.width
   const displayHeight = props.height
-
-  // Web 环境才需要手动处理 DPR（uni-app 通过 hidpi 属性自动处理）
-  if (!isUniApp) {
-    const dpr = window.devicePixelRatio || 1
-    const pixelWidth = displayWidth * dpr
-    const pixelHeight = displayHeight * dpr
-    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-      canvas.width = pixelWidth
-      canvas.height = pixelHeight
-      ctx.scale(dpr, dpr)
-    }
-  }
 
   // 清空画布（透明）
   ctx.clearRect(0, 0, displayWidth, displayHeight)
@@ -336,9 +310,7 @@ const drawLinks = () => {
   }
 
   // uni-app 环境需要调用 draw() 方法将绘制内容渲染到画布
-  if (isUniApp && ctx?.draw) {
-    ctx.draw()
-  }
+  canvasManager.draw()
 }
 
 /**

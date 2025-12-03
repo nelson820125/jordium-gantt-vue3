@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
+import { CanvasContextManager } from '../utils/canvasUtils'
 
 interface Props {
   active: boolean
@@ -17,47 +18,20 @@ const props = withDefaults(defineProps<Props>(), {
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
-// 缓存 canvas 上下文和尺寸信息，避免重复初始化
-let cachedCtx: CanvasRenderingContext2D | null = null
-let cachedWidth = 0
-let cachedHeight = 0
-let cachedDpr = 0
+// Canvas 上下文管理器
+const canvasManager = new CanvasContextManager()
 
 /**
  * 初始化或更新 canvas 尺寸
  */
 const initCanvas = () => {
-  const canvas = canvasRef.value
-  if (!canvas) return null
-
-  const displayWidth = props.width
-  const displayHeight = props.height
-  const dpr = window.devicePixelRatio || 1
-
-  // 只在尺寸或 DPR 变化时重新初始化
-  if (
-    !cachedCtx ||
-    cachedWidth !== displayWidth ||
-    cachedHeight !== displayHeight ||
-    cachedDpr !== dpr
-  ) {
-    const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false })
-    if (!ctx) return null
-
-    const pixelWidth = displayWidth * dpr
-    const pixelHeight = displayHeight * dpr
-
-    canvas.width = pixelWidth
-    canvas.height = pixelHeight
-    ctx.scale(dpr, dpr)
-
-    cachedCtx = ctx
-    cachedWidth = displayWidth
-    cachedHeight = displayHeight
-    cachedDpr = dpr
-  }
-
-  return cachedCtx
+  return canvasManager.getContext({
+    canvas: canvasRef.value,
+    canvasId: 'link-drag-guide-canvas',
+    width: props.width,
+    height: props.height,
+    contextOptions: { alpha: true, willReadFrequently: false },
+  })
 }
 
 /**
@@ -86,8 +60,8 @@ const draw = (
     return
   }
 
-  const displayWidth = cachedWidth
-  const displayHeight = cachedHeight
+  const displayWidth = props.width
+  const displayHeight = props.height
 
   // 清空画布
   ctx.clearRect(0, 0, displayWidth, displayHeight)
@@ -180,21 +154,23 @@ const draw = (
   }
 
   ctx.restore()
+
+  // uni-app 环境需要调用 draw() 方法将绘制内容渲染到画布
+  canvasManager.draw()
 }
 
 /**
  * 清空画布
  */
 const clear = () => {
-  if (!cachedCtx) return
-  cachedCtx.clearRect(0, 0, cachedWidth, cachedHeight)
+  canvasManager.clear(props.width, props.height)
 }
 
 // 监听尺寸变化，需要重新初始化 canvas
 watch(
   [() => props.width, () => props.height],
   () => {
-    cachedCtx = null // 清除缓存，下次绘制时重新初始化
+    canvasManager.reset() // 清除缓存，下次绘制时重新初始化
   },
 )
 
@@ -204,14 +180,14 @@ watch(
   (newActive) => {
     if (!newActive) {
       // canvas 即将被移除，清除缓存
-      cachedCtx = null
+      canvasManager.reset()
     }
   },
 )
 
 // 组件卸载时清除缓存
 onUnmounted(() => {
-  cachedCtx = null
+  canvasManager.reset()
 })
 
 // 🚀 暴露命令式 API 给父组件
@@ -225,7 +201,10 @@ defineExpose({
   <canvas
     v-if="active"
     ref="canvasRef"
+    canvas-id="link-drag-guide-canvas"
     class="link-drag-guide-canvas"
+    type="2d"
+    :hidpi="true"
     :style="{
       position: 'absolute',
       left: `${offsetLeft}px`,

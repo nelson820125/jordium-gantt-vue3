@@ -666,7 +666,7 @@ let nonReactiveErrorMessage = ''
 const taskIdMap = new Map<number, Task>()
 
 // 性能监控开关（开发调试用）
-const ENABLE_PERF_MONITOR = true
+const ENABLE_PERF_MONITOR = false
 
 // 开始连接线拖拽
 const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
@@ -674,7 +674,9 @@ const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'success
   linkDragSourceTask.value = event.task
 
   // 启动帧监控
-  perfMonitor.startFrameMonitor()
+  if (ENABLE_PERF_MONITOR) {
+    perfMonitor.startFrameMonitor()
+  }
 
   // 初始化鼠标坐标（使用非响应式版本）
   updateLinkDragCoordinatesNonReactive(event.mouseEvent.clientX, event.mouseEvent.clientY)
@@ -704,47 +706,35 @@ let pendingMouseY = 0
 let currentDragX = 0
 let currentDragY = 0
 
-// 🔧 调试开关：逐步启用各操作以定位性能瓶颈
-const DEBUG_ENABLE_COORD_UPDATE = true   // 坐标更新 ✅ 不是瓶颈
-const DEBUG_ENABLE_TARGET_DETECT = true  // 目标检测 ✅ 不是瓶颈
-const DEBUG_ENABLE_CANVAS_DRAW = true    // Canvas 绘制 - 测试中
-
 // 🚀 优化后的 RAF 回调：在一帧内批量处理坐标更新、目标检测和绘制
 const processLinkDragFrame = () => {
   linkDragRafId = null
 
-  // 🔧 调试：逐步启用各操作
-  if (DEBUG_ENABLE_COORD_UPDATE) {
-    if (ENABLE_PERF_MONITOR) {
-      const startTime = performance.now()
-      updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
-      perfMonitor.recordLinkDragCoordUpdate(performance.now() - startTime)
-    } else {
-      updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
-    }
+  if (ENABLE_PERF_MONITOR) {
+    const startTime = performance.now()
+    updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
+    perfMonitor.recordLinkDragCoordUpdate(performance.now() - startTime)
+  } else {
+    updateLinkDragCoordinatesNonReactive(pendingMouseX, pendingMouseY)
   }
 
-  if (DEBUG_ENABLE_TARGET_DETECT) {
-    if (ENABLE_PERF_MONITOR) {
-      const startTime = performance.now()
-      detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
-      perfMonitor.recordLinkDragTargetDetect(performance.now() - startTime)
-    } else {
-      detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
-    }
+  if (ENABLE_PERF_MONITOR) {
+    const startTime = performance.now()
+    detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
+    perfMonitor.recordLinkDragTargetDetect(performance.now() - startTime)
+  } else {
+    detectLinkTargetNonReactive(pendingMouseX, pendingMouseY)
   }
 
-  if (DEBUG_ENABLE_CANVAS_DRAW) {
-    if (linkDragGuideRef.value && linkDragSourceTask.value) {
-      linkDragGuideRef.value.draw(
-        getLinkDragStartX(),
-        getLinkDragStartY(),
-        currentDragX,
-        currentDragY,
-        nonReactiveIsValidTarget,
-        nonReactiveErrorMessage,
-      )
-    }
+  if (linkDragGuideRef.value && linkDragSourceTask.value) {
+    linkDragGuideRef.value.draw(
+      getLinkDragStartX(),
+      getLinkDragStartY(),
+      currentDragX,
+      currentDragY,
+      nonReactiveIsValidTarget,
+      nonReactiveErrorMessage,
+    )
   }
 }
 
@@ -770,7 +760,9 @@ const handleGlobalMouseUp = () => {
   if (!dragLinkMode.value) return
 
   // 停止帧监控
-  perfMonitor.stopFrameMonitor()
+  if (ENABLE_PERF_MONITOR) {
+    perfMonitor.stopFrameMonitor()
+  }
 
   // 🚀 取消待处理的 RAF
   if (linkDragRafId !== null) {
@@ -809,8 +801,8 @@ const updateCoordinates = (mouseX: number, mouseY: number): void => {
     bodyRectCacheTime = now
     bodyRectInvalidated = false
   }
-  currentDragX = mouseX - cachedBodyRect.left
-  currentDragY = mouseY - cachedBodyRect.top
+  currentDragX = mouseX - cachedBodyRect!.left
+  currentDragY = mouseY - cachedBodyRect!.top
 }
 
 // 🚀 非响应式坐标更新（完全绕过 Vue 响应式系统）
