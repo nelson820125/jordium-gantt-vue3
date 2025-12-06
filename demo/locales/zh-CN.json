@@ -1,0 +1,24 @@
+{
+  "taskMoveConfirm": {
+    "title": "确认移动任务",
+    "confirmText": "确认",
+    "cancelText": "取消",
+    "messages": {
+      "moveAfter": "{draggedTaskType}【{draggedTaskName}】将放置{targetTaskType}【{targetTaskName}】之后，确认是否继续？",
+      "moveAsChild": "任务【{draggedTaskName}】将解除与{oldParentName}的关系，并设置于{newParentName}的关系，确认是否继续？",
+      "moveAsChildNoOldParent": "任务【{draggedTaskName}】将设置于{newParentName}的关系，确认是否继续？",
+      "moveAsChildSameParent": "任务【{draggedTaskName}】将移动到{newParentName}的第一位，确认是否继续？",
+      "moveCanceled": "任务移动已取消",
+      "moveSuccess": "任务移动成功"
+    },
+    "taskTypes": {
+      "story": "需求",
+      "task": "任务"
+    },
+    "parentNames": {
+      "root": "根目录",
+      "story": "需求【{name}】",
+      "task": "任务【{name}】"
+    }
+  }
+}

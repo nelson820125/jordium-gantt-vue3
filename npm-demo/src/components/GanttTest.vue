@@ -13,7 +13,7 @@ const tasks = ref([
     department: '管理部',
     departmentCode: 'D001',
     type: 'task',
-  },
+  }
 ])
 
 const milestones = ref([
@@ -22,41 +22,52 @@ const milestones = ref([
     name: '项目立项',
     startDate: '2025-10-29',
     type: 'milestone',
-    icon: 'diamond',
-  },
+    icon: 'diamond'
+  }
 ])
 
 const customMessages = {
   'zh-CN': {
     department: '部门',
     departmentCode: '部门编号',
+    // 其他文本
+    days: '天111',
+    hours: '小时111',
+    overtime: '超时111',
+    overdue: '逾期111',
   },
   'en-US': {
     department: 'Department',
     departmentCode: 'Department Code',
-  },
+    // 其他文本
+    days: 'Day111',
+    hours: 'Hour111',
+    overtime: 'OverTime111',
+    overdue: 'OverDue111',
+  }
 }
 // const tasks = ref([])
 
 // const milestones = ref([])
-const showAddTaskDrawer = ref(false)
-const showAddMilestoneDialog = ref(false)
+
+const showAddTaskDrawer = ref(false);
+const showAddMilestoneDialog = ref(false);
 
 // 定义可动态配置的列
 const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'startDate', label: '开始日期', visible: true },
   { key: 'endDate', label: '结束日期', visible: true },
   { key: 'progress', label: '进度', visible: true },
-  { key: 'department', label: '部门', visible: true, width: 120 },
+  { key: 'department', label: '部门', visible: true, width: 200 },
   { key: 'departmentCode', label: '部门编号', visible: true },
 ])
 
 // TaskList宽度配置示例
 const taskListConfig = {
-  defaultWidth: 400,  // 默认展开宽度400px（默认320px）
-  minWidth: 300,      // 最小宽度300px（默认280px）
-  maxWidth: 1200,      // 最大宽度1200px（默认1160px）
-  columns: availableColumns.value,
+  defaultWidth: '50%',  // 默认展开宽度50%
+  minWidth: '300px',      // 最小宽度300px（默认280px）
+  maxWidth: '1200px',      // 最大宽度1200px（默认1160px）
+  columns: availableColumns.value
 }
 
 // toolbar配置示例
@@ -71,17 +82,18 @@ const toolbarConfig: ToolbarConfig = {
   showFullscreen: true,            // 显示全屏按钮
   showTimeScale: true,             // 显示时间刻度按钮组
   timeScaleDimensions: [           // 显示所有时间刻度维度
-    'hour', 'day', 'week', 'month', 'quarter', 'year',
+    'hour', 'day', 'week', 'month', 'quarter', 'year'
   ],
   defaultTimeScale: 'week',        // 默认选中周视图
-  showExpandCollapse: false,         // 显示展开/折叠按钮
+  showExpandCollapse: false         // 显示展开/折叠按钮
 }
+
 
 const newTask = ref({
   name: '',
   startDate: '',
-  endDate: '',
-})
+  endDate: ''
+});
 
 const addTask = () => {
   tasks.value.push({
@@ -90,10 +102,10 @@ const addTask = () => {
     startDate: newTask.value.startDate,
     endDate: newTask.value.endDate,
     progress: 0,
-  })
-  newTask.value = { name: '', startDate: '', endDate: '' }
-  showAddTaskDrawer.value = false
-}
+  });
+  newTask.value = { name: '', startDate: '', endDate: '' };
+  showAddTaskDrawer.value = false;
+};
 
 const addMilestone = () => {
   milestones.value.push({
@@ -102,40 +114,89 @@ const addMilestone = () => {
     startDate: newTask.value.startDate,
     progress: 0,
     type: 'milestone',
-    icon: 'diamond',
-  })
+    icon: 'diamond'
+  });
   console.log('milestones: ', milestones.value)
-  newTask.value = { name: '', startDate: '', endDate: '' }
-  showAddMilestoneDialog.value = false
+  newTask.value = { name: '', startDate: '', endDate: '' };
+  showAddMilestoneDialog.value = false;
 }
 
 const onTaskDblclick = (task) => {
   alert(`双击任务: ${task.name}`)
 }
+const onTaskClick = (task) => {
+  alert(`单击任务: ${task.name}`)
+}
 const onMilestoneDblclick = (milestone) => {
   alert(`双击里程碑: ${milestone.name}`)
+}
+
+// 任务行拖拽完成事件（可选）
+const handleTaskRowMoved = async (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  const { draggedTask, targetTask, position, oldParent, newParent } = payload
+  
+  // 组件已自动完成任务移动、parentId更新和TaskList/Timeline同步
+  // 监听此事件为完全可选，仅用于：
+  
+  // 1. 显示自定义提示消息
+  const oldParentName = oldParent?.name || '根目录'
+  const newParentName = newParent?.name || '根目录'
+  const positionText = position === 'after' ? '在目标任务之后' : '作为目标任务的子任务'
+  alert(`任务 [${draggedTask.name}] 已从 [${oldParentName}] 移动到 [${newParentName}] (${positionText})`, 'success')
+  
+  // 2. 调用后端 API 保存新的任务层级关系
+  try {
+    await api.updateTaskHierarchy({
+      taskId: draggedTask.id,
+      targetTaskId: targetTask.id,
+      position: position,
+      oldParentId: oldParent?.id,
+      newParentId: newParent?.id,
+    })
+  } catch (error) {
+    console.error('保存任务层级失败:', error)
+    alert('保存失败，请刷新页面')
+  }
+  
+  // 3. 触发其他业务逻辑（如更新关联数据、记录操作日志等）
+  // ...
 }
 </script>
 
 <template>
   <div>
     <div style="height: 600px;">
-      <GanttChart
-        :tasks="tasks"
+      <GanttChart 
+        :tasks="tasks" 
         :milestones="milestones"
         :task-list-config="taskListConfig"
         :toolbar-config="toolbarConfig"
         :use-default-drawer="false"
         :use-default-milestone-dialog="false"
         :locale-messages="customMessages"
+        :allow-drag-and-resize="true"
+        :enable-task-row-move="true"
+        @task-row-moved="handleTaskRowMoved"
         @add-task="showAddTaskDrawer = true"
         @add-milestone="showAddMilestoneDialog = true"
         @task-double-click="onTaskDblclick"
+        @task-click="onTaskClick"
         @milestone-double-click="onMilestoneDblclick"
       >
     </GanttChart>
     </div>
-
+    <!-- 自定义添加任务按钮 -->
+    <div>
+      <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
+      <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
+    </div>
+    
     <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
     <div v-if="showAddTaskDrawer" class="drawer-overlay" @click="showAddTaskDrawer = false">
       <div class="drawer-container" @click.stop>
@@ -143,24 +204,24 @@ const onMilestoneDblclick = (milestone) => {
           <h3>自定义添加任务组件</h3>
           <button class="close-btn" @click="showAddTaskDrawer = false">×</button>
         </div>
-
+        
         <div class="drawer-body">
           <div class="form-item">
             <label>任务名称:</label>
             <input v-model="newTask.name" type="text" placeholder="请输入任务名称" />
           </div>
-
+          
           <div class="form-item">
             <label>开始日期:</label>
             <input v-model="newTask.startDate" type="date" />
           </div>
-
+          
           <div class="form-item">
             <label>结束日期:</label>
             <input v-model="newTask.endDate" type="date" />
           </div>
         </div>
-
+        
         <div class="drawer-footer">
           <button class="btn btn-primary" @click="addTask">确定</button>
           <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
@@ -169,9 +230,9 @@ const onMilestoneDblclick = (milestone) => {
     </div>
 
     <!-- 自定义Dialog组件基于element plus -->
-    <el-dialog
-      v-model="showAddMilestoneDialog"
-      title="自定义添加里程碑组件 - Element Plus"
+    <el-dialog 
+      title="自定义添加里程碑组件 - Element Plus" 
+      v-model="showAddMilestoneDialog" 
       width="400px"
       @close="newTask = { name: '', startDate: '', endDate: '' }"
     >
@@ -191,7 +252,7 @@ const onMilestoneDblclick = (milestone) => {
         <el-button @click="addMilestone">确定</el-button>
         <el-button @click="showAddMilestoneDialog = false">取消</el-button>
       </template>
-    </el-dialog>
+    </el-dialog>  
   </div>
 </template>
 

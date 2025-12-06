@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
   taskBarConfig: undefined,
   autoSortByStartDate: false,
   allowDragAndResize: true,
+  enableTaskRowMove: false,
 })
 
 const emit = defineEmits([
@@ -70,6 +71,8 @@ const emit = defineEmits([
   'milestone-saved',
   'milestone-deleted',
   'milestone-icon-changed',
+  // TaskRow拖拽事件
+  'task-row-moved',
 ])
 
 const { showMessage } = useMessage()
@@ -123,6 +126,8 @@ interface Props {
   autoSortByStartDate?: boolean
   // 是否允许拖拽和拉伸（默认为 true）
   allowDragAndResize?: boolean
+  // 是否启用TaskRow拖拽移动功能（默认为 false）
+  enableTaskRowMove?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -279,6 +284,16 @@ const timelineContainerWidth = ref<number>(0)
 
 // 任务拖拽/拉伸触发器（用于触发timeline范围重新计算）
 const updateTaskTrigger = ref<number>(0)
+
+// 监听props.tasks变化，自动触发Timeline更新
+// 这对于TaskRow移动等操作很重要，因为外部更新tasks后需要通知Timeline重新渲染
+watch(
+  () => props.tasks,
+  () => {
+    updateTaskTrigger.value++
+  },
+  { deep: true },
+)
 
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
@@ -587,6 +602,22 @@ const handleExpandAll = () => {
       updateTaskTrigger.value++
     }
   }
+}
+
+// 处理TaskRow移动事件
+const handleTaskRowMoved = (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  // TaskList已经通过对象引用直接修改了props.tasks的内容
+  // 但computed不会因为对象内部变化而重新计算，需要手动触发
+  updateTaskTrigger.value++
+
+  // 向外传递事件，让外部组件进行额外处理（完全可选）
+  emit('task-row-moved', payload)
 }
 
 // 全部折叠任务
@@ -2197,12 +2228,14 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           :tasks="tasksForTaskList"
           :use-default-drawer="props.useDefaultDrawer"
           :task-list-config="props.taskListConfig"
+          :enable-task-row-move="props.enableTaskRowMove"
           @task-collapse-change="handleTaskCollapseChange"
           @start-timer="handleStartTimer"
           @stop-timer="handleStopTimer"
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
           @delete="handleTaskDelete"
+          @task-row-moved="handleTaskRowMoved"
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
             <slot name="custom-task-content" v-bind="rowScope" />

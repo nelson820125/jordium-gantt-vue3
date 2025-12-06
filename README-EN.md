@@ -189,6 +189,7 @@ npm run dev
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
 | `autoSortByStartDate`       | `boolean` | `false` | Whether to automatically sort tasks by start date                         |
 | `allowDragAndResize`        | `boolean` | `true`  | Whether to allow dragging and resizing tasks/milestones                   |
+| `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  
 
 #### Configuration Object Props
 
@@ -243,6 +244,7 @@ For complete event documentation, see:
 | `milestone-deleted`      | `{ milestoneId: number }`         | Milestone deleted                      |
 | `milestone-icon-changed` | `{ milestoneId, icon }`           | Milestone icon changed                 |
 | `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) |
 
 #### Example 1: Simplest Gantt Chart
 
@@ -424,6 +426,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `taskBarConfig`       | `TaskBarConfig`  | `{}`        | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
 | `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
 | `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
+| `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  
 
 **Configuration Notes**:
 
@@ -449,6 +452,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `successor-added`    | `{ targetTask: Task, newTask: Task }`     | After adding successor via context menu   | `targetTask` is the original task, `newTask` is the newly created successor task (its predecessor already contains targetTask.id)                                                                        |
 | `timer-started`      | `(task: Task) => void`                    | When task timer starts                    | Start recording task hours                                                                                                                                                                               |
 | `timer-stopped`      | `(task: Task) => void`                    | When task timer stops                     | Stop recording task hours                                                                                                                                                                                |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) | Component has automatically completed data movement and TaskList/Timeline sync via object reference mutation. Listening to this event is completely optional, only for showing messages, calling API, etc. `position`: 'after'=same level, 'child'=as child |
 
 **Data Synchronization Notes**:
 
@@ -714,6 +718,117 @@ const handleTaskAdded = e => {
 > - Show toolbar + default editor: Simplest out-of-the-box approach
 > - Hide toolbar + custom buttons + default editor: Custom control bar style while keeping default edit functionality
 > - Hide toolbar + custom buttons + custom editor: Fully customize all interaction logic
+
+#### Example 4: Task Row Drag and Drop Sorting
+
+Allow users to adjust task hierarchy and order by dragging TaskRow:
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :tasks="tasks"
+      :enable-task-row-move="true"
+      @task-row-moved="handleTaskRowMoved"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { Task } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: 'Project Planning',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+  },
+  {
+    id: 2,
+    name: 'Requirements Analysis',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+    parentId: 1,
+  },
+  {
+    id: 3,
+    name: 'System Design',
+    startDate: '2025-01-21',
+    endDate: '2025-01-30',
+    progress: 40,
+  },
+])
+
+// Task row drag completed event (optional)
+const handleTaskRowMoved = async (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  const { draggedTask, targetTask, position, oldParent, newParent } = payload
+  
+  // Component has automatically completed task move, parentId update and TaskList/Timeline sync
+  // Listening to this event is completely optional, only for:
+  
+  // 1. Show custom notification message
+  const oldParentName = oldParent?.name || 'Root'
+  const newParentName = newParent?.name || 'Root'
+  const positionText = position === 'after' ? 'after target task' : 'as child of target task'
+  showMessage(`Task [${draggedTask.name}] moved from [${oldParentName}] to [${newParentName}] (${positionText})`, 'success')
+  
+  // 2. Call backend API to save new task hierarchy
+  try {
+    await api.updateTaskHierarchy({
+      taskId: draggedTask.id,
+      targetTaskId: targetTask.id,
+      position: position,
+      oldParentId: oldParent?.id,
+      newParentId: newParent?.id,
+    })
+  } catch (error) {
+    console.error('Save task hierarchy failed:', error)
+    showMessage('Save failed, please refresh page', 'error')
+  }
+  
+  // 3. Trigger other business logic (like updating related data, recording operation logs, etc.)
+  // ...
+}
+</script>
+```
+
+**Drag and Drop Sorting Notes**:
+
+- **Enable Dragging**: Set `enable-task-row-move="true"` to enable task row dragging (default is `false`)
+- **Dragging Algorithms** (automatically executed by component):
+  - **Algorithm 1 (Place After)**: When target task has no children, dragged task will be placed after target task (same level), `position='after'`
+  - **Algorithm 2 (As Child)**: When target task has children, dragged task will become first child of target task, `position='child'`
+- **Visual Feedback**:
+  - Semi-transparent following element displayed while dragging
+  - Blue border hint shown when hovering over valid target tasks
+  - Tasks without children show blue bottom border
+  - Tasks with children show blue border on all sides
+- **Auto Sync**: Component internally mutates `props.tasks` via object reference, automatically completing task move, `parentId` update, `children` array adjustment, and TaskList/Timeline synchronization
+- **Event Listening (Optional)**:
+  - `task-row-moved` event is completely optional, only used for showing messages, calling API to save, recording logs, etc.
+  - No need to manually update `tasks.value`, component has automatically completed data synchronization
+- **Event Parameters**:
+  - `draggedTask`: The dragged task
+  - `targetTask`: The target task
+  - `position`: Drop position ('after' or 'child')
+  - `oldParent`: Original parent task (null means root)
+  - `newParent`: New parent task (null means root)
+- **Constraints**:
+  - Cannot drag onto itself
+  - Cannot drag onto its own child tasks (avoid circular reference)
+  - Milestones and milestone groups cannot be dragged
 
 ### Milestone Management
 

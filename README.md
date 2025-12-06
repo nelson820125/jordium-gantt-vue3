@@ -187,6 +187,7 @@ npm run dev
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | 是否使用内置里程碑编辑对话框（MilestoneDialog）                |
 | `autoSortByStartDate`       | `boolean` | `false` | 是否根据开始时间自动排序任务                                   |
 | `allowDragAndResize`        | `boolean` | `true`  | 是否允许拖拽和调整任务/里程碑大小                              |
+| `enableTaskRowMove`        | `boolean` | `false`  | 是否允许拖拽和摆放TaskRow                              |
 
 #### 配置对象属性
 
@@ -241,6 +242,7 @@ npm run dev
 | `milestone-deleted`      | `{ milestoneId: number }`         | 里程碑删除                 |
 | `milestone-icon-changed` | `{ milestoneId, icon }`           | 里程碑图标变更             |
 | `milestone-drag-end`     | `(milestone: Task)`               | 拖拽里程碑结束             |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） |
 
 #### 示例1：最简单的甘特图
 
@@ -422,6 +424,7 @@ const handleMilestoneSaved = milestone => {
 | `taskBarConfig`       | `TaskBarConfig`  | `{}`        | 任务条样式配置，详见 [TaskBarConfig 配置](#taskbarconfig-配置) |
 | `taskListConfig`      | `TaskListConfig` | `undefined` | 任务列表配置，详见 [TaskListConfig 配置](#tasklistconfig-配置) |
 | `autoSortByStartDate` | `boolean`        | `false`     | 是否根据开始时间自动排序任务                                   |
+| `enableTaskRowMove`        | `boolean` | `false`  | 是否允许拖拽和摆放TaskRow   
 
 **配置说明**：
 
@@ -447,6 +450,7 @@ const handleMilestoneSaved = milestone => {
 | `successor-added`    | `{ targetTask: Task, newTask: Task }`     | 通过右键菜单添加后置任务后 | `targetTask` 是原任务，`newTask` 是新创建的后置任务（其 predecessor 已包含 targetTask.id）                                 |
 | `timer-started`      | `(task: Task) => void`                    | 任务计时器启动时           | 开始记录任务工时                                                                                                           |
 | `timer-stopped`      | `(task: Task) => void`                    | 任务计时器停止时           | 停止记录任务工时                                                                                                           |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） | 组件已自动完成数据移动和TaskList/Timeline同步。监听此事件为完全可选，仅用于显示提示、调用API保存等。`position`: 'after'=同级放置，'child'=作为子任务 |
 
 **数据同步说明**：
 
@@ -712,6 +716,117 @@ const handleTaskAdded = e => {
 > - 显示工具栏 + 默认编辑器：最简单的开箱即用方式
 > - 隐藏工具栏 + 自定义按钮 + 默认编辑器：自定义控制栏样式，保留默认编辑功能
 > - 隐藏工具栏 + 自定义按钮 + 自定义编辑器：完全自定义所有交互逻辑
+
+#### 示例4：任务行拖拽排序
+
+允许用户通过拖拽 TaskRow 来调整任务的层级关系和前后顺序：
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :tasks="tasks"
+      :enable-task-row-move="true"
+      @task-row-moved="handleTaskRowMoved"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { Task } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: '项目规划',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+  },
+  {
+    id: 2,
+    name: '需求分析',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+    parentId: 1,
+  },
+  {
+    id: 3,
+    name: '系统设计',
+    startDate: '2025-01-21',
+    endDate: '2025-01-30',
+    progress: 40,
+  },
+])
+
+// 任务行拖拽完成事件（可选）
+const handleTaskRowMoved = async (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  const { draggedTask, targetTask, position, oldParent, newParent } = payload
+  
+  // 组件已自动完成任务移动、parentId更新和TaskList/Timeline同步
+  // 监听此事件为完全可选，仅用于：
+  
+  // 1. 显示自定义提示消息
+  const oldParentName = oldParent?.name || '根目录'
+  const newParentName = newParent?.name || '根目录'
+  const positionText = position === 'after' ? '在目标任务之后' : '作为目标任务的子任务'
+  showMessage(`任务 [${draggedTask.name}] 已从 [${oldParentName}] 移动到 [${newParentName}] (${positionText})`, 'success')
+  
+  // 2. 调用后端 API 保存新的任务层级关系
+  try {
+    await api.updateTaskHierarchy({
+      taskId: draggedTask.id,
+      targetTaskId: targetTask.id,
+      position: position,
+      oldParentId: oldParent?.id,
+      newParentId: newParent?.id,
+    })
+  } catch (error) {
+    console.error('保存任务层级失败:', error)
+    showMessage('保存失败，请刷新页面', 'error')
+  }
+  
+  // 3. 触发其他业务逻辑（如更新关联数据、记录操作日志等）
+  // ...
+}
+</script>
+```
+
+**拖拽排序说明**：
+
+- **启用拖拽**：设置 `enable-task-row-move="true"` 启用任务行拖拽功能（默认为 `false`）
+- **拖拽算法**（组件内部自动执行）：
+  - **算法1（放置在后面）**：当目标任务没有子任务时，被拖拽的任务会放置在目标任务之后（同级），`position='after'`
+  - **算法2（作为子任务）**：当目标任务有子任务时，被拖拽的任务会成为目标任务的第一个子任务，`position='child'`
+- **视觉反馈**：
+  - 拖拽时会显示半透明的跟随元素
+  - 悬停在有效目标任务上时显示蓝色边框提示
+  - 无子任务的任务显示蓝色底部边框
+  - 有子任务的任务显示蓝色四周边框
+- **自动同步**：组件内部通过对象引用直接修改 `props.tasks`，自动完成任务移动、`parentId` 更新、`children` 数组调整以及 TaskList/Timeline 同步
+- **事件监听（可选）**：
+  - `task-row-moved` 事件为完全可选，仅用于显示提示、调用API保存、记录日志等额外处理
+  - 无需手动更新 `tasks.value`，组件已自动完成数据同步
+- **事件参数**：
+  - `draggedTask`: 被拖拽的任务
+  - `targetTask`: 目标任务
+  - `position`: 放置位置（'after' 或 'child'）
+  - `oldParent`: 原父任务（null 表示根目录）
+  - `newParent`: 新父任务（null 表示根目录）
+- **限制条件**：
+  - 不能拖拽到自己身上
+  - 不能拖拽到自己的子任务上（避免循环引用）
+  - 里程碑和里程碑分组不能被拖拽
 
 ### 里程碑管理
 

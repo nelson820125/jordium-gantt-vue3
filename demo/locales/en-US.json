@@ -1,0 +1,24 @@
+{
+  "taskMoveConfirm": {
+    "title": "Confirm Task Move",
+    "confirmText": "Confirm",
+    "cancelText": "Cancel",
+    "messages": {
+      "moveAfter": "{draggedTaskType} [{draggedTaskName}] will be placed after {targetTaskType} [{targetTaskName}]. Continue?",
+      "moveAsChild": "Task [{draggedTaskName}] will be unlinked from {oldParentName} and linked to {newParentName}. Continue?",
+      "moveAsChildNoOldParent": "Task [{draggedTaskName}] will be linked to {newParentName}. Continue?",
+      "moveAsChildSameParent": "Task [{draggedTaskName}] will be moved to the first position under {newParentName}. Continue?",
+      "moveCanceled": "Task move canceled",
+      "moveSuccess": "Task moved successfully"
+    },
+    "taskTypes": {
+      "story": "Story",
+      "task": "Task"
+    },
+    "parentNames": {
+      "root": "Root",
+      "story": "Story [{name}]",
+      "task": "Task [{name}]"
+    }
+  }
+}

@@ -38,6 +38,9 @@ interface Props {
   columns: TaskListColumnConfig[]
   getColumnWidthStyle?: (column: { width?: number | string }) => StyleValue
   disableChildrenRender?: boolean
+  enableDrag?: boolean
+  dragStart?: (task: Task, element: HTMLElement, event: MouseEvent) => void
+  dragOver?: (task: Task, element: HTMLElement, event: MouseEvent) => void
 }
 const props = defineProps<Props>()
 const emit = defineEmits([
@@ -275,17 +278,56 @@ const slotPayload = computed(() => ({
   progressClass: progressClass.value,
 }))
 
+// TaskRow拖拽功能
+const taskRowRef = ref<HTMLElement | null>(null)
+
+const handleMouseDown = (event: MouseEvent) => {
+  // 如果未启用拖拽，直接返回
+  if (!props.enableDrag) return
+
+  // 如果点击的是按钮、输入框等交互元素，不触发拖拽
+  const target = event.target as HTMLElement
+  if (
+    target.tagName === 'BUTTON' ||
+    target.tagName === 'INPUT' ||
+    target.tagName === 'SELECT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.closest('.collapse-btn') ||
+    target.closest('.task-context-menu')
+  ) {
+    return
+  }
+
+  if (taskRowRef.value && props.dragStart) {
+    props.dragStart(props.task, taskRowRef.value, event)
+  }
+}
+
+// 处理全局拖拽悬停事件
+const handleTaskRowDragOver = (event: CustomEvent) => {
+  if (!props.enableDrag || !taskRowRef.value || !props.dragOver) return
+
+  const { taskId, event: mouseEvent } = event.detail
+  if (taskId === props.task.id) {
+    // eslint-disable-next-line no-console
+    console.log('[TaskRow] 接收到drag-over事件，任务:', props.task.name)
+    props.dragOver(props.task, taskRowRef.value, mouseEvent)
+  }
+}
+
 // 生命周期钩子 - 注册事件监听器
 onMounted(() => {
   window.addEventListener('splitter-drag-start', handleSplitterDragStart)
   window.addEventListener('splitter-drag-end', handleSplitterDragEnd)
   window.addEventListener('close-all-taskbar-menus', closeContextMenu)
+  window.addEventListener('task-row-drag-over', handleTaskRowDragOver as EventListener)
 })
 
 onUnmounted(() => {
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart)
   window.removeEventListener('splitter-drag-end', handleSplitterDragEnd)
   window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+  window.removeEventListener('task-row-drag-over', handleTaskRowDragOver as EventListener)
   if (timerInterval.value) {
     clearInterval(timerInterval.value)
   }
@@ -295,7 +337,9 @@ onUnmounted(() => {
 <template>
   <div>
     <div
+      ref="taskRowRef"
       class="task-row"
+      :data-task-id="props.task.id"
       :class="{
         'task-row-hovered': isHovered,
         'parent-task': isParentTask,
@@ -306,6 +350,7 @@ onUnmounted(() => {
       }"
       @click="handleRowClick"
       @dblclick="handleTaskRowDoubleClick"
+      @mousedown="handleMouseDown"
       @mouseenter="handleMouseEnter"
       @mouseleave="handleMouseLeave"
       @contextmenu="handleContextMenu"
@@ -482,6 +527,9 @@ onUnmounted(() => {
         :columns="props.columns"
         :get-column-width-style="props.getColumnWidthStyle"
         :disable-children-render="props.disableChildrenRender"
+        :enable-drag="props.enableDrag"
+        :drag-start="props.dragStart"
+        :drag-over="props.dragOver"
         @toggle="emit('toggle', $event)"
         @dblclick="emit('dblclick', $event)"
         @start-timer="emit('start-timer', $event)"
@@ -936,5 +984,30 @@ onUnmounted(() => {
 
 :global(html[data-theme='dark']) .timer-dot {
   background-color: #85ce61; /* 暗色主题下的绿色 */
+}
+
+/* TaskRow拖拽样式 */
+.task-row-dragging {
+  opacity: 0.6 !important;
+  cursor: move !important;
+}
+
+/* 拖拽目标高亮样式 */
+.task-row-drop-target.drop-after {
+  border-bottom: 3px solid var(--gantt-primary, #409eff) !important;
+  background-color: rgba(64, 158, 255, 0.05) !important;
+}
+
+.task-row-drop-target.drop-child {
+  border: 2px solid var(--gantt-primary, #409eff) !important;
+  background-color: rgba(64, 158, 255, 0.05) !important;
+}
+
+:global(html[data-theme='dark']) .task-row-drop-target.drop-after {
+  background-color: rgba(125, 180, 240, 0.1) !important;
+}
+
+:global(html[data-theme='dark']) .task-row-drop-target.drop-child {
+  background-color: rgba(125, 180, 240, 0.1) !important;
 }
 </style>

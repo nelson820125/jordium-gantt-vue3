@@ -322,5 +322,25 @@
       "Added: Large data loading demonstration",
       "Fix: jspdf vulnerabilies"
     ]
+  },
+  {
+    "version": "1.4.4",
+    "date": "2025-12-06",
+    "notes": [
+      "新增：任务列表中任务项的移动拖放功能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 jun201607@github的使用及反馈的宝贵意见</span>",
+      "Added: Task item move and drag-and-drop functionality in the task list",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jun201607@github for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.5",
+    "date": "2025-12-06",
+    "notes": [
+      "优化：任务列表中任务项的移动拖放功能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 jun201607@github的使用及反馈的宝贵意见</span>",
+      "Optimized: Task item move and drag-and-drop functionality in the task list",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jun201607@github for their valuable use and feedback</span>"
+    ]
   }
 ]

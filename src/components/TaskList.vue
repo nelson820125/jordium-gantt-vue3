@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, useSlots, computed } from 'vue'
+import { ref, onMounted, onUnmounted, useSlots, computed, nextTick } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
 import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
+import { useTaskRowDrag } from '../composables/useTaskRowDrag'
+import { moveTask } from '../utils/taskTreeUtils'
 
 interface Props {
   tasks?: Task[]
   useDefaultDrawer?: boolean
   taskListConfig?: TaskListConfig
+  enableTaskRowMove?: boolean
 }
 
 const props = defineProps<Props>()
@@ -26,6 +29,15 @@ const emit = defineEmits<{
   'add-predecessor': [task: Task] // 新增：添加前置任务事件
   'add-successor': [task: Task] // 新增：添加后置任务事件
   delete: [task: Task, deleteChildren?: boolean]
+  'task-row-moved': [
+    payload: {
+      draggedTask: Task
+      targetTask: Task
+      position: 'after' | 'child' // 'after': 放在目标任务之后（同级）, 'child': 作为目标任务的子任务
+      oldParent: Task | null
+      newParent: Task | null
+    },
+  ]
 }>()
 const slots = useSlots()
 const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
@@ -86,8 +98,9 @@ const visibleColumns = computed(() => {
   return columns.filter(col => col.visible !== false)
 })
 
-// 内部响应式任务列表
-const localTasks = ref<Task[]>([])
+// 使用 props.tasks 的引用，不创建副本
+// 这样可以直接修改对象，触发响应式更新，不需要外部监听事件
+const localTasks = computed(() => props.tasks || [])
 
 // 悬停状态管理
 const hoveredTaskId = ref<number | null>(null)
@@ -206,31 +219,26 @@ const calculateParentTaskData = (
 
 // 更新所有父级任务的进度和日期范围
 const updateParentTasksData = () => {
-  const updateParentTask = (taskList: Task[]): Task[] => {
-    return taskList.map(task => {
+  if (!props.tasks) return
+
+  const updateParentTask = (taskList: Task[]): void => {
+    taskList.forEach(task => {
       if (task.children && task.children.length > 0) {
         // 先更新子任务
-        const updatedChildren = updateParentTask(task.children)
+        updateParentTask(task.children)
 
         // 计算父级任务的进度和日期范围
-        const parentData = calculateParentTaskData({
-          ...task,
-          children: updatedChildren,
-        })
+        const parentData = calculateParentTaskData(task)
 
-        return {
-          ...task,
-          progress: parentData.progress,
-          startDate: parentData.startDate,
-          endDate: parentData.endDate,
-          children: updatedChildren,
-        }
+        // 直接修改对象属性
+        task.progress = parentData.progress
+        task.startDate = parentData.startDate
+        task.endDate = parentData.endDate
       }
-      return task
     })
   }
 
-  localTasks.value = updateParentTask(localTasks.value)
+  updateParentTask(props.tasks)
 }
 
 // 获取所有任务的扁平化列表（包括子任务）
@@ -305,16 +313,7 @@ const endSpacerHeight = computed(() => {
   return Math.max(0, totalContentHeight.value - startSpacerHeight.value - visibleHeight)
 })
 
-// 监听外部传入的 tasks 数据变化
-watch(
-  () => props.tasks,
-  newTasks => {
-    localTasks.value = newTasks || []
-    // 更新父级任务数据
-    updateParentTasksData()
-  },
-  { immediate: true, deep: true },
-)
+// 不再需要 watch，直接使用 props.tasks 的引用
 
 function toggleCollapse(task: Task) {
   task.collapsed = !task.collapsed
@@ -325,26 +324,28 @@ function toggleCollapse(task: Task) {
 
 // 更新任务数据
 const updateTaskData = (updatedTask: Task) => {
-  const updateTaskInTree = (taskList: Task[]): Task[] => {
-    return taskList.map(task => {
+  if (!props.tasks) return
+
+  const updateTaskInTree = (taskList: Task[]): boolean => {
+    for (const task of taskList) {
       if (task.id === updatedTask.id) {
-        return {
-          ...task,
-          ...updatedTask, // 完整更新所有字段
-          children: task.children, // 保留子任务结构
+        // 直接修改对象属性
+        Object.assign(task, updatedTask)
+        // 保留子任务结构
+        if (updatedTask.children === undefined) {
+          // 如果 updatedTask 没有 children，保持原来的
+          // task.children 保持不变
         }
+        return true
       }
-      if (task.children) {
-        return {
-          ...task,
-          children: updateTaskInTree(task.children),
-        }
+      if (task.children && updateTaskInTree(task.children)) {
+        return true
       }
-      return task
-    })
+    }
+    return false
   }
 
-  localTasks.value = updateTaskInTree(localTasks.value)
+  updateTaskInTree(props.tasks)
 
   // 更新父级任务的进度和日期范围
   updateParentTasksData()
@@ -359,7 +360,9 @@ const handleTaskUpdated = (event: CustomEvent) => {
 // 监听Timeline的任务新增事件
 const handleTaskAdded = (event: CustomEvent) => {
   const newTask = event.detail
-  localTasks.value.push(newTask)
+  if (props.tasks) {
+    props.tasks.push(newTask)
+  }
 
   // 更新父级任务数据
   updateParentTasksData()
@@ -470,6 +473,50 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
   emit('delete', task, deleteChildren)
 }
 
+// 处理TaskRow拖拽移动事件（核心逻辑在组件内部）
+const handleTaskRowMoved = (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+}) => {
+  const { draggedTask, targetTask, position } = payload
+
+  if (!props.tasks) return
+
+  // 执行移动操作（直接修改 props.tasks 对象，保持引用不变）
+  const result = moveTask(props.tasks, draggedTask.id, targetTask.id, position)
+
+  if (!result) {
+    return
+  }
+
+  // moveTask 已直接修改了 props.tasks，无需手动 splice
+  // 强制触发下一次更新，确保视图刷新
+  nextTick(() => {
+    // 更新父级任务数据（重新计算进度和日期）
+    updateParentTasksData()
+
+    // 触发事件，通知外部组件（可选）
+    // 外部可以监听此事件进行额外处理，如调用API保存、显示提示等
+    // 但不需要更新 tasks，组件已自动完成
+    emit('task-row-moved', {
+      draggedTask: result.movedTask,
+      targetTask,
+      position,
+      oldParent: result.oldParent,
+      newParent: result.newParent,
+    })
+  })
+}
+
+// 全局拖拽管理器（在TaskList层面，所有TaskRow共享）
+const { startDrag, handleDragOver } = useTaskRowDrag({
+  enabled: props.enableTaskRowMove ?? false,
+  onDrop: (draggedTask, targetTask, position) => {
+    handleTaskRowMoved({ draggedTask, targetTask, position })
+  },
+})
+
 onMounted(async () => {
   // 初始化 ResizeObserver 监听容器宽度变化
   if (taskListRef.value) {
@@ -574,6 +621,9 @@ onUnmounted(() => {
         :columns="visibleColumns"
         :get-column-width-style="getColumnWidthStyle"
         :disable-children-render="true"
+        :enable-drag="props.enableTaskRowMove"
+        :drag-start="startDrag"
+        :drag-over="handleDragOver"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"
