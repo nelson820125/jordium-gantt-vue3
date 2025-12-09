@@ -354,5 +354,13 @@
       "Fixed: The issue where tasks could not be displayed correctly when startDate and endDate were not set",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yue-xiaochuan & YQ6494@gitee for their valuable use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.4.6-patch.1",
+    "date": "2025-12-09",
+    "notes": [
+      "修复：Github编译错误",
+      "Fixed: The build errors on Github"
+    ]
   }
 ]

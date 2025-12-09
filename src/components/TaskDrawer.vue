@@ -644,7 +644,8 @@ function confirmTimer(desc: string) {
 }
 
 // 处理负责人变更
-const handleAssigneeChanged = (value: string) => {
+const handleAssigneeChanged = (event: Event) => {
+  const value = (event.target as HTMLSelectElement).value
   // 通过value过滤props.assigneeOptions获取对应的label
   const selected = props.assigneeOptions?.find(option => option.value === value)
   if (selected) {

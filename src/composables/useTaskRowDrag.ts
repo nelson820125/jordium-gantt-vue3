@@ -38,9 +38,6 @@ export function useTaskRowDrag(options: UseDragOptions) {
     event.preventDefault()
     event.stopPropagation()
 
-    // eslint-disable-next-line no-console
-    console.log('[TaskRowDrag] 开始拖拽任务:', task.name)
-
     dragState.value.isDragging = true
     dragState.value.draggedTask = task
     dragState.value.draggedElement = element
@@ -99,16 +96,12 @@ export function useTaskRowDrag(options: UseDragOptions) {
 
     // 不能拖拽到自己身上
     if (task.id === dragState.value.draggedTask.id) {
-      // eslint-disable-next-line no-console
-      console.log('[TaskRowDrag] 跳过：不能拖拽到自己身上')
       clearDropTarget()
       return
     }
 
     // 不能拖拽到自己的子任务上
     if (isDescendant(dragState.value.draggedTask, task)) {
-      // eslint-disable-next-line no-console
-      console.log('[TaskRowDrag] 跳过：不能拖拽到自己的子任务上')
       clearDropTarget()
       return
     }
@@ -136,19 +129,12 @@ export function useTaskRowDrag(options: UseDragOptions) {
       element.classList.add('drop-child')
     }
 
-    // eslint-disable-next-line no-console
-    console.log('[TaskRowDrag] 悬停在任务上:', task.name, 'position:', position)
-
     if (options.onDragOver) {
       options.onDragOver(task, position)
     }
   }
 
   const clearDropTarget = () => {
-    if (dragState.value.dropTargetTask) {
-      // eslint-disable-next-line no-console
-      console.log('[TaskRowDrag] 清除放置目标')
-    }
     dragState.value.dropTargetTask = null
     dragState.value.dropPosition = null
     document.querySelectorAll('.task-row-drop-target').forEach(el => {
@@ -162,9 +148,6 @@ export function useTaskRowDrag(options: UseDragOptions) {
     const draggedTask = dragState.value.draggedTask
     const dropTargetTask = dragState.value.dropTargetTask
     const dropPosition = dragState.value.dropPosition
-
-    // eslint-disable-next-line no-console
-    console.log('[TaskRowDrag] endDrag - dropTargetTask:', dropTargetTask?.name, 'dropPosition:', dropPosition)
 
     // 恢复原始元素样式
     if (dragState.value.draggedElement) {
@@ -189,12 +172,7 @@ export function useTaskRowDrag(options: UseDragOptions) {
 
     // 如果有有效的放置目标，触发drop回调
     if (draggedTask && dropTargetTask && dropPosition && options.onDrop) {
-      // eslint-disable-next-line no-console
-      console.log('[TaskRowDrag] 放置任务:', draggedTask.name, '到', dropTargetTask.name, 'position:', dropPosition)
       options.onDrop(draggedTask, dropTargetTask, dropPosition)
-    } else {
-      // eslint-disable-next-line no-console
-      console.log('[TaskRowDrag] 结束拖拽，没有有效的放置目标')
     }
 
     // 重置状态
@@ -231,8 +209,6 @@ export function useTaskRowDrag(options: UseDragOptions) {
         const taskRow = elementUnderMouse.closest('.task-row') as HTMLElement
         if (taskRow && taskRow.dataset.taskId) {
           const taskId = Number(taskRow.dataset.taskId)
-          // eslint-disable-next-line no-console
-          console.log('[TaskRowDrag] 检测到taskRow:', taskId)
 
           // 触发全局事件，让TaskRow组件处理
           window.dispatchEvent(

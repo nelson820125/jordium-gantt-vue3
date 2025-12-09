@@ -627,10 +627,9 @@ const handleTaskRowMoved = async (payload: {
   const successMsg = demoMessages.value.taskMoveConfirm.messages.moveSuccess
   showMessage(`${successMsg}: ${message}`, 'success', { closable: true })
 
-  // ⚠️ 重要：必须更新 tasks.value 以同步 TaskList 和 Timeline
-  // TaskList 已更新内部视图，但 Timeline 依赖 props.tasks
-  // 此赋值会触发 GanttChart 的 watch，进而触发 Timeline 重新渲染
-  tasks.value = updatedTasks
+  // ⚠️ 注意：组件内部已通过对象引用自动完成数据移动，TaskList 和 Timeline 自动同步
+  // 无需手动更新 tasks.value，因为移动操作直接修改了原始对象引用
+  // 如果需要触发响应式更新，可以使用: tasks.value = [...tasks.value]
 
   // 调用后端API保存任务层级变更
   // try {

@@ -123,9 +123,8 @@ const addMilestone = () => {
     startDate: newTask.value.startDate,
     progress: 0,
     type: 'milestone',
-    icon: 'diamond'
+    icon: 'diamond',
   });
-  console.log('milestones: ', milestones.value)
   newTask.value = { name: '', startDate: '', endDate: '' };
   showAddMilestoneDialog.value = false;
 }

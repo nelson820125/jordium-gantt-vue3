@@ -309,8 +309,6 @@ const handleTaskRowDragOver = (event: CustomEvent) => {
 
   const { taskId, event: mouseEvent } = event.detail
   if (taskId === props.task.id) {
-    // eslint-disable-next-line no-console
-    console.log('[TaskRow] 接收到drag-over事件，任务:', props.task.name)
     props.dragOver(props.task, taskRowRef.value, mouseEvent)
   }
 }
