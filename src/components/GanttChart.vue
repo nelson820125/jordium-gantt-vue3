@@ -48,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
   autoSortByStartDate: false,
   allowDragAndResize: true,
   enableTaskRowMove: false,
+  assigneeOptions: () => [],
 })
 
 const emit = defineEmits([
@@ -128,6 +129,10 @@ interface Props {
   allowDragAndResize?: boolean
   // 是否启用TaskRow拖拽移动功能（默认为 false）
   enableTaskRowMove?: boolean
+  // 指派人员选项列表（用于TaskDrawer中的assignee下拉菜单）
+  // 格式：{ key?: string | number, value: string | number, label: string }
+  // key 为可选项，若不存在则使用 value 作为选项的唯一标识
+  assigneeOptions?: Array<{ key?: string | number; value: string | number; label: string }>
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -2328,6 +2333,7 @@ function handleMilestoneDialogDelete(milestoneId: number) {
       v-model:visible="taskDrawerVisible"
       :task="taskDrawerTask"
       :is-edit="taskDrawerEditMode"
+      :assignee-options="props.assigneeOptions"
       @submit="handleTaskDrawerSubmit"
       @close="taskDrawerVisible = false"
       @start-timer="handleStartTimer"

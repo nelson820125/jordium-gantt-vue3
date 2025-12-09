@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2025-12-09
+
+### Fixed
+- 修复：内置TaskDrawer中负责人列表可以外部初始化
+- Fixed: The assignee list in the built-in TaskDrawer can be initialized externally
+
 ## [1.4.5] - 2025-12-06
 
 ### Changed

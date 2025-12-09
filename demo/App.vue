@@ -187,6 +187,18 @@ const allowDragAndResize = ref(true)
 // 控制是否启用TaskRow拖拽移动
 const enableTaskRowMove = ref(true)
 
+// 指派人员选项列表
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+  { value: 'zhaoliu', label: '赵六' },
+  { value: 'qianqi', label: '钱七' },
+  { key: 'user_sunba', value: 'sunba', label: '孙八' }, // 示例：使用自定义 key
+  { value: 'zhoujiu', label: '周九' },
+  { value: 'wushi', label: '吴十' },
+])
+
 // TaskBar配置
 const taskBarOptions = ref({
   showAvatar: true,
@@ -1088,6 +1100,7 @@ const handleTaskRowMoved = async (payload: {
         :use-default-milestone-dialog="true"
         :allow-drag-and-resize="allowDragAndResize"
         :enable-task-row-move="enableTaskRowMove"
+        :assignee-options="assigneeOptions"
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"

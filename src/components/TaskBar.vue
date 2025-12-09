@@ -243,7 +243,26 @@ const taskBarStyle = computed(() => {
   const startDate = createLocalDate(currentStartDate)
   const endDate = createLocalDate(currentEndDate)
   const baseStart = parsedBaseStartDate.value
-  if (!startDate || !endDate || !baseStart) {
+
+  // 如果startDate和endDate都不存在，返回0宽度（实际不会渲染，由shouldRenderTaskBar控制）
+  if (!startDate && !endDate) {
+    return {
+      left: '0px',
+      width: '0px',
+      height: `${props.rowHeight - 10}px`,
+      top: '4px',
+    }
+  }
+
+  // 渲染时使用有效日期：如果只有startDate或endDate，用它来计算开始和结束位置
+  // 注意：不修改原始的startDate/endDate变量，只用于渲染计算
+  const renderStartDate = startDate || endDate
+  const renderEndDate = endDate || startDate
+  const renderBaseStart = baseStart
+
+  // 安全检查：renderStartDate和renderEndDate必定存在（因为上面已经检查过）
+  // 但baseStart可能不存在，如果不存在则无法计算位置
+  if (!renderStartDate || !renderEndDate || !renderBaseStart) {
     return {
       left: '0px',
       width: '0px',
@@ -258,12 +277,12 @@ const taskBarStyle = computed(() => {
   // 小时视图：按分钟精确计算位置（需要考虑时间部分）
   if (props.currentTimeScale === TimelineScale.HOUR) {
     // 确保 baseStart 是当天的 00:00:00
-    const baseStartOfDay = new Date(baseStart)
+    const baseStartOfDay = new Date(renderBaseStart)
     baseStartOfDay.setHours(0, 0, 0, 0)
 
     // 处理没有时间部分的日期字符串
-    let adjustedStartDate = startDate
-    let adjustedEndDate = endDate
+    let adjustedStartDate = renderStartDate
+    let adjustedEndDate = renderEndDate
 
     // 检查原始日期字符串是否包含时间部分
     const originalStartStr = currentStartDate || props.task.startDate
@@ -274,13 +293,13 @@ const taskBarStyle = computed(() => {
       typeof originalStartStr === 'string' &&
       /^\d{4}-\d{2}-\d{2}$/.test(originalStartStr.trim())
     ) {
-      adjustedStartDate = new Date(startDate)
+      adjustedStartDate = new Date(renderStartDate)
       adjustedStartDate.setHours(0, 0, 0, 0)
     }
 
     // 如果endDate没有时间部分（格式为YYYY-MM-DD），设置为次日00:00
     if (typeof originalEndStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(originalEndStr.trim())) {
-      adjustedEndDate = new Date(endDate)
+      adjustedEndDate = new Date(renderEndDate)
       adjustedEndDate.setDate(adjustedEndDate.getDate() + 1)
       adjustedEndDate.setHours(0, 0, 0, 0)
     }
@@ -299,15 +318,19 @@ const taskBarStyle = computed(() => {
 
     // 将日期标准化为当天的00:00:00，忽略时间部分
     const startDateOnly = new Date(
-      startDate.getFullYear(),
-      startDate.getMonth(),
-      startDate.getDate(),
+      renderStartDate.getFullYear(),
+      renderStartDate.getMonth(),
+      renderStartDate.getDate(),
     )
-    const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+    const endDateOnly = new Date(
+      renderEndDate.getFullYear(),
+      renderEndDate.getMonth(),
+      renderEndDate.getDate(),
+    )
     const baseStartOnly = new Date(
-      baseStart.getFullYear(),
-      baseStart.getMonth(),
-      baseStart.getDate(),
+      renderBaseStart.getFullYear(),
+      renderBaseStart.getMonth(),
+      renderBaseStart.getDate(),
     )
 
     if (
@@ -428,6 +451,15 @@ const parsedEndDate = computed(() => createLocalDate(props.task.endDate || ''))
 
 // 缓存解析后的基准开始日期
 const parsedBaseStartDate = computed(() => createLocalDate(props.startDate))
+
+// 判断是否应该渲染TaskBar：只考虑startDate和endDate，都不存在时不渲染
+const shouldRenderTaskBar = computed(() => {
+  const currentStartDate = tempTaskData.value?.startDate || props.task.startDate
+  const currentEndDate = tempTaskData.value?.endDate || props.task.endDate
+
+  // 只要startDate或endDate有一个存在就渲染
+  return !!(currentStartDate || currentEndDate)
+})
 
 // 计算任务状态和颜色
 const taskStatus = computed(() => {
@@ -2240,6 +2272,7 @@ onUnmounted(() => {
 
 <template>
   <div
+    v-if="shouldRenderTaskBar"
     ref="barRef"
     class="task-bar"
     :style="{
@@ -2336,8 +2369,8 @@ onUnmounted(() => {
         <!-- 图片头像 -->
         <img v-if="task.avatar" :src="task.avatar" :alt="task.assignee || 'avatar'" />
         <!-- 文字头像（负责人首字母） -->
-        <span v-else-if="task.assignee" class="avatar-text">
-          {{ task.assignee.charAt(0).toUpperCase() }}
+        <span v-else-if="task.assigneeName" class="avatar-text">
+          {{ task.assigneeName.charAt(0).toUpperCase() }}
         </span>
         <!-- 默认灰色用户图标 -->
         <svg v-else class="avatar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

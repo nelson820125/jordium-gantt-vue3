@@ -60,6 +60,15 @@ const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'progress', label: '进度', visible: true },
   { key: 'department', label: '部门', visible: true, width: 200 },
   { key: 'departmentCode', label: '部门编号', visible: true },
+  { key: 'assigneeName', label: '负责人', visible: true },
+])
+
+// 使用内置TaskDrawer组件的时候，可以传入负责人选项
+// 请先设置GanttChart组件属性use-default-drawer="true"
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
 ])
 
 // TaskList宽度配置示例
@@ -140,16 +149,16 @@ const handleTaskRowMoved = async (payload: {
   newParent: Task | null
 }) => {
   const { draggedTask, targetTask, position, oldParent, newParent } = payload
-  
+
   // 组件已自动完成任务移动、parentId更新和TaskList/Timeline同步
   // 监听此事件为完全可选，仅用于：
-  
+
   // 1. 显示自定义提示消息
   const oldParentName = oldParent?.name || '根目录'
   const newParentName = newParent?.name || '根目录'
   const positionText = position === 'after' ? '在目标任务之后' : '作为目标任务的子任务'
   alert(`任务 [${draggedTask.name}] 已从 [${oldParentName}] 移动到 [${newParentName}] (${positionText})`, 'success')
-  
+
   // 2. 调用后端 API 保存新的任务层级关系
   try {
     await api.updateTaskHierarchy({
@@ -163,17 +172,36 @@ const handleTaskRowMoved = async (payload: {
     console.error('保存任务层级失败:', error)
     alert('保存失败，请刷新页面')
   }
-  
+
   // 3. 触发其他业务逻辑（如更新关联数据、记录操作日志等）
   // ...
 }
+
+// 任务添加后回调
+const onTaskAdded = (res) => {
+  const addedTask = tasks.value.find(t => t.id === res.task.id);
+  if (addedTask) {
+    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
+    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee);
+    if (assigneeOption) {
+      addedTask.assigneeName = assigneeOption.label;
+    }
+  } else {
+    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
+    const assigneeOption = assigneeOptions.value.find(option => option.value === res.task.assignee);
+    if (assigneeOption) {
+      res.task.assigneeName = assigneeOption.label;
+    }
+    tasks.value.push(res.task);
+  }
+};
 </script>
 
 <template>
   <div>
     <div style="height: 600px;">
-      <GanttChart 
-        :tasks="tasks" 
+      <GanttChart
+        :tasks="tasks"
         :milestones="milestones"
         :task-list-config="taskListConfig"
         :toolbar-config="toolbarConfig"
@@ -182,12 +210,13 @@ const handleTaskRowMoved = async (payload: {
         :locale-messages="customMessages"
         :allow-drag-and-resize="true"
         :enable-task-row-move="true"
+        :assignee-options="assigneeOptions"
         @task-row-moved="handleTaskRowMoved"
-        @add-task="showAddTaskDrawer = true"
         @add-milestone="showAddMilestoneDialog = true"
         @task-double-click="onTaskDblclick"
         @task-click="onTaskClick"
         @milestone-double-click="onMilestoneDblclick"
+        @task-added="onTaskAdded"
       >
     </GanttChart>
     </div>
@@ -196,7 +225,7 @@ const handleTaskRowMoved = async (payload: {
       <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
       <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
     </div>
-    
+
     <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
     <div v-if="showAddTaskDrawer" class="drawer-overlay" @click="showAddTaskDrawer = false">
       <div class="drawer-container" @click.stop>
@@ -204,24 +233,24 @@ const handleTaskRowMoved = async (payload: {
           <h3>自定义添加任务组件</h3>
           <button class="close-btn" @click="showAddTaskDrawer = false">×</button>
         </div>
-        
+
         <div class="drawer-body">
           <div class="form-item">
             <label>任务名称:</label>
             <input v-model="newTask.name" type="text" placeholder="请输入任务名称" />
           </div>
-          
+
           <div class="form-item">
             <label>开始日期:</label>
             <input v-model="newTask.startDate" type="date" />
           </div>
-          
+
           <div class="form-item">
             <label>结束日期:</label>
             <input v-model="newTask.endDate" type="date" />
           </div>
         </div>
-        
+
         <div class="drawer-footer">
           <button class="btn btn-primary" @click="addTask">确定</button>
           <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
@@ -230,9 +259,9 @@ const handleTaskRowMoved = async (payload: {
     </div>
 
     <!-- 自定义Dialog组件基于element plus -->
-    <el-dialog 
-      title="自定义添加里程碑组件 - Element Plus" 
-      v-model="showAddMilestoneDialog" 
+    <el-dialog
+      title="自定义添加里程碑组件 - Element Plus"
+      v-model="showAddMilestoneDialog"
       width="400px"
       @close="newTask = { name: '', startDate: '', endDate: '' }"
     >
@@ -252,7 +281,7 @@ const handleTaskRowMoved = async (payload: {
         <el-button @click="addMilestone">确定</el-button>
         <el-button @click="showAddMilestoneDialog = false">取消</el-button>
       </template>
-    </el-dialog>  
+    </el-dialog>
   </div>
 </template>
 
