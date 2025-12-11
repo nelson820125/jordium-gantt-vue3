@@ -207,41 +207,60 @@ const drawLinks = () => {
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       // 动态计算控制点，优化连接线的显示效果
-      // 1. 避免被TaskBar直角遮挡：根据垂直距离调整控制点
-      // 2. 优化接近垂直连线：根据水平/垂直距离比例调整出入角度
+      // 核心策略：避免链接线被 TaskBar 的直角遮挡
+      // 1. 出点和入点需要有足够的"间距"，确保不被 TaskBar 直角遮挡
+      // 2. 根据 TaskBar 的尺寸（宽度、高度）动态调整水平和垂直偏移
 
-      // TaskBar 半高（用于计算绕过直角所需的偏移）
-      const halfBarHeight = fromBar.height / 2 // 通常是 20px
+      // TaskBar 尺寸（用于计算绕过直角所需的偏移）
+      const barWidth = fromBar.width
+      const barHeight = fromBar.height
 
       // 计算水平距离占总距离的比例
       const horizontalRatio = Math.abs(dx) / (distance + 1) // +1 避免除零
 
-      // 策略：控制点先水平延伸，然后垂直偏移足够距离，确保线条绕过TaskBar直角
-      // 关键改进：即使接近垂直，也保持足够的水平偏移，确保有明显的进出角度
-      let horizontalOffset = 40
+      // ===== 水平偏移计算 =====
+      // 策略：确保出点和入点的控制点都在 TaskBar 外侧，不会被角落遮挡
+      // 从 A 出发：至少要超过 A 的右边界 + 安全距离
+      // 进入 B：至少要在 B 的左边界 - 安全距离
+      const horizontalSafetyMargin = 20 // TaskBar 角落安全距离
+      let horizontalOffset = barHeight / 2 + horizontalSafetyMargin // 基础偏移
 
       if (horizontalRatio < 0.3) {
-        // 接近垂直：保持较大的水平偏移，确保线条以明显角度进出
-        // 最小 35px，保证即使完全垂直也有清晰的进出角度
-        horizontalOffset = Math.max(35, horizontalRatio * 100)
-      } else if (horizontalRatio < 0.5) {
-        // 中等角度：适当调整
-        horizontalOffset = 38
+        // 接近垂直的情况：需要更大的水平偏移，确保出入角度清晰
+        horizontalOffset = Math.max(barHeight / 2 + 25, 45)
+      } else if (horizontalRatio < 0.6) {
+        // 中等角度：适度调整
+        horizontalOffset = barHeight / 2 + horizontalSafetyMargin
+      } else {
+        // 水平情况：偏移可以相对较小
+        horizontalOffset = barWidth / 3 + 10
       }
 
-      // 垂直偏移距离：必须大于 TaskBar 半高，才能真正绕过直角
+      // ===== 垂直偏移计算 =====
+      // 策略：根据垂直距离动态调整，确保线条绕过 TaskBar 的上下边界
       let verticalOffset = 0
 
       if (Math.abs(dy) > 0) {
-        // 根据垂直距离调整偏移量
-        // 关键：垂直偏移至少要 halfBarHeight + 15，确保线条在TaskBar之外
-        const minOffset = halfBarHeight + 15 // 最小35px，确保绕过直角
-        const dynamicOffset = Math.min(Math.abs(dy) * 0.6, 90) // 最大90px，增加偏移幅度
-        verticalOffset = Math.max(minOffset, dynamicOffset)
+        // 垂直偏移的最小值：必须大于 TaskBar 半高 + 安全距离，才能绕过直角
+        const verticalSafetyMargin = 12 // TaskBar 角落安全距离
+        const minVerticalOffset = barHeight / 2 + verticalSafetyMargin // 通常是 32-35px
+
+        // 动态计算：根据两个 TaskBar 之间的垂直距离
+        // 如果距离较近，偏移量应该相对较小（形成更陡峭的曲线）
+        // 如果距离较远，偏移量应该相对较大（形成更平缓的曲线）
+        const verticalGap = Math.abs(dy) - barHeight // 两个 TaskBar 之间的实际距离
+        const dynamicOffset = Math.min(verticalGap * 0.5, 100) // 最大 100px
+
+        verticalOffset = Math.max(minVerticalOffset, dynamicOffset)
+      } else {
+        // 完全水平的连接：垂直偏移为 0（线条直接通过中心）
+        verticalOffset = 0
       }
 
-      // 场景2优化：接近垂直时，控制点的垂直偏移要更平缓
-      // 让线条形成优雅的S形曲线，而不是急转弯
+      // ===== 控制点垂直比例调整 =====
+      // 根据连接类型调整控制点的垂直位置
+      // 接近垂直时：控制点垂直偏移更小，形成平缓的 S 形曲线
+      // 接近水平时：控制点垂直偏移接近最大值，形成明显的进出角度
       const isNearVertical = horizontalRatio < 0.3
       const verticalControlRatio = isNearVertical ? 0.4 : 0.8 // 接近垂直时控制点垂直偏移更小
 
