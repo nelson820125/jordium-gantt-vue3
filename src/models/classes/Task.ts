@@ -3,7 +3,8 @@ export interface Task {
   id: number
   name: string
   predecessor?: number[] // 前置任务ID数组
-  assignee?: string
+  assignee?: string // 记录唯一键值，如用户ID或用户名
+  assigneeName?: string // 任务负责人名称
   avatar?: string // 任务负责人头像URL
   startDate?: string
   endDate?: string

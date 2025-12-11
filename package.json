@@ -1,6 +1,6 @@
 {
   "name": "jordium-gantt-vue3",
-  "version": "1.4.3",
+  "version": "1.4.6-patch.1",
   "type": "module",
   "main": "npm-package/dist/jordium-gantt-vue3.cjs.js",
   "module": "npm-package/dist/jordium-gantt-vue3.es.js",

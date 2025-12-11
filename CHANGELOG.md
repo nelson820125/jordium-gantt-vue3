@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6-patch.1] - 2025-12-09
+
+### Fixed
+- 修复：Github编译错误
+- Fixed: build errors From github
+
+## [1.4.6] - 2025-12-09
+
+### Fixed
+- 修复：内置TaskDrawer中负责人列表可以外部初始化
+- 修复：未设置startDate和endDate时，任务无法正确显示的问题
+- Fixed: The assignee list in the built-in TaskDrawer can be initialized externally
+- Fixed: The issue where tasks could not be displayed correctly when startDate and endDate were not set
+
+## [1.4.5] - 2025-12-06
+
+### Changed
+- 优化：任务列表中任务项的移动拖放功能
+- Optimized：Task item move and drag-and-drop functionality in the task list
+
+## [1.4.4] - 2025-12-06
+
+### Added
+- 任务列表中任务项的移动拖放功能
+- Task item move and drag-and-drop functionality in the task list
+
 ## [1.4.3] - 2025-11-28
 
 ### Added

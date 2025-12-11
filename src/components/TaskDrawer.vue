@@ -9,11 +9,18 @@ import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
 import type { Task } from '../models/classes/Task'
 import '../styles/app.css'
 
+interface AssigneeOption {
+  key?: string | number
+  value: string | number
+  label: string
+}
+
 interface Props {
   visible: boolean
   task?: Task | null
   isEdit?: boolean
   onDelete?: (task: Task) => void
+  assigneeOptions?: AssigneeOption[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -21,6 +28,13 @@ const props = withDefaults(defineProps<Props>(), {
   task: null,
   isEdit: false,
   onDelete: undefined,
+  assigneeOptions: () => [
+    { value: 'zhangsan', label: '张三' },
+    { value: 'lisi', label: '李四' },
+    { value: 'wangwu', label: '王五' },
+    { value: 'zhaoliu', label: '赵六' },
+    { value: 'qianqi', label: '钱七' },
+  ],
 })
 
 const emit = defineEmits<{
@@ -628,6 +642,18 @@ function confirmTimer(desc: string) {
   // desc 可用于后续业务
   handleStartTimer(desc)
 }
+
+// 处理负责人变更
+const handleAssigneeChanged = (event: Event) => {
+  const value = (event.target as HTMLSelectElement).value
+  // 通过value过滤props.assigneeOptions获取对应的label
+  const selected = props.assigneeOptions?.find(option => option.value === value)
+  if (selected) {
+    // 这里可以根据需要处理选中的负责人信息
+    // 例如，可以将负责人名称存储在formData中
+    formData.assigneeName = selected.label
+  }
+}
 </script>
 
 <template>
@@ -788,13 +814,15 @@ function confirmTimer(desc: string) {
 
           <div class="form-group">
             <label class="form-label" for="task-assignee">{{ t.assignee }}</label>
-            <select id="task-assignee" v-model="formData.assignee" class="form-select">
+            <select id="task-assignee" v-model="formData.assignee" class="form-select" @change="handleAssigneeChanged">
               <option value="">{{ t.selectAssignee }}</option>
-              <option value="张三">张三</option>
-              <option value="李四">李四</option>
-              <option value="王五">王五</option>
-              <option value="赵六">赵六</option>
-              <option value="钱七">钱七</option>
+              <option
+                v-for="assignee in props.assigneeOptions"
+                :key="assignee.key ?? assignee.value"
+                :value="assignee.value"
+              >
+                {{ assignee.label }}
+              </option>
             </select>
           </div>
 

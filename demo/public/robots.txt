@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://nelson820125.github.io/jordium-gantt-vue3/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1

@@ -23,7 +23,8 @@
 
 <p align="center">
   <a href="./README.md">中文</a> | 
-  <a href="./README-EN.md">English</a>
+  <a href="./README-EN.md">English</a> | 
+  <a href="./CHANGELOG.md">更新日志</a>
 </p>
 
 <p align="center">现代化的 Vue 3 甘特图组件库，为项目管理和任务调度提供完整解决方案</p>
@@ -178,15 +179,17 @@ npm run dev
 
 #### 基础属性
 
-| 属性名                      | 类型      | 默认值  | 说明                                                           |
-| --------------------------- | --------- | ------- | -------------------------------------------------------------- |
-| `tasks`                     | `Task[]`  | `[]`    | 任务数据数组                                                   |
-| `milestones`                | `Task[]`  | `[]`    | 里程碑数据数组（注意：类型为 Task[]，需设置 type='milestone'） |
-| `showToolbar`               | `boolean` | `true`  | 是否显示工具栏                                                 |
-| `useDefaultDrawer`          | `boolean` | `true`  | 是否使用内置任务编辑抽屉（TaskDrawer）                         |
-| `useDefaultMilestoneDialog` | `boolean` | `true`  | 是否使用内置里程碑编辑对话框（MilestoneDialog）                |
-| `autoSortByStartDate`       | `boolean` | `false` | 是否根据开始时间自动排序任务                                   |
-| `allowDragAndResize`        | `boolean` | `true`  | 是否允许拖拽和调整任务/里程碑大小                              |
+| 属性名                      | 类型                                                                                      | 默认值  | 说明                                                           |
+| --------------------------- | ----------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------- |
+| `tasks`                     | `Task[]`                                                                                  | `[]`    | 任务数据数组                                                   |
+| `milestones`                | `Task[]`                                                                                  | `[]`    | 里程碑数据数组（注意：类型为 Task[]，需设置 type='milestone'） |
+| `showToolbar`               | `boolean`                                                                                 | `true`  | 是否显示工具栏                                                 |
+| `useDefaultDrawer`          | `boolean`                                                                                 | `true`  | 是否使用内置任务编辑抽屉（TaskDrawer）                         |
+| `useDefaultMilestoneDialog` | `boolean`                                                                                 | `true`  | 是否使用内置里程碑编辑对话框（MilestoneDialog）                |
+| `autoSortByStartDate`       | `boolean`                                                                                 | `false` | 是否根据开始时间自动排序任务                                   |
+| `allowDragAndResize`        | `boolean`                                                                                 | `true`  | 是否允许拖拽和调整任务/里程碑大小                              |
+| `enableTaskRowMove`         | `boolean`                                                                                 | `false` | 是否允许拖拽和摆放TaskRow                                      |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          | 
 
 #### 配置对象属性
 
@@ -241,13 +244,14 @@ npm run dev
 | `milestone-deleted`      | `{ milestoneId: number }`         | 里程碑删除                 |
 | `milestone-icon-changed` | `{ milestoneId, icon }`           | 里程碑图标变更             |
 | `milestone-drag-end`     | `(milestone: Task)`               | 拖拽里程碑结束             |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） |
 
 #### 示例1：最简单的甘特图
 
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart :tasks="tasks" />
+    <GanttChart :tasks="tasks" :assignee-options="assigneeOptions" />
   </div>
 </template>
 
@@ -265,6 +269,12 @@ const tasks = ref([
     progress: 100,
   },
 ])
+
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
 </script>
 ```
 
@@ -273,7 +283,7 @@ const tasks = ref([
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart :tasks="tasks" :milestones="milestones" />
+    <GanttChart :tasks="tasks" :milestones="milestones" :assignee-options="assigneeOptions" />
   </div>
 </template>
 
@@ -301,6 +311,12 @@ const milestones = ref([
     icon: 'diamond',
   },
 ])
+
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
 </script>
 ```
 
@@ -321,6 +337,7 @@ const milestones = ref([
         :tasks="tasks"
         :milestones="milestones"
         :show-toolbar="false"
+        :assignee-options="assigneeOptions"
         @task-added="handleTaskAdded"
         @milestone-saved="handleMilestoneSaved"
       />
@@ -335,6 +352,12 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([])
 const milestones = ref([])
+
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
 
 const addTask = () => {
   const newTask = {
@@ -383,7 +406,8 @@ const handleMilestoneSaved = milestone => {
 | `endDate`          | `string`   | -    | -           | 结束日期，格式：'YYYY-MM-DD' 或 'YYYY-MM-DD HH:mm'                                                                              |
 | `progress`         | `number`   | -    | `0`         | 任务进度，范围 0-100                                                                                                            |
 | `predecessor`      | `number[]` | -    | -           | 前置任务 ID 数组，标准格式：`[1, 2, 3]`<br/>**兼容格式**：也支持字符串 `'1,2,3'` 或字符串数组 `['1', '2', '3']`，组件会自动解析 |
-| `assignee`         | `string`   | -    | -           | 任务负责人                                                                                                                      |
+| `assignee`         | `string`   | -    | -           | 任务负责人，用作负责人下拉菜单的值绑定                                                                                                                      |
+| `assigneeName`         | `string`   | -    | -           | 任务负责人姓名，自动从绑定的数据集`assigneeOptions`中获取Label作为显示，如果需要自定义，可以在GanttChart回调事件`task-added`中自定义信息                                                                                                                      |
 | `avatar`           | `string`   | -    | -           | 任务负责人头像 URL                                                                                                              |
 | `estimatedHours`   | `number`   | -    | -           | 预估工时（小时）                                                                                                                |
 | `actualHours`      | `number`   | -    | -           | 实际工时（小时）                                                                                                                |
@@ -422,6 +446,8 @@ const handleMilestoneSaved = milestone => {
 | `taskBarConfig`       | `TaskBarConfig`  | `{}`        | 任务条样式配置，详见 [TaskBarConfig 配置](#taskbarconfig-配置) |
 | `taskListConfig`      | `TaskListConfig` | `undefined` | 任务列表配置，详见 [TaskListConfig 配置](#tasklistconfig-配置) |
 | `autoSortByStartDate` | `boolean`        | `false`     | 是否根据开始时间自动排序任务                                   |
+| `enableTaskRowMove`        | `boolean` | `false`  | 是否允许拖拽和摆放TaskRow   |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          | 
 
 **配置说明**：
 
@@ -447,6 +473,7 @@ const handleMilestoneSaved = milestone => {
 | `successor-added`    | `{ targetTask: Task, newTask: Task }`     | 通过右键菜单添加后置任务后 | `targetTask` 是原任务，`newTask` 是新创建的后置任务（其 predecessor 已包含 targetTask.id）                                 |
 | `timer-started`      | `(task: Task) => void`                    | 任务计时器启动时           | 开始记录任务工时                                                                                                           |
 | `timer-stopped`      | `(task: Task) => void`                    | 任务计时器停止时           | 停止记录任务工时                                                                                                           |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） | 组件已自动完成数据移动和TaskList/Timeline同步。监听此事件为完全可选，仅用于显示提示、调用API保存等。`position`: 'after'=同级放置，'child'=作为子任务 |
 
 **数据同步说明**：
 
@@ -461,6 +488,7 @@ const handleMilestoneSaved = milestone => {
   <div style="height: 600px;">
     <GanttChart
       :tasks="tasks"
+      :assignee-options="assigneeOptions"
       @add-task="handleAddTask"
       @task-added="handleTaskAdded"
       @task-updated="handleTaskUpdated"
@@ -496,6 +524,12 @@ const tasks = ref<Task[]>([
     assignee: '李四',
     predecessor: [1], // 依赖任务1
   },
+])
+
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
 ])
 
 // 工具栏"添加任务"按钮点击事件
@@ -550,6 +584,7 @@ const handleTaskDragEnd = (task: Task) => {
 <template>
   <GanttChart
     :tasks="tasks"
+    :assignee-options="assigneeOptions"
     @predecessor-added="handlePredecessorAdded"
     @successor-added="handleSuccessorAdded"
   />
@@ -612,6 +647,12 @@ const tasks = ref<Task[]>([
   },
 ])
 
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
+
 // 通过右键菜单添加前置任务时触发
 const handlePredecessorAdded = (event: { targetTask: Task; newTask: Task }) => {
   console.log(`任务 [${event.targetTask.name}] 添加了前置任务 [${event.newTask.name}]`)
@@ -665,6 +706,7 @@ const handleSuccessorAdded = (event: { targetTask: Task; newTask: Task }) => {
       :show-toolbar="false"
       :use-default-drawer="true"
       :use-default-milestone-dialog="true"
+      :assignee-options="assigneeOptions"
       @add-task="handleAddTask"
       @add-milestone="handleAddMilestone"
       @task-added="handleTaskAdded"
@@ -679,6 +721,12 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([])
 const milestones = ref([])
+
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
 
 // 自定义按钮触发事件（组件会响应并打开内置编辑器）
 const triggerAddTask = () => {
@@ -712,6 +760,124 @@ const handleTaskAdded = e => {
 > - 显示工具栏 + 默认编辑器：最简单的开箱即用方式
 > - 隐藏工具栏 + 自定义按钮 + 默认编辑器：自定义控制栏样式，保留默认编辑功能
 > - 隐藏工具栏 + 自定义按钮 + 自定义编辑器：完全自定义所有交互逻辑
+
+#### 示例4：任务行拖拽排序
+
+允许用户通过拖拽 TaskRow 来调整任务的层级关系和前后顺序：
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :tasks="tasks"
+      :enable-task-row-move="true"
+      :assignee-options="assigneeOptions"
+      @task-row-moved="handleTaskRowMoved"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { Task } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: '项目规划',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+  },
+  {
+    id: 2,
+    name: '需求分析',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+    parentId: 1,
+  },
+  {
+    id: 3,
+    name: '系统设计',
+    startDate: '2025-01-21',
+    endDate: '2025-01-30',
+    progress: 40,
+  },
+])
+
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
+
+// 任务行拖拽完成事件（可选）
+const handleTaskRowMoved = async (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  const { draggedTask, targetTask, position, oldParent, newParent } = payload
+  
+  // 组件已自动完成任务移动、parentId更新和TaskList/Timeline同步
+  // 监听此事件为完全可选，仅用于：
+  
+  // 1. 显示自定义提示消息
+  const oldParentName = oldParent?.name || '根目录'
+  const newParentName = newParent?.name || '根目录'
+  const positionText = position === 'after' ? '在目标任务之后' : '作为目标任务的子任务'
+  showMessage(`任务 [${draggedTask.name}] 已从 [${oldParentName}] 移动到 [${newParentName}] (${positionText})`, 'success')
+  
+  // 2. 调用后端 API 保存新的任务层级关系
+  try {
+    await api.updateTaskHierarchy({
+      taskId: draggedTask.id,
+      targetTaskId: targetTask.id,
+      position: position,
+      oldParentId: oldParent?.id,
+      newParentId: newParent?.id,
+    })
+  } catch (error) {
+    console.error('保存任务层级失败:', error)
+    showMessage('保存失败，请刷新页面', 'error')
+  }
+  
+  // 3. 触发其他业务逻辑（如更新关联数据、记录操作日志等）
+  // ...
+}
+</script>
+```
+
+**拖拽排序说明**：
+
+- **启用拖拽**：设置 `enable-task-row-move="true"` 启用任务行拖拽功能（默认为 `false`）
+- **拖拽算法**（组件内部自动执行）：
+  - **算法1（放置在后面）**：当目标任务没有子任务时，被拖拽的任务会放置在目标任务之后（同级），`position='after'`
+  - **算法2（作为子任务）**：当目标任务有子任务时，被拖拽的任务会成为目标任务的第一个子任务，`position='child'`
+- **视觉反馈**：
+  - 拖拽时会显示半透明的跟随元素
+  - 悬停在有效目标任务上时显示蓝色边框提示
+  - 无子任务的任务显示蓝色底部边框
+  - 有子任务的任务显示蓝色四周边框
+- **自动同步**：组件内部通过对象引用直接修改 `props.tasks`，自动完成任务移动、`parentId` 更新、`children` 数组调整以及 TaskList/Timeline 同步
+- **事件监听（可选）**：
+  - `task-row-moved` 事件为完全可选，仅用于显示提示、调用API保存、记录日志等额外处理
+  - 无需手动更新 `tasks.value`，组件已自动完成数据同步
+- **事件参数**：
+  - `draggedTask`: 被拖拽的任务
+  - `targetTask`: 目标任务
+  - `position`: 放置位置（'after' 或 'child'）
+  - `oldParent`: 原父任务（null 表示根目录）
+  - `newParent`: 新父任务（null 表示根目录）
+- **限制条件**：
+  - 不能拖拽到自己身上
+  - 不能拖拽到自己的子任务上（避免循环引用）
+  - 里程碑和里程碑分组不能被拖拽
 
 ### 里程碑管理
 
@@ -1123,6 +1289,54 @@ const handleDelete = () => {
 ## ⚙️ 配置与扩展
 
 本章节详细介绍 GanttChart 组件的配置选项和扩展能力，包括组件配置、主题与国际化、自定义扩展三个部分。
+
+### 任务类型定义
+
+任务类型（`type` 字段）用于区分不同类型的任务，组件内部会根据类型执行不同的逻辑判断。
+
+#### 内置任务类型
+
+| 类型值  | 说明       | 默认值 |
+| ------- | ---------- | ------ |
+| `story` | 用户故事   | -      |
+| `task`  | 普通任务   | ✅     |
+| `bug`   | 缺陷/问题  | -      |
+
+#### 功能区分
+
+不同任务类型在组件中具有不同的功能特性：
+
+| 功能             | story | task | bug |
+| ---------------- | ----- | ---- | --- |
+| 可作为上级任务   | ✅    | ✅   | ❌  |
+| 可作为前置任务   | ❌    | ✅   | ❌  |
+| 支持计时器       | ❌    | ✅   | ✅  |
+| 自动视为父任务   | ✅    | ❌   | ❌  |
+| 删除时特殊提示   | ✅    | ❌   | ❌  |
+
+#### 注意事项
+
+> ⚠️ **重要提示**
+>
+> 1. 任务类型值为组件内置判断使用，**请勿随意修改**这些枚举值
+> 2. 客制化 TaskDrawer 时，必须保持 `story`、`task`、`bug` 这三个枚举值
+> 3. 如需添加其他业务标签，建议使用自定义属性字段，例如：`customType`、`category`、`label` 等
+
+**示例：使用自定义标签**
+
+```typescript
+const tasks = ref([
+  {
+    id: 1,
+    name: '需求分析',
+    type: 'task', // 保持组件内置类型
+    customType: 'requirement', // 自定义业务类型
+    category: 'analysis', // 自定义分类
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+  },
+])
+```
 
 ### 组件配置
 
@@ -2075,5 +2289,5 @@ jordium-gantt-vue3/
 ---
 
 <p align="center">
-  <sub>如果这个项目对你有帮助，请给一个 ⭐️ 支持一下！</sub>
+  如果这个项目对你有帮助，请给一个 ⭐️ 支持一下！
 </p>

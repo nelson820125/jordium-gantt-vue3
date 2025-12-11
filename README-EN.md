@@ -23,7 +23,8 @@
 
 <p align="center">
   <a href="./README.md">中文</a> | 
-  <a href="./README-EN.md">English</a>
+  <a href="./README-EN.md">English</a> | 
+  <a href="./CHANGELOG.md">Release Notes</a>
 </p>
 
 <p align="center">A modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling</p>
@@ -188,7 +189,9 @@ npm run dev
 | `useDefaultDrawer`          | `boolean` | `true`  | Whether to use the built-in task edit drawer (TaskDrawer)                 |
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
 | `autoSortByStartDate`       | `boolean` | `false` | Whether to automatically sort tasks by start date                         |
-| `allowDragAndResize`        | `boolean` | `true`  | Whether to allow dragging and resizing tasks/milestones                   |
+| `allowDragAndResize`        | `boolean`                                                                             | `true`  | Whether to allow dragging and resizing tasks/milestones                   |
+| `enableTaskRowMove`         | `boolean`                                                                             | `false` | Whether to allow dragging and dropping TaskRow                            |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
 
 #### Configuration Object Props
 
@@ -243,13 +246,14 @@ For complete event documentation, see:
 | `milestone-deleted`      | `{ milestoneId: number }`         | Milestone deleted                      |
 | `milestone-icon-changed` | `{ milestoneId, icon }`           | Milestone icon changed                 |
 | `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) |
 
 #### Example 1: Simplest Gantt Chart
 
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart :tasks="tasks" />
+    <GanttChart :tasks="tasks" :assignee-options="assigneeOptions" />
   </div>
 </template>
 
@@ -267,6 +271,12 @@ const tasks = ref([
     progress: 100,
   },
 ])
+
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
+])
 </script>
 ```
 
@@ -275,7 +285,7 @@ const tasks = ref([
 ```vue
 <template>
   <div style="height: 600px;">
-    <GanttChart :tasks="tasks" :milestones="milestones" />
+    <GanttChart :tasks="tasks" :milestones="milestones" :assignee-options="assigneeOptions" />
   </div>
 </template>
 
@@ -303,6 +313,12 @@ const milestones = ref([
     icon: 'diamond',
   },
 ])
+
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
+])
 </script>
 ```
 
@@ -323,6 +339,7 @@ const milestones = ref([
         :tasks="tasks"
         :milestones="milestones"
         :show-toolbar="false"
+        :assignee-options="assigneeOptions"
         @task-added="handleTaskAdded"
         @milestone-saved="handleMilestoneSaved"
       />
@@ -337,6 +354,12 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([])
 const milestones = ref([])
+
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
+])
 
 const addTask = () => {
   const newTask = {
@@ -385,7 +408,8 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `endDate`          | `string`   | -        | -           | End date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                                                                                                                                |
 | `progress`         | `number`   | -        | `0`         | Task progress, range 0-100                                                                                                                                                          |
 | `predecessor`      | `number[]` | -        | -           | Array of predecessor task IDs, standard format: `[1, 2, 3]`<br/>**Compatible formats**: Also supports string `'1,2,3'` or string array `['1', '2', '3']`, component will auto-parse |
-| `assignee`         | `string`   | -        | -           | Task assignee                                                                                                                                                                       |
+| `assignee`         | `string`   | -        | -           | Task assignee, used as the value binding for the assignee dropdown menu                                                                                                              |
+| `assigneeName`     | `string`   | -        | -           | Task assignee name, automatically obtained from the label in the bound `assigneeOptions` dataset; for custom display, you can set it in the `task-added` callback event of GanttChart |
 | `avatar`           | `string`   | -        | -           | Avatar URL of task assignee                                                                                                                                                         |
 | `estimatedHours`   | `number`   | -        | -           | Estimated hours                                                                                                                                                                     |
 | `actualHours`      | `number`   | -        | -           | Actual hours                                                                                                                                                                        |
@@ -424,6 +448,8 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `taskBarConfig`       | `TaskBarConfig`  | `{}`        | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
 | `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
 | `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
+| `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
 
 **Configuration Notes**:
 
@@ -449,6 +475,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `successor-added`    | `{ targetTask: Task, newTask: Task }`     | After adding successor via context menu   | `targetTask` is the original task, `newTask` is the newly created successor task (its predecessor already contains targetTask.id)                                                                        |
 | `timer-started`      | `(task: Task) => void`                    | When task timer starts                    | Start recording task hours                                                                                                                                                                               |
 | `timer-stopped`      | `(task: Task) => void`                    | When task timer stops                     | Stop recording task hours                                                                                                                                                                                |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) | Component has automatically completed data movement and TaskList/Timeline sync via object reference mutation. Listening to this event is completely optional, only for showing messages, calling API, etc. `position`: 'after'=same level, 'child'=as child |
 
 **Data Synchronization Notes**:
 
@@ -463,6 +490,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
   <div style="height: 600px;">
     <GanttChart
       :tasks="tasks"
+      :assignee-options="assigneeOptions"
       @add-task="handleAddTask"
       @task-added="handleTaskAdded"
       @task-updated="handleTaskUpdated"
@@ -498,6 +526,12 @@ const tasks = ref<Task[]>([
     assignee: 'Bob',
     predecessor: [1], // Depends on task 1
   },
+])
+
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 
 // Toolbar "Add Task" button click event
@@ -552,6 +586,7 @@ Tasks can configure predecessors via the `predecessor` field, and the component 
 <template>
   <GanttChart
     :tasks="tasks"
+    :assignee-options="assigneeOptions"
     @predecessor-added="handlePredecessorAdded"
     @successor-added="handleSuccessorAdded"
   />
@@ -614,6 +649,12 @@ const tasks = ref<Task[]>([
   },
 ])
 
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
+])
+
 // Triggered when adding predecessor via context menu
 const handlePredecessorAdded = (event: { targetTask: Task; newTask: Task }) => {
   console.log(`Task [${event.targetTask.name}] added predecessor [${event.newTask.name}]`)
@@ -667,6 +708,7 @@ Suitable for scenarios requiring complete custom control bar:
       :show-toolbar="false"
       :use-default-drawer="true"
       :use-default-milestone-dialog="true"
+      :assignee-options="assigneeOptions"
       @add-task="handleAddTask"
       @add-milestone="handleAddMilestone"
       @task-added="handleTaskAdded"
@@ -681,6 +723,12 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([])
 const milestones = ref([])
+
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
+])
 
 // Custom button triggers event (component will respond and open built-in editor)
 const triggerAddTask = () => {
@@ -714,6 +762,124 @@ const handleTaskAdded = e => {
 > - Show toolbar + default editor: Simplest out-of-the-box approach
 > - Hide toolbar + custom buttons + default editor: Custom control bar style while keeping default edit functionality
 > - Hide toolbar + custom buttons + custom editor: Fully customize all interaction logic
+
+#### Example 4: Task Row Drag and Drop Sorting
+
+Allow users to adjust task hierarchy and order by dragging TaskRow:
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :tasks="tasks"
+      :enable-task-row-move="true"
+      :assignee-options="assigneeOptions"
+      @task-row-moved="handleTaskRowMoved"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { Task } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: 'Project Planning',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+  },
+  {
+    id: 2,
+    name: 'Requirements Analysis',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+    parentId: 1,
+  },
+  {
+    id: 3,
+    name: 'System Design',
+    startDate: '2025-01-21',
+    endDate: '2025-01-30',
+    progress: 40,
+  },
+])
+
+const assigneeOptions = ref([
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
+])
+
+// Task row drag completed event (optional)
+const handleTaskRowMoved = async (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  const { draggedTask, targetTask, position, oldParent, newParent } = payload
+  
+  // Component has automatically completed task move, parentId update and TaskList/Timeline sync
+  // Listening to this event is completely optional, only for:
+  
+  // 1. Show custom notification message
+  const oldParentName = oldParent?.name || 'Root'
+  const newParentName = newParent?.name || 'Root'
+  const positionText = position === 'after' ? 'after target task' : 'as child of target task'
+  showMessage(`Task [${draggedTask.name}] moved from [${oldParentName}] to [${newParentName}] (${positionText})`, 'success')
+  
+  // 2. Call backend API to save new task hierarchy
+  try {
+    await api.updateTaskHierarchy({
+      taskId: draggedTask.id,
+      targetTaskId: targetTask.id,
+      position: position,
+      oldParentId: oldParent?.id,
+      newParentId: newParent?.id,
+    })
+  } catch (error) {
+    console.error('Save task hierarchy failed:', error)
+    showMessage('Save failed, please refresh page', 'error')
+  }
+  
+  // 3. Trigger other business logic (like updating related data, recording operation logs, etc.)
+  // ...
+}
+</script>
+```
+
+**Drag and Drop Sorting Notes**:
+
+- **Enable Dragging**: Set `enable-task-row-move="true"` to enable task row dragging (default is `false`)
+- **Dragging Algorithms** (automatically executed by component):
+  - **Algorithm 1 (Place After)**: When target task has no children, dragged task will be placed after target task (same level), `position='after'`
+  - **Algorithm 2 (As Child)**: When target task has children, dragged task will become first child of target task, `position='child'`
+- **Visual Feedback**:
+  - Semi-transparent following element displayed while dragging
+  - Blue border hint shown when hovering over valid target tasks
+  - Tasks without children show blue bottom border
+  - Tasks with children show blue border on all sides
+- **Auto Sync**: Component internally mutates `props.tasks` via object reference, automatically completing task move, `parentId` update, `children` array adjustment, and TaskList/Timeline synchronization
+- **Event Listening (Optional)**:
+  - `task-row-moved` event is completely optional, only used for showing messages, calling API to save, recording logs, etc.
+  - No need to manually update `tasks.value`, component has automatically completed data synchronization
+- **Event Parameters**:
+  - `draggedTask`: The dragged task
+  - `targetTask`: The target task
+  - `position`: Drop position ('after' or 'child')
+  - `oldParent`: Original parent task (null means root)
+  - `newParent`: New parent task (null means root)
+- **Constraints**:
+  - Cannot drag onto itself
+  - Cannot drag onto its own child tasks (avoid circular reference)
+  - Milestones and milestone groups cannot be dragged
 
 ### Milestone Management
 
@@ -1132,6 +1298,54 @@ const handleDelete = () => {
 ## ⚙️ Configuration & Customization
 
 This section details the configuration options and extension capabilities of the GanttChart component, including Component Configuration, Theme & Internationalization, and Custom Extensions.
+
+### Task Type Definition
+
+Task type (`type` field) is used to distinguish different types of tasks, and the component internally executes different logic based on the type.
+
+#### Built-in Task Types
+
+| Type    | Description   | Default |
+| ------- | ------------- | ------- |
+| `story` | User Story    | -       |
+| `task`  | Regular Task  | ✅      |
+| `bug`   | Bug/Issue     | -       |
+
+#### Feature Differences
+
+Different task types have different functional characteristics in the component:
+
+| Feature              | story | task | bug |
+| -------------------- | ----- | ---- | --- |
+| Can be parent task   | ✅    | ✅   | ❌  |
+| Can be predecessor   | ❌    | ✅   | ❌  |
+| Timer support        | ❌    | ✅   | ✅  |
+| Auto parent task     | ✅    | ❌   | ❌  |
+| Special delete hint  | ✅    | ❌   | ❌  |
+
+#### Important Notes
+
+> ⚠️ **Important**
+>
+> 1. Task type values are used for internal component logic, **do not modify** these enum values arbitrarily
+> 2. When customizing TaskDrawer, you must maintain these three enum values: `story`, `task`, `bug`
+> 3. For additional business labels, use custom property fields such as: `customType`, `category`, `label`, etc.
+
+**Example: Using Custom Labels**
+
+```typescript
+const tasks = ref([
+  {
+    id: 1,
+    name: 'Requirements Analysis',
+    type: 'task', // Keep built-in component type
+    customType: 'requirement', // Custom business type
+    category: 'analysis', // Custom category
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+  },
+])
+```
 
 ### Component Configuration
 
@@ -2084,5 +2298,5 @@ View the complete [Contributors list](./CONTRIBUTORS.md)。
 ---
 
 <p align="center">
-  <sub>If this project helps you, please give it a ⭐️ to support it!</sub>
+  If this project helps you, please give it a ⭐️ to support it!
 </p>

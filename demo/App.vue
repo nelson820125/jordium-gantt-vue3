@@ -12,6 +12,7 @@ import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
 import HtmlContent from './HtmlContent.vue'
 import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
+import { useDemoLocale } from './useDemoLocale'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
@@ -19,6 +20,7 @@ import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
+const { locale: demoLocale, messages: demoMessages, setLocale: setDemoLocale, formatMessage, getTaskTypeName, getParentName } = useDemoLocale()
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
@@ -182,6 +184,21 @@ const taskListConfig = computed<TaskListConfig>(() => ({
 // 控制是否允许拖拽和拉伸
 const allowDragAndResize = ref(true)
 
+// 控制是否启用TaskRow拖拽移动
+const enableTaskRowMove = ref(true)
+
+// 指派人员选项列表
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+  { value: 'zhaoliu', label: '赵六' },
+  { value: 'qianqi', label: '钱七' },
+  { key: 'user_sunba', value: 'sunba', label: '孙八' }, // 示例：使用自定义 key
+  { value: 'zhoujiu', label: '周九' },
+  { value: 'wushi', label: '吴十' },
+])
+
 // TaskBar配置
 const taskBarOptions = ref({
   showAvatar: true,
@@ -235,6 +252,17 @@ const toggleTaskBarConfig = () => {
 // Task Click Dialog 状态管理
 const showTaskClickDialog = ref(false)
 const clickedTask = ref<Task | null>(null)
+
+// TaskRow Move 相关（已移除确认对话框，直接显示提示消息）
+
+// 同步语言切换
+const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
+  setDemoLocale(lang)
+  const languageText = lang === 'zh-CN' ? '中文' : 'English'
+  showMessage(formatTranslation('languageSwitchedTo', { language: languageText }), 'info', {
+    closable: true,
+  })
+}
 
 // 处理任务点击事件
 const handleTaskClick = (task: Task) => {
@@ -306,12 +334,7 @@ const handleAddMilestone = () => {
   showMilestoneDialog.value = true
 }
 
-const handleLanguageChange = (lang: 'zh' | 'en') => {
-  const languageText = lang === 'zh' ? '中文' : 'English'
-  showMessage(formatTranslation('languageSwitchedTo', { language: languageText }), 'info', {
-    closable: true,
-  })
-}
+
 
 const handleThemeChange = (isDark: boolean) => {
   const themeText = isDark ? t.value.darkModeText : t.value.lightModeText
@@ -543,6 +566,85 @@ function onTimerStopped(task: Task) {
 
 function taskDebug(item: any) {
   // Placeholder for debugging
+}
+
+// TaskRow拖拽移动事件处理器
+const handleTaskRowMoved = async (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child' // 'after': 放在目标任务之后（同级）, 'child': 作为目标任务的子任务
+  oldParent: Task | null
+  newParent: Task | null
+}) => {
+  const { draggedTask, targetTask, position, oldParent, newParent } = payload
+
+  // 【注意】组件内部已自动完成数据移动，通过对象引用修改实现 TaskList 和 Timeline 的自动同步
+  // 因此监听此事件是完全可选的，仅用于：
+  // 1. 显示自定义提示消息
+  // 2. 调用后端API保存任务层级变更
+  // 3. 记录操作日志
+  // 4. 触发其他业务逻辑（如更新关联数据）
+
+  // 构建提示消息
+  const oldParentName = getParentName(oldParent)
+  const newParentName = position === 'after'
+    ? getParentName(newParent)
+    : getParentName({ type: targetTask.type, name: targetTask.name })
+
+  let message = ''
+  const msgs = demoMessages.value.taskMoveConfirm.messages
+
+  if (position === 'after') {
+    // 算法#1: 放置在目标任务之后
+    message = formatMessage(msgs.moveAfter, {
+      draggedTaskType: getTaskTypeName(draggedTask.type),
+      draggedTaskName: draggedTask.name,
+      targetTaskType: getTaskTypeName(targetTask.type),
+      targetTaskName: targetTask.name,
+    })
+  } else {
+    // 算法#2: 作为子任务放置
+    if (oldParent && oldParent.id !== targetTask.id) {
+      message = formatMessage(msgs.moveAsChild, {
+        draggedTaskName: draggedTask.name,
+        oldParentName,
+        newParentName,
+      })
+    } else if (!oldParent) {
+      message = formatMessage(msgs.moveAsChildNoOldParent, {
+        draggedTaskName: draggedTask.name,
+        newParentName,
+      })
+    } else {
+      message = formatMessage(msgs.moveAsChildSameParent, {
+        draggedTaskName: draggedTask.name,
+        newParentName,
+      })
+    }
+  }
+
+  // 显示移动成功提示
+  const successMsg = demoMessages.value.taskMoveConfirm.messages.moveSuccess
+  showMessage(`${successMsg}: ${message}`, 'success', { closable: true })
+
+  // ⚠️ 注意：组件内部已通过对象引用自动完成数据移动，TaskList 和 Timeline 自动同步
+  // 无需手动更新 tasks.value，因为移动操作直接修改了原始对象引用
+  // 如果需要触发响应式更新，可以使用: tasks.value = [...tasks.value]
+
+  // 调用后端API保存任务层级变更
+  // try {
+  //   await api.updateTaskHierarchy({
+  //     taskId: draggedTask.id,
+  //     targetTaskId: targetTask.id,
+  //     position: position, // 'after' 或 'child'
+  //     oldParentId: oldParent?.id,
+  //     newParentId: newParent?.id,
+  //   })
+  //   console.log('任务层级已保存到后端')
+  // } catch (error) {
+  //   console.error('保存任务层级失败:', error)
+  //   showMessage('保存失败，请刷新页面', 'error', { closable: true })
+  // }
 }
 </script>
 
@@ -908,6 +1010,17 @@ function taskDebug(item: any) {
                       </span>
                     </div>
                     <div class="control-row">
+                      <label class="taskbar-control">
+                        <input v-model="enableTaskRowMove" type="checkbox" />
+                        <span class="taskbar-label">
+                          启用TaskRow拖拽移动
+                        </span>
+                      </label>
+                      <span class="control-hint">
+                        允许通过拖拽TaskRow来调整任务的层级和顺序
+                      </span>
+                    </div>
+                    <div class="control-row">
                       <label class="control-label">
                         {{ t.taskBarConfig.mistouch.dragThreshold }}:
                       </label>
@@ -985,6 +1098,8 @@ function taskDebug(item: any) {
         :working-hours="workingHoursConfig"
         :use-default-milestone-dialog="true"
         :allow-drag-and-resize="allowDragAndResize"
+        :enable-task-row-move="enableTaskRowMove"
+        :assignee-options="assigneeOptions"
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
@@ -1011,6 +1126,7 @@ function taskDebug(item: any) {
         @task-deleted="handleTaskDeleteEvent"
         @task-added="handleTaskAddEvent"
         @task-updated="handleTaskUpdateEvent"
+        @task-row-moved="handleTaskRowMoved"
       >
         <template #custom-task-content="item">
           <HtmlContent

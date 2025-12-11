@@ -322,5 +322,45 @@
       "Added: Large data loading demonstration",
       "Fix: jspdf vulnerabilies"
     ]
+  },
+  {
+    "version": "1.4.4",
+    "date": "2025-12-06",
+    "notes": [
+      "新增：任务列表中任务项的移动拖放功能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 jun201607@github的使用及反馈的宝贵意见</span>",
+      "Added: Task item move and drag-and-drop functionality in the task list",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jun201607@github for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.5",
+    "date": "2025-12-06",
+    "notes": [
+      "优化：任务列表中任务项的移动拖放功能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 jun201607@github的使用及反馈的宝贵意见</span>",
+      "Optimized: Task item move and drag-and-drop functionality in the task list",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jun201607@github for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.6",
+    "date": "2025-12-09",
+    "notes": [
+      "修复：内置TaskDrawer中负责人列表可以外部初始化",
+      "修复：未设置startDate和endDate时，任务无法正确显示的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 yue-xiaochuan & YQ6494@gitee的使用及反馈的宝贵意见</span>",
+      "Fixed: The assignee list in the built-in TaskDrawer can be initialized externally",
+      "Fixed: The issue where tasks could not be displayed correctly when startDate and endDate were not set",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yue-xiaochuan & YQ6494@gitee for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.6-patch.1",
+    "date": "2025-12-09",
+    "notes": [
+      "修复：Github编译错误",
+      "Fixed: The build errors on Github"
+    ]
   }
 ]
