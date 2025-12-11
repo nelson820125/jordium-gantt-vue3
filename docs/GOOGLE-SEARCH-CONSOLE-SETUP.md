@@ -57,9 +57,12 @@
 
 ## 关键 URL
 
-以下 URL 已在 sitemap 中定义并优化索引:
-
+### Sitemap 中包含的 URL:
 1. **Demo 地址**: https://nelson820125.github.io/jordium-gantt-vue3/
+
+> **重要说明**: Sitemap 只能包含与验证域名相同的 URL。外部链接（GitHub、NPM等）应该通过 HTML 的 `<link>` 标签或页面内容来关联，不能放在 sitemap 中。
+
+### 相关链接（通过 HTML meta 标签关联）:
 2. **仓库地址**: https://github.com/nelson820125/jordium-gantt-vue3
 3. **英文文档**: https://github.com/nelson820125/jordium-gantt-vue3/blob/master/README-EN.md
 4. **中文文档**: https://github.com/nelson820125/jordium-gantt-vue3/blob/master/README.md
@@ -84,17 +87,39 @@
 - vue3 timeline
 - interactive gantt
 
+## 常见问题
+
+### ❌ "无法读取此站点地图" 错误
+**原因**: Sitemap 包含了外部域名的 URL（如 github.com、npmjs.com）
+
+**解决方案**:
+- Sitemap **只能包含验证域名下的页面**
+- 对于 `nelson820125.github.io/jordium-gantt-vue3/`，只能包含该域名的页面
+- 外部链接应该通过 HTML 的 meta 标签、结构化数据或页面内容来关联
+- ✅ 已修复：当前 sitemap 只包含 demo 地址本身
+
+### ✅ 如何关联外部资源
+在 `index.html` 中已通过以下方式关联:
+- Schema.org 结构化数据中的 `codeRepository` 属性
+- Open Graph 和 Twitter Cards 元标签
+- Canonical URL
+
 ## 注意事项
 
-1. **构建时确保文件复制**
+1. **Sitemap 域名限制**
+   - ⚠️ Sitemap 只能包含当前验证域名下的 URL
+   - ❌ 不能包含 github.com、npmjs.com 等外部域名
+   - ✅ 只包含 nelson820125.github.io/jordium-gantt-vue3/ 下的页面
+
+2. **构建时确保文件复制**
    - 确保 `robots.txt` 和 `sitemap.xml` 被复制到构建输出目录
    - 如果使用 Vite，这些文件在 `public` 目录中会自动复制
 
-2. **更新频率**
+3. **更新频率**
    - 每次发布新版本后，更新 `sitemap.xml` 中的 `<lastmod>` 日期
    - 在 Google Search Console 中重新提交 sitemap
 
-3. **监控 404 错误**
+4. **监控 404 错误**
    - 定期检查 Search Console 的 "覆盖率" 报告
    - 修复任何爬取错误
 
