@@ -201,12 +201,59 @@ const drawLinks = () => {
       const x2 = globalX2 - props.offsetLeft
       const y2 = globalY2 - props.offsetTop
 
-      const c1x = x1 + 40
-      const c1y = y1
-      const c2x = x2 - 40
-      const c2y = y2
+      // 计算水平和垂直距离
+      const dx = x2 - x1
+      const dy = y2 - y1
+      const distance = Math.sqrt(dx * dx + dy * dy)
 
-      // 预计算箭头角度
+      // 动态计算控制点，优化连接线的显示效果
+      // 1. 避免被TaskBar直角遮挡：根据垂直距离调整控制点
+      // 2. 优化接近垂直连线：根据水平/垂直距离比例调整出入角度
+
+      // TaskBar 半高（用于计算绕过直角所需的偏移）
+      const halfBarHeight = fromBar.height / 2 // 通常是 20px
+
+      // 计算水平距离占总距离的比例
+      const horizontalRatio = Math.abs(dx) / (distance + 1) // +1 避免除零
+
+      // 策略：控制点先水平延伸，然后垂直偏移足够距离，确保线条绕过TaskBar直角
+      // 关键改进：即使接近垂直，也保持足够的水平偏移，确保有明显的进出角度
+      let horizontalOffset = 40
+
+      if (horizontalRatio < 0.3) {
+        // 接近垂直：保持较大的水平偏移，确保线条以明显角度进出
+        // 最小 35px，保证即使完全垂直也有清晰的进出角度
+        horizontalOffset = Math.max(35, horizontalRatio * 100)
+      } else if (horizontalRatio < 0.5) {
+        // 中等角度：适当调整
+        horizontalOffset = 38
+      }
+
+      // 垂直偏移距离：必须大于 TaskBar 半高，才能真正绕过直角
+      let verticalOffset = 0
+
+      if (Math.abs(dy) > 0) {
+        // 根据垂直距离调整偏移量
+        // 关键：垂直偏移至少要 halfBarHeight + 15，确保线条在TaskBar之外
+        const minOffset = halfBarHeight + 15 // 最小35px，确保绕过直角
+        const dynamicOffset = Math.min(Math.abs(dy) * 0.6, 90) // 最大90px，增加偏移幅度
+        verticalOffset = Math.max(minOffset, dynamicOffset)
+      }
+
+      // 场景2优化：接近垂直时，控制点的垂直偏移要更平缓
+      // 让线条形成优雅的S形曲线，而不是急转弯
+      const isNearVertical = horizontalRatio < 0.3
+      const verticalControlRatio = isNearVertical ? 0.4 : 0.8 // 接近垂直时控制点垂直偏移更小
+
+      // 起点控制点：水平向右延伸，垂直偏移较小（形成平缓的出线角度）
+      const c1x = x1 + horizontalOffset
+      const c1y = y1 + (dy > 0 ? verticalOffset : -verticalOffset) * verticalControlRatio
+
+      // 终点控制点：水平向左延伸，垂直偏移较小（形成平缓的入线角度）
+      const c2x = x2 - horizontalOffset
+      const c2y = y2 - (dy > 0 ? verticalOffset : -verticalOffset) * verticalControlRatio
+
+      // 预计算箭头角度（使用控制点到终点的角度，更准确）
       const arrowAngle = Math.atan2(y2 - c2y, x2 - c2x)
       const lineData: LineData = { x1, y1, x2, y2, c1x, c1y, c2x, c2y, arrowAngle }
 
