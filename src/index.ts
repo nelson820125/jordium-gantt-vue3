@@ -11,7 +11,12 @@ export type { Task } from './models/classes/Task.ts' // 导出Task类型
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 
 // 导出配置类型
-export type { TaskListConfig, TaskListColumnConfig, TaskListColumnType } from './models/configs/TaskListConfig'
+export type {
+  TaskListConfig,
+  TaskListColumnConfig,
+  TaskListColumnType,
+  ColumnFormatter
+} from './models/configs/TaskListConfig'
 export type { TaskBarConfig } from './models/configs/TaskBarConfig'
 export type { ToolbarConfig } from './models/configs/ToolbarConfig'
 

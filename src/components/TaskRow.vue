@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, useSlots } from 'vue'
-import type { StyleValue } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, useSlots, inject, h } from 'vue'
+import type { StyleValue, Slots } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
@@ -65,6 +65,25 @@ const daysText = computed(() => t.value?.days ?? '')
 
 const slots = useSlots()
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// 从 GanttChart 注入列级 slots
+const columnSlots = inject<Slots>('gantt-column-slots', {})
+
+// 检查指定列是否有自定义 slot（从注入的 slots 中查找）
+const hasColumnSlot = (columnKey: string) => {
+  const slotName = `column-${columnKey}`
+  return Boolean(columnSlots[slotName])
+}
+
+// 渲染列级 slot
+const renderColumnSlot = (columnKey: string, slotProps: any) => {
+  const slotName = `column-${columnKey}`
+  const slotFn = columnSlots[slotName]
+  if (slotFn) {
+    return slotFn(slotProps)
+  }
+  return null
+}
 
 const baseIndent = 10
 const indent = computed(() => `${baseIndent + props.level * 20}px`)
@@ -382,79 +401,169 @@ onUnmounted(() => {
           class="leaf-spacer"
         ></span>
 
-        <!-- 任务图标 -->
-        <span v-if="showTaskIcon !== false" class="task-icon">
-          <!-- 里程碑分组图标 - 使用菱形图标 -->
-          <svg
-            v-if="isMilestoneGroup"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            class="milestone-group-icon"
-          >
-            <polygon points="12,2 22,12 12,22 2,12" />
-          </svg>
-          <!-- 父级任务图标 -->
-          <svg
-            v-else-if="isStoryTask || hasChildren"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
-          <!-- 普通任务图标 -->
-          <svg
-            v-else
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-            <polyline points="14,2 14,8 20,8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10,9 9,9 8,9" />
-          </svg>
-        </span>
+        <!-- 优先级1: 列级自定义 Slot (#column-name) - 覆盖整列内容（图标+文本+徽章） -->
+        <component
+          :is="() => renderColumnSlot('name', {
+            task: props.task,
+            column: { key: 'name' },
+            value: props.task.name,
+            isParentTask,
+            hasChildren,
+            isStoryTask: isStoryTask.value,
+            isMilestoneGroup: isMilestoneGroup.value,
+            isMilestoneTask: isMilestoneTask.value,
+            showTaskIcon: props.showTaskIcon,
+            formattedTimer: formattedTimer.value,
+            isOvertime: isOvertime(),
+            overdueDays: overdueDays(),
+            overtimeText: overtimeText.value,
+            overdueText: overdueText.value,
+            daysText: daysText.value,
+          })"
+          v-if="hasColumnSlot('name')"
+        />
 
-        <span
-          class="task-name-text"
-          :class="{ 'parent-task': isParentTask }"
-          :title="props.task.name"
-        >
-          <slot
-            v-if="hasContentSlot"
-            name="custom-task-content"
-            v-bind="slotPayload"
-            type="task-row"
-          />
-          <template v-else>
-            {{ props.task.name }}
-          </template>
-          <!-- 计时器显示 -->
+        <!-- 优先级2: custom-task-content Slot (向后兼容) - 仅替换文本部分 -->
+        <template v-else-if="hasContentSlot">
+          <!-- 任务图标 -->
+          <span v-if="showTaskIcon !== false" class="task-icon">
+            <!-- 里程碑分组图标 - 使用菱形图标 -->
+            <svg
+              v-if="isMilestoneGroup"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="milestone-group-icon"
+            >
+              <polygon points="12,2 22,12 12,22 2,12" />
+            </svg>
+            <!-- 父级任务图标 -->
+            <svg
+              v-else-if="isStoryTask || hasChildren"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <!-- 普通任务图标 -->
+            <svg
+              v-else
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10,9 9,9 8,9" />
+            </svg>
+          </span>
+
           <span
-            v-if="props.task.isTimerRunning || props.task.timerElapsedTime"
-            class="timer-badge"
-            :class="{ 'timer-active': props.task.isTimerRunning }"
+            class="task-name-text"
+            :class="{ 'parent-task': isParentTask }"
+            :title="props.task.name"
           >
-            <span v-if="props.task.isTimerRunning" class="timer-dot"></span>
-            {{ formattedTimer }}
+            <slot
+              name="custom-task-content"
+              v-bind="slotPayload"
+              type="task-row"
+            />
+            <!-- 计时器显示 -->
+            <span
+              v-if="props.task.isTimerRunning || props.task.timerElapsedTime"
+              class="timer-badge"
+              :class="{ 'timer-active': props.task.isTimerRunning }"
+            >
+              <span v-if="props.task.isTimerRunning" class="timer-dot"></span>
+              {{ formattedTimer }}
+            </span>
+            <span v-if="isOvertime()" class="status-badge overtime">{{ overtimeText }}</span>
+            <span v-if="overdueDays() > 0" class="status-badge overdue">
+              {{ overdueText }}{{ overdueDays() > 0 ? overdueDays() + daysText : '' }}
+            </span>
           </span>
-          <span v-if="isOvertime()" class="status-badge overtime">{{ overtimeText }}</span>
-          <span v-if="overdueDays() > 0" class="status-badge overdue">
-            {{ overdueText }}{{ overdueDays() > 0 ? overdueDays() + daysText : '' }}
+        </template>
+
+        <!-- 优先级3: 默认渲染 -->
+        <template v-else>
+          <!-- 任务图标 -->
+          <span v-if="showTaskIcon !== false" class="task-icon">
+            <!-- 里程碑分组图标 - 使用菱形图标 -->
+            <svg
+              v-if="isMilestoneGroup"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="milestone-group-icon"
+            >
+              <polygon points="12,2 22,12 12,22 2,12" />
+            </svg>
+            <!-- 父级任务图标 -->
+            <svg
+              v-else-if="isStoryTask || hasChildren"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <!-- 普通任务图标 -->
+            <svg
+              v-else
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10,9 9,9 8,9" />
+            </svg>
           </span>
-        </span>
+
+          <span
+            class="task-name-text"
+            :class="{ 'parent-task': isParentTask }"
+            :title="props.task.name"
+          >
+            {{ props.task.name }}
+            <!-- 计时器显示 -->
+            <span
+              v-if="props.task.isTimerRunning || props.task.timerElapsedTime"
+              class="timer-badge"
+              :class="{ 'timer-active': props.task.isTimerRunning }"
+            >
+              <span v-if="props.task.isTimerRunning" class="timer-dot"></span>
+              {{ formattedTimer }}
+            </span>
+            <span v-if="isOvertime()" class="status-badge overtime">{{ overtimeText }}</span>
+            <span v-if="overdueDays() > 0" class="status-badge overdue">
+              {{ overdueText }}{{ overdueDays() > 0 ? overdueDays() + daysText : '' }}
+            </span>
+          </span>
+        </template>
       </div>
 
       <!-- 动态渲染列 -->
@@ -471,8 +580,22 @@ onUnmounted(() => {
         </template>
         <!-- 普通任务显示具体内容 -->
         <template v-else>
+          <!-- 优先级1: 列级自定义 Slot (约定: #column-{key})，通过 renderColumnSlot 动态渲染 -->
+          <component
+            :is="() =>
+            renderColumnSlot(column.key,
+                            { task: props.task, column, value: (props.task as any)[column.key] })"
+            v-if="hasColumnSlot(column.key)"
+          />
+
+          <!-- 优先级2: Formatter 函数 -->
+          <template v-else-if="column.formatter">
+            {{ column.formatter(props.task, column) }}
+          </template>
+
+          <!-- 优先级3: 内置列类型渲染 -->
           <!-- 前置任务列 -->
-          <template v-if="column.key === 'predecessor'">
+          <template v-else-if="column.key === 'predecessor'">
             {{ formatPredecessorDisplay(props.task.predecessor) }}
           </template>
 
@@ -513,7 +636,7 @@ onUnmounted(() => {
             </span>
           </template>
 
-          <!-- 自定义列 - 通过task对象的key动态获取值 -->
+          <!-- 优先级4: 默认渲染 - 自定义列通过task对象的key动态获取值 -->
           <template v-else>
             {{ (props.task as any)[column.key] || '-' }}
           </template>
@@ -548,6 +671,7 @@ onUnmounted(() => {
         @add-successor="emit('add-successor', $event)"
         @delete="handleTaskDelete"
       >
+        <!-- 传递 custom-task-content slot -->
         <template v-if="hasContentSlot" #custom-task-content="slotProps">
           <slot name="custom-task-content" v-bind="slotProps as TaskRowSlotProps" />
         </template>

@@ -145,13 +145,36 @@ const toolbarConfig = {
 // TaskList列配置
 const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'predecessor', label: '前置任务', visible: true },
-  { key: 'assignee', label: '负责人', visible: true, width: 250 },
-  { key: 'startDate', label: '开始日期', visible: true },
+  {
+    key: 'assignee',
+    label: '负责人',
+    visible: true,
+    width: 250,
+    // 示例：使用 formatter 格式化显示（可选，如果不使用列级slot）
+    // formatter: (task) => task.assignee ? `👤 ${task.assignee}` : '-'
+  },
+  {
+    key: 'startDate',
+    label: '开始日期',
+    visible: true,
+    // 示例：日期格式化
+    formatter: (task) => {
+      if (!task.startDate) return '-'
+      const date = new Date(task.startDate)
+      return `${date.getMonth() + 1}/${date.getDate()}`
+    }
+  },
   { key: 'endDate', label: '结束日期', visible: true },
   { key: 'estimatedHours', label: '预估工时', visible: true },
   { key: 'actualHours', label: '实际工时', visible: true },
   { key: 'progress', label: '进度', visible: true },
-  { key: 'custom', label: '自定义列', visible: true, width: '30%' }, // 添加默认宽度120px
+  {
+    key: 'custom',
+    label: '自定义列',
+    visible: true,
+    width: '30%',
+    // 自定义列将使用 #column-custom slot 渲染
+  },
 ])
 
 // TaskList宽度配置
@@ -1128,6 +1151,7 @@ const handleTaskRowMoved = async (payload: {
         @task-updated="handleTaskUpdateEvent"
         @task-row-moved="handleTaskRowMoved"
       >
+        <!-- 自定义任务名称内容 (TaskRow 和 TaskBar) -->
         <template #custom-task-content="item">
           <HtmlContent
             :item="taskDebug(item)"
@@ -1136,6 +1160,89 @@ const handleTaskRowMoved = async (payload: {
             :style="item.dynamicStyles"
           />
         </template>
+
+        <!-- 列级 Slot 示例：'name'列的渲染 -->
+         <template #column-name="{ task, column, value }">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <img src="https://i.pravatar.cc/50?img=1" width="20" height="20" style="border-radius: 50%;" />
+            <!-- 如果 value 包含 HTML，使用 v-html 渲染 -->
+            <span v-html="value"></span>
+            <!-- 示例标签 -->
+            <span
+              v-if="task.priority"
+              style="
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+                color: white;
+                padding: 2px 6px;
+                border-radius: 10px;
+                font-size: 11px;
+                font-weight: 600;
+                white-space: nowrap;
+              "
+            >
+              P-{{ task.priority }}
+            </span>
+          </div>
+        </template>
+
+        <!-- 列级 Slot 示例：自定义 'custom' 列的渲染 -->
+        <template #column-custom="{ task, column, value }">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span
+              v-if="typeof value === 'number'"
+              style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+              "
+            >
+              💰 {{ value.toLocaleString() }}
+            </span>
+            <span
+              v-else-if="typeof value === 'string'"
+              style="
+                background: #e8f5e9;
+                color: #2e7d32;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                border: 1px solid #81c784;
+              "
+            >
+              📝 {{ value }}
+            </span>
+            <span v-else style="color: #999;">-</span>
+          </div>
+        </template>
+
+        <!-- 列级 Slot 示例：自定义 'assignee' 列的渲染（覆盖内置渲染） -->
+        <!-- 取消下面的注释可以看到效果 -->
+        <!--
+        <template #column-assignee="{ task }">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div
+              style="
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 12px;
+                font-weight: bold;
+              "
+            >
+              {{ task.assignee ? task.assignee.charAt(0) : '?' }}
+            </div>
+            <span style="font-size: 13px;">{{ task.assignee || '未分配' }}</span>
+          </div>
+        </template>
+        -->
       </GanttChart>
     </div>
     <div class="license-info">

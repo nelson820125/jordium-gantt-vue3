@@ -26,6 +26,7 @@
           "parentId": 1000,
           "description": "评估ADX-2024在健康志愿者和患者中的安全性、耐受性和药代动力学特征",
           "custom": "test11111",
+          "priority": "高",
           "children": [
             {
               "id": 1101,

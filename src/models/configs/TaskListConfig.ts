@@ -1,4 +1,5 @@
 // TaskList 列配置类型定义
+import type { Task } from '../classes/Task'
 
 export type TaskListColumnType =
   | 'name'
@@ -10,6 +11,14 @@ export type TaskListColumnType =
   | 'actualHours'
   | 'progress'
 
+/**
+ * 列格式化函数类型
+ * @param task 当前任务对象
+ * @param column 当前列配置
+ * @returns 格式化后的字符串
+ */
+export type ColumnFormatter = (task: Task, column: TaskListColumnConfig) => string
+
 export interface TaskListColumnConfig {
   type?: TaskListColumnType
   key: string // 用于国际化的key，也可以作为识别符
@@ -17,6 +26,7 @@ export interface TaskListColumnConfig {
   cssClass?: string // CSS类名
   width?: number | string // 列宽度，支持像素（120）或百分比（'15%'）
   visible?: boolean // 是否显示，默认true
+  formatter?: ColumnFormatter // 自定义格式化函数（优先级低于 slot）
 }
 
 export interface TaskListConfig {

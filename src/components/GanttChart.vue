@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onUnmounted, onMounted, computed, watch, nextTick, useSlots, provide } from 'vue'
 import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
@@ -82,6 +82,15 @@ const emit = defineEmits([
 ])
 
 const { showMessage } = useMessage()
+const slots = useSlots()
+
+// 获取所有列级 slot 名称并通过 provide 传递给子组件
+const columnSlotNames = computed(() => {
+  return Object.keys(slots).filter(name => name.startsWith('column-'))
+})
+
+// 提供 slots 给子组件（TaskList 和 TaskRow）
+provide('gantt-column-slots', slots)
 
 interface Props {
   // 任务数据
@@ -2307,6 +2316,7 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           @delete="handleTaskDelete"
           @task-row-moved="handleTaskRowMoved"
         >
+          <!-- 传递 custom-task-content slot -->
           <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
             <slot name="custom-task-content" v-bind="rowScope" />
           </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, useSlots, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, useSlots, computed, nextTick, inject } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
@@ -7,6 +7,7 @@ import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 import { useTaskRowDrag } from '../composables/useTaskRowDrag'
 import { moveTask } from '../utils/taskTreeUtils'
+import type { Slots } from 'vue'
 
 interface Props {
   tasks?: Task[]
@@ -41,6 +42,9 @@ const emit = defineEmits<{
 }>()
 const slots = useSlots()
 const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// 从 GanttChart 注入列级 slots
+const columnSlots = inject<Slots>('gantt-column-slots', {})
 
 // 多语言支持
 const { t } = useI18n()
@@ -634,6 +638,7 @@ onUnmounted(() => {
         @add-successor="handleAddSuccessor"
         @delete="handleTaskDelete"
       >
+        <!-- 传递 custom-task-content slot -->
         <template v-if="hasRowSlot" #custom-task-content="rowScope">
           <slot name="custom-task-content" v-bind="rowScope" />
         </template>
