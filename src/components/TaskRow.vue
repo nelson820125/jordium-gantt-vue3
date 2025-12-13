@@ -38,6 +38,7 @@ interface Props {
   columns: TaskListColumnConfig[]
   getColumnWidthStyle?: (column: { width?: number | string }) => StyleValue
   disableChildrenRender?: boolean
+  showTaskIcon?: boolean // 是否显示任务图标，默认true
   enableDrag?: boolean
   dragStart?: (task: Task, element: HTMLElement, event: MouseEvent) => void
   dragOver?: (task: Task, element: HTMLElement, event: MouseEvent) => void
@@ -375,8 +376,14 @@ onUnmounted(() => {
         <!-- 里程碑分组的占位空间，用于与有折叠按钮的任务对齐 -->
         <span v-if="isMilestoneGroup" class="milestone-spacer"></span>
 
+        <!-- 叶子节点的占位空间（无折叠按钮且无图标显示时） -->
+        <span
+          v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false"
+          class="leaf-spacer"
+        ></span>
+
         <!-- 任务图标 -->
-        <span class="task-icon">
+        <span v-if="showTaskIcon !== false" class="task-icon">
           <!-- 里程碑分组图标 - 使用菱形图标 -->
           <svg
             v-if="isMilestoneGroup"
@@ -513,7 +520,11 @@ onUnmounted(() => {
         </template>
       </div>
     </div>
-    <template v-if="!props.disableChildrenRender && hasChildren && !props.task.collapsed && !isMilestoneGroup">
+    <template
+      v-if="
+        !props.disableChildrenRender && hasChildren && !props.task.collapsed && !isMilestoneGroup
+      "
+    >
       <TaskRow
         v-for="child in props.task.children"
         :key="child.id"
@@ -525,6 +536,7 @@ onUnmounted(() => {
         :columns="props.columns"
         :get-column-width-style="props.getColumnWidthStyle"
         :disable-children-render="props.disableChildrenRender"
+        :show-task-icon="props.showTaskIcon"
         :enable-drag="props.enableDrag"
         :drag-start="props.dragStart"
         :drag-over="props.dragOver"
@@ -709,6 +721,13 @@ onUnmounted(() => {
   width: 18px;
   height: 18px;
   margin-right: 4px;
+}
+
+/* 叶子节点占位空间 - 当不显示图标时保持缩进层级 */
+.leaf-spacer {
+  display: inline-flex;
+  width: 20px; /* 18px (折叠按钮宽度) + 2px (额外间距) */
+  height: 18px;
 }
 
 .task-name-text {

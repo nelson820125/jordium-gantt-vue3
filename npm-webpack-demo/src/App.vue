@@ -24,8 +24,8 @@
     </div>
     <!-- 自定义添加任务按钮 -->
     <div>
-      <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
-      <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
+      <button class="gantt-btn gantt-btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
+      <button class="gantt-btn gantt-btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
     </div>
 
     <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
@@ -54,8 +54,8 @@
         </div>
 
         <div class="drawer-footer">
-          <button class="btn btn-primary" @click="addTask">确定</button>
-          <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
+          <button class="gantt-btn gantt-btn-primary" @click="addTask">确定</button>
+          <button class="gantt-btn gantt-btn-default" @click="showAddTaskDrawer = false">取消</button>
         </div>
       </div>
     </div>
@@ -409,23 +409,23 @@ const onTaskAdded = (res) => {
   transition: all 0.3s;
 }
 
-.btn-primary {
+.gantt-btn-primary {
   background: #409eff;
   color: white;
   border-color: #409eff;
 }
 
-.btn-primary:hover {
+.gantt-btn-primary:hover {
   background: #66b1ff;
   border-color: #66b1ff;
 }
 
-.btn-default {
+.gantt-btn-default {
   background: white;
   color: #606266;
 }
 
-.btn-default:hover {
+.gantt-btn-default:hover {
   color: #409eff;
   border-color: #409eff;
 }

@@ -621,6 +621,7 @@ onUnmounted(() => {
         :columns="visibleColumns"
         :get-column-width-style="getColumnWidthStyle"
         :disable-children-render="true"
+        :show-task-icon="props.taskListConfig?.showTaskIcon"
         :enable-drag="props.enableTaskRowMove"
         :drag-start="startDrag"
         :drag-over="handleDragOver"

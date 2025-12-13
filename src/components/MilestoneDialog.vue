@@ -394,17 +394,17 @@ const t = (key: string) => {
 
       <div class="milestone-dialog-footer">
         <div class="milestone-dialog-footer-left">
-          <button v-if="isEditMode" type="button" class="btn btn-danger" @click="handleDelete">
+          <button v-if="isEditMode" type="button" class="gantt-btn gantt-btn-danger" @click="handleDelete">
             {{ globalT.delete }}
           </button>
         </div>
         <div class="milestone-dialog-footer-right">
-          <button type="button" class="btn btn-default" @click="closeDialog">
+          <button type="button" class="gantt-btn gantt-btn-default" @click="closeDialog">
             {{ globalT.cancel }}
           </button>
           <button
             type="button"
-            class="btn btn-primary"
+            class="gantt-btn gantt-btn-primary"
             :disabled="!isFormValid"
             @click="handleSave"
           >

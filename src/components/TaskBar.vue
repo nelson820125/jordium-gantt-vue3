@@ -4,6 +4,7 @@ import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots } from
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
+import LinkAnchor from './LinkAnchor.vue'
 
 import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
@@ -35,6 +36,16 @@ interface Props {
   isPrimaryHighlight?: boolean
   // 是否处于高亮模式（有任务被高亮）
   isInHighlightMode?: boolean
+  // 连接线拖拽模式：'predecessor' | 'successor' | null
+  dragLinkMode?: 'predecessor' | 'successor' | null
+  // 是否是连接线拖拽的起始任务
+  isLinkDragSource?: boolean
+  // 是否是有效的连接目标
+  isValidLinkTarget?: boolean
+  // 是否是无效的连接目标
+  isInvalidLinkTarget?: boolean
+  // 所有任务列表（用于右键菜单删除链接功能）
+  allTasks?: Task[]
 }
 
 interface TaskStatus {
@@ -71,8 +82,12 @@ const emit = defineEmits([
   'add-predecessor',
   'add-successor',
   'delete',
+  'delete-link',
   'context-menu',
   'long-press',
+  'link-drag-start',
+  'link-drag-move',
+  'link-drag-end',
 ])
 
 defineSlots<{
@@ -197,6 +212,9 @@ const resizeStartLeft = ref(0)
 const longPressTimer = ref<number | null>(null)
 const longPressTriggered = ref(false)
 const LONG_PRESS_DURATION = 1000 // 1秒（缩短了）
+
+// TaskBar 悬停状态（用于显示 LinkAnchor）
+const isTaskBarHovered = ref(false)
 
 // 防误触配置 - 使用配置项或默认值
 const dragThreshold = computed(() => barConfig.value.dragThreshold ?? 5)
@@ -1232,23 +1250,21 @@ const handleMouseUp = () => {
   document.removeEventListener('mouseup', handleMouseUp)
 }
 
+// ResizeObserver 引用（在组件卸载时清理）
+let nameResizeObserver: ResizeObserver | null = null
+
 onMounted(() => {
   nextTick(() => {
     reportBarPosition()
 
     // 使用 ResizeObserver 监听任务名称宽度变化
     if (taskBarNameRef.value) {
-      const nameResizeObserver = new ResizeObserver((entries) => {
+      nameResizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           nameTextWidth.value = entry.contentRect.width
         }
       })
       nameResizeObserver.observe(taskBarNameRef.value)
-
-      // 组件卸载时清理
-      onUnmounted(() => {
-        nameResizeObserver.disconnect()
-      })
     }
   })
 
@@ -1277,6 +1293,12 @@ onMounted(() => {
 
   // 清理函数
   onUnmounted(() => {
+    // 清理 ResizeObserver
+    if (nameResizeObserver) {
+      nameResizeObserver.disconnect()
+      nameResizeObserver = null
+    }
+
     window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
     window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
     window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
@@ -2255,7 +2277,54 @@ const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
   closeContextMenu()
 }
 
-// 监听全局关闭菜单事件
+// 处理删除链接事件
+const handleDeleteLink = (event: { sourceTaskId: number; targetTaskId: number }) => {
+  emit('delete-link', event)
+  closeContextMenu()
+}
+
+// 连接线触点事件处理
+const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
+  emit('link-drag-start', event)
+}
+
+const handleLinkDragMove = (event: { mouseX: number; mouseY: number }) => {
+  emit('link-drag-move', event)
+}
+
+const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor' }) => {
+  emit('link-drag-end', event)
+}
+
+// 处理 LinkAnchor 的 drag-start 事件（转换为统一格式）
+const handleAnchorDragStart = (anchorEvent: { taskId: number; type: 'predecessor' | 'successor'; x: number; y: number }) => {
+  const mouseEvent = {
+    clientX: anchorEvent.x,
+    clientY: anchorEvent.y,
+  } as MouseEvent
+
+  handleLinkDragStart({
+    task: props.task,
+    type: anchorEvent.type,
+    mouseEvent,
+  })
+}
+
+// 处理 LinkAnchor 的 drag-move 事件
+const handleAnchorDragMove = (anchorEvent: { x: number; y: number }) => {
+  handleLinkDragMove({
+    mouseX: anchorEvent.x,
+    mouseY: anchorEvent.y,
+  })
+}
+
+// 处理 LinkAnchor 的 drag-end 事件
+const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' | 'successor' }) => {
+  handleLinkDragEnd({
+    task: props.task,
+    type: anchorEvent.type,
+  })
+}// 监听全局关闭菜单事件
 onMounted(() => {
   window.addEventListener('close-all-taskbar-menus', closeContextMenu)
 })
@@ -2275,6 +2344,7 @@ onUnmounted(() => {
     v-if="shouldRenderTaskBar"
     ref="barRef"
     class="task-bar"
+    :data-task-id="task.id"
     :style="{
       ...taskBarStyle,
       backgroundColor: taskStatus.bgColor,
@@ -2299,6 +2369,8 @@ onUnmounted(() => {
     @click="handleTaskBarClick"
     @contextmenu="handleContextMenu"
     @dblclick="handleTaskBarDoubleClick"
+    @mouseenter="isTaskBarHovered = true"
+    @mouseleave="isTaskBarHovered = false"
   >
     <!-- 父级任务的标签 -->
     <div v-if="isParent" class="parent-label">
@@ -2411,6 +2483,36 @@ onUnmounted(() => {
       @mousedown="e => handleMouseDown(e, 'resize-right')"
     ></div>
 
+    <!-- 连接线触点 - 只在非高亮模式且非父级任务时显示 -->
+    <!-- 前置任务触点（左侧） -->
+    <LinkAnchor
+      v-if="!isParent && !isInHighlightMode"
+      type="predecessor"
+      :task-id="task.id"
+      :visible="isTaskBarHovered"
+      :is-drag-source="isLinkDragSource && dragLinkMode === 'predecessor'"
+      :is-drag-target="isValidLinkTarget || isInvalidLinkTarget"
+      :is-valid-target="isValidLinkTarget"
+      :global-dragging="!!dragLinkMode"
+      @drag-start="handleAnchorDragStart"
+      @drag-move="handleAnchorDragMove"
+      @drag-end="handleAnchorDragEnd"
+    />
+    <!-- 后置任务触点（右侧） -->
+    <LinkAnchor
+      v-if="!isParent && !isInHighlightMode"
+      type="successor"
+      :task-id="task.id"
+      :visible="isTaskBarHovered"
+      :is-drag-source="isLinkDragSource && dragLinkMode === 'successor'"
+      :is-drag-target="isValidLinkTarget || isInvalidLinkTarget"
+      :is-valid-target="isValidLinkTarget"
+      :global-dragging="!!dragLinkMode"
+      @drag-start="handleAnchorDragStart"
+      @drag-move="handleAnchorDragMove"
+      @drag-end="handleAnchorDragEnd"
+    />
+
     <!-- 半圆气泡指示器 - 只在 TaskBar 完全消失时显示 -->
     <div
       v-if="bubbleIndicator.show && !isParent"
@@ -2434,12 +2536,14 @@ onUnmounted(() => {
       :visible="contextMenuVisible"
       :task="contextMenuTask"
       :position="contextMenuPosition"
+      :all-tasks="allTasks"
       @close="closeContextMenu"
       @start-timer="$emit('start-timer', props.task)"
       @stop-timer="$emit('stop-timer', props.task)"
       @add-predecessor="$emit('add-predecessor', props.task)"
       @add-successor="$emit('add-successor', props.task)"
       @delete="handleTaskDelete"
+      @delete-link="handleDeleteLink"
     />
   </div>
 
@@ -3029,7 +3133,7 @@ onUnmounted(() => {
   padding: 12px;
   border-radius: 8px;
   font-size: 12px;
-  z-index: 10000; /* 确保在最上层 */
+  z-index: 9999999999; /* 确保在最上层 */
   max-width: 250px;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.4),
@@ -3082,7 +3186,7 @@ onUnmounted(() => {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  z-index: 10001;
+  z-index: 999999999;
   box-shadow: 0 2px 12px rgba(0, 123, 255, 0.4);
   pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.2);

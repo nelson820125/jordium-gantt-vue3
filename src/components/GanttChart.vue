@@ -65,6 +65,8 @@ const emit = defineEmits([
   'task-deleted',
   'task-added',
   'task-updated',
+  'task-collapse-change', // 任务折叠状态变化事件
+  'link-deleted', // 链接删除事件
   // 工具栏事件
   'add-task',
   'add-milestone',
@@ -72,6 +74,9 @@ const emit = defineEmits([
   'milestone-saved',
   'milestone-deleted',
   'milestone-icon-changed',
+  // 任务关系事件
+  'add-predecessor',
+  'add-successor',
   // TaskRow拖拽事件
   'task-row-moved',
 ])
@@ -584,6 +589,9 @@ const handleTaskCollapseChange = (task: Task) => {
 
   // 触发Timeline重新计算
   updateTaskTrigger.value++
+
+  // 向外发出折叠状态变化事件
+  emit('task-collapse-change', task)
 }
 
 // 全部展开任务
@@ -744,6 +752,11 @@ const expandTaskListText = computed(() => t.value.expandTaskList)
 
 // 为TaskList提供层级数据（保持原始层级结构，只扁平化里程碑）
 const tasksForTaskList = computed(() => {
+  // 通过条件判断访问触发器，确保折叠状态变化时重新计算
+  if (updateTaskTrigger.value >= 0) {
+    // 触发器起作用，继续执行计算逻辑
+  }
+
   const result: Task[] = []
 
   // 如果有里程碑，创建里程碑分组行（扁平化显示）
@@ -2004,6 +2017,9 @@ function handleTimelineEditTask(task: Task) {
 function handleAddPredecessor(targetTask: Task) {
   if (!targetTask) return
 
+  // 触发事件供外部使用
+  emit('add-predecessor', targetTask)
+
   // 1. 记录要添加前置任务的目标任务
   taskToAddPredecessorTo.value = targetTask
 
@@ -2036,6 +2052,10 @@ function handleAddPredecessor(targetTask: Task) {
 // 处理添加后置任务事件
 function handleAddSuccessor(targetTask: Task) {
   if (!targetTask) return
+
+  // 触发事件供外部使用
+  emit('add-successor', targetTask)
+
   // 记录要添加后置任务的目标任务
   taskToAddSuccessorTo.value = targetTask
   // 构造新任务，parentId 与目标任务一致，predecessor 仅包含目标任务 id
@@ -2061,6 +2081,18 @@ function handleAddSuccessor(targetTask: Task) {
   taskDrawerTask.value = newTask
   taskDrawerEditMode.value = false
   taskDrawerVisible.value = true
+}
+
+// 处理前置任务已添加事件（拖拽连接完成）
+function handlePredecessorAdded(event: { targetTask: Task; newTask: Task }) {
+  // 直接转发事件给外部
+  emit('predecessor-added', event)
+}
+
+// 处理后置任务已添加事件（拖拽连接完成）
+function handleSuccessorAdded(event: { targetTask: Task; newTask: Task }) {
+  // 直接转发事件给外部
+  emit('successor-added', event)
 }
 
 // 新增Task插入到任务树中
@@ -2159,6 +2191,39 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
   taskDrawerTask.value = null
   // emit 删除事件
   emit('task-deleted', { task })
+}
+
+// 处理链接删除事件
+function handleLinkDeleted(event: {
+  sourceTaskId: number
+  targetTaskId: number
+  updatedTask: Task
+}) {
+  if (props.tasks) {
+    // 在 tasks 树中找到目标任务并更新
+    const updateTaskInTree = (taskList: Task[]): boolean => {
+      for (let i = 0; i < taskList.length; i++) {
+        if (taskList[i].id === event.targetTaskId) {
+          // 使用新对象替换，确保响应式更新
+          taskList[i] = { ...taskList[i], predecessor: event.updatedTask.predecessor }
+          return true
+        }
+        if (taskList[i].children && taskList[i].children!.length > 0) {
+          if (updateTaskInTree(taskList[i].children!)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+    updateTaskInTree(props.tasks)
+  }
+
+  // 触发任务更新事件
+  emit('task-updated', { task: event.updatedTask })
+
+  // 向外部发送链接删除事件
+  emit('link-deleted', event)
 }
 
 // 处理里程碑双击事件
@@ -2295,7 +2360,10 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           @stop-timer="handleStopTimer"
           @add-predecessor="handleAddPredecessor"
           @add-successor="handleAddSuccessor"
+          @predecessor-added="handlePredecessorAdded"
+          @successor-added="handleSuccessorAdded"
           @delete="handleTaskDelete"
+          @link-deleted="handleLinkDeleted"
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
             <slot name="custom-task-content" v-bind="barScope" />

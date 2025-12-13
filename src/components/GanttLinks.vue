@@ -2,6 +2,7 @@
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
+import { CanvasContextManager } from '../utils/canvasUtils'
 
 // 定义 TaskBar 位置信息类型
 interface TaskBarPosition {
@@ -43,6 +44,9 @@ const props = withDefaults(defineProps<Props>(), {
 // Canvas 引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
+// Canvas 上下文管理器
+const canvasManager = new CanvasContextManager()
+
 // requestAnimationFrame 防抖控制
 let rafId: number | null = null
 let pendingRedraw = false
@@ -62,29 +66,22 @@ const updateTheme = () => {
  * 性能优势：相比 SVG 提升 18 倍渲染性能
  */
 const drawLinks = () => {
-  const canvas = canvasRef.value
-  if (!canvas) return
+  const ctx = canvasManager.getContext({
+    canvas: canvasRef.value,
+    canvasId: 'gantt-link-canvas',
+    width: props.width,
+    height: props.height,
+    contextOptions: { alpha: true },
+  })
 
-  const ctx = canvas.getContext('2d', { alpha: true })
   if (!ctx) {
     // eslint-disable-next-line no-console
     console.error('❌ Canvas context 获取失败，可能是尺寸超限')
     return
   }
 
-  // 适配高清屏（Retina）
-  const dpr = window.devicePixelRatio || 1
   const displayWidth = props.width
   const displayHeight = props.height
-
-  // 只在尺寸变化时更新 canvas 尺寸
-  const pixelWidth = displayWidth * dpr
-  const pixelHeight = displayHeight * dpr
-  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-    canvas.width = pixelWidth
-    canvas.height = pixelHeight
-    ctx.scale(dpr, dpr)
-  }
 
   // 清空画布（透明）
   ctx.clearRect(0, 0, displayWidth, displayHeight)
@@ -204,12 +201,78 @@ const drawLinks = () => {
       const x2 = globalX2 - props.offsetLeft
       const y2 = globalY2 - props.offsetTop
 
-      const c1x = x1 + 40
-      const c1y = y1
-      const c2x = x2 - 40
-      const c2y = y2
+      // 计算水平和垂直距离
+      const dx = x2 - x1
+      const dy = y2 - y1
+      const distance = Math.sqrt(dx * dx + dy * dy)
 
-      // 预计算箭头角度
+      // 动态计算控制点，优化连接线的显示效果
+      // 核心策略：避免链接线被 TaskBar 的直角遮挡
+      // 1. 出点和入点需要有足够的"间距"，确保不被 TaskBar 直角遮挡
+      // 2. 根据 TaskBar 的尺寸（宽度、高度）动态调整水平和垂直偏移
+
+      // TaskBar 尺寸（用于计算绕过直角所需的偏移）
+      const barWidth = fromBar.width
+      const barHeight = fromBar.height
+
+      // 计算水平距离占总距离的比例
+      const horizontalRatio = Math.abs(dx) / (distance + 1) // +1 避免除零
+
+      // ===== 水平偏移计算 =====
+      // 策略：确保出点和入点的控制点都在 TaskBar 外侧，不会被角落遮挡
+      // 从 A 出发：至少要超过 A 的右边界 + 安全距离
+      // 进入 B：至少要在 B 的左边界 - 安全距离
+      const horizontalSafetyMargin = 20 // TaskBar 角落安全距离
+      let horizontalOffset = barHeight / 2 + horizontalSafetyMargin // 基础偏移
+
+      if (horizontalRatio < 0.3) {
+        // 接近垂直的情况：需要更大的水平偏移，确保出入角度清晰
+        horizontalOffset = Math.max(barHeight / 2 + 25, 45)
+      } else if (horizontalRatio < 0.6) {
+        // 中等角度：适度调整
+        horizontalOffset = barHeight / 2 + horizontalSafetyMargin
+      } else {
+        // 水平情况：偏移可以相对较小
+        horizontalOffset = barWidth / 3 + 10
+      }
+
+      // ===== 垂直偏移计算 =====
+      // 策略：根据垂直距离动态调整，确保线条绕过 TaskBar 的上下边界
+      let verticalOffset = 0
+
+      if (Math.abs(dy) > 0) {
+        // 垂直偏移的最小值：必须大于 TaskBar 半高 + 安全距离，才能绕过直角
+        const verticalSafetyMargin = 12 // TaskBar 角落安全距离
+        const minVerticalOffset = barHeight / 2 + verticalSafetyMargin // 通常是 32-35px
+
+        // 动态计算：根据两个 TaskBar 之间的垂直距离
+        // 如果距离较近，偏移量应该相对较小（形成更陡峭的曲线）
+        // 如果距离较远，偏移量应该相对较大（形成更平缓的曲线）
+        const verticalGap = Math.abs(dy) - barHeight // 两个 TaskBar 之间的实际距离
+        const dynamicOffset = Math.min(verticalGap * 0.5, 100) // 最大 100px
+
+        verticalOffset = Math.max(minVerticalOffset, dynamicOffset)
+      } else {
+        // 完全水平的连接：垂直偏移为 0（线条直接通过中心）
+        verticalOffset = 0
+      }
+
+      // ===== 控制点垂直比例调整 =====
+      // 根据连接类型调整控制点的垂直位置
+      // 接近垂直时：控制点垂直偏移更小，形成平缓的 S 形曲线
+      // 接近水平时：控制点垂直偏移接近最大值，形成明显的进出角度
+      const isNearVertical = horizontalRatio < 0.3
+      const verticalControlRatio = isNearVertical ? 0.4 : 0.8 // 接近垂直时控制点垂直偏移更小
+
+      // 起点控制点：水平向右延伸，垂直偏移较小（形成平缓的出线角度）
+      const c1x = x1 + horizontalOffset
+      const c1y = y1 + (dy > 0 ? verticalOffset : -verticalOffset) * verticalControlRatio
+
+      // 终点控制点：水平向左延伸，垂直偏移较小（形成平缓的入线角度）
+      const c2x = x2 - horizontalOffset
+      const c2y = y2 - (dy > 0 ? verticalOffset : -verticalOffset) * verticalControlRatio
+
+      // 预计算箭头角度（使用控制点到终点的角度，更准确）
       const arrowAngle = Math.atan2(y2 - c2y, x2 - c2x)
       const lineData: LineData = { x1, y1, x2, y2, c1x, c1y, c2x, c2y, arrowAngle }
 
@@ -311,6 +374,9 @@ const drawLinks = () => {
     // 恢复透明度
     ctx.globalAlpha = 1
   }
+
+  // uni-app 环境需要调用 draw() 方法将绘制内容渲染到画布
+  canvasManager.draw()
 }
 
 /**
@@ -390,7 +456,7 @@ watch(
 // 组件挂载后初始化绘制
 onMounted(() => {
   // 监听主题变化
-  themeObserver = new MutationObserver((mutations) => {
+  themeObserver = new MutationObserver(mutations => {
     for (const mutation of mutations) {
       if (mutation.attributeName === 'data-theme') {
         updateTheme()
@@ -433,14 +499,16 @@ defineExpose({
 <template>
   <canvas
     ref="canvasRef"
+    canvas-id="gantt-link-canvas"
     class="gantt-links-canvas"
+    type="2d"
+    :hidpi="true"
     :style="{
       position: 'absolute',
-      left: 0,
-      top: 0,
+      left: `${offsetLeft}px`,
+      top: `${offsetTop}px`,
       width: `${width}px`,
       height: `${height}px`,
-      transform: `translate(${offsetLeft}px, ${offsetTop}px)`,
       zIndex: highlightedTaskId !== null ? 1001 : 25,
       pointerEvents: 'none',
     }"

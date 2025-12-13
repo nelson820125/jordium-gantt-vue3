@@ -46,8 +46,8 @@ const messageTaskName = computed(() => {
         rows="3"
       ></textarea>
       <div class="dialog-actions">
-        <button class="btn btn-default" @click="$emit('cancel')">{{ t('cancel') }}</button>
-        <button class="btn btn-confirm" @click="onConfirm">{{ t('startTimer') }}</button>
+        <button class="gantt-btn gantt-btn-default" @click="$emit('cancel')">{{ t('cancel') }}</button>
+        <button class="gantt-btn gantt-btn-confirm" @click="onConfirm">{{ t('startTimer') }}</button>
       </div>
     </div>
   </div>
@@ -108,7 +108,7 @@ const messageTaskName = computed(() => {
   gap: 12px;
   margin-top: 8px;
 }
-.btn {
+.gantt-btn {
   min-width: 96px;
   padding: 10px 0;
   border: none;
@@ -122,11 +122,11 @@ const messageTaskName = computed(() => {
   align-items: center;
   justify-content: center;
 }
-.btn-confirm {
+.gantt-btn-confirm {
   background: #4caf50;
   color: #fff;
 }
-.btn-confirm:hover {
+.gantt-btn-confirm:hover {
   background: #43a047;
 }
 </style>

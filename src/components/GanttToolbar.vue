@@ -432,16 +432,16 @@ onUnmounted(() => {
       <!-- 新增按钮组 -->
       <div
         v-if="config.showAddTask !== false || config.showAddMilestone !== false"
-        class="btn-group add-btn-group"
+        class="gantt-btn-group gantt-add-btn-group"
       >
         <button
           v-if="config.showAddTask !== false"
-          class="btn-group-item"
+          class="gantt-btn-group-item"
           :title="t('addTask')"
           @click="handleAddTask"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -454,12 +454,12 @@ onUnmounted(() => {
         </button>
         <button
           v-if="config.showAddMilestone !== false"
-          class="btn-group-item"
+          class="gantt-btn-group-item"
           :title="t('addMilestone')"
           @click="handleAddMilestone"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -487,15 +487,15 @@ onUnmounted(() => {
       <!-- 展开/折叠按钮组 -->
       <div
         v-if="config.showExpandCollapse !== false"
-        class="btn-group expand-collapse-btn-group"
+        class="gantt-btn-group gantt-expand-collapse-btn-group"
       >
         <button
-          class="btn-group-item"
+          class="gantt-btn-group-item"
           :title="t('expandAll')"
           @click="handleExpandAll"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -506,12 +506,12 @@ onUnmounted(() => {
           {{ t('expandAll') }}
         </button>
         <button
-          class="btn-group-item"
+          class="gantt-btn-group-item"
           :title="t('collapseAll')"
           @click="handleCollapseAll"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -526,16 +526,16 @@ onUnmounted(() => {
       <!-- 导出按钮组 -->
       <div
         v-if="config.showExportCsv !== false || config.showExportPdf !== false"
-        class="btn-group"
+        class="gantt-btn-group"
       >
         <button
           v-if="config.showExportCsv !== false"
-          class="btn-group-item"
+          class="gantt-btn-group-item"
           :title="t('exportCsv')"
           @click="handleExportCsv"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -552,12 +552,12 @@ onUnmounted(() => {
 
         <button
           v-if="config.showExportPdf !== false"
-          class="btn-group-item"
+          class="gantt-btn-group-item"
           :title="t('exportPdf')"
           @click="handleExportPdf"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -600,7 +600,7 @@ onUnmounted(() => {
           @click="toggleLanguageDropdown"
         >
           <svg
-            class="btn-icon"
+            class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -656,7 +656,7 @@ onUnmounted(() => {
         @click="handleTodayLocate"
       >
         <svg
-          class="btn-icon"
+          class="gantt-btn-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -678,7 +678,7 @@ onUnmounted(() => {
       >
         <svg
           v-if="isDarkMode"
-          class="btn-icon"
+          class="gantt-btn-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -696,7 +696,7 @@ onUnmounted(() => {
         </svg>
         <svg
           v-else
-          class="btn-icon"
+          class="gantt-btn-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -716,7 +716,7 @@ onUnmounted(() => {
       >
         <svg
           v-if="isFullscreen"
-          class="btn-icon"
+          class="gantt-btn-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -728,7 +728,7 @@ onUnmounted(() => {
         </svg>
         <svg
           v-else
-          class="btn-icon"
+          class="gantt-btn-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -748,8 +748,8 @@ onUnmounted(() => {
       <div class="dialog-content">
         <p class="dialog-message">{{ t('confirmDialogMessage') }}</p>
         <div class="dialog-actions">
-          <button class="btn btn-default" @click="cancelSaveSettings">{{ t('cancel') }}</button>
-          <button class="btn btn-primary" @click="confirmSaveSettings">{{ t('confirm') }}</button>
+          <button class="gantt-btn gantt-btn-default" @click="cancelSaveSettings">{{ t('cancel') }}</button>
+          <button class="gantt-btn gantt-btn-primary" @click="confirmSaveSettings">{{ t('confirm') }}</button>
         </div>
       </div>
     </div>
@@ -812,13 +812,13 @@ onUnmounted(() => {
   background: var(--gantt-bg-active, rgba(0, 0, 0, 0.3));
 }
 
-.toolbar-icon-btn .btn-icon {
+.toolbar-icon-btn .gantt-btn-icon {
   width: 18px;
   height: 18px;
 }
 
 /* 图标样式 */
-.btn-icon {
+.gantt-btn-icon {
   width: 16px;
   height: 16px;
   stroke-width: 2;
@@ -882,7 +882,7 @@ onUnmounted(() => {
   background: var(--gantt-bg-active, rgba(64, 158, 255, 0.1));
 }
 
-.toolbar-lang-btn .btn-icon {
+.toolbar-lang-btn .gantt-btn-icon {
   width: 16px;
   height: 16px;
   stroke-width: 2;
@@ -1089,27 +1089,27 @@ onUnmounted(() => {
     font-size: 14px;
   }
 
-  .btn {
+  .gantt-btn {
     padding: 8px 12px;
     font-size: 13px;
   }
 }
 
 /* 按钮组样式 - Element Plus primary button group 风格 */
-.btn-group {
+.gantt-btn-group {
   display: inline-flex;
   margin-right: 8px;
   overflow: hidden;
   transition: all 0.2s ease;
 }
 
-.btn-group:hover,
-.btn-group:focus-within {
+.gantt-btn-group:hover,
+.gantt-btn-group:focus-within {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 }
 
-.btn-group-item {
+.gantt-btn-group-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1130,19 +1130,19 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 
-.btn-group-item:first-child {
+.gantt-btn-group-item:first-child {
   border-left: 1px solid;
   border-right: none;
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
 }
 
-.btn-group-item:last-child {
+.gantt-btn-group-item:last-child {
   border-top-right-radius: 4px;
   border-bottom-right-radius: 4px;
 }
 
-.btn-group-item:not(:last-child)::after {
+.gantt-btn-group-item:not(:last-child)::after {
   content: '';
   position: absolute;
   right: 0;
@@ -1154,53 +1154,53 @@ onUnmounted(() => {
 }
 
 /* Primary 按钮组样式 */
-.add-btn-group .btn-group-item {
+.gantt-add-btn-group .gantt-btn-group-item {
   background: #409eff;
   border-color: #409eff;
   color: #ffffff;
 }
 
-.add-btn-group .btn-group-item::after {
+.gantt-add-btn-group .gantt-btn-group-item::after {
   background: rgba(255, 255, 255, 0.3);
 }
 
-.add-btn-group .btn-group-item:hover {
+.gantt-add-btn-group .gantt-btn-group-item:hover {
   background: #66b1ff;
   border-color: #66b1ff;
   z-index: 1;
 }
 
-.add-btn-group .btn-group-item:focus {
+.gantt-add-btn-group .gantt-btn-group-item:focus {
   background: #3a8ee6;
   border-color: #3a8ee6;
   z-index: 1;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
-.add-btn-group .btn-group-item:active {
+.gantt-add-btn-group .gantt-btn-group-item:active {
   background: #337ecc;
   border-color: #337ecc;
 }
 
 /* 悬浮和焦点状态下隐藏分割线 */
-.btn-group:hover .btn-group-item::after,
-.btn-group:focus-within .btn-group-item::after {
+.gantt-btn-group:hover .gantt-btn-group-item::after,
+.gantt-btn-group:focus-within .gantt-btn-group-item::after {
   opacity: 0;
 }
 
 /* 普通按钮组样式 */
-.btn-group:not(.add-btn-group) .btn-group-item {
+.gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item {
   border-color: #dcdfe6;
 }
 
-.btn-group:not(.add-btn-group) .btn-group-item:hover {
+.gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item:hover {
   background: #ecf5ff;
   border-color: #b3d8ff;
   color: #409eff;
   z-index: 1;
 }
 
-.btn-group:not(.add-btn-group) .btn-group-item:focus {
+.gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item:focus {
   background: #ecf5ff;
   border-color: #409eff;
   color: #409eff;
@@ -1208,54 +1208,54 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 1px #409eff;
 }
 
-.btn-group:not(.add-btn-group) .btn-group-item:active {
+.gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item:active {
   background: #d9ecff;
   border-color: #409eff;
   color: #409eff;
 }
 
 /* 按钮组图标样式 */
-.btn-group-item .btn-icon {
+.gantt-btn-group-item .gantt-btn-icon {
   width: 16px;
   height: 16px;
   stroke-width: 2;
 }
 
 /* 暗黑模式下的按钮组样式 */
-:global(html[data-theme='dark']) .btn-group {
+:global(html[data-theme='dark']) .gantt-btn-group {
   box-shadow:
     0 1px 3px 0 rgba(0, 0, 0, 0.3),
     0 1px 2px -1px rgba(0, 0, 0, 0.3);
 }
 
-:global(html[data-theme='dark']) .btn-group:hover,
-:global(html[data-theme='dark']) .btn-group:focus-within {
+:global(html[data-theme='dark']) .gantt-btn-group:hover,
+:global(html[data-theme='dark']) .gantt-btn-group:focus-within {
   box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
 }
 
-:global(html[data-theme='dark']) .add-btn-group .btn-group-item {
+:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item {
   background: #337ecc;
   border-color: #337ecc;
   color: #ffffff;
 }
 
-:global(html[data-theme='dark']) .add-btn-group .btn-group-item:hover {
+:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item:hover {
   background: #4d94d4;
   border-color: #4d94d4;
 }
 
-:global(html[data-theme='dark']) .add-btn-group .btn-group-item:focus {
+:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item:focus {
   background: #2c5aa0;
   border-color: #2c5aa0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
-:global(html[data-theme='dark']) .add-btn-group .btn-group-item:active {
+:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item:active {
   background: #1f4872;
   border-color: #1f4872;
 }
 
-:global(html[data-theme='dark']) .btn-group:not(.add-btn-group) .btn-group-item {
+:global(html[data-theme='dark']) .gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item {
   background: #2c2c2c;
   border-color: #4c4c4c;
   color: #e5e5e5;
