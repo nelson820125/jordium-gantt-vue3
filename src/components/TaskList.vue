@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, useSlots, computed, nextTick, inject } from 'vue'
+import type { StyleValue, Slots } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
@@ -7,7 +8,6 @@ import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 import { useTaskRowDrag } from '../composables/useTaskRowDrag'
 import { moveTask } from '../utils/taskTreeUtils'
-import type { Slots } from 'vue'
 import { useTaskListColumns } from '../composables/useTaskListColumns'
 import type { DeclarativeColumnConfig } from '../composables/useTaskListColumns'
 
@@ -17,6 +17,8 @@ interface Props {
   taskListConfig?: TaskListConfig
   taskListColumnRenderMode?: 'default' | 'declarative'
   enableTaskRowMove?: boolean
+  taskListRowClassName?: string | ((row: Task, rowIndex: number) => string)
+  taskListRowStyle?: StyleValue | ((row: Task, rowIndex: number) => StyleValue)
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -330,7 +332,12 @@ const visibleTaskRange = computed(() => {
 // 虚拟列表中需要渲染的任务
 const visibleTasks = computed(() => {
   const { startIndex, endIndex } = visibleTaskRange.value
-  return flattenedTasks.value.slice(startIndex, endIndex)
+  const slicedTasks = flattenedTasks.value.slice(startIndex, endIndex)
+  // 添加 rowIndex（基于在扁平化列表中的实际索引）
+  return slicedTasks.map((item, index) => ({
+    ...item,
+    rowIndex: startIndex + index,
+  }))
 })
 
 // Spacer 高度用于撑起滚动区域
@@ -677,10 +684,11 @@ onUnmounted(() => {
       <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
 
       <TaskRow
-        v-for="{ task, level } in visibleTasks"
+        v-for="{ task, level, rowIndex } in visibleTasks"
         :key="task.id"
         :task="task"
         :level="level"
+        :row-index="rowIndex"
         :is-hovered="hoveredTaskId === task.id"
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
@@ -693,6 +701,8 @@ onUnmounted(() => {
         :enable-drag="props.enableTaskRowMove"
         :drag-start="startDrag"
         :drag-over="handleDragOver"
+        :task-list-row-class-name="props.taskListRowClassName"
+        :task-list-row-style="props.taskListRowStyle"
         @toggle="toggleCollapse"
         @dblclick="handleTaskRowDoubleClick"
         @contextmenu="handleTaskRowContextMenu"

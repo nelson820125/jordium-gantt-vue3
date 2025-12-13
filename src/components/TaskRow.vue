@@ -33,6 +33,7 @@ interface TaskRowSlotProps {
 interface Props {
   task: Task
   level: number
+  rowIndex?: number
   isHovered?: boolean
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
@@ -45,6 +46,8 @@ interface Props {
   enableDrag?: boolean
   dragStart?: (task: Task, element: HTMLElement, event: MouseEvent) => void
   dragOver?: (task: Task, element: HTMLElement, event: MouseEvent) => void
+  taskListRowClassName?: string | ((row: Task, rowIndex: number) => string)
+  taskListRowStyle?: StyleValue | ((row: Task, rowIndex: number) => StyleValue)
 }
 const props = withDefaults(defineProps<Props>(), {
   renderMode: 'default',
@@ -235,6 +238,29 @@ const isMilestoneTask = computed(() => props.task.type === 'milestone')
 const isParentTask = computed(
   () => isStoryTask.value || hasChildren.value || isMilestoneGroup.value,
 )
+
+// 计算自定义行类名
+const customRowClass = computed(() => {
+  if (!props.taskListRowClassName) return ''
+
+  if (typeof props.taskListRowClassName === 'function') {
+    return props.taskListRowClassName(props.task, props.rowIndex ?? 0)
+  }
+
+  return props.taskListRowClassName
+})
+
+// 计算自定义行样式（优先级高于类名）
+const customRowStyle = computed(() => {
+  if (!props.taskListRowStyle) return {}
+
+  if (typeof props.taskListRowStyle === 'function') {
+    return props.taskListRowStyle(props.task, props.rowIndex ?? 0)
+  }
+
+  return props.taskListRowStyle
+})
+
 function handleToggle() {
   emit('toggle', props.task)
 }
@@ -506,7 +532,9 @@ onUnmounted(() => {
         'task-type-story': isStoryTask,
         'task-type-task': props.task.type === 'task',
         'task-type-milestone': isMilestoneTask,
+        [customRowClass]: customRowClass,
       }"
+      :style="customRowStyle"
       @click="handleRowClick"
       @dblclick="handleTaskRowDoubleClick"
       @mousedown="handleMouseDown"

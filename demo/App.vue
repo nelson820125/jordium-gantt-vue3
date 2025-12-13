@@ -357,7 +357,63 @@ const handleAddMilestone = () => {
   showMilestoneDialog.value = true
 }
 
+// 根据任务进度返回行样式类名
+// task-list-row-class-name 使用示例：
+// 1. 父级节点（包含子任务） → task-row-parent (保留默认样式)
+// 2. progress = 100 → task-row-success (淡绿色，已完成)
+// 3. 0 < progress < 100 → task-row-warning (淡黄色，进行中)
+// 4. progress <= 0 → task-row-info (灰色，未开始)
+const getTaskRowClassName = (row: Task, rowIndex: number) => {
+  // 如果是父级节点（包含子任务），使用默认父级样式
+  if (row.children && row.children.length > 0) {
+    return 'parent-task'
+  }
 
+  const progress = row.progress || 0
+
+  // 进度 = 100：已完成，淡绿色
+  if (progress === 100) {
+    return 'task-row-success'
+  }
+
+  // 进度 > 0 且 < 100：进行中，淡黄色
+  if (progress > 0 && progress < 100) {
+    return 'task-row-warning'
+  }
+
+  // 进度 <= 0：未开始，灰色
+  return 'task-row-info'
+}
+
+// 根据任务进度返回行内联样式
+// task-list-row-style 使用示例（优先级高于 task-list-row-class-name）：
+// 可以返回对象形式的样式，支持更灵活的样式控制
+const getTaskRowStyle = (row: Task, rowIndex: number) => {
+  // 父级节点保持默认样式
+  if (row.children && row.children.length > 0) {
+    return {}
+  }
+
+  const progress = row.progress || 0
+
+  // 这里可以返回内联样式对象
+  // 示例：根据进度值设置不同的边框颜色
+  if (progress === 100) {
+    return {
+      borderLeft: '3px solid #67c23a',
+    }
+  }
+
+  if (progress > 0 && progress < 100) {
+    return {
+      borderLeft: '3px solid #e6a23c',
+    }
+  }
+
+  return {
+    borderLeft: '3px solid #909399',
+  }
+}
 
 const handleThemeChange = (isDark: boolean) => {
   const themeText = isDark ? t.value.darkModeText : t.value.lightModeText
@@ -1123,6 +1179,8 @@ const handleTaskRowMoved = async (payload: {
         :allow-drag-and-resize="allowDragAndResize"
         :enable-task-row-move="enableTaskRowMove"
         :assignee-options="assigneeOptions"
+        :task-list-row-class-name="getTaskRowClassName"
+        :task-list-row-style="getTaskRowStyle"
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
@@ -2482,5 +2540,64 @@ const handleTaskRowMoved = async (payload: {
 
 :global(html[data-theme='dark']) .property-value {
   color: var(--gantt-text-primary, #e0e0e0);
+}
+
+/* 任务行根据进度值的自定义样式 */
+/* 父级节点 (task-row-parent) 保留默认样式，不做特殊处理 */
+
+/* 已完成 (progress = 100) - 淡绿色，参考 Element Plus success */
+:deep(.task-row-success) {
+  background-color: #f0f9ff !important;
+  background: linear-gradient(90deg, #f0f9ff 0%, #e8f5e9 100%) !important;
+  height: 100px;
+}
+
+:deep(.task-row-success:hover) {
+  background: linear-gradient(90deg, #e1f5fe 0%, #c8e6c9 100%) !important;
+}
+
+/* 进行中 (0 < progress < 100) - 淡黄色，参考 Element Plus warning */
+:deep(.task-row-warning) {
+  background-color: #fdf6ec !important;
+  background: linear-gradient(90deg, #fdf6ec 0%, #fff3e0 100%) !important;
+}
+
+:deep(.task-row-warning:hover) {
+  background: linear-gradient(90deg, #faecd8 0%, #ffe0b2 100%) !important;
+}
+
+/* 未开始 (progress <= 0) - 灰色，参考 Element Plus info */
+:deep(.task-row-info) {
+  background-color: #f4f4f5 !important;
+  background: linear-gradient(90deg, #f4f4f5 0%, #f5f5f5 100%) !important;
+}
+
+:deep(.task-row-info:hover) {
+  background: linear-gradient(90deg, #e9e9eb 0%, #eeeeee 100%) !important;
+}
+
+/* 暗黑模式下的任务行样式 */
+:global(html[data-theme='dark']) :deep(.task-row-success) {
+  background: linear-gradient(90deg, #0a3a2a 0%, #1b4d3e 100%) !important;
+}
+
+:global(html[data-theme='dark']) :deep(.task-row-success:hover) {
+  background: linear-gradient(90deg, #0f4d35 0%, #276749 100%) !important;
+}
+
+:global(html[data-theme='dark']) :deep(.task-row-warning) {
+  background: linear-gradient(90deg, #3d2f1f 0%, #4d3b2a 100%) !important;
+}
+
+:global(html[data-theme='dark']) :deep(.task-row-warning:hover) {
+  background: linear-gradient(90deg, #4d3b26 0%, #5d4a35 100%) !important;
+}
+
+:global(html[data-theme='dark']) :deep(.task-row-info) {
+  background: linear-gradient(90deg, #2a2a2a 0%, #333333 100%) !important;
+}
+
+:global(html[data-theme='dark']) :deep(.task-row-info:hover) {
+  background: linear-gradient(90deg, #353535 0%, #3d3d3d 100%) !important;
 }
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onUnmounted, onMounted, computed, watch, nextTick, useSlots, provide } from 'vue'
+import type { StyleValue } from 'vue'
 import TaskList from './TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
@@ -50,6 +51,8 @@ const props = withDefaults(defineProps<Props>(), {
   allowDragAndResize: true,
   enableTaskRowMove: false,
   assigneeOptions: () => [],
+  taskListRowClassName: undefined,
+  taskListRowStyle: undefined,
 })
 
 const emit = defineEmits([
@@ -145,6 +148,12 @@ interface Props {
   // 格式：{ key?: string | number, value: string | number, label: string }
   // key 为可选项，若不存在则使用 value 作为选项的唯一标识
   assigneeOptions?: Array<{ key?: string | number; value: string | number; label: string }>
+  // 任务行自定义样式类名，支持字符串或函数
+  // 函数形式：(row: Task, rowIndex: number) => string
+  taskListRowClassName?: string | ((row: Task, rowIndex: number) => string)
+  // 任务行自定义样式，支持对象或函数，优先级高于 taskListRowClassName
+  // 函数形式：(row: Task, rowIndex: number) => StyleValue
+  taskListRowStyle?: StyleValue | ((row: Task, rowIndex: number) => StyleValue)
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -2307,6 +2316,8 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           :task-list-config="props.taskListConfig"
           :task-list-column-render-mode="props.taskListColumnRenderMode"
           :enable-task-row-move="props.enableTaskRowMove"
+          :task-list-row-class-name="props.taskListRowClassName"
+          :task-list-row-style="props.taskListRowStyle"
           @task-collapse-change="handleTaskCollapseChange"
           @start-timer="handleStartTimer"
           @stop-timer="handleStopTimer"
