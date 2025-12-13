@@ -362,5 +362,21 @@
       "修复：Github编译错误",
       "Fixed: The build errors on Github"
     ]
+  },
+  {
+    "version": "1.5.0",
+    "date": "2025-12-13",
+    "notes": [
+      "新增：TaskBar增加可视化关系线添加，删除功能",
+      "新增：支持适配uniapp开发",
+      "新增：TaskListConfig支持Task图标显示/隐藏配置",
+      "修复：Task双击时，禁止Task拖放事件的触发",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @qiuchengw的专业贡献</span>",
+      "Added: TaskBar adds visual relationship line addition and deletion functions",
+      "Added: Support for uniapp development",
+      "Added: TaskListConfig supports Task icon show/hide configuration",
+      "Fixed: Disabled Task drag-and-drop event trigger on double-click",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @qiuchengw for his professional contribution</span>"
+    ]
   }
 ]

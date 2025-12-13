@@ -3,28 +3,37 @@ import type { Task } from '../models/classes/Task'
 
 interface DragState {
   isDragging: boolean
+  isPreparing: boolean // 新增：准备拖拽状态（鼠标按下但未移动足够距离）
   draggedTask: Task | null
   draggedElement: HTMLElement | null
   ghostElement: HTMLElement | null
   dropTargetTask: Task | null
   dropPosition: 'after' | 'child' | null
+  startX: number // 记录起始鼠标位置
+  startY: number
 }
 
 interface UseDragOptions {
   enabled: boolean
+  dragThreshold?: number // 拖拽触发阈值（像素），默认5px
   onDragStart?: (task: Task) => void
   onDragOver?: (task: Task, position: 'after' | 'child') => void
   onDrop?: (draggedTask: Task, targetTask: Task, position: 'after' | 'child') => void
 }
 
 export function useTaskRowDrag(options: UseDragOptions) {
+  const DRAG_THRESHOLD = options.dragThreshold ?? 5 // 默认5px触发拖拽
+
   const dragState = ref<DragState>({
     isDragging: false,
+    isPreparing: false,
     draggedTask: null,
     draggedElement: null,
     ghostElement: null,
     dropTargetTask: null,
     dropPosition: null,
+    startX: 0,
+    startY: 0,
   })
 
   const startDrag = (task: Task, element: HTMLElement, event: MouseEvent) => {
@@ -38,9 +47,23 @@ export function useTaskRowDrag(options: UseDragOptions) {
     event.preventDefault()
     event.stopPropagation()
 
-    dragState.value.isDragging = true
+    // 进入准备状态，记录起始位置，但不创建ghost
+    dragState.value.isPreparing = true
     dragState.value.draggedTask = task
     dragState.value.draggedElement = element
+    dragState.value.startX = event.clientX
+    dragState.value.startY = event.clientY
+  }
+
+  // 真正激活拖拽（创建ghost等）
+  const activateDrag = (event: MouseEvent) => {
+    if (!dragState.value.isPreparing || dragState.value.isDragging) return
+
+    const task = dragState.value.draggedTask!
+    const element = dragState.value.draggedElement!
+
+    dragState.value.isDragging = true
+    dragState.value.isPreparing = false
 
     // 创建拖拽的幽灵元素
     const ghost = element.cloneNode(true) as HTMLElement
@@ -143,6 +166,14 @@ export function useTaskRowDrag(options: UseDragOptions) {
   }
 
   const endDrag = () => {
+    // 如果只是准备状态（未真正拖拽），直接取消
+    if (dragState.value.isPreparing && !dragState.value.isDragging) {
+      dragState.value.isPreparing = false
+      dragState.value.draggedTask = null
+      dragState.value.draggedElement = null
+      return
+    }
+
     if (!dragState.value.isDragging) return
 
     const draggedTask = dragState.value.draggedTask
@@ -178,15 +209,31 @@ export function useTaskRowDrag(options: UseDragOptions) {
     // 重置状态
     dragState.value = {
       isDragging: false,
+      isPreparing: false,
       draggedTask: null,
       draggedElement: null,
       ghostElement: null,
       dropTargetTask: null,
       dropPosition: null,
+      startX: 0,
+      startY: 0,
     }
   }
 
   const handleMouseMove = (event: MouseEvent) => {
+    // 如果处于准备状态，检查是否移动超过阈值
+    if (dragState.value.isPreparing && !dragState.value.isDragging) {
+      const deltaX = Math.abs(event.clientX - dragState.value.startX)
+      const deltaY = Math.abs(event.clientY - dragState.value.startY)
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+      // 超过阈值，激活真正的拖拽
+      if (distance > DRAG_THRESHOLD) {
+        activateDrag(event)
+      }
+      return
+    }
+
     if (dragState.value.isDragging) {
       updateGhostPosition(event)
 
@@ -222,7 +269,7 @@ export function useTaskRowDrag(options: UseDragOptions) {
   }
 
   const handleMouseUp = () => {
-    if (dragState.value.isDragging) {
+    if (dragState.value.isDragging || dragState.value.isPreparing) {
       endDrag()
     }
   }

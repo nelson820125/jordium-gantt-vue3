@@ -1505,6 +1505,7 @@ const toolbarConfig: ToolbarConfig = {
 | `defaultWidth`   | `number \| string`       | `320`   | 默认展开宽度。支持像素数字（如 `320`）或百分比字符串（如 `'30%'`）             |
 | `minWidth`       | `number \| string`       | `280`   | 最小宽度。支持像素数字（如 `280`）或百分比字符串（如 `'20%'`）。不能小于 280px |
 | `maxWidth`       | `number \| string`       | `1160`  | 最大宽度。支持像素数字（如 `1160`）或百分比字符串（如 `'80%'`）                |
+| `showTaskIcon`       | `boolean`       | `true`  | 是否展示任务图标                |
 
 **TaskListColumnConfig 类型定义：**
 

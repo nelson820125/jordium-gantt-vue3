@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-12-13
+
+### Added
+- TaskBar增加可视化关系线添加，删除功能
+- 支持适配uniapp开发
+- TaskListConfig支持Task图标显示/隐藏配置
+- TaskBar adds visual relationship line addition and deletion functions
+- Support for uniapp development
+- TaskListConfig supports Task icon show/hide configuration
+
+### Fixed
+- Task双击时，禁止Task拖放事件的触发
+- Disabled Task drag-and-drop event trigger on double-click
+
 ## [1.4.6-patch.1] - 2025-12-09
 
 ### Fixed
