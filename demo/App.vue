@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
-import GanttChart from '../src/components/GanttChart.vue'
+// GanttChart 和 TaskListColumn 已经通过 app.use(JordiumGantt) 全局注册，无需导入
 // import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import normalData from './data.json'
@@ -1126,6 +1126,7 @@ const handleTaskRowMoved = async (payload: {
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
+        task-list-column-render-mode="declarative"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
@@ -1162,12 +1163,16 @@ const handleTaskRowMoved = async (payload: {
         </template>
 
         <!-- 列级 Slot 示例：'name'列的渲染 -->
+         <template #header-name>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="32" height="32" style="border-radius: 50%;" />
+            <strong style="font-size: 14px;">{{ t.taskName }}</strong>
+          </div>
+         </template>
          <template #column-name="{ task, column, value }">
           <div style="display: flex; align-items: center; gap: 6px;">
             <img src="https://i.pravatar.cc/50?img=1" width="20" height="20" style="border-radius: 50%;" />
-            <!-- 如果 value 包含 HTML，使用 v-html 渲染 -->
             <span v-html="value"></span>
-            <!-- 示例标签 -->
             <span
               v-if="task.priority"
               style="
@@ -1243,6 +1248,41 @@ const handleTaskRowMoved = async (payload: {
           </div>
         </template>
         -->
+
+        <!-- 使用 TaskListColumn 组件自定义列 声明式模式 -->
+        <TaskListColumn prop="name" :label="t.taskName" width="300" align="center">
+          <template #header>
+            <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="32" height="32" style="border-radius: 50%;" />
+            <strong style="font-size: 14px;">{{ t.taskName }}</strong>
+          </template>
+          <template #default="scope">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <!-- 里程碑分组图标 - 使用菱形图标 -->
+              <svg
+                v-if="scope.row.type === 'milestone-group'"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="milestone-group-icon"
+              >
+                <polygon points="12,2 22,12 12,22 2,12" />
+              </svg>
+              <img
+                v-if="scope.row.avatar && scope.row.type === 'task'"
+                :src="scope.row.avatar"
+                width="20"
+                height="20"
+                style="border-radius: 50%;"
+              />
+              <span v-html="scope.row.name"></span>
+            </div>
+          </template>
+        </TaskListColumn>
+        <TaskListColumn prop="startDate" :label="t.startDate" width="200" align="center" />
+        <TaskListColumn prop="endDate" :label="t.endDate" width="200" align="center" />
       </GanttChart>
     </div>
     <div class="license-info">
@@ -2221,6 +2261,22 @@ const handleTaskRowMoved = async (payload: {
     brightness(0.7);
 }
 
+/* 里程碑分组图标样式 - 统一使用红色并添加发光效果 */
+.milestone-group-icon {
+  color: var(--gantt-danger, #f56c6c);
+  fill: var(--gantt-danger, #f56c6c);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 6px var(--gantt-danger, #f56c6c));
+  animation: milestone-icon-glow 2.5s ease-in-out infinite alternate;
+}
+
+/* 里程碑图标悬停效果 */
+.task-row:hover .milestone-group-icon {
+  filter: drop-shadow(0 0 10px var(--gantt-danger, #f56c6c))
+    drop-shadow(0 0 16px rgba(245, 108, 108, 0.4));
+  animation: milestone-icon-glow-intense 1.8s ease-in-out infinite alternate;
+}
+
 /* 移除旧的基于 SVG color 的样式，现在使用 filter */
 
 /* 暗黑模式下覆盖所有链接样式 */
@@ -2260,6 +2316,20 @@ const handleTaskRowMoved = async (payload: {
 :global(html[data-theme='dark']) .gitee-link:hover .doc-icon {
   filter: brightness(0) saturate(100%) invert(50%) sepia(100%) saturate(1800%) hue-rotate(340deg)
     brightness(1.2);
+}
+
+/* 暗黑模式下的里程碑图标发光效果 */
+:global(html[data-theme='dark']) .milestone-group-icon {
+  color: var(--gantt-danger, #f67c7c);
+  fill: var(--gantt-danger, #f67c7c);
+  filter: drop-shadow(0 0 6px var(--gantt-danger, #f67c7c));
+  animation: milestone-icon-glow-dark 2.5s ease-in-out infinite alternate;
+}
+
+:global(html[data-theme='dark']) .task-row:hover .milestone-group-icon {
+  filter: drop-shadow(0 0 10px var(--gantt-danger, #f67c7c))
+    drop-shadow(0 0 16px rgba(246, 124, 124, 0.4));
+  animation: milestone-icon-glow-intense-dark 1.8s ease-in-out infinite alternate;
 }
 
 /* Task Click Dialog 样式 */

@@ -5,6 +5,7 @@ import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
 import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
+import type { DeclarativeColumnConfig } from '../composables/useTaskListColumns'
 import TaskContextMenu from './TaskContextMenu.vue'
 
 interface TaskRowSlotProps {
@@ -36,6 +37,8 @@ interface Props {
   hoveredTaskId?: number | null
   onHover?: (taskId: number | null) => void
   columns: TaskListColumnConfig[]
+  declarativeColumns?: DeclarativeColumnConfig[]
+  renderMode?: 'default' | 'declarative'
   getColumnWidthStyle?: (column: { width?: number | string }) => StyleValue
   disableChildrenRender?: boolean
   showTaskIcon?: boolean // 是否显示任务图标，默认true
@@ -43,7 +46,9 @@ interface Props {
   dragStart?: (task: Task, element: HTMLElement, event: MouseEvent) => void
   dragOver?: (task: Task, element: HTMLElement, event: MouseEvent) => void
 }
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  renderMode: 'default',
+})
 const emit = defineEmits([
   'toggle',
   'dblclick',
@@ -83,6 +88,142 @@ const renderColumnSlot = (columnKey: string, slotProps: any) => {
     return slotFn(slotProps)
   }
   return null
+}
+
+// 计算实际要渲染的列
+const columnsToRender = computed(() => {
+  if (props.renderMode === 'declarative' && props.declarativeColumns) {
+    return props.declarativeColumns
+  }
+  return props.columns
+})
+
+// 判断是否是第一列
+const isFirstColumn = (index: number) => index === 0
+
+// 获取声明式列的对齐样式
+const getDeclarativeColumnAlign = (column: DeclarativeColumnConfig) => {
+  // if (!column.align || column.align === 'left') return {}
+  return {
+    justifyContent: column.align === 'center' ? 'center' : column.align === 'right' ? 'flex-end' : 'flex-start',
+    textAlign: column.align || 'left',
+  }
+}
+
+// 渲染声明式列的内容
+const renderDeclarativeColumn = (
+  column: DeclarativeColumnConfig,
+  index: number,
+): any => {
+  // 第一列特殊处理：需要显示折叠按钮、图标等
+  if (isFirstColumn(index)) {
+    // 获取列对应的值（使用 prop 或默认为 name）
+    const columnValue = column.prop ? (props.task as any)[column.prop] : props.task.name
+
+    // 如果有自定义 slot
+    if (column.defaultSlot) {
+      return h('div', { class: 'task-name-content' }, [
+        // 自定义内容
+        h(
+          'span',
+          {
+            class: ['task-name-text', { 'parent-task': isParentTask.value }],
+            title: columnValue,
+          },
+          column.defaultSlot({
+            row: props.task,
+            $index: index,
+          }),
+        ),
+      ])
+    }
+
+    // 默认显示列的值（使用 prop）
+    return h('div', { class: 'task-name-content' }, [
+      // 任务图标
+      props.showTaskIcon !== false
+        ? h(
+            'span',
+            { class: 'task-icon' },
+            isMilestoneGroup.value
+              ? h(
+                  'svg',
+                  {
+                    width: 16,
+                    height: 16,
+                    viewBox: '0 0 24 24',
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    'stroke-width': 2,
+                    class: 'milestone-group-icon',
+                  },
+                  h('polygon', { points: '12,2 22,12 12,22 2,12' }),
+                )
+              : isStoryTask.value || hasChildren.value
+                ? h(
+                    'svg',
+                    {
+                      width: 16,
+                      height: 16,
+                      viewBox: '0 0 24 24',
+                      fill: 'none',
+                      stroke: 'currentColor',
+                      'stroke-width': 2,
+                    },
+                    h('path', {
+                      d: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z',
+                    }),
+                  )
+                : h(
+                    'svg',
+                    {
+                      width: 16,
+                      height: 16,
+                      viewBox: '0 0 24 24',
+                      fill: 'none',
+                      stroke: 'currentColor',
+                      'stroke-width': 2,
+                    },
+                    [
+                      h('path', {
+                        d: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z',
+                      }),
+                      h('polyline', { points: '14,2 14,8 20,8' }),
+                      h('line', { x1: 16, y1: 13, x2: 8, y2: 13 }),
+                      h('line', { x1: 16, y1: 17, x2: 8, y2: 17 }),
+                      h('polyline', { points: '10,9 9,9 8,9' }),
+                    ],
+                  ),
+          )
+        : null,
+      // 列的值（使用 prop 或默认 name）
+      h(
+        'span',
+        {
+          class: ['task-name-text', { 'parent-task': isParentTask.value }],
+          title: columnValue,
+        },
+        columnValue || '-',
+      ),
+    ])
+  }
+
+  // 其他列：正常处理
+  // 如果有自定义 slot，使用 slot
+  if (column.defaultSlot) {
+    return column.defaultSlot({
+      row: props.task,
+      $index: index,
+    })
+  }
+
+  // 否则使用 prop 访问任务数据
+  if (column.prop) {
+    const value = (props.task as any)[column.prop]
+    return value !== undefined && value !== null ? value : '-'
+  }
+
+  return '-'
 }
 
 const baseIndent = 10
@@ -373,33 +514,85 @@ onUnmounted(() => {
       @mouseleave="handleMouseLeave"
       @contextmenu="handleContextMenu"
     >
-      <div class="col col-name" :style="{ paddingLeft: indent }">
-        <span
-          v-if="(isStoryTask || hasChildren) && !isMilestoneGroup"
-          class="collapse-btn"
-          @click.stop="handleToggle"
+      <!-- 声明式渲染模式 -->
+      <template v-if="renderMode === 'declarative' && declarativeColumns">
+        <div
+          v-for="(column, index) in columnsToRender"
+          :key="index"
+          class="col"
+          :class="[column.cssClass, { 'col-name': isFirstColumn(index) }]"
+          :style="{
+            ...(getColumnWidthStyle ? getColumnWidthStyle(column) : {}),
+            ...getDeclarativeColumnAlign(column),
+          }"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+          <!-- 第一列：保留 collapse-btn, milestone-spacer, leaf-spacer -->
+          <div v-if="isFirstColumn(index)"
+              :style="{ paddingLeft: indent }"
+              class="first-col-wrapper">
+            <span
+              v-if="(isStoryTask || hasChildren) && !isMilestoneGroup"
+              class="collapse-btn"
+              @click.stop="handleToggle"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline v-if="props.task.collapsed" points="9,18 15,12 9,6" />
+                <polyline v-else points="18,15 12,9 6,15" />
+              </svg>
+            </span>
+
+            <span v-if="isMilestoneGroup" class="milestone-spacer"></span>
+
+            <span
+              v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false"
+              class="leaf-spacer"
+            ></span>
+
+            <!-- 渲染列内容 -->
+            <component :is="() => renderDeclarativeColumn(column, index)" />
+          </div>
+
+          <!-- 其他列：直接渲染内容 -->
+          <component v-else :is="() => renderDeclarativeColumn(column, index)" />
+        </div>
+      </template>
+
+      <!-- 默认渲染模式 -->
+      <template v-else>
+        <div class="col col-name" :style="{ paddingLeft: indent }">
+          <span
+            v-if="(isStoryTask || hasChildren) && !isMilestoneGroup"
+            class="collapse-btn"
+            @click.stop="handleToggle"
           >
-            <polyline v-if="props.task.collapsed" points="9,18 15,12 9,6" />
-            <polyline v-else points="18,15 12,9 6,15" />
-          </svg>
-        </span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline v-if="props.task.collapsed" points="9,18 15,12 9,6" />
+              <polyline v-else points="18,15 12,9 6,15" />
+            </svg>
+          </span>
 
-        <!-- 里程碑分组的占位空间，用于与有折叠按钮的任务对齐 -->
-        <span v-if="isMilestoneGroup" class="milestone-spacer"></span>
+          <!-- 里程碑分组的占位空间，用于与有折叠按钮的任务对齐 -->
+          <span v-if="isMilestoneGroup" class="milestone-spacer"></span>
 
-        <!-- 叶子节点的占位空间（无折叠按钮且无图标显示时） -->
-        <span
-          v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false"
-          class="leaf-spacer"
-        ></span>
+          <!-- 叶子节点的占位空间（无折叠按钮且无图标显示时） -->
+          <span
+            v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false"
+            class="leaf-spacer"
+          ></span>
 
         <!-- 优先级1: 列级自定义 Slot (#column-name) - 覆盖整列内容（图标+文本+徽章） -->
         <component
@@ -642,6 +835,8 @@ onUnmounted(() => {
           </template>
         </template>
       </div>
+      </template>
+      <!-- 结束默认渲染模式 -->
     </div>
     <template
       v-if="
@@ -657,6 +852,8 @@ onUnmounted(() => {
         :hovered-task-id="props.hoveredTaskId"
         :on-hover="props.onHover"
         :columns="props.columns"
+        :declarative-columns="props.declarativeColumns"
+        :render-mode="props.renderMode"
         :get-column-width-style="props.getColumnWidthStyle"
         :disable-children-render="props.disableChildrenRender"
         :show-task-icon="props.showTaskIcon"
@@ -1150,5 +1347,18 @@ onUnmounted(() => {
 
 :global(html[data-theme='dark']) .task-row-drop-target.drop-child {
   background-color: rgba(125, 180, 240, 0.1) !important;
+}
+
+/* 声明式列第一列的包装器 */
+.first-col-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 声明式列的 padding，与 header 保持一致 */
+.task-row .col {
+  padding: 0 10px;
 }
 </style>

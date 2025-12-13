@@ -1,6 +1,7 @@
 export { default as GanttChart } from './GanttChart.vue'
 export { default as GanttToolbar } from './GanttToolbar.vue'
 export { default as TaskList } from './TaskList.vue'
+export { default as TaskListColumn } from './TaskListColumn.vue'
 export { default as TaskRow } from './TaskRow.vue'
 export { default as Timeline } from './Timeline.vue'
 export { default as TaskBar } from './TaskBar.vue'

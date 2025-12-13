@@ -8,15 +8,20 @@ import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 import { useTaskRowDrag } from '../composables/useTaskRowDrag'
 import { moveTask } from '../utils/taskTreeUtils'
 import type { Slots } from 'vue'
+import { useTaskListColumns } from '../composables/useTaskListColumns'
+import type { DeclarativeColumnConfig } from '../composables/useTaskListColumns'
 
 interface Props {
   tasks?: Task[]
   useDefaultDrawer?: boolean
   taskListConfig?: TaskListConfig
+  taskListColumnRenderMode?: 'default' | 'declarative'
   enableTaskRowMove?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  taskListColumnRenderMode: 'default',
+})
 
 // 定义emit事件
 // const emit = defineEmits(['task-collapse-change', 'start-timer', 'stop-timer'])
@@ -49,6 +54,24 @@ const columnSlots = inject<Slots>('gantt-column-slots', {})
 // 多语言支持
 const { t } = useI18n()
 
+// 使用声明式列管理 composable
+const { declarativeColumns, finalColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
+  useTaskListColumns(
+    props.taskListColumnRenderMode || 'default',
+    slots,
+    props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS,
+  )
+
+// 计算实际使用的列配置
+const columnsToUse = computed(() => {
+  if (props.taskListColumnRenderMode === 'declarative') {
+    return declarativeColumns.value
+  }
+  // 默认模式：使用 taskListConfig 中的列配置
+  const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
+  return columns.filter(col => col.visible !== false)
+})
+
 // TaskList 容器引用
 const taskListRef = ref<HTMLElement | null>(null)
 const taskListBodyRef = ref<HTMLElement | null>(null)
@@ -68,6 +91,12 @@ const taskListBodyHeight = ref(0)
 
 // 获取列宽度样式（百分比转像素）
 const getColumnWidthStyle = (column: { width?: number | string }) => {
+  // 声明式模式：使用 composable 中的方法
+  if (props.taskListColumnRenderMode === 'declarative') {
+    return getDeclarativeColumnWidth(column, cachedContainerWidth.value)
+  }
+
+  // 默认模式：原有逻辑
   if (!column.width) return {}
 
   let widthPx: string
@@ -94,13 +123,8 @@ const getColumnWidthStyle = (column: { width?: number | string }) => {
   }
 }
 
-// 计算可见的列配置
-const visibleColumns = computed(() => {
-  const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
-
-  // 过滤出可见的列（visible !== false）
-  return columns.filter(col => col.visible !== false)
-})
+// 计算可见的列配置（已被 columnsToUse 替代，保留以兼容）
+const visibleColumns = computed(() => columnsToUse.value)
 
 // 使用 props.tasks 的引用，不创建副本
 // 这样可以直接修改对象，触发响应式更新，不需要外部监听事件
@@ -596,20 +620,58 @@ onUnmounted(() => {
 <template>
   <div ref="taskListRef" class="task-list">
     <div class="task-list-header">
-      <!-- 任务名称列，始终显示 -->
-      <div class="col col-name">
-        {{ (t as any).taskName || '任务名称' }}
-      </div>
-      <!-- 可配置的其他列 -->
-      <div
-        v-for="column in visibleColumns"
-        :key="column.key"
-        class="col"
-        :class="column.cssClass || `col-${column.key}`"
-        :style="getColumnWidthStyle(column)"
-      >
-        {{ (t as any)[column.key] || column.label }}
-      </div>
+      <!-- 声明式模式 -->
+      <template v-if="taskListColumnRenderMode === 'declarative'">
+        <div
+          v-for="(column, index) in columnsToUse"
+          :key="index"
+          class="col"
+          :class="column.cssClass"
+          :style="{
+            ...getColumnWidthStyle(column),
+            justifyContent: column.align === 'center' ? 'center' : column.align === 'right' ? 'flex-end' : 'flex-start',
+            textAlign: column.align || 'left'
+          }"
+        >
+          <!-- 使用 header slot 或显示 label -->
+          <template v-if="column.headerSlot">
+            <component :is="column.headerSlot" />
+          </template>
+          <template v-else>
+            {{ column.label }}
+          </template>
+        </div>
+      </template>
+
+      <!-- 默认模式：使用配置的列 -->
+      <template v-else>
+        <!-- 任务名称列，始终显示 -->
+        <div class="col col-name">
+          <!-- 检查是否有 header-name slot -->
+          <template v-if="columnSlots['header-name']">
+            <component :is="columnSlots['header-name']" />
+          </template>
+          <template v-else>
+            {{ (t as any).taskName || '任务名称' }}
+          </template>
+        </div>
+        <!-- 可配置的其他列 -->
+        <div
+          v-for="column in visibleColumns"
+          :key="column.key"
+          class="col"
+          :class="column.cssClass || `col-${column.key}`"
+          :style="getColumnWidthStyle(column)"
+        >
+          <!-- 检查是否有对应的 header-{key} slot -->
+          <template v-if="columnSlots[`header-${column.key}`]">
+            <component :is="columnSlots[`header-${column.key}`]" />
+          </template>
+          <template v-else>
+            {{ (t as any)[column.key] || column.label }}
+          </template>
+        </div>
+      </template>
     </div>
     <div ref="taskListBodyRef" class="task-list-body" @scroll="handleTaskListScroll">
       <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
@@ -623,6 +685,8 @@ onUnmounted(() => {
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
         :columns="visibleColumns"
+        :declarative-columns="taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined"
+        :render-mode="taskListColumnRenderMode"
         :get-column-width-style="getColumnWidthStyle"
         :disable-children-render="true"
         :show-task-icon="props.taskListConfig?.showTaskIcon"
@@ -691,6 +755,7 @@ onUnmounted(() => {
   color: var(--gantt-text-header);
   border-right-color: var(--gantt-border-medium);
   padding: 0 10px;
+  box-sizing: border-box; /* 确保 padding 包含在宽度内 */
 }
 
 .task-list-body {

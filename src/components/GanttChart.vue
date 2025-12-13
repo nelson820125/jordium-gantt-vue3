@@ -44,6 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
     afternoon: { start: 13, end: 17 },
   }),
   taskListConfig: undefined,
+  taskListColumnRenderMode: 'default',
   taskBarConfig: undefined,
   autoSortByStartDate: false,
   allowDragAndResize: true,
@@ -83,11 +84,6 @@ const emit = defineEmits([
 
 const { showMessage } = useMessage()
 const slots = useSlots()
-
-// 获取所有列级 slot 名称并通过 provide 传递给子组件
-const columnSlotNames = computed(() => {
-  return Object.keys(slots).filter(name => name.startsWith('column-'))
-})
 
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
@@ -135,6 +131,8 @@ interface Props {
   }
   // 任务列表配置
   taskListConfig?: TaskListConfig
+  // 任务列表列渲染模式：'default' 使用 taskListConfig.columns 配置，'declarative' 使用声明式 <task-list-column> 标签
+  taskListColumnRenderMode?: 'default' | 'declarative'
   // TaskBar 配置
   taskBarConfig?: TaskBarConfig
   // 是否启用自动排序（根据开始时间排序任务）
@@ -2307,6 +2305,7 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           :tasks="tasksForTaskList"
           :use-default-drawer="props.useDefaultDrawer"
           :task-list-config="props.taskListConfig"
+          :task-list-column-render-mode="props.taskListColumnRenderMode"
           :enable-task-row-move="props.enableTaskRowMove"
           @task-collapse-change="handleTaskCollapseChange"
           @start-timer="handleStartTimer"
@@ -2316,6 +2315,10 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           @delete="handleTaskDelete"
           @task-row-moved="handleTaskRowMoved"
         >
+          <!-- 传递默认 slot (用于声明式列定义) -->
+          <template v-if="$slots.default" #default>
+            <slot />
+          </template>
           <!-- 传递 custom-task-content slot -->
           <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
             <slot name="custom-task-content" v-bind="rowScope" />
