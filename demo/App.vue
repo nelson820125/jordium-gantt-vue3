@@ -143,7 +143,7 @@ const toolbarConfig = {
 }
 
 // TaskList列渲染模式配置
-const taskListColumnRenderMode = ref<'default' | 'declarative'>('declarative')
+const taskListColumnRenderMode = ref<'default' | 'declarative'>('default')
 
 // TaskList列配置
 const availableColumns = ref<TaskListColumnConfig[]>([
