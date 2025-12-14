@@ -4,12 +4,11 @@ import type { StyleValue, Slots } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
-import type { TaskListConfig } from '../models/configs/TaskListConfig'
+import type { TaskListConfig, TaskListColumnConfig } from '../models/configs/TaskListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 import { useTaskRowDrag } from '../composables/useTaskRowDrag'
 import { moveTask } from '../utils/taskTreeUtils'
 import { useTaskListColumns } from '../composables/useTaskListColumns'
-import type { DeclarativeColumnConfig } from '../composables/useTaskListColumns'
 
 interface Props {
   tasks?: Task[]
@@ -57,7 +56,7 @@ const columnSlots = inject<Slots>('gantt-column-slots', {})
 const { t } = useI18n()
 
 // 使用声明式列管理 composable
-const { declarativeColumns, finalColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
+const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
   useTaskListColumns(
     props.taskListColumnRenderMode || 'default',
     slots,
@@ -125,8 +124,14 @@ const getColumnWidthStyle = (column: { width?: number | string }) => {
   }
 }
 
-// 计算可见的列配置（已被 columnsToUse 替代，保留以兼容）
-const visibleColumns = computed(() => columnsToUse.value)
+// 计算可见的列配置（仅用于默认模式）
+const visibleColumns = computed(() => {
+  if (props.taskListColumnRenderMode === 'declarative') {
+    return [] as TaskListColumnConfig[] // 声明式模式不需要这个
+  }
+  const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
+  return columns.filter(col => col.visible !== false)
+})
 
 // 使用 props.tasks 的引用，不创建副本
 // 这样可以直接修改对象，触发响应式更新，不需要外部监听事件
@@ -636,16 +641,16 @@ onUnmounted(() => {
           :class="column.cssClass"
           :style="{
             ...getColumnWidthStyle(column),
-            justifyContent: column.align === 'center' ? 'center' : column.align === 'right' ? 'flex-end' : 'flex-start',
-            textAlign: column.align || 'left'
+            justifyContent: (column as any).align === 'center' ? 'center' : (column as any).align === 'right' ? 'flex-end' : 'flex-start',
+            textAlign: (column as any).align || 'left'
           }"
         >
           <!-- 使用 header slot 或显示 label -->
-          <template v-if="column.headerSlot">
-            <component :is="column.headerSlot" />
+          <template v-if="(column as any).headerSlot">
+            <component :is="(column as any).headerSlot" />
           </template>
           <template v-else>
-            {{ column.label }}
+            {{ (column as any).label }}
           </template>
         </div>
       </template>
@@ -665,17 +670,17 @@ onUnmounted(() => {
         <!-- 可配置的其他列 -->
         <div
           v-for="column in visibleColumns"
-          :key="column.key"
+          :key="(column as TaskListColumnConfig).key"
           class="col"
-          :class="column.cssClass || `col-${column.key}`"
+          :class="(column as TaskListColumnConfig).cssClass || `col-${(column as TaskListColumnConfig).key}`"
           :style="getColumnWidthStyle(column)"
         >
           <!-- 检查是否有对应的 header-{key} slot -->
-          <template v-if="columnSlots[`header-${column.key}`]">
-            <component :is="columnSlots[`header-${column.key}`]" />
+          <template v-if="columnSlots[`header-${(column as TaskListColumnConfig).key}`]">
+            <component :is="columnSlots[`header-${(column as TaskListColumnConfig).key}`]" />
           </template>
           <template v-else>
-            {{ (t as any)[column.key] || column.label }}
+            {{ (t as any)[(column as TaskListColumnConfig).key] || (column as TaskListColumnConfig).label }}
           </template>
         </div>
       </template>
@@ -692,7 +697,7 @@ onUnmounted(() => {
         :is-hovered="hoveredTaskId === task.id"
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
-        :columns="visibleColumns"
+        :columns="taskListColumnRenderMode === 'declarative' ? [] : visibleColumns"
         :declarative-columns="taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined"
         :render-mode="taskListColumnRenderMode"
         :get-column-width-style="getColumnWidthStyle"

@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename)
 
 // 构建后生成CSS导出文件
 function generateCssExport() {
-  const distDir = path.resolve(__dirname, '../npm-package/dist')
+  const distDir = path.resolve(__dirname, '../../npm-package/dist')
   const assetsDir = path.join(distDir, 'assets')
   const expectedCssFile = path.join(assetsDir, 'jordium-gantt-vue3.css')
   const outputFile = path.join(distDir, 'jordium-gantt-vue3-styles.js')

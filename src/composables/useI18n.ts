@@ -209,7 +209,10 @@ const messages = {
     taskListConfig: {
       title: 'TaskList 配置',
       columns: {
-        title: '列显示',
+        title: '列显示(默认渲染模式下生效)',
+        renderMode: '渲染模式',
+        renderModeDefault: '默认（通过 TaskListColumnConfig 设置）',
+        renderModeDeclarative: '声明式（使用 TaskListColumn 设置可见列）',
       },
       width: {
         title: '宽度设置',
@@ -474,7 +477,10 @@ const messages = {
     taskListConfig: {
       title: 'TaskList Configuration',
       columns: {
-        title: 'Columns',
+        title: 'Columns(默effective in default render mode)',
+        renderMode: 'Render Mode',
+        renderModeDefault: 'Default (via TaskListColumnConfig)',
+        renderModeDeclarative: 'Declarative (via TaskListColumn)',
       },
       width: {
         title: 'Width Settings',

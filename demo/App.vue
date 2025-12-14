@@ -142,6 +142,9 @@ const toolbarConfig = {
   showExpandCollapse: true, // 显示全部展开/折叠按钮
 }
 
+// TaskList列渲染模式配置
+const taskListColumnRenderMode = ref<'default' | 'declarative'>('declarative')
+
 // TaskList列配置
 const availableColumns = ref<TaskListColumnConfig[]>([
   { key: 'predecessor', label: '前置任务', visible: true },
@@ -518,6 +521,7 @@ const handleTaskAddEvent = (e: { task: Task }) => {
 // 任务删除事件处理器
 const handleTaskDeleteEvent = (e: { task: Task; deleteChildren?: boolean }) => {
   const task = e.task
+  const deleteChildren = e.deleteChildren
 
   showMessage(`Demo 任务[${task.name}] 已删除`, 'success')
 
@@ -525,8 +529,10 @@ const handleTaskDeleteEvent = (e: { task: Task; deleteChildren?: boolean }) => {
   // 这里只需要显示消息，无需再次执行删除逻辑
   // 如果需要在删除后清理其他数据（如 predecessor），可以在这里处理
 
-  // 收集被删除任务的所有ID（包括子任务）
-  const deletedTaskIds = collectAllTaskIds(task)
+  // 收集被删除任务的ID
+  // 如果 deleteChildren 为 false，只删除父任务本身，子任务会被提升，所以不应该收集子任务ID
+  // 如果 deleteChildren 为 true，删除父任务及所有子任务，需要收集所有ID
+  const deletedTaskIds = deleteChildren ? collectAllTaskIds(task) : [task.id]
   // 清理predecessor依赖关系
   cleanupPredecessorReferences(deletedTaskIds)
 }
@@ -749,13 +755,24 @@ const handleTaskRowMoved = async (payload: {
         }}</span>
       </div>
       <div class="docs-links">
+        <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
+          <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
+        </a>
+        <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
+          <img src="https://img.shields.io/npm/dt/jordium-gantt-vue3?style=flat-square" alt="npm total">
+        </a>
+        <span class="docs-divider"></span>
         <a href="#github-docs" class="doc-link github-link" @click="handleGithubDocsClick">
           <img class="doc-icon" src="./public/github.svg" alt="GitHub" />
         </a>
+        <a href='https://github.com/nelson820125/jordium-gantt-vue3/stargazers'><img src='https://img.shields.io/github/stars/nelson820125/jordium-gantt-vue3?style=social' alt='star'></img></a>
+        <a href='https://github.com/nelson820125/jordium-gantt-vue3/network/members'><img src='https://img.shields.io/github/forks/nelson820125/jordium-gantt-vue3?style=social' alt='fork'></img></a>
         <span class="docs-divider"></span>
         <a href="#gitee-docs" class="doc-link gitee-link" @click="handleGiteeDocsClick">
           <img class="doc-icon" src="./public/gitee.svg" alt="Gitee" />
         </a>
+        <a href='https://gitee.com/jordium/jordium-gantt-vue3/stargazers'><img src='https://gitee.com/jordium/jordium-gantt-vue3/badge/star.svg?theme=dark' alt='star'></img></a>
+        <a href='https://gitee.com/jordium/jordium-gantt-vue3/members'><img src='https://gitee.com/jordium/jordium-gantt-vue3/badge/fork.svg?theme=dark' alt='fork'></img></a>
       </div>
     </h1>
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
@@ -998,6 +1015,25 @@ const handleTaskRowMoved = async (payload: {
 
             <!-- 列配置 -->
             <div class="subsection">
+              <!-- 渲染模式选择 -->
+              <div class="render-mode-group" style="margin-bottom: 16px;">
+                <h5 class="subsection-title">{{ t.taskListConfig.columns.renderMode }}</h5>
+                <div
+                  class="width-unit-toggle"
+                  style="margin-bottom: 12px; display: flex; align-items: center; gap: 16px"
+                >
+                  <label class="taskbar-control">
+                    <input v-model="taskListColumnRenderMode" type="radio" value="default" />
+                    <span class="taskbar-label">
+                      {{ t.taskListConfig.columns.renderModeDefault }}
+                    </span>
+                  </label>
+                  <label class="taskbar-control">
+                    <input v-model="taskListColumnRenderMode" type="radio" value="declarative" />
+                    <span class="taskbar-label">{{ t.taskListConfig.columns.renderModeDeclarative }}</span>
+                  </label>
+                </div>
+              </div>
               <h5 class="subsection-title">{{ t.taskListConfig.columns.title }}</h5>
               <div class="column-controls">
                 <label v-for="column in availableColumns" :key="column.key" class="column-control">
@@ -1184,7 +1220,7 @@ const handleTaskRowMoved = async (payload: {
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
-        task-list-column-render-mode="declarative"
+        :task-list-column-render-mode="taskListColumnRenderMode"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
@@ -1281,32 +1317,6 @@ const handleTaskRowMoved = async (payload: {
           </div>
         </template>
 
-        <!-- 列级 Slot 示例：自定义 'assignee' 列的渲染（覆盖内置渲染） -->
-        <!-- 取消下面的注释可以看到效果 -->
-        <!--
-        <template #column-assignee="{ task }">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div
-              style="
-                width: 24px;
-                height: 24px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 12px;
-                font-weight: bold;
-              "
-            >
-              {{ task.assignee ? task.assignee.charAt(0) : '?' }}
-            </div>
-            <span style="font-size: 13px;">{{ task.assignee || '未分配' }}</span>
-          </div>
-        </template>
-        -->
-
         <!-- 使用 TaskListColumn 组件自定义列 声明式模式 -->
         <TaskListColumn prop="name" :label="t.taskName" width="300" align="center">
           <template #header>
@@ -1344,7 +1354,19 @@ const handleTaskRowMoved = async (payload: {
       </GanttChart>
     </div>
     <div class="license-info">
-      <p>MIT License @JORDIUM.COM</p>
+      <span>MIT License @ 2025 JORDIUM.COM</span>
+      <a href="https://opensource.org/licenses/MIT">
+        <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
+      </a>
+      <a href="https://vuejs.org/">
+        <img src="https://img.shields.io/badge/Vue.js->=3.5.13-4FC08D?style=flat-square&logo=vue.js&logoColor=white" alt="Vue.js">
+      </a>
+      <a href="https://www.typescriptlang.org/">
+        <img src="https://img.shields.io/badge/TypeScript->=5.8.3-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
+      </a>
+      <a href="https://nodejs.org/">
+        <img src="https://img.shields.io/badge/Node.js->=16.0.0-339933?style=flat-square&logo=node.js&logoColor=white" alt="Nodejs">
+      </a>
     </div>
 
     <!-- MilestoneDialog用于新建/编辑里程碑 -->
@@ -2037,6 +2059,11 @@ const handleTaskRowMoved = async (payload: {
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  gap: 8px;
 }
 
 /* 全局暗色主题支持 */

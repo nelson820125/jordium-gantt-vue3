@@ -191,6 +191,39 @@ npm run dev
 | `enableTaskRowMove`         | `boolean`                                                                                 | `false` | 是否允许拖拽和摆放TaskRow                                      |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          | 
 
+#### TaskListColumn 属性
+
+`TaskListColumn` 组件用于在声明式模式（`taskListColumnRenderMode="declarative"`）下定义任务列表的列。类似于 Element Plus 的 `el-table-column` 组件。
+
+| 属性名     | 类型                           | 默认值   | 说明                                                                                                       |
+| ---------- | ------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `prop`     | `string`                       | -        | 列的属性名，用于访问任务对象的字段。例如：`'name'`、`'assignee'`、`'progress'` 等                          |
+| `label`    | `string`                       | -        | 列的显示标题文本                                                                                           |
+| `width`    | `number \| string`             | -        | 列宽度。数字表示像素值（如 `200`），字符串支持百分比（如 `'20%'`）                                         |
+| `align`    | `'left' \| 'center' \| 'right'` | `'left'` | 列内容对齐方式                                                                                             |
+| `cssClass` | `string`                       | -        | 自定义 CSS 类名，用于列样式定制                                                                            |
+
+**使用示例**：
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  task-list-column-render-mode="declarative"
+>
+  <TaskListColumn prop="name" label="任务名称" width="300" />
+  <TaskListColumn prop="assignee" label="负责人" width="150" align="center" />
+  <TaskListColumn prop="progress" label="进度" width="100" align="center" />
+  <TaskListColumn prop="startDate" label="开始日期" width="140" />
+  <TaskListColumn prop="endDate" label="结束日期" width="140" />
+</GanttChart>
+```
+
+> **💡 提示**：
+> - `TaskListColumn` 组件本身不渲染任何内容，仅用于声明列配置
+> - 必须在 `GanttChart` 组件内部使用，且设置 `task-list-column-render-mode="declarative"`
+> - 列的显示顺序由 `TaskListColumn` 组件的声明顺序决定
+> - 关于列内容自定义和插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
+
 #### 配置对象属性
 
 完整的配置对象说明请参考 [⚙️ 配置与扩展](#⚙️-配置与扩展) 章节。
@@ -447,7 +480,10 @@ const handleMilestoneSaved = milestone => {
 | `taskListConfig`      | `TaskListConfig` | `undefined` | 任务列表配置，详见 [TaskListConfig 配置](#tasklistconfig-配置) |
 | `autoSortByStartDate` | `boolean`        | `false`     | 是否根据开始时间自动排序任务                                   |
 | `enableTaskRowMove`        | `boolean` | `false`  | 是否允许拖拽和摆放TaskRow   |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          | 
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
+| `taskListColumnRenderMode` | `'default' \| 'declarative'` | `'default'` | 任务列表列渲染模式。`'default'`：使用 TaskListColumnConfig 配置（兼容模式，将逐渐废弃）；`'declarative'`：使用 TaskListColumn 组件声明式定义列（推荐）。详见 [TaskListColumn 声明式列定义](#tasklistcolumn-声明式列定义) |
+| `taskListRowClassName` | `string \| ((task: Task) => string)` | `undefined` | 自定义任务行的 CSS 类名。可以是字符串或返回字符串的函数。**注意**：行的高度由组件内部统一管理，自定义高度样式不会生效 |
+| `taskListRowStyle` | `CSSProperties \| ((task: Task) => CSSProperties)` | `undefined` | 自定义任务行的内联样式。可以是样式对象或返回样式对象的函数。**注意**：行的高度和宽度由组件内部统一管理，自定义宽高样式不会生效 | 
 
 **配置说明**：
 
@@ -2211,6 +2247,292 @@ const props = defineProps<Props>()
 > - 需要根据 `type` 参数区分渲染位置
 > - TaskRow 和 TaskBar 的可用空间不同，需要适配布局
 > - 避免在插槽内容中使用过于复杂的组件，可能影响性能
+
+##### TaskListColumn 插槽
+
+`TaskListColumn` 组件提供了两个插槽，用于自定义任务列表的列头和单元格内容。必须在声明式模式（`taskListColumnRenderMode="declarative"`）下使用。
+
+**插槽列表：**
+
+| 插槽名    | 参数                              | 说明                                                                                           |
+| --------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `header`  | -                                 | 自定义列表头内容。如果未提供此插槽，将显示 `label` 属性                                        |
+| `default` | `scope: { row: Task, $index: number }`   | 自定义列单元格内容。通过 `scope.row` 访问当前任务对象，通过 `scope.$index` 访问任务索引。如果未提供此插槽，将显示 `prop` 对应的字段值 |
+
+**使用示例：**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks" 
+    task-list-column-render-mode="declarative"
+  >
+    <!-- 基础列定义，不使用插槽 -->
+    <TaskListColumn prop="name" label="任务名称" width="300" />
+    
+    <!-- 使用 header 插槽自定义列表头 -->
+    <TaskListColumn prop="assignee" width="150" align="center">
+      <template #header>
+        <div style="display: flex; align-items: center; gap: 4px; color: #409eff;">
+          <span>👤</span>
+          <span>负责人</span>
+        </div>
+      </template>
+    </TaskListColumn>
+    
+    <!-- 使用 default 插槽自定义单元格内容 -->
+    <TaskListColumn prop="progress" label="进度" width="150" align="center">
+      <template #default="scope">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div 
+            style="
+              flex: 1; 
+              height: 8px; 
+              background: #f0f0f0; 
+              border-radius: 4px; 
+              overflow: hidden;
+            "
+          >
+            <div 
+              :style="{
+                width: `${scope.row.progress || 0}%`,
+                height: '100%',
+                background: scope.row.progress >= 100 ? '#67c23a' : scope.row.progress >= 50 ? '#409eff' : '#e6a23c',
+                transition: 'width 0.3s'
+              }"
+            ></div>
+          </div>
+          <span style="min-width: 40px; text-align: right; font-size: 12px;">
+            {{ scope.row.progress || 0 }}%
+          </span>
+        </div>
+      </template>
+    </TaskListColumn>
+    
+    <!-- 同时使用 header 和 default 插槽 -->
+    <TaskListColumn prop="startDate" width="160">
+      <template #header>
+        <div style="color: #67c23a; font-weight: bold;">📅 开始日期</div>
+      </template>
+      <template #default="scope">
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span style="color: #909399; font-size: 12px;">🕐</span>
+          <span>{{ scope.row.startDate || '-' }}</span>
+        </div>
+      </template>
+    </TaskListColumn>
+    
+    <!-- 根据数据动态渲染样式 -->
+    <TaskListColumn prop="status" label="状态" width="120" align="center">
+      <template #default="scope">
+        <span 
+          :style="{
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            color: 'white',
+            background: scope.row.progress >= 100 ? '#67c23a' : 
+                       scope.row.progress > 0 ? '#409eff' : '#909399'
+          }"
+        >
+          {{ scope.row.progress >= 100 ? '已完成' : scope.row.progress > 0 ? '进行中' : '未开始' }}
+        </span>
+      </template>
+    </TaskListColumn>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: '项目规划',
+    assignee: '张三',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+  },
+  {
+    id: 2,
+    name: '需求分析',
+    assignee: '李四',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+  },
+  {
+    id: 3,
+    name: '开发实施',
+    assignee: '王五',
+    startDate: '2025-01-21',
+    endDate: '2025-02-10',
+    progress: 0,
+  },
+])
+</script>
+```
+
+> **💡 使用场景**：
+>
+> - 自定义列表头图标、样式或排序按钮
+> - 显示进度条、状态标签等可视化组件
+> - 根据任务数据动态调整样式和内容
+> - 添加操作按钮（编辑、删除等）
+> - 集成第三方UI组件（如评分、标签选择器等）
+
+> **⚠️ 注意事项**：
+>
+> - 插槽必须在 `task-list-column-render-mode="declarative"` 模式下使用
+> - `default` 插槽接收 `scope` 参数，通过 `scope.row` 访问当前任务对象（Task类型），通过 `scope.$index` 访问索引
+> - 推荐使用 `scope.row` 而不是解构 `{ row }`，以保持代码的清晰性和一致性
+> - `scope.$index` 为当前任务在可见列表中的索引（非全局索引）
+> - 插槽内容会在每个任务行中渲染，避免过于复杂的组件以保证性能
+> - 列宽固定后，插槽内容应考虑溢出处理（如文本省略、自动换行等）
+
+##### TaskListColumnConfig 列插槽（即将废弃）
+
+> **⚠️ 重要提示**：此插槽方式基于 `TaskListColumnConfig` 配置，**即将废弃**。强烈建议使用上述 [TaskListColumn 插槽](#tasklistcolumn-插槽) 的声明式方式，以获得更好的类型提示和代码可维护性。
+
+在默认模式（`taskListColumnRenderMode="default"`）下，可以通过插槽自定义 `TaskListColumnConfig` 中定义的列。插槽名称基于列配置中的 `key` 属性。
+
+**插槽列表：**
+
+| 插槽名模式      | 参数                                           | 说明                                                                                           |
+| --------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `header-{key}`  | -                                              | 自定义指定列的表头内容。`{key}` 为 `TaskListColumnConfig` 中定义的 `key` 值                    |
+| `column-{key}`  | `{ task: Task, column: TaskListColumnConfig, value: any }` | 自定义指定列的单元格内容。`task` 为当前任务对象，`column` 为列配置，`value` 为该列的值         |
+
+**使用示例：**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks"
+    :task-list-config="taskListConfig"
+    task-list-column-render-mode="default"
+  >
+    <!-- 自定义 'name' 列的表头 -->
+    <template #header-name>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <img src="/avatar.png" width="32" height="32" style="border-radius: 50%;" />
+        <strong style="font-size: 14px;">任务名称</strong>
+      </div>
+    </template>
+    
+    <!-- 自定义 'name' 列的单元格内容 -->
+    <template #column-name="{ task, column, value }">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <img src="/user-avatar.png" width="20" height="20" style="border-radius: 50%;" />
+        <span v-html="value"></span>
+        <span
+          v-if="task.priority"
+          style="
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+          "
+        >
+          P-{{ task.priority }}
+        </span>
+      </div>
+    </template>
+    
+    <!-- 自定义其他列，例如自定义字段 'custom' -->
+    <template #column-custom="{ task, column, value }">
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <span
+          v-if="typeof value === 'number'"
+          style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+          "
+        >
+          💰 {{ value.toLocaleString() }}
+        </span>
+        <span
+          v-else-if="typeof value === 'string'"
+          style="
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            border: 1px solid #81c784;
+          "
+        >
+          📝 {{ value }}
+        </span>
+        <span v-else style="color: #999;">-</span>
+      </div>
+    </template>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task, TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: '项目规划',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+    priority: 1,
+    custom: 50000, // 自定义字段
+  },
+  {
+    id: 2,
+    name: '需求分析',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+    custom: '重要', // 自定义字段
+  },
+])
+
+// 定义列配置
+const taskListConfig = ref<TaskListConfig>({
+  columns: [
+    { key: 'taskName', label: '任务名称', visible: true, width: 300 },
+    { key: 'assignee', label: '负责人', visible: true, width: 150 },
+    { key: 'progress', label: '进度', visible: true, width: 100 },
+    { key: 'custom', label: '自定义', visible: true, width: 150 }, // 自定义列
+  ],
+})
+</script>
+```
+
+> **💡 使用说明**：
+>
+> - 插槽名称格式：`header-{key}` 和 `column-{key}`，其中 `{key}` 对应 `TaskListColumnConfig.key`
+> - `column-{key}` 插槽接收三个参数：
+>   - `task`：当前任务对象（Task类型）
+>   - `column`：当前列配置对象（TaskListColumnConfig类型）
+>   - `value`：当前单元格的值（自动从 `task[column.key]` 获取）
+> - 可以混合使用插槽和默认渲染，只为需要自定义的列定义插槽
+
+> **⚠️ 迁移建议**：
+>
+> - **强烈建议迁移到声明式模式**：使用 `task-list-column-render-mode="declarative"` 和 `TaskListColumn` 组件
+> - 声明式模式提供更好的类型提示、代码组织和可维护性
+> - 此配置式插槽方式将在未来版本中移除，请尽快迁移
+> - 迁移示例请参考 [TaskListColumn 插槽](#tasklistcolumn-插槽) 章节
 
 ---
 

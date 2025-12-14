@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-12-14
+
+### Added
+- 🎉 新增：Task Table列声明式定义方式, 使用组件TaskListColumn
+- 🎉 新增：Task Table #header和#default Slots
+- 🎉 新增：Task List行样式设置属性 - task-list-row-class-name和task-list-row-style
+- 🎉 新增：为兼容旧版本TaskListColumnConfig，提供task-list-column-render-mode属性开关，可以通过设置选择Task表格列定义方式
+- 🎉 Added: Declarative definition method for Task Table columns using the TaskListColumn component
+- 🎉 Added: Task Table #header and #default Slots
+- 🎉 Added: Task List row style setting properties - task-list-row-class-name and task-list-row-style
+- 🎉 Added: A switch for task-list-column-render-mode attribute to choose Task Table column definition method for compatibility with older versions of TaskListColumnConfig
+
+### Fixed
+- 🔧 修复：仅删除Story层级后，子Task升级后关系线丢失问题
+- 🔧 修复：修复已知问题
+- 🔧 Fixed: Issue of missing relationship lines after upgrading child Tasks when only deleting Story
+- 🔧 Fixed: Fixed issues
+
 ## [1.5.0] - 2025-12-13
 
 ### Added

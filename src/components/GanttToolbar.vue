@@ -1003,6 +1003,7 @@ onUnmounted(() => {
 .dialog-actions {
   display: flex;
   justify-content: center;
+  gap: 12px;
 }
 
 .dialog-actions .btn + .btn {

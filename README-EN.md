@@ -193,6 +193,39 @@ npm run dev
 | `enableTaskRowMove`         | `boolean`                                                                             | `false` | Whether to allow dragging and dropping TaskRow                            |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
 
+#### TaskListColumn Component Props
+
+The `TaskListColumn` component is used to define task list columns in declarative mode (`taskListColumnRenderMode="declarative"`). Similar to Element Plus's `el-table-column` component.
+
+| Prop       | Type                           | Default  | Description                                                                                                                                      |
+| ---------- | ------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `prop`     | `string`                       | -        | Column property name, used to access task object fields. Examples: `'name'`, `'assignee'`, `'progress'`, etc.                                    |
+| `label`    | `string`                       | -        | Column header display text                                                                                                                       |
+| `width`    | `number \| string`             | -        | Column width. Number represents pixels (e.g., `200`), string supports percentage (e.g., `'20%'`)                                                 |
+| `align`    | `'left' \| 'center' \| 'right'` | `'left'` | Column content alignment                                                                                                                         |
+| `cssClass` | `string`                       | -        | Custom CSS class name for column styling                                                                                                         |
+
+**Usage Example**:
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  task-list-column-render-mode="declarative"
+>
+  <TaskListColumn prop="name" label="Task Name" width="300" />
+  <TaskListColumn prop="assignee" label="Assignee" width="150" align="center" />
+  <TaskListColumn prop="progress" label="Progress" width="100" align="center" />
+  <TaskListColumn prop="startDate" label="Start Date" width="140" />
+  <TaskListColumn prop="endDate" label="End Date" width="140" />
+</GanttChart>
+```
+
+> **💡 Tips**:
+> - The `TaskListColumn` component itself does not render any content, it only declares column configuration
+> - Must be used inside the `GanttChart` component with `task-list-column-render-mode="declarative"` set
+> - Column display order is determined by the declaration order of `TaskListColumn` components
+> - For detailed column content customization and slot usage, see [Slots](#slots) section
+
 #### Configuration Object Props
 
 For complete configuration object documentation, see [⚙️ Configuration & Customization](#⚙️-configuration--customization) section.
@@ -450,6 +483,9 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
 | `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
+| `taskListColumnRenderMode` | `'default' \| 'declarative'` | `'default'` | Task list column render mode. `'default'`: Use TaskListColumnConfig configuration (compatibility mode, will be gradually deprecated); `'declarative'`: Use TaskListColumn component for declarative column definition (recommended). See [TaskListColumn Declarative Column Definition](#tasklistcolumn-declarative-column-definition) |
+| `taskListRowClassName` | `string \| ((task: Task) => string)` | `undefined` | Custom CSS class name for task rows. Can be a string or a function that returns a string. **Note**: Row height is managed internally by the component, custom height styles will not take effect |
+| `taskListRowStyle` | `CSSProperties \| ((task: Task) => CSSProperties)` | `undefined` | Custom inline styles for task rows. Can be a style object or a function that returns a style object. **Note**: Row height and width are managed internally by the component, custom width/height styles will not take effect |
 
 **Configuration Notes**:
 
@@ -2220,6 +2256,292 @@ const props = defineProps<Props>()
 > - Need to distinguish rendering position based on `type` parameter
 > - TaskRow and TaskBar have different available space, need to adapt layout
 > - Avoid using overly complex components in slot content, may affect performance
+
+##### TaskListColumn Slots
+
+The `TaskListColumn` component provides two slots for customizing task list column headers and cell content. Must be used in declarative mode (`taskListColumnRenderMode="declarative"`).
+
+**Slot List:**
+
+| Slot Name | Parameters                        | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `header`  | -                                 | Custom column header content. If not provided, the `label` prop will be displayed                     |
+| `default` | `scope: { row: Task, $index: number }`   | Custom column cell content. Access current task object via `scope.row`, access task index via `scope.$index`. If not provided, the value of `prop` field is shown |
+
+**Usage Example:**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks" 
+    task-list-column-render-mode="declarative"
+  >
+    <!-- Basic column definition without slots -->
+    <TaskListColumn prop="name" label="Task Name" width="300" />
+    
+    <!-- Custom column header using header slot -->
+    <TaskListColumn prop="assignee" width="150" align="center">
+      <template #header>
+        <div style="display: flex; align-items: center; gap: 4px; color: #409eff;">
+          <span>👤</span>
+          <span>Assignee</span>
+        </div>
+      </template>
+    </TaskListColumn>
+    
+    <!-- Custom cell content using default slot -->
+    <TaskListColumn prop="progress" label="Progress" width="150" align="center">
+      <template #default="scope">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div 
+            style="
+              flex: 1; 
+              height: 8px; 
+              background: #f0f0f0; 
+              border-radius: 4px; 
+              overflow: hidden;
+            "
+          >
+            <div 
+              :style="{
+                width: `${scope.row.progress || 0}%`,
+                height: '100%',
+                background: scope.row.progress >= 100 ? '#67c23a' : scope.row.progress >= 50 ? '#409eff' : '#e6a23c',
+                transition: 'width 0.3s'
+              }"
+            ></div>
+          </div>
+          <span style="min-width: 40px; text-align: right; font-size: 12px;">
+            {{ scope.row.progress || 0 }}%
+          </span>
+        </div>
+      </template>
+    </TaskListColumn>
+    
+    <!-- Using both header and default slots -->
+    <TaskListColumn prop="startDate" width="160">
+      <template #header>
+        <div style="color: #67c23a; font-weight: bold;">📅 Start Date</div>
+      </template>
+      <template #default="scope">
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span style="color: #909399; font-size: 12px;">🕐</span>
+          <span>{{ scope.row.startDate || '-' }}</span>
+        </div>
+      </template>
+    </TaskListColumn>
+    
+    <!-- Dynamic styling based on data -->
+    <TaskListColumn prop="status" label="Status" width="120" align="center">
+      <template #default="scope">
+        <span 
+          :style="{
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            color: 'white',
+            background: scope.row.progress >= 100 ? '#67c23a' : 
+                       scope.row.progress > 0 ? '#409eff' : '#909399'
+          }"
+        >
+          {{ scope.row.progress >= 100 ? 'Completed' : scope.row.progress > 0 ? 'In Progress' : 'Not Started' }}
+        </span>
+      </template>
+    </TaskListColumn>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: 'Project Planning',
+    assignee: 'John',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+  },
+  {
+    id: 2,
+    name: 'Requirements Analysis',
+    assignee: 'Jane',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+  },
+  {
+    id: 3,
+    name: 'Development',
+    assignee: 'Bob',
+    startDate: '2025-01-21',
+    endDate: '2025-02-10',
+    progress: 0,
+  },
+])
+</script>
+```
+
+> **💡 Usage Scenarios**:
+>
+> - Custom column header icons, styles, or sorting buttons
+> - Display visual components like progress bars, status badges
+> - Dynamically adjust styles and content based on task data
+> - Add action buttons (edit, delete, etc.)
+> - Integrate third-party UI components (ratings, tag selectors, etc.)
+
+> **⚠️ Notes**:
+>
+> - Slots must be used in `task-list-column-render-mode="declarative"` mode
+> - The `default` slot receives a `scope` parameter, access current task object via `scope.row` (Task type), access index via `scope.$index`
+> - Recommended to use `scope.row` instead of destructuring `{ row }` for code clarity and consistency
+> - `scope.$index` is the index of the current task in the visible list (not global index)
+> - Slot content is rendered in each task row, avoid overly complex components for performance
+> - When column width is fixed, slot content should consider overflow handling (text ellipsis, auto-wrap, etc.)
+
+##### TaskListColumnConfig Column Slots (Deprecated Soon)
+
+> **⚠️ Important Notice**: This slot approach based on `TaskListColumnConfig` configuration is **deprecated and will be removed soon**. Strongly recommend using the declarative approach with [TaskListColumn Slots](#tasklistcolumn-slots) above for better type hints and code maintainability.
+
+In default mode (`taskListColumnRenderMode="default"`), you can customize columns defined in `TaskListColumnConfig` via slots. Slot names are based on the `key` property in column configuration.
+
+**Slot List:**
+
+| Slot Pattern    | Parameters                                     | Description                                                                                           |
+| --------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `header-{key}`  | -                                              | Custom header content for specified column. `{key}` is the `key` value defined in `TaskListColumnConfig` |
+| `column-{key}`  | `{ task: Task, column: TaskListColumnConfig, value: any }` | Custom cell content for specified column. `task` is current task object, `column` is column config, `value` is the column's value |
+
+**Usage Example:**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks"
+    :task-list-config="taskListConfig"
+    task-list-column-render-mode="default"
+  >
+    <!-- Custom 'name' column header -->
+    <template #header-name>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <img src="/avatar.png" width="32" height="32" style="border-radius: 50%;" />
+        <strong style="font-size: 14px;">Task Name</strong>
+      </div>
+    </template>
+    
+    <!-- Custom 'name' column cell content -->
+    <template #column-name="{ task, column, value }">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <img src="/user-avatar.png" width="20" height="20" style="border-radius: 50%;" />
+        <span v-html="value"></span>
+        <span
+          v-if="task.priority"
+          style="
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+          "
+        >
+          P-{{ task.priority }}
+        </span>
+      </div>
+    </template>
+    
+    <!-- Custom other columns, e.g., custom field 'custom' -->
+    <template #column-custom="{ task, column, value }">
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <span
+          v-if="typeof value === 'number'"
+          style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+          "
+        >
+          💰 {{ value.toLocaleString() }}
+        </span>
+        <span
+          v-else-if="typeof value === 'string'"
+          style="
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            border: 1px solid #81c784;
+          "
+        >
+          📝 {{ value }}
+        </span>
+        <span v-else style="color: #999;">-</span>
+      </div>
+    </template>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task, TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([
+  {
+    id: 1,
+    name: 'Project Planning',
+    startDate: '2025-01-01',
+    endDate: '2025-01-10',
+    progress: 100,
+    priority: 1,
+    custom: 50000, // Custom field
+  },
+  {
+    id: 2,
+    name: 'Requirements Analysis',
+    startDate: '2025-01-11',
+    endDate: '2025-01-20',
+    progress: 60,
+    custom: 'Important', // Custom field
+  },
+])
+
+// Define column configuration
+const taskListConfig = ref<TaskListConfig>({
+  columns: [
+    { key: 'taskName', label: 'Task Name', visible: true, width: 300 },
+    { key: 'assignee', label: 'Assignee', visible: true, width: 150 },
+    { key: 'progress', label: 'Progress', visible: true, width: 100 },
+    { key: 'custom', label: 'Custom', visible: true, width: 150 }, // Custom column
+  ],
+})
+</script>
+```
+
+> **💡 Usage Notes**:
+>
+> - Slot name format: `header-{key}` and `column-{key}`, where `{key}` corresponds to `TaskListColumnConfig.key`
+> - `column-{key}` slot receives three parameters:
+>   - `task`: Current task object (Task type)
+>   - `column`: Current column configuration object (TaskListColumnConfig type)
+>   - `value`: Current cell value (automatically obtained from `task[column.key]`)
+> - You can mix slots and default rendering, only define slots for columns that need customization
+
+> **⚠️ Migration Recommendation**:
+>
+> - **Strongly recommend migrating to declarative mode**: Use `task-list-column-render-mode="declarative"` with `TaskListColumn` component
+> - Declarative mode provides better type hints, code organization, and maintainability
+> - This configuration-based slot approach will be removed in future versions, please migrate soon
+> - For migration examples, see [TaskListColumn Slots](#tasklistcolumn-slots) section
 
 ---
 

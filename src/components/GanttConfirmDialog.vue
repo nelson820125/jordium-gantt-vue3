@@ -43,7 +43,7 @@ const onNo = () => emit('no')
         <template v-else>
           <button type="button" class="gantt-btn gantt-btn-default" @click="onCancel">
             {{ props.cancelText }}
-          </button>
+          </button> &nbsp;&nbsp;
           <button type="button" class="gantt-btn gantt-btn-danger" @click="onConfirm">
             {{ props.confirmText }}
           </button>

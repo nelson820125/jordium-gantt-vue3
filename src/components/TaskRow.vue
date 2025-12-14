@@ -133,10 +133,10 @@ const renderDeclarativeColumn = (
             class: ['task-name-text', { 'parent-task': isParentTask.value }],
             title: columnValue,
           },
-          column.defaultSlot({
+          [column.defaultSlot({
             row: props.task,
             $index: index,
-          }),
+          })],
         ),
       ])
     }
@@ -549,10 +549,10 @@ onUnmounted(() => {
           :key="index"
           class="col"
           :class="[column.cssClass, { 'col-name': isFirstColumn(index) }]"
-          :style="{
-            ...(getColumnWidthStyle ? getColumnWidthStyle(column) : {}),
-            ...getDeclarativeColumnAlign(column),
-          }"
+          :style="[
+            getColumnWidthStyle ? getColumnWidthStyle(column) : {},
+            getDeclarativeColumnAlign(column),
+          ]"
         >
           <!-- 第一列：保留 collapse-btn, milestone-spacer, leaf-spacer -->
           <div v-if="isFirstColumn(index)"
@@ -630,16 +630,16 @@ onUnmounted(() => {
             value: props.task.name,
             isParentTask,
             hasChildren,
-            isStoryTask: isStoryTask.value,
-            isMilestoneGroup: isMilestoneGroup.value,
-            isMilestoneTask: isMilestoneTask.value,
+            isStoryTask: isStoryTask,
+            isMilestoneGroup: isMilestoneGroup,
+            isMilestoneTask: isMilestoneTask,
             showTaskIcon: props.showTaskIcon,
-            formattedTimer: formattedTimer.value,
+            formattedTimer: formattedTimer,
             isOvertime: isOvertime(),
             overdueDays: overdueDays(),
-            overtimeText: overtimeText.value,
-            overdueText: overdueText.value,
-            daysText: daysText.value,
+            overtimeText: overtimeText,
+            overdueText: overdueText,
+            daysText: daysText,
           })"
           v-if="hasColumnSlot('name')"
         />
