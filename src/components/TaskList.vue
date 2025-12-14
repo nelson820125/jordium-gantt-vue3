@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, useSlots, computed, nextTick, inject } from 'vue'
+import { ref, onMounted, onUnmounted, useSlots, computed, inject } from 'vue'
 import type { StyleValue, Slots } from 'vue'
 import TaskRow from './TaskRow.vue'
 import { useI18n } from '../composables/useI18n'
@@ -7,7 +7,6 @@ import type { Task } from '../models/classes/Task'
 import type { TaskListConfig, TaskListColumnConfig } from '../models/configs/TaskListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../models/configs/TaskListConfig'
 import { useTaskRowDrag } from '../composables/useTaskRowDrag'
-import { moveTask } from '../utils/taskTreeUtils'
 import { useTaskListColumns } from '../composables/useTaskListColumns'
 
 interface Props {
