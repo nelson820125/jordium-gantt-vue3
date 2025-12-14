@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { GanttChart } from 'jordium-gantt-vue3'
+import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([
@@ -123,8 +123,9 @@ const addMilestone = () => {
     startDate: newTask.value.startDate,
     progress: 0,
     type: 'milestone',
-    icon: 'diamond',
+    icon: 'diamond'
   });
+  console.log('milestones: ', milestones.value)
   newTask.value = { name: '', startDate: '', endDate: '' };
   showAddMilestoneDialog.value = false;
 }
@@ -148,68 +149,70 @@ const handleTaskRowMoved = async (payload: {
   newParent: Task | null
 }) => {
   const { draggedTask, targetTask, position, oldParent, newParent } = payload
-
+  
   // 组件已自动完成任务移动、parentId更新和TaskList/Timeline同步
   // 监听此事件为完全可选，仅用于：
-
-  // 1. 显示自定义提示消息
-  const oldParentName = oldParent?.name || '根目录'
-  const newParentName = newParent?.name || '根目录'
-  const positionText = position === 'after' ? '在目标任务之后' : '作为目标任务的子任务'
-  alert(`任务 [${draggedTask.name}] 已从 [${oldParentName}] 移动到 [${newParentName}] (${positionText})`, 'success')
-
-  // 2. 调用后端 API 保存新的任务层级关系
+  
+  // 1. 调用后端 API 保存新的任务层级关系（示例）
+  // 取消注释并替换为你的实际 API 调用
+  /*
   try {
-    await api.updateTaskHierarchy({
-      taskId: draggedTask.id,
-      targetTaskId: targetTask.id,
-      position: position,
-      oldParentId: oldParent?.id,
-      newParentId: newParent?.id,
+    await fetch('/api/tasks/update-hierarchy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        taskId: draggedTask.id,
+        targetTaskId: targetTask.id,
+        position: position,
+        oldParentId: oldParent?.id,
+        newParentId: newParent?.id,
+      })
     })
+    console.log('任务层级保存成功')
   } catch (error) {
     console.error('保存任务层级失败:', error)
     alert('保存失败，请刷新页面')
   }
-
+  */
+  
   // 3. 触发其他业务逻辑（如更新关联数据、记录操作日志等）
   // ...
 }
 
 // 任务添加后回调
+// 注意：当use-default-drawer="true"时，组件内部已经自动添加了任务到tasks数组
+// 此回调仅用于补充业务逻辑，例如根据assignee填充assigneeName等
 const onTaskAdded = (res) => {
+  // 组件已自动添加任务，这里只需要找到并更新额外字段
   const addedTask = tasks.value.find(t => t.id === res.task.id);
-  if (addedTask) {
-    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
+  
+  if (addedTask && addedTask.assignee) {
+    // 根据assignee值查找对应的label并赋值给assigneeName
     const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee);
     if (assigneeOption) {
       addedTask.assigneeName = assigneeOption.label;
     }
-  } else {
-    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
-    const assigneeOption = assigneeOptions.value.find(option => option.value === res.task.assignee);
-    if (assigneeOption) {
-      res.task.assigneeName = assigneeOption.label;
-    }
-    tasks.value.push(res.task);
   }
+  
+  // 不需要手动push，组件已处理
 };
 </script>
 
 <template>
   <div>
     <div style="height: 600px;">
-      <GanttChart
-        :tasks="tasks"
+      <GanttChart 
+        :tasks="tasks" 
         :milestones="milestones"
         :task-list-config="taskListConfig"
         :toolbar-config="toolbarConfig"
-        :use-default-drawer="false"
+        :use-default-drawer="true"
         :use-default-milestone-dialog="false"
         :locale-messages="customMessages"
         :allow-drag-and-resize="true"
         :enable-task-row-move="true"
         :assignee-options="assigneeOptions"
+        task-list-column-render-mode="declarative"
         @task-row-moved="handleTaskRowMoved"
         @add-milestone="showAddMilestoneDialog = true"
         @task-double-click="onTaskDblclick"
@@ -217,6 +220,16 @@ const onTaskAdded = (res) => {
         @milestone-double-click="onMilestoneDblclick"
         @task-added="onTaskAdded"
       >
+      <TaskListColumn prop="name" label="任务名称" width="300">
+        <template #header>
+          <strong style="color: #1890ff;">任务名称 (自定义Header)</strong>
+        </template>
+        <template #default="scope">
+          <span style="color: #52c41a;">{{ scope.row.name }}</span>
+        </template>
+      </TaskListColumn>
+      <TaskListColumn prop="startDate" label="开始时间" width="250" />
+      <TaskListColumn prop="endDate" label="结束时间" width="250" />
     </GanttChart>
     </div>
     <!-- 自定义添加任务按钮 -->
@@ -224,7 +237,7 @@ const onTaskAdded = (res) => {
       <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
       <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
     </div>
-
+    
     <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
     <div v-if="showAddTaskDrawer" class="drawer-overlay" @click="showAddTaskDrawer = false">
       <div class="drawer-container" @click.stop>
@@ -232,35 +245,35 @@ const onTaskAdded = (res) => {
           <h3>自定义添加任务组件</h3>
           <button class="close-btn" @click="showAddTaskDrawer = false">×</button>
         </div>
-
+        
         <div class="drawer-body">
           <div class="form-item">
             <label>任务名称:</label>
             <input v-model="newTask.name" type="text" placeholder="请输入任务名称" />
           </div>
-
+          
           <div class="form-item">
             <label>开始日期:</label>
             <input v-model="newTask.startDate" type="date" />
           </div>
-
+          
           <div class="form-item">
             <label>结束日期:</label>
             <input v-model="newTask.endDate" type="date" />
           </div>
         </div>
-
+        
         <div class="drawer-footer">
-          <button class="gantt-btn gantt-btn-primary" @click="addTask">确定</button>
-          <button class="gantt-btn gantt-btn-default" @click="showAddTaskDrawer = false">取消</button>
+          <button class="btn btn-primary" @click="addTask">确定</button>
+          <button class="btn btn-default" @click="showAddTaskDrawer = false">取消</button>
         </div>
       </div>
     </div>
 
     <!-- 自定义Dialog组件基于element plus -->
-    <el-dialog
-      title="自定义添加里程碑组件 - Element Plus"
-      v-model="showAddMilestoneDialog"
+    <el-dialog 
+      title="自定义添加里程碑组件 - Element Plus" 
+      v-model="showAddMilestoneDialog" 
       width="400px"
       @close="newTask = { name: '', startDate: '', endDate: '' }"
     >
@@ -280,7 +293,7 @@ const onTaskAdded = (res) => {
         <el-button @click="addMilestone">确定</el-button>
         <el-button @click="showAddMilestoneDialog = false">取消</el-button>
       </template>
-    </el-dialog>
+    </el-dialog>  
   </div>
 </template>
 
@@ -400,23 +413,23 @@ const onTaskAdded = (res) => {
   transition: all 0.3s;
 }
 
-.gantt-btn-primary {
+.btn-primary {
   background: #409eff;
   color: white;
   border-color: #409eff;
 }
 
-.gantt-btn-primary:hover {
+.btn-primary:hover {
   background: #66b1ff;
   border-color: #66b1ff;
 }
 
-.gantt-btn-default {
+.btn-default {
   background: white;
   color: #606266;
 }
 
-.gantt-btn-default:hover {
+.btn-default:hover {
   color: #409eff;
   border-color: #409eff;
 }

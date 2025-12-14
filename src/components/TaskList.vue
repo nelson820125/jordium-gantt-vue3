@@ -523,29 +523,14 @@ const handleTaskRowMoved = (payload: {
 
   if (!props.tasks) return
 
-  // 执行移动操作（直接修改 props.tasks 对象，保持引用不变）
-  const result = moveTask(props.tasks, draggedTask.id, targetTask.id, position)
-
-  if (!result) {
-    return
-  }
-
-  // moveTask 已直接修改了 props.tasks，无需手动 splice
-  // 强制触发下一次更新，确保视图刷新
-  nextTick(() => {
-    // 更新父级任务数据（重新计算进度和日期）
-    updateParentTasksData()
-
-    // 触发事件，通知外部组件（可选）
-    // 外部可以监听此事件进行额外处理，如调用API保存、显示提示等
-    // 但不需要更新 tasks，组件已自动完成
-    emit('task-row-moved', {
-      draggedTask: result.movedTask,
-      targetTask,
-      position,
-      oldParent: result.oldParent,
-      newParent: result.newParent,
-    })
+  // 直接 emit 事件给父组件（GanttChart）处理，由 GanttChart 修改原始 tasks 数据
+  // 这样可以确保修改的是正确的数据源，避免修改计算属性的临时结果
+  emit('task-row-moved', {
+    draggedTask,
+    targetTask,
+    position,
+    oldParent: null,  // 将由 GanttChart 计算
+    newParent: null,  // 将由 GanttChart 计算
   })
 }
 

@@ -19,8 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - 🔧 修复：仅删除Story层级后，子Task升级后关系线丢失问题
+- 🔧 修复：Task拖方后数据的Bug
 - 🔧 修复：修复已知问题
 - 🔧 Fixed: Issue of missing relationship lines after upgrading child Tasks when only deleting Story
+- 🔧 Fixed: Bug in Task data after dragging and dropping
 - 🔧 Fixed: Fixed issues
 
 ## [1.5.0] - 2025-12-13

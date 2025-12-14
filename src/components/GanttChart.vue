@@ -8,6 +8,7 @@ import TaskDrawer from './TaskDrawer.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
+import { moveTask, findTaskParent } from '../utils/taskTreeUtils'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
@@ -641,12 +642,36 @@ const handleTaskRowMoved = (payload: {
   oldParent: Task | null
   newParent: Task | null
 }) => {
-  // TaskList已经通过对象引用直接修改了props.tasks的内容
-  // 但computed不会因为对象内部变化而重新计算，需要手动触发
+  const { draggedTask, targetTask, position } = payload
+
+  if (!props.tasks) return
+
+  // 在 GanttChart 层面执行移动操作，直接修改原始 props.tasks
+  // 这样确保修改的是正确的数据源，而不是计算属性的临时结果
+  const result = moveTask(props.tasks, draggedTask.id, targetTask.id, position)
+
+  if (!result) {
+    return
+  }
+
+  // 强制触发计算属性重新计算
   updateTaskTrigger.value++
 
+  // 通知 TaskList 更新父级任务数据
+  nextTick(() => {
+    window.dispatchEvent(new CustomEvent('task-updated', {
+      detail: result.movedTask
+    }))
+  })
+
   // 向外传递事件，让外部组件进行额外处理（完全可选）
-  emit('task-row-moved', payload)
+  emit('task-row-moved', {
+    draggedTask: result.movedTask,
+    targetTask,
+    position,
+    oldParent: result.oldParent,
+    newParent: result.newParent,
+  })
 }
 
 // 全部折叠任务
