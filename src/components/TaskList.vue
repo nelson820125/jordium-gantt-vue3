@@ -57,7 +57,7 @@ const { t } = useI18n()
 // 使用声明式列管理 composable
 const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
   useTaskListColumns(
-    props.taskListColumnRenderMode || 'default',
+    computed(() => props.taskListColumnRenderMode || 'default'),
     slots,
     props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS,
   )

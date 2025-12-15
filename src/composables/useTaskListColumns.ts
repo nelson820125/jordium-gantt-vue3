@@ -1,4 +1,4 @@
-import { computed, type VNode, type Slots, type VNodeChild } from 'vue'
+import { computed, type VNode, type Slots, type VNodeChild, type ComputedRef } from 'vue'
 import type { Task } from '../models/classes/Task'
 import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
 
@@ -111,13 +111,14 @@ export function parseDeclarativeColumns(slots: Slots): DeclarativeColumnConfig[]
  * 用于管理任务列表的列配置（支持声明式和配置式）
  */
 export function useTaskListColumns(
-  renderMode: 'default' | 'declarative',
+  renderMode: ComputedRef<'default' | 'declarative'> | 'default' | 'declarative',
   slots: Slots,
   defaultColumns?: TaskListColumnConfig[],
 ) {
   // 声明式列配置
   const declarativeColumns = computed(() => {
-    if (renderMode !== 'declarative') {
+    const mode = typeof renderMode === 'string' ? renderMode : renderMode.value
+    if (mode !== 'declarative') {
       return []
     }
     return parseDeclarativeColumns(slots)
@@ -125,7 +126,8 @@ export function useTaskListColumns(
 
   // 最终使用的列配置
   const finalColumns = computed(() => {
-    if (renderMode === 'declarative') {
+    const mode = typeof renderMode === 'string' ? renderMode : renderMode.value
+    if (mode === 'declarative') {
       return declarativeColumns.value
     }
     return defaultColumns || []
