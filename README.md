@@ -30,6 +30,12 @@
 <p align="center">现代化的 Vue 3 甘特图组件库，为项目管理和任务调度提供完整解决方案</p>
 
 <p align="center">
+  <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
+    <img src="https://img.shields.io/badge/🥇_Gitee_2025年度开源项目评选-👉_感谢您的参与投票-gold?style=for-the-badge&labelColor=C71D23&logoColor=white" alt="Gitee 2025年度开源项目评选" height="40">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://nelson820125.github.io/jordium-gantt-vue3/">
     <strong>📱 在线演示</strong>
   </a>

@@ -1,4 +1,8 @@
 {
+  "giteeBadge": {
+    "text": "🥇 Gitee 2025年度开源项目评选 👉 感谢您的参与投票",
+    "url": "https://gitee.com/activity/2025opensource?ident=IOUNZP"
+  },
   "taskMoveConfirm": {
     "title": "确认移动任务",
     "confirmText": "确认",

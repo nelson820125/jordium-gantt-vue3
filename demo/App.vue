@@ -756,7 +756,17 @@ const handleTaskRowMoved = async (payload: {
           packageInfo.version
         }}</span>
       </div>
-      <div class="docs-links">
+      <div class="title-center">
+        <a
+          :href="demoMessages.giteeBadge?.url || 'https://gitee.com/activity/2025opensource?ident=IOUNZP'"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="gitee-award-badge"
+        >
+          {{ demoMessages.giteeBadge?.text || '🥇 Gitee 2025 Open Source Awards 👉 Thanks for Your Vote' }}
+        </a>
+      </div>
+      <div class="title-right docs-links">
         <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
           <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
         </a>
@@ -1968,6 +1978,106 @@ const handleTaskRowMoved = async (payload: {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+}
+
+.title-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.title-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.gitee-award-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(199, 29, 35, 0.08) 0%, rgba(255, 107, 53, 0.08) 100%);
+  color: #C71D23;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1.5px solid rgba(199, 29, 35, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.gitee-award-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.15), transparent);
+  transition: left 0.5s ease;
+}
+
+.gitee-award-badge:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(199, 29, 35, 0.12) 0%, rgba(255, 107, 53, 0.12) 100%);
+  border-color: rgba(199, 29, 35, 0.4);
+  box-shadow: 0 4px 16px rgba(199, 29, 35, 0.15);
+  color: #E32329;
+}
+
+.gitee-award-badge:hover::before {
+  left: 100%;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    border-color: rgba(199, 29, 35, 0.2);
+  }
+  50% {
+    border-color: rgba(255, 215, 0, 0.4);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 1400px) {
+  .gitee-award-badge {
+    font-size: 0.75rem;
+    padding: 7px 16px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .page-title {
+    flex-wrap: wrap;
+  }
+
+  .title-center {
+    order: 3;
+    flex: 1 0 100%;
+    margin-top: 10px;
+    justify-content: center;
+  }
+
+  .gitee-award-badge {
+    width: auto;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .gitee-award-badge {
+    font-size: 0.7rem;
+    padding: 6px 14px;
+  }
 }
 
 .gantt-icon {

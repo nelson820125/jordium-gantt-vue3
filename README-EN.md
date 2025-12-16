@@ -30,6 +30,12 @@
 <p align="center">A modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling</p>
 
 <p align="center">
+  <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
+    <img src="https://img.shields.io/badge/🥇_Gitee_2025_Open_Source_Awards-👉_Thanks_for_Your_Vote-gold?style=for-the-badge&labelColor=C71D23&logoColor=white" alt="Gitee 2025 Open Source Project Awards" height="40">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://nelson820125.github.io/jordium-gantt-vue3/">
     <strong>📱 Live Demo</strong>
   </a>

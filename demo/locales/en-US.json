@@ -1,4 +1,8 @@
 {
+  "giteeBadge": {
+    "text": "🥇 Gitee 2025 Open Source Awards 👉 Thanks for Your Vote",
+    "url": "https://gitee.com/activity/2025opensource?ident=IOUNZP"
+  },
   "taskMoveConfirm": {
     "title": "Confirm Task Move",
     "confirmText": "Confirm",
