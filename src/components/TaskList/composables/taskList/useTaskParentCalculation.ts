@@ -1,4 +1,4 @@
-import type { Task } from '../../../models/classes/Task'
+import type { Task } from '../../../../models/classes/Task'
 
 /**
  * 父任务数据计算逻辑

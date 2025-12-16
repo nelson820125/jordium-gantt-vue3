@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { Task } from '../../../models/classes/Task'
+import type { Task } from '../../../../models/classes/Task'
 import { updateParentTasksData, getAllTasks } from './useTaskParentCalculation'
 
 /**
@@ -124,7 +124,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     const updateMilestoneIcon = (taskList: Task[]) => {
       for (const task of taskList) {
         if (task.type === 'milestone-group' && task.children) {
-          const milestone = task.children.find(m => m.id === milestoneId)
+          const milestone = task.children.find((m: Task) => m.id === milestoneId)
           if (milestone) {
             milestone.icon = icon
             return true

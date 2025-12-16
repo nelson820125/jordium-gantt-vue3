@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import type { Task } from '../../../models/classes/Task'
+import type { Task } from '../../../../models/classes/Task'
 
 /**
  * TaskList 布局计算逻辑
