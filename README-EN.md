@@ -2575,24 +2575,89 @@ See [Contributing Guide](CONTRIBUTING.md) for details.
 
 ```
 jordium-gantt-vue3/
-├── src/                      # Source code
-│   ├── components/           # Vue Components
-│   │   ├── GanttChart.vue    # Main Gantt chart component
-│   │   ├── TaskList.vue      # Task list
-│   │   ├── Timeline.vue      # Timeline
-│   │   └── ...
-│   ├── models/               # Data models
-│   │   ├── classes/          # Class definitions
-│   │   ├── configs/          # Configuration interfaces
-│   │   └── types/            # Type Definition
-│   ├── composables/          # Composables
-│   ├── styles/               # Style files
-│   └── utils/                # Utilities
-├── demo/                     # Demo code
-├── docs/                     # Documentation
-├── public/                   # Public assets
-└── package.json              # Project configuration
+├── src/                           # Source code
+│   ├── components/                # Vue components
+│   │   ├── GanttChart.vue         # Main Gantt chart component
+│   │   ├── GanttToolbar.vue       # Toolbar component
+│   │   ├── Timeline.vue           # Timeline component
+│   │   ├── TaskBar.vue            # Task bar component
+│   │   ├── TaskRow.vue            # Task row component
+│   │   ├── TaskDrawer.vue         # Task editing drawer
+│   │   ├── MilestonePoint.vue     # Milestone point component
+│   │   ├── MilestoneDialog.vue    # Milestone editing dialog
+│   │   ├── TaskContextMenu.vue    # Context menu component
+│   │   ├── TaskList/              # Task list module (modular refactoring)
+│   │   │   ├── TaskList.vue       # Task list main component
+│   │   │   ├── TaskListColumn.vue # Declarative column component
+│   │   │   ├── index.ts           # Module exports
+│   │   │   └── composables/       # Task list related composables
+│   │   │       ├── useTaskListLayout.ts          # Virtual scrolling and layout calculation
+│   │   │       ├── useTaskListColumns.ts         # Column configuration management
+│   │   │       ├── useTaskListResize.ts          # Container size management
+│   │   │       ├── useTaskListEventHandlers.ts   # Event handling logic
+│   │   │       └── useTaskParentCalculation.ts   # Parent task data calculation
+│   │   └── index.ts               # Unified component exports
+│   ├── models/                    # Data models
+│   │   ├── classes/               # Class definitions
+│   │   │   ├── Task.ts            # Task class
+│   │   │   ├── Milestone.ts       # Milestone class
+│   │   │   └── Language.ts        # Language configuration class
+│   │   ├── configs/               # Configuration interfaces
+│   │   │   ├── TaskListConfig.ts  # Task list configuration
+│   │   │   ├── TaskBarConfig.ts   # Task bar configuration
+│   │   │   ├── TimelineConfig.ts  # Timeline configuration
+│   │   │   └── ToolbarConfig.ts   # Toolbar configuration
+│   │   └── types/                 # Type definitions
+│   │       ├── TimelineDataTypes.ts # Timeline data types
+│   │       ├── TimelineScale.ts   # Timeline scale types
+│   │       └── TimelineCompat.ts  # Compatibility types
+│   ├── composables/               # Global composables
+│   │   ├── useI18n.ts             # Internationalization
+│   │   ├── useMessage.ts          # Message notifications
+│   │   ├── useTaskRowDrag.ts      # Task row dragging
+│   │   └── useTaskListColumns.ts  # Column configuration (migrated to TaskList/composables)
+│   ├── styles/                    # Style files
+│   │   ├── app.css                # Main styles
+│   │   ├── list.css               # List styles
+│   │   ├── theme-variables.css    # Theme variables
+│   │   └── index.ts               # Style exports
+│   ├── utils/                     # Utility functions
+│   │   ├── canvasUtils.ts         # Canvas utilities
+│   │   ├── perfMonitor.ts         # Performance monitoring
+│   │   ├── predecessorUtils.ts    # Predecessor task utilities
+│   │   └── taskTreeUtils.ts       # Task tree utilities
+│   └── index.ts                   # Main entry file
+├── demo/                          # Online demo code
+│   ├── App.vue                    # Demo application
+│   ├── data.json                  # Sample data
+│   ├── locales/                   # Locale files
+│   └── ...
+├── docs/                          # Documentation
+│   └── TaskList-重构测试清单.md   # Refactoring documentation
+├── npm-demo/                      # NPM package usage example
+├── npm-webpack-demo/              # Webpack integration example
+├── public/                        # Public assets
+│   └── assets/                    # Static resources
+└── package.json                   # Project configuration
 ```
+
+### Modular Design Highlights
+
+#### TaskList Modular Refactoring
+
+The TaskList component has been deeply refactored with a modular design, improving code maintainability:
+
+**Refactoring Results:**
+- Main component reduced from 686 lines to 361 lines (-47%)
+- Logic separated into 5 specialized composables by responsibility
+- Each module has a single responsibility, easy to test and maintain
+
+**Composables Responsibility Division:**
+- `useTaskListLayout` - Virtual scrolling and layout calculation
+- `useTaskListColumns` - Column configuration management and style calculation
+- `useTaskListResize` - Container size monitoring and ResizeObserver management
+- `useTaskListEventHandlers` - Global event handling and scroll synchronization
+- `useTaskParentCalculation` - Parent task data calculation and task tree traversal
 
 ---
 

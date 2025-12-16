@@ -5,7 +5,7 @@ import { useI18n } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import type { Task } from '../models/classes/Task'
 import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
-import type { DeclarativeColumnConfig } from '../composables/useTaskListColumns'
+import type { DeclarativeColumnConfig } from './TaskList/composables/useTaskListColumns'
 import TaskContextMenu from './TaskContextMenu.vue'
 
 interface TaskRowSlotProps {

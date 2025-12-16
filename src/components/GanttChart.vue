@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted, onMounted, computed, watch, nextTick, useSlots, provide } from 'vue'
 import type { StyleValue } from 'vue'
-import TaskList from './TaskList.vue'
+import TaskList from './TaskList/TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
 import TaskDrawer from './TaskDrawer.vue'

@@ -1,6 +1,6 @@
 import { computed, type VNode, type Slots, type VNodeChild, type ComputedRef } from 'vue'
-import type { Task } from '../models/classes/Task'
-import type { TaskListColumnConfig } from '../models/configs/TaskListConfig'
+import type { Task } from '../../../models/classes/Task'
+import type { TaskListColumnConfig } from '../../../models/configs/TaskListConfig'
 
 /**
  * 声明式列配置接口

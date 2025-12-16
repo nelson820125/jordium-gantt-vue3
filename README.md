@@ -2566,24 +2566,89 @@ const taskListConfig = ref<TaskListConfig>({
 
 ```
 jordium-gantt-vue3/
-├── src/                      # 源代码
-│   ├── components/           # Vue 组件
-│   │   ├── GanttChart.vue    # 甘特图主组件
-│   │   ├── TaskList.vue      # 任务列表
-│   │   ├── Timeline.vue      # 时间轴
-│   │   └── ...
-│   ├── models/               # 数据模型
-│   │   ├── classes/          # 类定义
-│   │   ├── configs/          # 配置接口
-│   │   └── types/            # 类型定义
-│   ├── composables/          # 组合式函数
-│   ├── styles/               # 样式文件
-│   └── utils/                # 工具函数
-├── demo/                     # 示例代码
-├── docs/                     # 文档
-├── public/                   # 公共资源
-└── package.json              # 项目配置
+├── src/                           # 源代码
+│   ├── components/                # Vue 组件
+│   │   ├── GanttChart.vue         # 甘特图主组件
+│   │   ├── GanttToolbar.vue       # 工具栏组件
+│   │   ├── Timeline.vue           # 时间轴组件
+│   │   ├── TaskBar.vue            # 任务条组件
+│   │   ├── TaskRow.vue            # 任务行组件
+│   │   ├── TaskDrawer.vue         # 任务编辑抽屉
+│   │   ├── MilestonePoint.vue     # 里程碑点组件
+│   │   ├── MilestoneDialog.vue    # 里程碑编辑对话框
+│   │   ├── TaskContextMenu.vue    # 右键菜单组件
+│   │   ├── TaskList/              # 任务列表模块（模块化重构）
+│   │   │   ├── TaskList.vue       # 任务列表主组件
+│   │   │   ├── TaskListColumn.vue # 声明式列组件
+│   │   │   ├── index.ts           # 模块导出
+│   │   │   └── composables/       # 任务列表相关组合式函数
+│   │   │       ├── useTaskListLayout.ts          # 虚拟滚动和布局计算
+│   │   │       ├── useTaskListColumns.ts         # 列配置管理
+│   │   │       ├── useTaskListResize.ts          # 容器尺寸管理
+│   │   │       ├── useTaskListEventHandlers.ts   # 事件处理逻辑
+│   │   │       └── useTaskParentCalculation.ts   # 父任务数据计算
+│   │   └── index.ts               # 组件统一导出
+│   ├── models/                    # 数据模型
+│   │   ├── classes/               # 类定义
+│   │   │   ├── Task.ts            # 任务类
+│   │   │   ├── Milestone.ts       # 里程碑类
+│   │   │   └── Language.ts        # 语言配置类
+│   │   ├── configs/               # 配置接口
+│   │   │   ├── TaskListConfig.ts  # 任务列表配置
+│   │   │   ├── TaskBarConfig.ts   # 任务条配置
+│   │   │   ├── TimelineConfig.ts  # 时间轴配置
+│   │   │   └── ToolbarConfig.ts   # 工具栏配置
+│   │   └── types/                 # 类型定义
+│   │       ├── TimelineDataTypes.ts # 时间轴数据类型
+│   │       ├── TimelineScale.ts   # 时间刻度类型
+│   │       └── TimelineCompat.ts  # 兼容性类型
+│   ├── composables/               # 全局组合式函数
+│   │   ├── useI18n.ts             # 国际化
+│   │   ├── useMessage.ts          # 消息提示
+│   │   ├── useTaskRowDrag.ts      # 任务行拖拽
+│   │   └── useTaskListColumns.ts  # 列配置（已迁移至 TaskList/composables）
+│   ├── styles/                    # 样式文件
+│   │   ├── app.css                # 主样式
+│   │   ├── list.css               # 列表样式
+│   │   ├── theme-variables.css    # 主题变量
+│   │   └── index.ts               # 样式导出
+│   ├── utils/                     # 工具函数
+│   │   ├── canvasUtils.ts         # Canvas 工具
+│   │   ├── perfMonitor.ts         # 性能监控
+│   │   ├── predecessorUtils.ts    # 前置任务工具
+│   │   └── taskTreeUtils.ts       # 任务树工具
+│   └── index.ts                   # 主入口文件
+├── demo/                          # 在线演示代码
+│   ├── App.vue                    # 演示应用
+│   ├── data.json                  # 示例数据
+│   ├── locales/                   # 多语言文件
+│   └── ...
+├── docs/                          # 文档
+│   └── TaskList-重构测试清单.md   # 重构文档
+├── npm-demo/                      # NPM 包使用示例
+├── npm-webpack-demo/              # Webpack 集成示例
+├── public/                        # 公共资源
+│   └── assets/                    # 静态资源
+└── package.json                   # 项目配置
 ```
+
+### 模块化设计亮点
+
+#### TaskList 模块化重构
+
+TaskList 组件经过深度重构，采用模块化设计，提升了代码可维护性：
+
+**重构成果：**
+- 主组件从 686 行精简至 361 行（-47%）
+- 逻辑按职责分离到 5 个专门的 composables
+- 每个模块职责单一，便于测试和维护
+
+**Composables 职责划分：**
+- `useTaskListLayout` - 虚拟滚动和布局计算
+- `useTaskListColumns` - 列配置管理和样式计算
+- `useTaskListResize` - 容器尺寸监听和 ResizeObserver 管理
+- `useTaskListEventHandlers` - 全局事件处理和滚动同步
+- `useTaskParentCalculation` - 父任务数据计算和任务树遍历
 
 ---
 
