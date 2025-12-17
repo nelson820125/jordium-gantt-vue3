@@ -1,0 +1,412 @@
+[
+  {
+    "version": "alpha 0.8.1",
+    "date": "2025-06-25",
+    "notes": ["升级优化DatePicker组件"]
+  },
+  {
+    "version": "alpha 0.8.2",
+    "date": "2025-06-25",
+    "notes": ["升级Demo", "移除导出按钮的初始化光晕效果"]
+  },
+  {
+    "version": "alpha 0.8.3",
+    "date": "2025-06-25",
+    "notes": ["升级里程碑Taskbar，允许拖拽"]
+  },
+  {
+    "version": "alpha 0.8.4",
+    "date": "2025-06-25",
+    "notes": ["升级需求/任务TaskBar新建以及上下级关系变更", "添加Github和Gitee的文档入口"]
+  },
+  {
+    "version": "alpha 0.8.5",
+    "date": "2025-06-26",
+    "notes": ["升级Timeline今日定位和滑动问题"]
+  },
+  {
+    "version": "alpha 0.9.0",
+    "date": "2025-06-26",
+    "notes": ["添加新增里程碑和删除里程碑功能"]
+  },
+  {
+    "version": "alpha 0.9.1",
+    "date": "2025-06-27",
+    "notes": ["优化时间轴的延伸"]
+  },
+  {
+    "version": "alpha 0.9.2",
+    "date": "2025-06-27",
+    "notes": ["增加历史版本查看"]
+  },
+  {
+    "version": "alpha 0.9.3",
+    "date": "2025-06-27",
+    "notes": ["修复今日定位问题"]
+  },
+  {
+    "version": "alpha 0.9.4",
+    "date": "2025-06-27",
+    "notes": ["调整暗黑主题的亮度", "调整暗黑主题的布局", "修复暗黑主题下的版本历史的样式"]
+  },
+  {
+    "version": "alpha 0.9.5",
+    "date": "2025-06-27",
+    "notes": ["统一管理各个组件的全球化配置"]
+  },
+  {
+    "version": "alpha 0.9.6",
+    "date": "2025-06-27",
+    "notes": ["各个组件分离Task/Milestone/Language对象"]
+  },
+  {
+    "version": "alpha 0.9.7",
+    "date": "2025-06-28",
+    "notes": ["解决Milestone组件和类型的同名问题"]
+  },
+  {
+    "version": "alpha 0.9.8",
+    "date": "2025-06-28",
+    "notes": ["按钮样式统一管理"]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2025-06-29",
+    "notes": [
+      "GanttChart接口增强",
+      "添加GanttChart的拖拽事件回调",
+      "添加GanttChart的里程碑拖拽事件回调",
+      "修复里程碑点的样式问题",
+      "更新README文档",
+      "重构项目目录结构"
+    ]
+  },
+  {
+    "version": "1.0.1",
+    "date": "2025-07-01",
+    "notes": ["增加npm安装及组件集成示例"]
+  },
+  {
+    "version": "1.0.2",
+    "date": "2025-07-01",
+    "notes": ["升级README文档", "增加贡献说明", "增加贡献者列表"]
+  },
+  {
+    "version": "1.0.3",
+    "date": "2025-07-02",
+    "notes": ["增加Github Pages", "修改README, 添加GIthub在线Demo入口", "移除大体积静态资源"]
+  },
+  {
+    "version": "1.0.4",
+    "date": "2025-07-02",
+    "notes": ["修改NPM徽章CDN"]
+  },
+  {
+    "version": "1.0.5",
+    "date": "2025-07-02",
+    "notes": ["更新README中所有NPM徽章CDN地址"]
+  },
+  {
+    "version": "1.0.6",
+    "date": "2025-07-03",
+    "notes": [
+      "更新TaskDrawer组件的Progressbar样式",
+      "可通过拖拽进度条和文本修改的方式更改任务的进度",
+      "Story进度根据子任务集进度改编重新计算",
+      "同时保留Story进度单独的调整方式"
+    ]
+  },
+  {
+    "version": "1.0.9",
+    "date": "2025-07-04",
+    "notes": [
+      "更新多语言标签",
+      "增加Story删除时选择是否删除子任务的选项",
+      "删除Story或Task时同时删除前后的关系线路"
+    ]
+  },
+  {
+    "version": "1.0.10",
+    "date": "2025-07-06",
+    "notes": [
+      "升级用户体验",
+      "增加边框粘性toolBar，表示隐藏的TaskBar和MilestoneBar",
+      "点击边框粘性toolBar，快速定位滑动到对应的TaskBar和MilestoneBar",
+      "Timeline中sub-task隐藏后，关系线也随之隐藏",
+      "增强TaskBar可以存在多个前置任务"
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2025-07-08",
+    "notes": ["TaskBar拖拽触发Timeline水平滑动", "增加日|周|月视图切换", "问题修复"]
+  },
+  {
+    "version": "1.2.0",
+    "date": "2025-07-21",
+    "notes": [
+      "增加TaskRow/TaskBar的右键菜单",
+      "增加Task的执行定时",
+      "增加添加前置任务功能",
+      "增加添加后置任务功能",
+      "增加TaskRow/TaskBar的删除功能",
+      "GanttChart增加@predecessor-added(添加前置任务完成)事件",
+      "GanttChart增加@successor-added(添加后置任务完成)事件",
+      "GanttChart增加@task-deleted(删除任务完成)事件",
+      "GanttChart增加@task-added(添加任务完成)事件",
+      "GanttChart增加@task-updated(编辑任务完成)事件",
+      "升级TaskDrawer统一在GanttChart中管理"
+    ]
+  },
+  {
+    "version": "1.2.1",
+    "date": "2025-07-22",
+    "notes": ["SonarQube代码质量检查问题修改"]
+  },
+  {
+    "version": "1.3.0",
+    "date": "2025-09-12",
+    "notes": [
+      "增加年度视图",
+      "Add annual timeline view",
+      "增加季度视图",
+      "Add quarterly timeline view",
+      "增加小时视图",
+      "Add hourly timeline view",
+      "升级TaskDrawer中DatePicker组件，接受小时的设定",
+      "Upgrade DatePicker component in TaskDrawer to accept hour settings",
+      "升级TaskDrawer中预计时间和实际时间的控件，接受小数后两位的录入",
+      "Upgrade the estimated time and actual time controls in TaskDrawer to accept two decimal places",
+      "SonarQube代码质量检查问题修改",
+      "SonarQube code quality inspection issue modification"
+    ]
+  },
+  {
+    "version": "1.3.2",
+    "date": "2025-09-24",
+    "notes": [
+      "修复缺陷",
+      "Bugfix",
+      "SonarQube代码质量检查问题修改",
+      "SonarQube code quality inspection issue modification"
+    ]
+  },
+  {
+    "version": "1.4.0",
+    "date": "2025-10-11",
+    "notes": [
+      "Timeline Scale客制化",
+      "Timeline Scale Customization",
+      "TaskList可配置",
+      "TaskList Configurable",
+      "TaskRow/TaskBar内容支持HTML插槽",
+      "TaskRow/TaskBar content supports HTML slots",
+      "TaskRow/TaskBar支持自定义样式",
+      "TaskRow/TaskBar supports custom styles",
+      "增加全部展开/收起按钮",
+      "Add Expand/Collapse All Button",
+      "按照时间排序TaskList",
+      "Sort TaskList by time",
+      "增加周视图的1号旗帜元素",
+      "Add 1st flag element for weekly view",
+      "SonarQube代码质量检查问题修改",
+      "SonarQube code quality inspection issue modification",
+      "修复缺陷",
+      "Bugfix",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢贡献者 @qiuchengw</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to contributor @qiuchengw</span>"
+    ]
+  },
+  {
+    "version": "1.4.1",
+    "date": "2025-10-26",
+    "notes": [
+      "TaskList客制化列展示问题修复",
+      "TaskList Custom Column Display Issue Fix",
+      "TaskList客制化列数据动态绑定问题修复",
+      "TaskList Custom Column Data Dynamic Binding Issue Fix",
+      "SonarQube代码质量检查问题修改",
+      "SonarQube code quality inspection issue modification",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @Guduxwa</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @Guduxwa</span>"
+    ]
+  },
+  {
+    "version": "1.4.2",
+    "date": "2025-11-01",
+    "notes": [
+      "TaskBar增加头像显示",
+      "TaskBar展示信息显示可配置",
+      "TaskBar长按聚焦高亮",
+      "Timeline Range自动优化计算, 提升显示效果",
+      "TaskListConfig支持像素和百分比设置方式",
+      "客制化多语言扩展支持",
+      "暴露更多外部可以使用属性和事件",
+      "说明文档更新，可读性更强",
+      "增加NPM包应用示例",
+      "支持拖拽和拉伸TaskBar/Milestone接近边界自动扩充时间轴范围",
+      "支持通过属性配置限制TaskBar/Milestone拖拽和拉伸",
+      "增强Timeline时间轴的拖拽体验,增加防抖保护",
+      "SonarQube代码质量检查问题修改",
+      "缺陷修复",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @SHENGLONG749/@xu-yiqi/@yfwork的使用及反馈的宝贵意见</span>",
+      "Added avatar display on TaskBar",
+      "Configurable display information on TaskBar",
+      "Long-press to focus and highlight TaskBar",
+      "Automatically optimized Timeline Range calculation for better visual performance",
+      "TaskListConfig now supports both pixel and percentage-based sizing",
+      "Custom multi-language extension support",
+      "Expose more external properties and events",
+      "Documentation updated for better readability",
+      "Added NPM package application examples",
+      "Support dragging and stretching TaskBar/Milestone to automatically expand timeline range near boundaries",
+      "Support property-based configuration to limit dragging and stretching of TaskBar/Milestone",
+      "Enhance dragging experience on Timeline, adding debounce protection",
+      "SonarQube code quality inspection issue modification",
+      "Bugfix",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749/@xu-yiqi/@yfwork for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.2-patch1",
+    "date": "2025-11-03",
+    "notes": [
+      "缺陷修复：更新父级任务后，再次更新子级任务是发生无限循环调用的问题修复",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 Ky1in666@github的使用及反馈的宝贵意见</span>",
+      "Defect fix: Fixed the issue of infinite loop calls when updating child tasks after updating the parent task",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to Ky1in666@github for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.2-patch2",
+    "date": "2025-11-11",
+    "notes": [
+      "缺陷修复：TaskList配置列宽无效的问题修复",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @SHENGLONG749的使用及反馈的宝贵意见</span>",
+      "Defect fix: Fixed the issue of invalid column width configuration in TaskList",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @SHENGLONG749 for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.2-patch3",
+    "date": "2025-11-13",
+    "notes": [
+      "新增：支持视图上下/左右拖拽",
+      "性能优化：canvas绘制性能优化",
+      "性能优化：拖拽视图性能优化，拖拽期间禁止重绘canvas",
+      "性能优化：周视图月开始分隔线实现使用canvas替代dom",
+      "性能优化：使用canvas替代svg links实现",
+      "性能优化：路径缓存+防抖+shallowRef计算",
+      "Added: Support for vertical/horizontal dragging of the view",
+      "Performance Optimization: Canvas drawing performance optimization",
+      "Performance Optimization: View dragging performance optimization, disabling canvas redraw during dragging",
+      "Performance Optimization: Weekly view month start separator line implemented using canvas instead of DOM",
+      "Performance Optimization: Using canvas instead of SVG links implementation",
+      "Performance Optimization: Path caching + debounce + shallowRef calculation",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @qiuchengw的专业贡献</span>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @qiuchengw for his professional contribution</span>"
+    ]
+  },
+  {
+    "version": "1.4.3",
+    "date": "2025-11-28",
+    "notes": [
+      "性能优化：TaskList和Timeline增加虚拟滚动支持，大幅降低节点数和重绘开销",
+      "性能优化：大数据量任务渲染性能优化",
+      "性能优化：虚拟渲染优化",
+      "新增：大数据加载演示",
+      "修复：jspdf弱点升级",
+      "Performance Optimization: TaskList and Timeline add virtualized scrolling support, greatly reducing node count and redraw overhead",
+      "Performance Optimization: Large data volume task rendering performance optimization",
+      "Performance Optimization: Virtualized rendering optimization",
+      "Added: Large data loading demonstration",
+      "Fix: jspdf vulnerabilies"
+    ]
+  },
+  {
+    "version": "1.4.4",
+    "date": "2025-12-06",
+    "notes": [
+      "新增：任务列表中任务项的移动拖放功能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 jun201607@github的使用及反馈的宝贵意见</span>",
+      "Added: Task item move and drag-and-drop functionality in the task list",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jun201607@github for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.5",
+    "date": "2025-12-06",
+    "notes": [
+      "优化：任务列表中任务项的移动拖放功能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 jun201607@github的使用及反馈的宝贵意见</span>",
+      "Optimized: Task item move and drag-and-drop functionality in the task list",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jun201607@github for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.6",
+    "date": "2025-12-09",
+    "notes": [
+      "修复：内置TaskDrawer中负责人列表可以外部初始化",
+      "修复：未设置startDate和endDate时，任务无法正确显示的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 yue-xiaochuan & YQ6494@gitee的使用及反馈的宝贵意见</span>",
+      "Fixed: The assignee list in the built-in TaskDrawer can be initialized externally",
+      "Fixed: The issue where tasks could not be displayed correctly when startDate and endDate were not set",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yue-xiaochuan & YQ6494@gitee for their valuable use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.4.6-patch.1",
+    "date": "2025-12-09",
+    "notes": [
+      "修复：Github编译错误",
+      "Fixed: The build errors on Github"
+    ]
+  },
+  {
+    "version": "1.5.0",
+    "date": "2025-12-13",
+    "notes": [
+      "新增：TaskBar增加可视化关系线添加，删除功能",
+      "新增：支持适配uniapp开发",
+      "新增：TaskListConfig支持Task图标显示/隐藏配置",
+      "修复：Task双击时，禁止Task拖放事件的触发",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 @qiuchengw的专业贡献</span>",
+      "Added: TaskBar adds visual relationship line addition and deletion functions",
+      "Added: Support for uniapp development",
+      "Added: TaskListConfig supports Task icon show/hide configuration",
+      "Fixed: Disabled Task drag-and-drop event trigger on double-click",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to @qiuchengw for his professional contribution</span>"
+    ]
+  },
+  {
+    "version": "1.6.0",
+    "date": "2025-12-14",
+    "notes": [
+      "🎉 新增：Task Table列声明式定义方式, 使用组件TaskListColumn",
+      "🎉 新增：Task Table #header和#default Slots",
+      "🎉 新增：Task List行样式设置属性 - task-list-row-class-name和task-list-row-style",
+      "🎉 新增：为兼容旧版本TaskListColumnConfig，提供task-list-column-render-mode属性开关，可以通过设置选择Task表格列定义方式",
+      "🔧 修复：仅删除Story层级后，子Task升级后关系线丢失问题",
+      "🔧 修复：Task拖方后数据的Bug",
+      "🔧 修复：修复已知问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 osc_85545913@gitee的使用及反馈</span>",
+      "🎉 Added: Declarative definition method for Task Table columns using the TaskListColumn component",
+      "🎉 Added: Task Table #header and #default Slots",
+      "🎉 Added: Task List row style setting properties - task-list-row-class-name and task-list-row-style",
+      "🎉 Added: A switch for task-list-column-render-mode attribute to choose Task Table column definition method for compatibility with older versions of TaskListColumnConfig",
+      "🔧 Fixed: Issue of missing relationship lines after upgrading child Tasks when only deleting Story",
+      "🔧 Fixed: Bug in Task data after dragging and dropping",
+      "🔧 Fixed: Fixed issues",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to osc_85545913@gitee for their use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.6.1",
+    "date": "2025-12-15",
+    "notes": [
+      "🔧 修复：声明式Task List数据展示问题",
+      "🔧 Fixed: Declarative Task List data display issue"
+    ]
+  }
+]
