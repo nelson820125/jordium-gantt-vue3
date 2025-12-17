@@ -5,7 +5,7 @@ const props = defineProps<{ visible: boolean }>()
 const versionList = ref<any[]>([])
 
 onMounted(async () => {
-  const res = await fetch('./version-history.json')
+  const res = await fetch(new URL('./version-history.json', import.meta.url).href)
   const data = await res.json()
   // 按日期和版本号倒序排列
   versionList.value = data.sort((a, b) => {

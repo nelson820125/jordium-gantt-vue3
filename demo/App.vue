@@ -54,7 +54,7 @@ const dataSourceOptions = computed(() => {
   })
 })
 
-const currentDataSource = ref<DataSourceKey>('large')
+const currentDataSource = ref<DataSourceKey>('normal')
 const dataLoading = ref(false)
 
 const cloneData = <T>(data: T): T => {

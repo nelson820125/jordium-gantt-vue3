@@ -67,7 +67,11 @@
     "lint:check": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false"
+    "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
@@ -79,14 +83,19 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-vue": "^5.2.3",
+    "@vitest/coverage-v8": "^0.34.6",
+    "@vitest/ui": "^0.34.6",
     "@vue/eslint-config-prettier": "^8.0.0",
     "@vue/eslint-config-typescript": "^12.0.0",
+    "@vue/test-utils": "^2.4.1",
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.25.0",
+    "happy-dom": "^12.10.3",
     "prettier": "^3.2.5",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
+    "vitest": "^0.34.6",
     "vue-tsc": "^2.2.8"
   }
 }
