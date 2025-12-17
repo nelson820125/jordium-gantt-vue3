@@ -1277,7 +1277,7 @@ const handleTaskRowMoved = async (payload: {
          </template>
          <template #column-name="{ task, column, value }">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <img src="https://i.pravatar.cc/50?img=1" width="20" height="20" style="border-radius: 50%;" />
+            <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="20" height="20" style="border-radius: 50%;" />
             <span v-html="value"></span>
             <span
               v-if="task.priority"
