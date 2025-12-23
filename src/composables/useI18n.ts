@@ -585,10 +585,28 @@ export function useI18n() {
     return messages[currentLocale.value]
   })
 
-  // 安全获取翻译文本的函数
-  const getTranslation = (key: string): string => {
-    const translation = t.value[key as keyof typeof t.value]
-    return typeof translation === 'string' ? translation : key
+  // 安全获取翻译文本的函数 - 支持多级键（如 'taskListConfig.title'）
+  const getTranslation = (key: string, defaultValue?: string): string => {
+    // 分割键路径
+    const keys = key.split('.')
+
+    // 从根对象开始递归访问
+    let value: any = t.value
+
+    for (const k of keys) {
+      if (value && typeof value === 'object' && k in value) {
+        value = value[k]
+      } else {
+        // 如果找不到，优先返回用户传入的 default，否则返回 key
+        return defaultValue || key
+      }
+    }
+
+    // 确保返回的是字符串
+    // 1. 如果找到了值且是字符串，返回该值
+    // 2. 如果值不是字符串，优先返回用户传入的 default
+    // 3. 否则返回 key
+    return typeof value === 'string' ? value : (defaultValue || key)
   }
 
   // 格式化带参数的翻译文本
