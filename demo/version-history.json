@@ -408,5 +408,15 @@
       "🔧 修复：声明式Task List数据展示问题",
       "🔧 Fixed: Declarative Task List data display issue"
     ]
+  },
+  {
+    "version": "1.6.2",
+    "date": "2025-12-23",
+    "notes": [
+      "🔧 修复：I18n外部使用的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 he-shihao-3687@gitee的使用及反馈</span>",
+      "🔧 Fixed: Issue with external use of I18n",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to he-shihao-3687@gitee for their use and feedback</span>"
+    ]
   }
 ]

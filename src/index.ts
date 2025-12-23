@@ -11,6 +11,9 @@ export { default as TaskRow } from './components/TaskRow.vue'
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 
+// 导出 composables 供外部使用
+export { useI18n } from './composables/useI18n'
+
 // 导出配置类型
 export type {
   TaskListConfig,

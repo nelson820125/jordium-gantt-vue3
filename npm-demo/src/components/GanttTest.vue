@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const { t, getTranslation } = useI18n();
 
 const tasks = ref([
   {
@@ -35,6 +37,10 @@ const customMessages = {
     hours: '小时111',
     overtime: '超时111',
     overdue: '逾期111',
+    gantt: {
+      planStartDate: '计划开始时间',
+      //planEndDate: '计划结束时间',
+    }
   },
   'en-US': {
     department: 'Department',
@@ -44,6 +50,10 @@ const customMessages = {
     hours: 'Hour111',
     overtime: 'OverTime111',
     overdue: 'OverDue111',
+    gantt: {
+      planStartDate: 'Plan Start Date',
+      planEndDate: 'Plan End Date',
+    }
   }
 }
 // const tasks = ref([])
@@ -228,8 +238,12 @@ const onTaskAdded = (res) => {
           <span style="color: #52c41a;">{{ scope.row.name }}</span>
         </template>
       </TaskListColumn>
-      <TaskListColumn prop="startDate" label="开始时间" width="250" />
-      <TaskListColumn prop="endDate" label="结束时间" width="250" />
+      <TaskListColumn prop="startDate" label="开始时间" width="250">
+        <template #header>
+          <strong style="color: #1890ff;">{{ t.department }}</strong>
+        </template>
+      </TaskListColumn>
+      <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate', '结束的时间')" width="250" />
     </GanttChart>
     </div>
     <!-- 自定义添加任务按钮 -->

@@ -2026,7 +2026,7 @@ const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
 
 #### Custom Translations
 
-Override or extend default translations via `localeMessages` prop:
+Pass custom multilingual text via the `localeMessages` prop, which will be automatically merged into the default translations:
 
 ```vue
 <template>
@@ -2037,7 +2037,7 @@ Override or extend default translations via `localeMessages` prop:
 const customMessages = {
   "zh-CN": {
     // Task list related
-    name: 'Task Name (Custom)',
+    taskName: 'Task Name (Custom)',
     startDate: 'Start Date',
     endDate: 'End Date',
     duration: 'Duration',
@@ -2045,55 +2045,183 @@ const customMessages = {
     predecessor: 'Predecessors',
     assignee: 'Assignee',
     estimatedHours: 'Estimated Hours',
-    actualHours: 'Actual Hours'
-
-    // Toolbar related
-    addTask: 'New Task',
-    addMilestone: 'New Milestone',
-    today: 'Today',
-    exportCsv: 'Export CSV',
-    exportPdf: 'Export PDF',
-    fullscreen: 'Fullscreen',
-    exitFullscreen: 'Exit Fullscreen',
-    language: 'Language',
-    theme: 'Theme',
-    expandAll: 'Expand All',
-    collapseAll: 'Collapse All'
-
-    // Internal Task editor related
-    title: 'Task Details',
-    titleEdit: 'Edit Task',
-    titleNew: 'New Task',
-    name: 'Task Name',
-    startDate: 'Start Date',
-    endDate: 'End Date',
-    assignee: 'Assignee',
-    predecessor: 'Predecessors',
-    description: 'Description',
-    estimatedHours: 'Estimated Hours',
     actualHours: 'Actual Hours',
-    progress: 'Progress',
-    save: 'Save',
-    cancel: 'Cancel',
-    delete: 'Delete'
 
-    // Other texts
-    days: 'days',
-    hours: 'hours',
-    overtime: 'overtime',
-    overdue: 'overdue',
-    // ... More custom translations
+    // Custom fields (supports nested structure)
+    department: 'Department',
+    status: 'Status',
+    gantt: {
+      planEndDate: 'Plan End Date',
+      planStartDate: 'Plan Start Date'
+    }
   },
-  "en-US": {......}
+  "en-US": {
+    department: 'Department',
+    status: 'Status',
+    gantt: {
+      planEndDate: 'Plan End Date',
+      planStartDate: 'Plan Start Date'
+    }
+  }
 }
 </script>
 ```
 
-> **💡 Tip**：
+> **💡 Tip**:
 >
-> - `localeMessages` adopts **deep merge** strategy, only need to pass fields that need to be overridden
-> - supports nested objects, like `taskList.name`, `toolbar.addTask`, etc.
-> - For complete translation keys, please refer to built-in `messages['zh-CN']` object in component
+> - `localeMessages` uses a **deep merge** strategy, only pass fields that need to be overridden or added
+> - Supports nested object structures, such as `gantt.planEndDate`
+> - For complete built-in translation keys, please refer to `useI18n.ts` in the component source code
+
+##### Using Translations in Custom Slots
+
+The component exports the `useI18n` composable, which can be used in custom slots to access translation text. It supports two access methods:
+
+**Method 1: Reactive Access (`t.field`)**
+
+Access translation text directly through a reactive object, with concise syntax, suitable for use in templates:
+
+```vue
+<script setup>
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+
+const { t } = useI18n()
+
+const customMessages = {
+  'zh-CN': {
+    department: 'Department'
+  }
+}
+</script>
+
+<template>
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
+  
+  <!-- Reactive access: directly through the t object -->
+  <TaskListColumn prop="startDate" label="Start Date" width="250">
+    <template #header>
+      <strong style="color: #1890ff;">{{ t.department }}</strong>
+    </template>
+  </TaskListColumn>
+</template>
+```
+
+**Method 2: Function Access (`getTranslation()`)**
+
+Supports nested keys and default values, suitable for accessing deep structures or dynamic keys:
+
+```vue
+<script setup>
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+
+const { getTranslation } = useI18n()
+
+const customMessages = {
+  'en-US': {
+    gantt: {
+      planEndDate: 'Plan End Date'
+    }
+  }
+}
+</script>
+
+<template>
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
+  
+  <!-- Function access: supports nested keys and default values -->
+  <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate')" width="250" />
+</template>
+```
+
+**Complete Example (with Language Switching):**
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+
+// Custom multilingual configuration
+const customMessages = {
+  'zh-CN': {
+    department: '部门',
+    gantt: {
+      planEndDate: '计划结束时间'
+    }
+  },
+  'en-US': {
+    department: 'Department',
+    gantt: {
+      planEndDate: 'Plan End Date'
+    }
+  }
+}
+
+// Use useI18n to access translations
+const { t, getTranslation, locale, setLocale } = useI18n()
+const tasks = ref([...])
+
+// Language switching
+const switchLanguage = () => {
+  setLocale(locale.value === 'zh-CN' ? 'en-US' : 'zh-CN')
+}
+</script>
+
+<template>
+  <button @click="switchLanguage">Switch Language</button>
+  
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
+  
+  <!-- Reactive access: directly through the t object -->
+  <TaskListColumn prop="startDate" label="Start Date" width="250">
+    <template #header>
+      <strong style="color: #1890ff;">{{ t.department }}</strong>
+    </template>
+  </TaskListColumn>
+  
+  <!-- Function access: supports nested keys and default values -->
+  <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate')" width="250" />
+</template>
+```
+
+**`useI18n` API Reference:**
+
+| Export | Type | Description |
+|--------|------|-------------|
+| `t` | `Ref<object>` | Reactive translation object, access via `t.key` or `t.nested.key` |
+| `getTranslation(key, defaultValue?)` | `Function` | Function-based access to translation text<br>• `key`: Translation key, supports nested paths (e.g., `'gantt.planEndDate'`)<br>• `defaultValue`: Optional, default value returned when translation is not found<br>• Returns: Translation text, default value, or the key itself |
+| `formatTranslation(key, params)` | `Function` | Format translation text with parameters<br>• `key`: Translation key<br>• `params`: Parameter object, e.g., `{ name: 'Task1' }`<br>• Returns: Text with placeholders replaced (e.g., `'Task {name}'` → `'Task Task1'`) |
+| `locale` | `Ref<string>` | Current language (`'zh-CN'` or `'en-US'`) |
+| `setLocale(locale)` | `Function` | Switch language, automatically updates all components using `useI18n` |
+| `formatYearMonth(year, month)` | `Function` | Format year-month display<br>• Chinese: `formatYearMonth(2024, 3)` → `'2024年03月'`<br>• English: `formatYearMonth(2024, 3)` → `'2024/03'` |
+| `formatMonth(month)` | `Function` | Format month display<br>• Chinese: `formatMonth(3)` → `'3月'`<br>• English: `formatMonth(3)` → `'03'` |
+
+**Usage Examples:**
+
+```vue
+<script setup>
+import { useI18n } from 'jordium-gantt-vue3'
+
+const { t, getTranslation, formatTranslation, formatYearMonth, formatMonth } = useI18n()
+
+// 1. Basic access
+const text1 = t.taskName  // 'Task Name'
+const text2 = getTranslation('gantt.planEndDate', 'Plan End')  // 'Plan End Date' or default value
+
+// 2. Translation with parameters
+const message = formatTranslation('taskNotFound', { id: '123' })  // 'Task not found for update, ID: 123'
+
+// 3. Date formatting
+const yearMonth = formatYearMonth(2024, 3)  // '2024年03月' (zh-CN) or '2024/03' (en-US)
+const month = formatMonth(3)  // '3月' (zh-CN) or '03' (en-US)
+</script>
+```
+
+> **💡 Usage Tips**:
+>
+> - **Reactive access** (`t.key`): Concise syntax, suitable for direct use in templates
+> - **Function access** (`getTranslation('nested.key', 'default')`): Supports nested keys and default values, suitable for accessing deep structures
+> - Pass custom translations via the `localeMessages` prop, then access via `useI18n` to translate
+> - Language switching is implemented via `setLocale()`, all components will automatically respond to updates
 
 ### Custom Extensions
 
