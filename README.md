@@ -2017,7 +2017,7 @@ const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
 
 #### 自定义翻译
 
-通过 `localeMessages` 属性覆盖或扩展默认翻译：
+通过 `localeMessages` 属性传入自定义多语言文本，组件内部会自动合并到默认翻译中：
 
 ```vue
 <template>
@@ -2028,7 +2028,7 @@ const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
 const customMessages = {
   "zh-CN": {
     // 任务列表相关
-    name: '任务名称（自定义）',
+    taskName: '任务名称（自定义）',
     startDate: '开始日期',
     endDate: '结束日期',
     duration: '工期',
@@ -2036,55 +2036,183 @@ const customMessages = {
     predecessor: '前置任务',
     assignee: '负责人',
     estimatedHours: '预估工时',
-    actualHours: '实际工时'
-
-    // 工具栏相关
-    addTask: '新建任务',
-    addMilestone: '新建里程碑',
-    today: '今天',
-    exportCsv: '导出 CSV',
-    exportPdf: '导出 PDF',
-    fullscreen: '全屏',
-    exitFullscreen: '退出全屏',
-    language: '语言',
-    theme: '主题',
-    expandAll: '全部展开',
-    collapseAll: '全部折叠'
-
-    // 内置任务编辑器相关
-    title: '任务详情',
-    titleEdit: '编辑任务',
-    titleNew: '新建任务',
-    name: '任务名称',
-    startDate: '开始日期',
-    endDate: '结束日期',
-    assignee: '负责人',
-    predecessor: '前置任务',
-    description: '描述',
-    estimatedHours: '预估工时',
     actualHours: '实际工时',
-    progress: '进度',
-    save: '保存',
-    cancel: '取消',
-    delete: '删除'
 
-    // 其他文本
-    days: '天',
-    hours: '小时',
-    overtime: '超时',
-    overdue: '逾期',
-    // ... 更多自定义翻译
+    // 自定义字段（支持嵌套结构）
+    department: '部门',
+    status: '状态',
+    gantt: {
+      planEndDate: '计划结束时间',
+      planStartDate: '计划开始时间'
+    }
   },
-  "en-US": {......}
+  "en-US": {
+    department: 'Department',
+    status: 'Status',
+    gantt: {
+      planEndDate: 'Plan End Date',
+      planStartDate: 'Plan Start Date'
+    }
+  }
 }
 </script>
 ```
 
 > **💡 提示**：
 >
-> - `localeMessages` 采用**深度合并**策略，只需传递需要覆盖的字段即可
-> - 支持嵌套对象，如 `taskList.name`、`toolbar.addTask` 等
-> - 完整的翻译键请参考组件内置的 `messages['zh-CN']` 对象
+> - `localeMessages` 采用**深度合并**策略，只需传递需要覆盖或新增的字段即可
+> - 支持嵌套对象结构，如 `gantt.planEndDate`
+> - 完整的内置翻译键请参考组件源码中的 `useI18n.ts`
+
+##### 在自定义插槽中使用翻译
+
+组件导出了 `useI18n` composable，可在自定义插槽中访问翻译文本，支持两种访问方式：
+
+**方式一：引用式访问（`t.field`）**
+
+通过响应式对象直接访问翻译文本，语法简洁，适合模板中使用：
+
+```vue
+<script setup>
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+
+const { t } = useI18n()
+
+const customMessages = {
+  'zh-CN': {
+    department: '部门'
+  }
+}
+</script>
+
+<template>
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
+  
+  <!-- 引用式：直接通过 t 对象访问 -->
+  <TaskListColumn prop="startDate" label="开始时间" width="250">
+    <template #header>
+      <strong style="color: #1890ff;">{{ t.department }}</strong>
+    </template>
+  </TaskListColumn>
+</template>
+```
+
+**方式二：函数式访问（`getTranslation()`）**
+
+支持嵌套键和默认值，适合访问深层结构或动态键：
+
+```vue
+<script setup>
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+
+const { getTranslation } = useI18n()
+
+const customMessages = {
+  'zh-CN': {
+    gantt: {
+      planEndDate: '计划结束时间'
+    }
+  }
+}
+</script>
+
+<template>
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
+  
+  <!-- 函数式：支持嵌套键和默认值 -->
+  <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate')" width="250" />
+</template>
+```
+
+**完整示例（结合语言切换）：**
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+
+// 自定义多语言配置
+const customMessages = {
+  'zh-CN': {
+    department: '部门',
+    gantt: {
+      planEndDate: '计划结束时间'
+    }
+  },
+  'en-US': {
+    department: 'Department',
+    gantt: {
+      planEndDate: 'Plan End Date'
+    }
+  }
+}
+
+// 使用 useI18n 访问翻译
+const { t, getTranslation, locale, setLocale } = useI18n()
+const tasks = ref([...])
+
+// 语言切换
+const switchLanguage = () => {
+  setLocale(locale.value === 'zh-CN' ? 'en-US' : 'zh-CN')
+}
+</script>
+
+<template>
+  <button @click="switchLanguage">切换语言</button>
+  
+  <GanttChart :tasks="tasks" :locale-messages="customMessages" />
+  
+  <!-- 引用式：直接通过 t 对象访问 -->
+  <TaskListColumn prop="startDate" label="开始时间" width="250">
+    <template #header>
+      <strong style="color: #1890ff;">{{ t.department }}</strong>
+    </template>
+  </TaskListColumn>
+  
+  <!-- 函数式：支持嵌套键和默认值 -->
+  <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate')" width="250" />
+</template>
+```
+
+**`useI18n` API 说明：**
+
+| 导出项 | 类型 | 说明 |
+|--------|------|------|
+| `t` | `Ref<object>` | 响应式翻译对象，通过 `t.key` 或 `t.nested.key` 访问翻译文本 |
+| `getTranslation(key, defaultValue?)` | `Function` | 函数式访问翻译文本<br>• `key`: 翻译键，支持嵌套路径（如 `'gantt.planEndDate'`）<br>• `defaultValue`: 可选，找不到翻译时返回的默认值<br>• 返回：翻译文本、默认值或 key 本身 |
+| `formatTranslation(key, params)` | `Function` | 格式化带参数的翻译文本<br>• `key`: 翻译键<br>• `params`: 参数对象，如 `{ name: '任务1' }`<br>• 返回：替换占位符后的文本（如 `'任务{name}'` → `'任务任务1'`） |
+| `locale` | `Ref<string>` | 当前语言（`'zh-CN'` 或 `'en-US'`） |
+| `setLocale(locale)` | `Function` | 切换语言，会自动更新所有使用 `useI18n` 的组件 |
+| `formatYearMonth(year, month)` | `Function` | 格式化年月显示<br>• 中文：`formatYearMonth(2024, 3)` → `'2024年03月'`<br>• 英文：`formatYearMonth(2024, 3)` → `'2024/03'` |
+| `formatMonth(month)` | `Function` | 格式化月份显示<br>• 中文：`formatMonth(3)` → `'3月'`<br>• 英文：`formatMonth(3)` → `'03'` |
+
+**使用示例：**
+
+```vue
+<script setup>
+import { useI18n } from 'jordium-gantt-vue3'
+
+const { t, getTranslation, formatTranslation, formatYearMonth, formatMonth } = useI18n()
+
+// 1. 基础访问
+const text1 = t.taskName  // '任务名称'
+const text2 = getTranslation('gantt.planEndDate', '计划结束')  // '计划结束时间' 或默认值
+
+// 2. 带参数的翻译
+const message = formatTranslation('taskNotFound', { id: '123' })  // '未找到要更新的任务，ID：123'
+
+// 3. 日期格式化
+const yearMonth = formatYearMonth(2024, 3)  // '2024年03月' (zh-CN) 或 '2024/03' (en-US)
+const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
+</script>
+```
+
+> **💡 使用提示**：
+>
+> - **引用式** (`t.key`)：语法简洁，适合模板中直接使用
+> - **函数式** (`getTranslation('nested.key', 'default')`)：支持嵌套键和默认值，适合访问深层结构
+> - 通过 `localeMessages` 属性传入自定义翻译，再通过 `useI18n` 访问并翻译
+> - 语言切换通过 `setLocale()` 实现，所有组件会自动响应更新
 
 ### 自定义扩展
 
