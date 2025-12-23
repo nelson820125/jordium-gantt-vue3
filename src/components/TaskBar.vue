@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots } from 'vue'
+import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots, inject, type ComputedRef } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
@@ -92,9 +92,49 @@ const emit = defineEmits([
 
 defineSlots<{
   'custom-task-content'(props: TaskBarSlotProps): unknown
+  'task-bar-context-menu'(props: {
+    task: Task
+    position: { x: number; y: number }
+    visible: boolean
+    allTasks?: Task[]
+    onClose: () => void
+    onStartTimer: () => void
+    onStopTimer: () => void
+    onAddPredecessor: () => void
+    onAddSuccessor: () => void
+    onDelete: (task: Task, deleteChildren?: boolean) => void
+    onDeleteLink: (linkTask: Task) => void
+  }): unknown
 }>()
 
 const slots = useSlots()
+
+// 注入右键菜单配置
+const useDefaultContextMenu = inject<ComputedRef<boolean>>('use-default-context-menu', computed(() => true))
+const hasTaskBarContextMenuSlot = inject<ComputedRef<boolean>>('task-bar-context-menu-slot', computed(() => false))
+
+// 判断是否应该显示任何右键菜单
+const shouldShowAnyContextMenu = computed(() => {
+  // 如果 useDefaultContextMenu 为 false 且没有自定义 slot，则不显示任何菜单
+  if (!useDefaultContextMenu.value && !hasTaskBarContextMenuSlot.value) {
+    return false
+  }
+  return true
+})
+
+// 判断是否显示默认右键菜单（没有自定义 slot 时显示）
+const shouldShowDefaultContextMenu = computed(() => {
+  if (!useDefaultContextMenu.value) {
+    return false
+  }
+  return !hasTaskBarContextMenuSlot.value
+})
+
+// 判断是否显示自定义右键菜单（有自定义 slot 时显示）
+const shouldShowCustomContextMenu = computed(() => {
+  return hasTaskBarContextMenuSlot.value
+})
+
 const { getTranslation } = useI18n()
 const t = (key: string): string => {
   return getTranslation(key)
@@ -2249,6 +2289,12 @@ const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuTask = computed(() => props.task)
 
 function handleContextMenu(event: MouseEvent) {
+  // 如果不应该显示任何菜单，直接阻止
+  if (!shouldShowAnyContextMenu.value) {
+    event.preventDefault()
+    return
+  }
+
   // 高亮模式下禁用右键菜单
   if (props.isHighlighted || props.isPrimaryHighlight) {
     event.preventDefault()
@@ -2532,7 +2578,9 @@ onUnmounted(() => {
       @click.stop="handleBubbleClick"
     ></div>
 
+    <!-- 默认右键菜单 -->
     <TaskContextMenu
+      v-if="shouldShowDefaultContextMenu"
       :visible="contextMenuVisible"
       :task="contextMenuTask"
       :position="contextMenuPosition"
@@ -2544,6 +2592,23 @@ onUnmounted(() => {
       @add-successor="$emit('add-successor', props.task)"
       @delete="handleTaskDelete"
       @delete-link="handleDeleteLink"
+    />
+
+    <!-- 自定义右键菜单 Slot -->
+    <slot
+      v-if="shouldShowCustomContextMenu"
+      name="task-bar-context-menu"
+      :task="contextMenuTask"
+      :position="contextMenuPosition"
+      :visible="contextMenuVisible"
+      :all-tasks="allTasks"
+      :on-close="closeContextMenu"
+      :on-start-timer="() => $emit('start-timer', props.task)"
+      :on-stop-timer="() => $emit('stop-timer', props.task)"
+      :on-add-predecessor="() => $emit('add-predecessor', props.task)"
+      :on-add-successor="() => $emit('add-successor', props.task)"
+      :on-delete="handleTaskDelete"
+      :on-delete-link="handleDeleteLink"
     />
   </div>
 

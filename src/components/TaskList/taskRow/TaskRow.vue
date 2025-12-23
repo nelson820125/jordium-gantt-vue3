@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, useSlots, toRef } from 'vue'
+import { ref, computed, useSlots, toRef, inject, type ComputedRef } from 'vue'
 import type { StyleValue } from 'vue'
 import { useI18n } from '../../../composables/useI18n'
 import { formatPredecessorDisplay } from '../../../utils/predecessorUtils'
@@ -72,6 +72,17 @@ const emit = defineEmits([
 
 defineSlots<{
   'custom-task-content'(props: TaskRowSlotProps): unknown
+  'task-list-context-menu'(props: {
+    task: Task
+    position: { x: number; y: number }
+    visible: boolean
+    onClose: () => void
+    onStartTimer: () => void
+    onStopTimer: () => void
+    onAddPredecessor: () => void
+    onAddSuccessor: () => void
+    onDelete: (task: Task, deleteChildren?: boolean) => void
+  }): unknown
 }>()
 
 const { t } = useI18n()
@@ -81,6 +92,32 @@ const daysText = computed(() => t.value?.days ?? '')
 
 const slots = useSlots()
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// 注入右键菜单配置
+const useDefaultContextMenu = inject<ComputedRef<boolean>>('use-default-context-menu', computed(() => true))
+const hasTaskListContextMenuSlot = inject<ComputedRef<boolean>>('task-list-context-menu-slot', computed(() => false))
+
+// 判断是否应该显示任何右键菜单
+const shouldShowAnyContextMenu = computed(() => {
+  // 如果 useDefaultContextMenu 为 false 且没有自定义 slot，则不显示任何菜单
+  if (!useDefaultContextMenu.value && !hasTaskListContextMenuSlot.value) {
+    return false
+  }
+  return true
+})
+
+// 判断是否显示默认右键菜单（没有自定义 slot 时显示）
+const shouldShowDefaultContextMenu = computed(() => {
+  if (!useDefaultContextMenu.value) {
+    return false
+  }
+  return !hasTaskListContextMenuSlot.value
+})
+
+// 判断是否显示自定义右键菜单（有自定义 slot 时显示）
+const shouldShowCustomContextMenu = computed(() => {
+  return hasTaskListContextMenuSlot.value
+})
 
 // 性能优化：只对会变化的props使用toRef，其他直接传值
 const taskRef = toRef(props, 'task')
@@ -112,13 +149,22 @@ const {
   contextMenuVisible,
   contextMenuPosition,
   contextMenuTask,
-  handleContextMenu,
+  handleContextMenu: handleContextMenuBase,
   closeContextMenu,
   handleTaskDelete,
   timerElapsed,
   formattedTimer,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } = useTaskRowContextMenu(taskRef, emit as any)
+
+// 包装 handleContextMenu 以添加权限检查
+const handleContextMenu = (event: MouseEvent) => {
+  if (!shouldShowAnyContextMenu.value) {
+    event.preventDefault()
+    return
+  }
+  handleContextMenuBase(event)
+}
 
 // TaskRow拖拽功能
 const taskRowRef = ref<HTMLElement | null>(null)
@@ -371,7 +417,9 @@ const slotPayload = computed(() => ({
       TaskRow只负责渲染单个任务行，不再递归渲染子任务
     -->
 
+    <!-- 默认右键菜单 -->
     <TaskContextMenu
+      v-if="shouldShowDefaultContextMenu"
       :visible="contextMenuVisible"
       :task="contextMenuTask"
       :position="contextMenuPosition"
@@ -381,6 +429,21 @@ const slotPayload = computed(() => ({
       @add-predecessor="$emit('add-predecessor', props.task)"
       @add-successor="$emit('add-successor', props.task)"
       @delete="handleTaskDelete"
+    />
+
+    <!-- 自定义右键菜单 Slot -->
+    <slot
+      v-if="shouldShowCustomContextMenu"
+      name="task-list-context-menu"
+      :task="contextMenuTask"
+      :position="contextMenuPosition"
+      :visible="contextMenuVisible"
+      :on-close="closeContextMenu"
+      :on-start-timer="() => $emit('start-timer', props.task)"
+      :on-stop-timer="() => $emit('stop-timer', props.task)"
+      :on-add-predecessor="() => $emit('add-predecessor', props.task)"
+      :on-add-successor="() => $emit('add-successor', props.task)"
+      :on-delete="handleTaskDelete"
     />
   </div>
 </template>

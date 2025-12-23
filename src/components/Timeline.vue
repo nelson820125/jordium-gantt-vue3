@@ -4359,6 +4359,12 @@ const handleAddSuccessor = (task: Task) => {
                 <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
                   <slot name="custom-task-content" v-bind="barScope" />
                 </template>
+                <template
+                  v-if="$slots['task-bar-context-menu']"
+                  #task-bar-context-menu="contextMenuScope"
+                >
+                  <slot name="task-bar-context-menu" v-bind="contextMenuScope" />
+                </template>
               </TaskBar>
             </div>
           </div>

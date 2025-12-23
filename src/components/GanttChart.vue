@@ -54,6 +54,7 @@ const props = withDefaults(defineProps<Props>(), {
   assigneeOptions: () => [],
   taskListRowClassName: undefined,
   taskListRowStyle: undefined,
+  useDefaultContextMenu: true,
 })
 
 const emit = defineEmits([
@@ -91,6 +92,31 @@ const slots = useSlots()
 
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
+
+// 提供右键菜单配置给子组件
+provide('use-default-context-menu', computed(() => props.useDefaultContextMenu))
+
+// 计算是否使用自定义 TaskList 右键菜单
+const hasTaskListContextMenuSlot = computed(() => Boolean(slots['task-list-context-menu']))
+const shouldUseCustomTaskListContextMenu = computed(() => {
+  if (!props.useDefaultContextMenu) {
+    return hasTaskListContextMenuSlot.value
+  }
+  return hasTaskListContextMenuSlot.value
+})
+
+// 计算是否使用自定义 TaskBar 右键菜单
+const hasTaskBarContextMenuSlot = computed(() => Boolean(slots['task-bar-context-menu']))
+const shouldUseCustomTaskBarContextMenu = computed(() => {
+  if (!props.useDefaultContextMenu) {
+    return hasTaskBarContextMenuSlot.value
+  }
+  return hasTaskBarContextMenuSlot.value
+})
+
+// 提供右键菜单 slot 给子组件
+provide('task-list-context-menu-slot', computed(() => shouldUseCustomTaskListContextMenu.value))
+provide('task-bar-context-menu-slot', computed(() => shouldUseCustomTaskBarContextMenu.value))
 
 interface Props {
   // 任务数据
@@ -155,6 +181,10 @@ interface Props {
   // 任务行自定义样式，支持对象或函数，优先级高于 taskListRowClassName
   // 函数形式：(row: Task, rowIndex: number) => StyleValue
   taskListRowStyle?: StyleValue | ((row: Task, rowIndex: number) => StyleValue)
+  // 是否使用默认的右键菜单（默认为 true）
+  // 当设置为 false 时，将关闭内置的 TaskRow 和 TaskBar 右键菜单
+  // 可以通过 task-list-context-menu 和 task-bar-context-menu 插槽自定义菜单
+  useDefaultContextMenu?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -2359,6 +2389,13 @@ function handleMilestoneDialogDelete(milestoneId: number) {
           <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
             <slot name="custom-task-content" v-bind="rowScope" />
           </template>
+          <!-- 传递 task-list-context-menu slot -->
+          <template
+            v-if="$slots['task-list-context-menu']"
+            #task-list-context-menu="contextMenuScope"
+          >
+            <slot name="task-list-context-menu" v-bind="contextMenuScope" />
+          </template>
         </TaskList>
       </div>
       <div class="gantt-splitter" @mousedown="onMouseDown">
@@ -2416,6 +2453,13 @@ function handleMilestoneDialogDelete(milestoneId: number) {
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
             <slot name="custom-task-content" v-bind="barScope" />
+          </template>
+          <!-- 传递 task-bar-context-menu slot -->
+          <template
+            v-if="$slots['task-bar-context-menu']"
+            #task-bar-context-menu="contextMenuScope"
+          >
+            <slot name="task-bar-context-menu" v-bind="contextMenuScope" />
           </template>
         </Timeline>
 
