@@ -103,7 +103,7 @@ defineSlots<{
     onAddPredecessor: () => void
     onAddSuccessor: () => void
     onDelete: (task: Task, deleteChildren?: boolean) => void
-    onDeleteLink: (linkTask: Task) => void
+    onDeleteLink: (event: { sourceTaskId: number; targetTaskId: number }) => void
   }): unknown
 }>()
 

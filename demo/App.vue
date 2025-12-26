@@ -1372,7 +1372,7 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
         <TaskListColumn prop="endDate" :label="t.endDate" width="200" align="center" />
 
         <!-- 自定义 TaskBar 右键菜单 - 声明此 slot 将使用自定义菜单 -->
-        <template #task-bar-context-menu="{ task, position, visible, onClose }">
+        <template #task-list-context-menu="{ task, position, visible, onClose }">
           <Teleport to="body">
             <div
               v-if="visible && task"
