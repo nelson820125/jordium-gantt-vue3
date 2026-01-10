@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-10
+
+### Added
+- TaskList和TaskBar声明式定义ContextMenu方式, 使用组件TaskListContextMenu和TaskBarContextMenu
+- TaskListContextMenu和TaskBarContextMenu的default Slots
+- TaskListContextMenu和TaskBarContextMenu是否展示属性 - enable-task-list-context-menu和enable-task-bar-context-menu
+- Declarative definition ContextMenu method for TaskList and TaskBar using the TaskListContextMenu and TaskBarContextMenu components
+- default Slots for TaskListContextMenu and TaskBarContextMenu
+- Properties to control the display of TaskListContextMenu and TaskBarContextMenu - enable-task-list-context-menu and enable-task-bar-context-menu
+
+### Enhancement
+- 拆分TaskList子组件代码，更易读、易维护
+- Split TaskList sub-component code for better readability and maintainability
+
 ## [1.6.2] - 2025-12-23
 
 ### Fixed

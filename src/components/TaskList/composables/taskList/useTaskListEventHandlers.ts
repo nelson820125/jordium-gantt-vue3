@@ -149,6 +149,9 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     const scrollTop = target.scrollTop
     taskListScrollTop.value = scrollTop
 
+    // 滚动时关闭所有右键菜单
+    window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
+
     window.dispatchEvent(
       new CustomEvent('task-list-vertical-scroll', {
         detail: { scrollTop },

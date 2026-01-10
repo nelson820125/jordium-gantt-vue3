@@ -2,8 +2,10 @@
 export { default as GanttChart } from './components/GanttChart.vue'
 export { default as TaskList } from './components/TaskList/TaskList.vue'
 export { default as TaskListColumn } from './components/TaskList/TaskListColumn.vue'
+export { default as TaskListContextMenu } from './components/TaskList/TaskListContextMenu.vue'
 export { default as Timeline } from './components/Timeline.vue'
 export { default as TaskBar } from './components/TaskBar.vue'
+export { default as TaskBarContextMenu } from './components/Timeline/TaskBarContextMenu.vue'
 export { default as TaskDrawer } from './components/TaskDrawer.vue'
 export { default as MilestonePoint } from './components/MilestonePoint.vue'
 export { default as MilestoneDialog } from './components/MilestoneDialog.vue'
@@ -31,10 +33,14 @@ import './styles/theme-variables.css'
 import type { App } from 'vue'
 import GanttChart from './components/GanttChart.vue'
 import TaskListColumn from './components/TaskList/TaskListColumn.vue'
+import TaskListContextMenu from './components/TaskList/TaskListContextMenu.vue'
+import TaskBarContextMenu from './components/Timeline/TaskBarContextMenu.vue'
 
 export const install = (app: App) => {
   app.component('GanttChart', GanttChart)
   app.component('TaskListColumn', TaskListColumn)
+  app.component('TaskListContextMenu', TaskListContextMenu)
+  app.component('TaskBarContextMenu', TaskBarContextMenu)
 }
 
 export default {

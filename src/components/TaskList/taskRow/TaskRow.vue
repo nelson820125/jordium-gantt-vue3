@@ -72,17 +72,6 @@ const emit = defineEmits([
 
 defineSlots<{
   'custom-task-content'(props: TaskRowSlotProps): unknown
-  'task-list-context-menu'(props: {
-    task: Task
-    position: { x: number; y: number }
-    visible: boolean
-    onClose: () => void
-    onStartTimer: () => void
-    onStopTimer: () => void
-    onAddPredecessor: () => void
-    onAddSuccessor: () => void
-    onDelete: (task: Task, deleteChildren?: boolean) => void
-  }): unknown
 }>()
 
 const { t } = useI18n()
@@ -94,29 +83,45 @@ const slots = useSlots()
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
 
 // 注入右键菜单配置
-const useDefaultContextMenu = inject<ComputedRef<boolean>>('use-default-context-menu', computed(() => true))
+const enableTaskListContextMenu = inject<ComputedRef<boolean>>('enable-task-list-context-menu', computed(() => true))
 const hasTaskListContextMenuSlot = inject<ComputedRef<boolean>>('task-list-context-menu-slot', computed(() => false))
+const declarativeTaskListContextMenu = inject<ComputedRef<any>>('declarative-task-list-context-menu', computed(() => null))
 
 // 判断是否应该显示任何右键菜单
 const shouldShowAnyContextMenu = computed(() => {
-  // 如果 useDefaultContextMenu 为 false 且没有自定义 slot，则不显示任何菜单
-  if (!useDefaultContextMenu.value && !hasTaskListContextMenuSlot.value) {
+  // 如果 enableTaskListContextMenu 为 false，则不显示任何菜单
+  if (!enableTaskListContextMenu.value) {
     return false
   }
   return true
 })
 
-// 判断是否显示默认右键菜单（没有自定义 slot 时显示）
+// 判断是否显示默认右键菜单（enableTaskListContextMenu=true 且没有自定义 slot 时显示）
 const shouldShowDefaultContextMenu = computed(() => {
-  if (!useDefaultContextMenu.value) {
+  if (!enableTaskListContextMenu.value) {
     return false
   }
   return !hasTaskListContextMenuSlot.value
 })
 
-// 判断是否显示自定义右键菜单（有自定义 slot 时显示）
+// 判断是否显示自定义右键菜单（enableTaskListContextMenu=true 且有自定义 slot 时显示）
 const shouldShowCustomContextMenu = computed(() => {
-  return hasTaskListContextMenuSlot.value
+  if (!enableTaskListContextMenu.value) {
+    return false
+  }
+  if (!hasTaskListContextMenuSlot.value) {
+    return false
+  }
+
+  // 检查 taskType 过滤
+  const config = declarativeTaskListContextMenu.value
+  if (config?.taskType !== undefined) {
+    const taskType = props.task.type || 'task'
+    const allowedTypes = Array.isArray(config.taskType) ? config.taskType : [config.taskType]
+    return allowedTypes.includes(taskType)
+  }
+
+  return true
 })
 
 // 性能优化：只对会变化的props使用toRef，其他直接传值
@@ -143,6 +148,7 @@ const { isFirstColumn, getDeclarativeColumnAlign, renderDeclarativeColumn } =
     isStoryTask,
     hasChildren,
     computed(() => props.showTaskIcon),
+    computed(() => props.rowIndex),
   )
 
 const {
@@ -431,20 +437,25 @@ const slotPayload = computed(() => ({
       @delete="handleTaskDelete"
     />
 
-    <!-- 自定义右键菜单 Slot -->
-    <slot
-      v-if="shouldShowCustomContextMenu"
-      name="task-list-context-menu"
-      :task="contextMenuTask"
-      :position="contextMenuPosition"
-      :visible="contextMenuVisible"
-      :on-close="closeContextMenu"
-      :on-start-timer="() => $emit('start-timer', props.task)"
-      :on-stop-timer="() => $emit('stop-timer', props.task)"
-      :on-add-predecessor="() => $emit('add-predecessor', props.task)"
-      :on-add-successor="() => $emit('add-successor', props.task)"
-      :on-delete="handleTaskDelete"
-    />
+    <!-- 声明式右键菜单 -->
+    <Teleport to="body">
+      <div
+        v-if="shouldShowCustomContextMenu && contextMenuVisible && declarativeTaskListContextMenu?.defaultSlot"
+        class="gantt-context-menu-wrapper"
+        :style="{
+          position: 'fixed',
+          left: `${contextMenuPosition.x}px`,
+          top: `${contextMenuPosition.y}px`,
+          zIndex: 9999,
+        }"
+      >
+        <component
+          :is="declarativeTaskListContextMenu.defaultSlot"
+          :row="contextMenuTask"
+          :$index="props.rowIndex ?? -1"
+        />
+      </div>
+    </Teleport>
   </div>
 </template>
 

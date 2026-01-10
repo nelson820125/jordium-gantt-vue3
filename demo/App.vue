@@ -735,9 +735,9 @@ const handleTaskRowMoved = async (payload: {
 }
 
 // 自定义右键菜单操作处理
-const handleCustomMenuAction = (action: string, task: Task, onClose: () => void) => {
+const handleCustomMenuAction = (action: string, task: Task) => {
   showMessage(`自定义操作: ${action} - 任务: ${task.name}`, 'info', { closable: true })
-  onClose()
+  // 菜单会自动关闭（通过点击外部或滚动）
 }
 </script>
 
@@ -1239,7 +1239,6 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
         :task-list-column-render-mode="taskListColumnRenderMode"
-        :use-default-context-menu="true"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
@@ -1371,35 +1370,43 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
         <TaskListColumn prop="startDate" :label="t.startDate" width="200" align="center" />
         <TaskListColumn prop="endDate" :label="t.endDate" width="200" align="center" />
 
-        <!-- 自定义 TaskBar 右键菜单 - 声明此 slot 将使用自定义菜单 -->
-        <template #task-list-context-menu="{ task, position, visible, onClose }">
-          <Teleport to="body">
-            <div
-              v-if="visible && task"
-              class="custom-menu"
-              :style="{
-                left: `${position.x}px`,
-                top: `${position.y}px`,
-              }"
-            >
-              <div class="custom-menu-header">自定义甘特图菜单</div>
-              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', task, onClose)">
+        <!-- 使用声明式的 TaskListContextMenu 组件 - 推荐方式 -->
+        <TaskListContextMenu :task-type="['task']">
+          <template #default="scope">
+            <div class="custom-menu">
+              <div class="custom-menu-header">声明式 TaskList 菜单</div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
                 ➡️ 延长任务
               </div>
-              <div class="custom-menu-item" @click="handleCustomMenuAction('move', task, onClose)">
+              <div class="custom-menu-item" @click="handleCustomMenuAction('move', scope.row)">
                 📅 移动任务
               </div>
               <div class="custom-menu-divider"></div>
-              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', task, onClose)">
+              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', scope.row)">
                 📄 复制任务
               </div>
-              <div class="custom-menu-divider"></div>
-              <div class="custom-menu-item" @click="onClose">❌ 取消</div>
             </div>
-          </Teleport>
-        </template>
+          </template>
+        </TaskListContextMenu>
 
-        <!-- TaskList 不声明 slot，将使用内置默认菜单 -->
+        <!-- 使用声明式的 TaskBarContextMenu 组件 - 推荐方式 -->
+        <TaskBarContextMenu>
+          <template #default="scope">
+            <div class="custom-menu">
+              <div class="custom-menu-header">声明式 TaskBar 菜单</div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
+                ➡️ 延长任务
+              </div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('move', scope.row)">
+                📅 移动任务
+              </div>
+              <div class="custom-menu-divider"></div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', scope.row)">
+                📄 复制任务
+              </div>
+            </div>
+          </template>
+        </TaskBarContextMenu>
       </GanttChart>
     </div>
 

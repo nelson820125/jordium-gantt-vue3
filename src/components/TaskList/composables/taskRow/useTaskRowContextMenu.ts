@@ -79,7 +79,8 @@ export function useTaskRowContextMenu(
   const handleContextMenu = (event: MouseEvent) => {
     // 先广播关闭所有TaskRow菜单
     window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
-    if (task.value.type !== 'task' && task.value.type !== 'story') {
+    const taskType = task.value.type || 'task'
+    if (taskType !== 'task' && taskType !== 'story') {
       // 为了排除里程碑类型
       event.preventDefault()
       contextMenuVisible.value = false
@@ -95,6 +96,20 @@ export function useTaskRowContextMenu(
     contextMenuVisible.value = false
   }
 
+  // 处理文档点击事件，点击菜单外部时关闭
+  const handleDocumentClick = (event: MouseEvent) => {
+    if (!contextMenuVisible.value) return
+
+    const target = event.target as HTMLElement
+    // 检查点击是否在右键菜单内部
+    const contextMenuElement = document.querySelector('.task-context-menu')
+    if (contextMenuElement && contextMenuElement.contains(target)) {
+      return
+    }
+
+    closeContextMenu()
+  }
+
   // 处理任务删除
   const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
     emit('delete', task, deleteChildren)
@@ -104,10 +119,12 @@ export function useTaskRowContextMenu(
   // 生命周期钩子 - 注册事件监听器
   onMounted(() => {
     window.addEventListener('close-all-taskbar-menus', closeContextMenu)
+    document.addEventListener('click', handleDocumentClick)
   })
 
   onUnmounted(() => {
     window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+    document.removeEventListener('click', handleDocumentClick)
     // 清理定时器和watch
     if (timerInterval.value) {
       clearInterval(timerInterval.value)

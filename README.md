@@ -195,6 +195,8 @@ npm run dev
 | `autoSortByStartDate`       | `boolean`                                                                                 | `false` | 是否根据开始时间自动排序任务                                   |
 | `allowDragAndResize`        | `boolean`                                                                                 | `true`  | 是否允许拖拽和调整任务/里程碑大小                              |
 | `enableTaskRowMove`         | `boolean`                                                                                 | `false` | 是否允许拖拽和摆放TaskRow                                      |
+| `enableTaskListContextMenu` | `boolean`                                                                                 | `true`  | 是否启用 TaskList（TaskRow）右键菜单功能。为 `true` 时：未声明 `task-list-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                     |
+| `enableTaskBarContextMenu`  | `boolean`                                                                                 | `true`  | 是否启用 TaskBar 右键菜单功能。为 `true` 时：未声明 `task-bar-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                               |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          | 
 
 #### TaskListColumn 属性
@@ -229,6 +231,110 @@ npm run dev
 > - 必须在 `GanttChart` 组件内部使用，且设置 `task-list-column-render-mode="declarative"`
 > - 列的显示顺序由 `TaskListColumn` 组件的声明顺序决定
 > - 关于列内容自定义和插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
+
+#### TaskListContextMenu 属性
+
+`TaskListContextMenu` 组件用于声明式定义 TaskList（TaskRow）的右键菜单。当 `enableTaskListContextMenu` 为 `true` 时生效。
+
+| 属性名     | 类型                   | 默认值      | 说明                                                                                                                   |
+| ---------- | ---------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `taskType` | `string \| string[]`   | `undefined` | 指定哪些任务类型显示此右键菜单。不设置时遵循现有逻辑（所有任务都显示），设置后仅对指定类型任务显示。支持单个类型（如 `'task'`）或多个类型（如 `['task', 'milestone']`） |
+
+**使用示例**：
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  :enable-task-list-context-menu="true"
+>
+  <!-- 默认行为：所有任务都显示此右键菜单 -->
+  <TaskListContextMenu>
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item" @click="editTask(scope.row)">编辑</div>
+        <div class="menu-item" @click="deleteTask(scope.row)">删除</div>
+      </div>
+    </template>
+  </TaskListContextMenu>
+  
+  <!-- 仅对 type='task' 的任务显示此菜单 -->
+  <TaskListContextMenu task-type="task">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">任务专属菜单</div>
+      </div>
+    </template>
+  </TaskListContextMenu>
+  
+  <!-- 对多种类型显示菜单 -->
+  <TaskListContextMenu :task-type="['task', 'milestone']">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">任务和里程碑菜单</div>
+      </div>
+    </template>
+  </TaskListContextMenu>
+</GanttChart>
+```
+
+> **💡 提示**：
+> - `TaskListContextMenu` 组件本身不渲染任何内容，仅用于声明菜单配置
+> - 必须在 `GanttChart` 组件内部使用，且设置 `enable-task-list-context-menu="true"`
+> - 菜单定位和显示状态由内部自动管理，用户只需关心菜单内容的 HTML 结构
+> - 菜单会在点击外部或滚动时自动关闭
+> - 关于插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
+
+#### TaskBarContextMenu 属性
+
+`TaskBarContextMenu` 组件用于声明式定义 TaskBar（时间线任务条）的右键菜单。当 `enableTaskBarContextMenu` 为 `true` 时生效。
+
+| 属性名     | 类型                   | 默认值      | 说明                                                                                                                   |
+| ---------- | ---------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `taskType` | `string \| string[]`   | `undefined` | 指定哪些任务类型显示此右键菜单。不设置时遵循现有逻辑（所有任务都显示），设置后仅对指定类型任务显示。支持单个类型（如 `'task'`）或多个类型（如 `['task', 'milestone']`） |
+
+**使用示例**：
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  :enable-task-bar-context-menu="true"
+>
+  <!-- 默认行为：所有任务都显示此右键菜单 -->
+  <TaskBarContextMenu>
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item" @click="extendTask(scope.row)">延长任务</div>
+        <div class="menu-item" @click="moveTask(scope.row)">移动任务</div>
+      </div>
+    </template>
+  </TaskBarContextMenu>
+  
+  <!-- 仅对 type='task' 的任务显示此菜单 -->
+  <TaskBarContextMenu task-type="task">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">任务条专属菜单</div>
+      </div>
+    </template>
+  </TaskBarContextMenu>
+  
+  <!-- 对多种类型显示菜单 -->
+  <TaskBarContextMenu :task-type="['task', 'story']">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">任务和故事菜单</div>
+      </div>
+    </template>
+  </TaskBarContextMenu>
+</GanttChart>
+```
+
+> **💡 提示**：
+> - `TaskBarContextMenu` 组件本身不渲染任何内容，仅用于声明菜单配置
+> - 必须在 `GanttChart` 组件内部使用，且设置 `enable-task-bar-context-menu="true"`
+> - 菜单定位和显示状态由内部自动管理，用户只需关心菜单内容的 HTML 结构
+> - 菜单会在点击外部或滚动时自动关闭
+> - 关于插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
 
 #### 配置对象属性
 
@@ -2381,6 +2487,208 @@ const props = defineProps<Props>()
 > - 需要根据 `type` 参数区分渲染位置
 > - TaskRow 和 TaskBar 的可用空间不同，需要适配布局
 > - 避免在插槽内容中使用过于复杂的组件，可能影响性能
+
+##### TaskListContextMenu 插槽
+
+用于自定义 TaskRow（任务列表行）的右键菜单内容。
+
+**菜单显示逻辑：**
+- 当 `enableTaskListContextMenu=true` 且**未声明** TaskListContextMenu 组件时 → 使用**系统内置**的右键菜单
+- 当 `enableTaskListContextMenu=true` 且**声明了** TaskListContextMenu 组件时 → 使用**自定义**的右键菜单
+- 当 `enableTaskListContextMenu=false` 时 → 右键菜单**完全禁用**（无论是否声明组件）
+
+**插槽列表：**
+
+| 插槽名    | 参数                              | 说明                                                                                           |
+| --------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `default` | `scope: { row: Task, $index: number }`   | 自定义TaskRow的右键菜单。通过 `scope.row` 访问当前任务对象，通过 `scope.$index` 访问任务索引。 |
+
+**使用示例：**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks"
+    :enable-task-list-context-menu="true"
+  >
+    <TaskListContextMenu>
+      <template #default="scope">
+        <div class="custom-menu">
+          <div class="custom-item" @click="handleEdit('extend', scope.row)">
+            ✏️ 编辑任务
+          </div>
+          <div class="custom-item" @click="handleDelete('move', scope.row)">
+            🗑️ 删除任务
+          </div>
+          <div class="custom-divider"></div>
+          <div class="custom-item" @click="handleDuplicate('copy', scope.row)">
+            📄 复制任务
+          </div>
+        </div>
+      </template>
+    </TaskListContextMenu>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart, TaskListContextMenu } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([])
+
+const handleEdit = (task: Task) => {
+  console.log('编辑任务:', task)
+}
+
+const handleDelete = (task: Task) => {
+  console.log('删除任务:', task)
+}
+
+const handleDuplicate = (task: Task) => {
+  console.log('复制任务:', task)
+}
+</script>
+
+<style scoped>
+.custom-context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  min-width: 120px;
+}
+
+.menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+</style>
+```
+
+##### TaskBarContextMenu 插槽
+
+用于自定义 TaskBar（时间轴任务条）的右键菜单内容。
+
+**菜单显示逻辑：**
+- 当 `enableTaskBarContextMenu=true` 且**未声明** TaskBarContextMenu 组件时 → 使用**系统内置**的右键菜单
+- 当 `enableTaskBarContextMenu=true` 且**声明了** TaskBarContextMenu 组件时 → 使用**自定义**的右键菜单
+- 当 `enableTaskBarContextMenu=false` 时 → 右键菜单**完全禁用**（无论是否声明组件）
+
+**插槽列表：**
+
+| 插槽名    | 参数                              | 说明                                                                                           |
+| --------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `default` | `scope: { row: Task, $index: number }`   | 自定义TaskBar的右键菜单。通过 `scope.row` 访问当前任务对象，通过 `scope.$index` 访问任务索引。 |
+
+**使用示例：**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks"
+    :enable-task-bar-context-menu="true"
+  >
+    <TaskBarContextMenu>
+      <template #default="scope">
+        <div class="custom-context-menu">
+          <div class="menu-item" @click="handleViewDetails(scope.row)">
+            👁️ 查看详情
+          </div>
+          <div class="menu-item" @click="handleAdjustTime(scope.row)">
+            ⏰ 调整时间
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" @click="handleSetDependency(scope.row)">
+            🔗 设置依赖
+          </div>
+        </div>
+      </template>
+    </TaskBarContextMenu>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart, TaskBarContextMenu } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([])
+
+const handleViewDetails = (task: Task) => {
+  console.log('查看详情:', task)
+}
+
+const handleAdjustTime = (task: Task) => {
+  console.log('调整时间:', task)
+}
+
+const handleSetDependency = (task: Task) => {
+  console.log('设置依赖:', task)
+}
+</script>
+
+<style scoped>
+.custom-context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  min-width: 120px;
+}
+
+.menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+</style>
+```
+
+> **💡 使用场景**：
+>
+> - 自定义右键菜单样式和布局
+> - 添加业务特定的操作项
+> - 根据任务状态动态显示菜单项
+> - 添加权限控制逻辑
+> - 集成第三方 UI 组件库的菜单组件
+
+> **⚠️ 注意事项**：
+>
+> - 当 `enableTaskListContextMenu=false` 或 `enableTaskBarContextMenu=false` 时，即使声明了组件也不会显示菜单
+> - 右键菜单会在滚动或点击菜单外部时自动关闭
+> - 推荐使用 `<Teleport to="body">` 将菜单渲染到 body 下，避免定位和层级问题
+> - 记得在菜单项点击后调用 `onClose()` 关闭菜单
+> - TaskRow 和 TaskBar 的右键菜单是独立的，可以分别自定义
+> - 默认情况下，系统会提供内置的右键菜单，包含常用操作
+> - 声明式组件不会渲染任何内容，仅用于传递配置
 
 ##### TaskListColumn 插槽
 

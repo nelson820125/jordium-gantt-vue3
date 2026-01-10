@@ -197,6 +197,8 @@ npm run dev
 | `autoSortByStartDate`       | `boolean` | `false` | Whether to automatically sort tasks by start date                         |
 | `allowDragAndResize`        | `boolean`                                                                             | `true`  | Whether to allow dragging and resizing tasks/milestones                   |
 | `enableTaskRowMove`         | `boolean`                                                                             | `false` | Whether to allow dragging and dropping TaskRow                            |
+| `enableTaskListContextMenu` | `boolean`                                                                             | `true`  | Whether to enable TaskList (TaskRow) context menu. When `true`: uses built-in menu if `task-list-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled           |
+| `enableTaskBarContextMenu`  | `boolean`                                                                             | `true`  | Whether to enable TaskBar context menu. When `true`: uses built-in menu if `task-bar-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled                      |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
 
 #### TaskListColumn Component Props
@@ -231,6 +233,110 @@ The `TaskListColumn` component is used to define task list columns in declarativ
 > - Must be used inside the `GanttChart` component with `task-list-column-render-mode="declarative"` set
 > - Column display order is determined by the declaration order of `TaskListColumn` components
 > - For detailed column content customization and slot usage, see [Slots](#slots) section
+
+#### TaskListContextMenu Component Props
+
+The `TaskListContextMenu` component is used to declaratively define the context menu for TaskList (TaskRow). Takes effect when `enableTaskListContextMenu` is `true`.
+
+| Prop       | Type                   | Default     | Description                                                                                                                                                                                                                      |
+| ---------- | ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taskType` | `string \| string[]`   | `undefined` | Specifies which task types should display this context menu. When not set, follows existing logic (all tasks show menu). When set, only specified types show menu. Supports single type (e.g., `'task'`) or multiple types (e.g., `['task', 'milestone']`) |
+
+**Usage Examples**:
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  :enable-task-list-context-menu="true"
+>
+  <!-- Default behavior: all tasks show this context menu -->
+  <TaskListContextMenu>
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item" @click="editTask(scope.row)">Edit</div>
+        <div class="menu-item" @click="deleteTask(scope.row)">Delete</div>
+      </div>
+    </template>
+  </TaskListContextMenu>
+  
+  <!-- Only show for tasks with type='task' -->
+  <TaskListContextMenu task-type="task">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">Task Specific Menu</div>
+      </div>
+    </template>
+  </TaskListContextMenu>
+  
+  <!-- Show for multiple types -->
+  <TaskListContextMenu :task-type="['task', 'milestone']">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">Task and Milestone Menu</div>
+      </div>
+    </template>
+  </TaskListContextMenu>
+</GanttChart>
+```
+
+> **💡 Tips**:
+> - The `TaskListContextMenu` component itself does not render any content, it only declares menu configuration
+> - Must be used inside the `GanttChart` component with `enable-task-list-context-menu="true"` set
+> - Menu positioning and visibility are automatically managed internally, users only need to focus on menu content HTML structure
+> - Menu automatically closes when clicking outside or scrolling
+> - For detailed slot usage, see [Slots](#slots) section
+
+#### TaskBarContextMenu Component Props
+
+The `TaskBarContextMenu` component is used to declaratively define the context menu for TaskBar (timeline task bars). Takes effect when `enableTaskBarContextMenu` is `true`.
+
+| Prop       | Type                   | Default     | Description                                                                                                                                                                                                                      |
+| ---------- | ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taskType` | `string \| string[]`   | `undefined` | Specifies which task types should display this context menu. When not set, follows existing logic (all tasks show menu). When set, only specified types show menu. Supports single type (e.g., `'task'`) or multiple types (e.g., `['task', 'milestone']`) |
+
+**Usage Examples**:
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  :enable-task-bar-context-menu="true"
+>
+  <!-- Default behavior: all tasks show this context menu -->
+  <TaskBarContextMenu>
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item" @click="extendTask(scope.row)">Extend Task</div>
+        <div class="menu-item" @click="moveTask(scope.row)">Move Task</div>
+      </div>
+    </template>
+  </TaskBarContextMenu>
+  
+  <!-- Only show for tasks with type='task' -->
+  <TaskBarContextMenu task-type="task">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">Task Bar Specific Menu</div>
+      </div>
+    </template>
+  </TaskBarContextMenu>
+  
+  <!-- Show for multiple types -->
+  <TaskBarContextMenu :task-type="['task', 'story']">
+    <template #default="scope">
+      <div class="custom-menu">
+        <div class="menu-item">Task and Story Menu</div>
+      </div>
+    </template>
+  </TaskBarContextMenu>
+</GanttChart>
+```
+
+> **💡 Tips**:
+> - The `TaskBarContextMenu` component itself does not render any content, it only declares menu configuration
+> - Must be used inside the `GanttChart` component with `enable-task-bar-context-menu="true"` set
+> - Menu positioning and visibility are automatically managed internally, users only need to focus on menu content HTML structure
+> - Menu automatically closes when clicking outside or scrolling
+> - For detailed slot usage, see [Slots](#slots) section
 
 #### Configuration Object Props
 
@@ -2390,6 +2496,208 @@ const props = defineProps<Props>()
 > - Need to distinguish rendering position based on `type` parameter
 > - TaskRow and TaskBar have different available space, need to adapt layout
 > - Avoid using overly complex components in slot content, may affect performance
+
+##### TaskListContextMenu Slots
+
+Used to customize the context menu content for TaskRow (task list row).
+
+**Menu Display Logic:**
+- When `enableTaskListContextMenu=true` and TaskListContextMenu component is **not declared** → Uses **built-in** context menu
+- When `enableTaskListContextMenu=true` and TaskListContextMenu component is **declared** → Uses **custom** context menu
+- When `enableTaskListContextMenu=false` → Context menu is **completely disabled** (regardless of component declaration)
+
+**Slot List:**
+
+| Slot Name | Parameters                        | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `default` | `scope: { row: Task, $index: number }`   | Custom Task List Context Menu content. Access current task object via `scope.row`, access task index via `scope.$index`.  |
+
+**Usage Example:**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks"
+    :enable-task-list-context-menu="true"
+  >
+    <TaskListContextMenu>
+      <template #default="scope">
+        <div class="custom-menu">
+          <div class="menu-item" @click="handleEdit(task); onClose()">
+            ✏️ Edit Task
+          </div>
+          <div class="menu-item" @click="handleDelete(task); onClose()">
+            🗑️ Delete Task
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" @click="handleDuplicate(task); onClose()">
+            📄 Duplicate Task
+          </div>
+        </div>
+      </template>
+    </TaskListContextMenu>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart, TaskListContextMenu } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([])
+
+const handleEdit = (task: Task) => {
+  console.log('Edit task:', task)
+}
+
+const handleDelete = (task: Task) => {
+  console.log('Delete task:', task)
+}
+
+const handleDuplicate = (task: Task) => {
+  console.log('Duplicate task:', task)
+}
+</script>
+
+<style scoped>
+.custom-context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  min-width: 120px;
+}
+
+.menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+</style>
+```
+
+##### TaskBarContextMenu Slots
+
+Used to customize the context menu content for TaskBar (timeline task bar).
+
+**Menu Display Logic:**
+- When `enableTaskBarContextMenu=true` and TaskBarContextMenu component is **not declared** → Uses **built-in** context menu
+- When `enableTaskBarContextMenu=true` and TaskBarContextMenu component is **declared** → Uses **custom** context menu
+- When `enableTaskBarContextMenu=false` → Context menu is **completely disabled** (regardless of component declaration)
+
+**Slot List:**
+
+| Slot Name | Parameters                        | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `default` | `scope: { row: Task, $index: number }`   | Custom Task Bar Context Menu content. Access current task object via `scope.row`, access task index via `scope.$index`.  |
+
+**Usage Example:**
+
+```vue
+<template>
+  <GanttChart 
+    :tasks="tasks"
+    :enable-task-bar-context-menu="true"
+  >
+    <TaskBarContextMenu>
+      <template #default="scope">
+        <div class="custom-context-menu">
+          <div class="menu-item" @click="handleViewDetails(scope.row)">
+            👁️ View Details
+          </div>
+          <div class="menu-item" @click="handleAdjustTime(scope.row)">
+            ⏰ Adjust Time
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" @click="handleSetDependency(scope.row)">
+            🔗 Set Dependency
+          </div>
+        </div>
+      </template>
+    </TaskBarContextMenu>
+  </GanttChart>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart, TaskBarContextMenu } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { Task } from 'jordium-gantt-vue3'
+
+const tasks = ref<Task[]>([])
+
+const handleViewDetails = (task: Task) => {
+  console.log('View details:', task)
+}
+
+const handleAdjustTime = (task: Task) => {
+  console.log('Adjust time:', task)
+}
+
+const handleSetDependency = (task: Task) => {
+  console.log('Set dependency:', task)
+}
+</script>
+
+<style scoped>
+.custom-context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  min-width: 120px;
+}
+
+.menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+</style>
+```
+
+> **💡 Usage Scenarios**：
+>
+> - Customize context menu styles and layouts
+> - Add business-specific operations
+> - Dynamically show menu items based on task status
+> - Add permission control logic
+> - Integrate third-party UI component library menus
+
+> **⚠️ Notes**：
+>
+> - When `enableTaskListContextMenu=false` or `enableTaskBarContextMenu=false`, the menu will not be displayed even if the component is declared
+> - Context menus will automatically close when scrolling or clicking outside the menu
+> - Recommended to use `<Teleport to="body">` to render the menu under body to avoid positioning and z-index issues
+> - Remember to call `onClose()` after menu item clicks to close the menu
+> - TaskRow and TaskBar context menus are independent and can be customized separately
+> - By default, the system provides a built-in context menu with common operations
+> - Declarative components do not render any content, only used for passing configuration
 
 ##### TaskListColumn Slots
 
