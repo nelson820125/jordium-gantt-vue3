@@ -13,6 +13,8 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
+import { useTaskListContextMenu } from './TaskList/composables/taskList/useTaskListContextMenu'
+import { useTaskBarContextMenu } from './Timeline/composables/useTaskBarContextMenu'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import {
@@ -54,6 +56,8 @@ const props = withDefaults(defineProps<Props>(), {
   assigneeOptions: () => [],
   taskListRowClassName: undefined,
   taskListRowStyle: undefined,
+  enableTaskListContextMenu: true,
+  enableTaskBarContextMenu: true,
 })
 
 const emit = defineEmits([
@@ -91,6 +95,26 @@ const slots = useSlots()
 
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
+
+// 提供右键菜单配置给子组件
+provide('enable-task-list-context-menu', computed(() => props.enableTaskListContextMenu))
+provide('enable-task-bar-context-menu', computed(() => props.enableTaskBarContextMenu))
+
+// 使用声明式右键菜单 composables
+const { hasDeclarativeContextMenu: hasDeclarativeTaskListContextMenu, declarativeContextMenu: declarativeTaskListContextMenu } =
+  useTaskListContextMenu(slots)
+const { hasDeclarativeContextMenu: hasDeclarativeTaskBarContextMenu, declarativeContextMenu: declarativeTaskBarContextMenu } =
+  useTaskBarContextMenu(slots)
+
+// 计算是否使用自定义 TaskList 右键菜单（声明式方式）
+const hasTaskListContextMenuSlot = computed(() => hasDeclarativeTaskListContextMenu.value)
+provide('task-list-context-menu-slot', hasTaskListContextMenuSlot)
+provide('declarative-task-list-context-menu', declarativeTaskListContextMenu)
+
+// 计算是否使用自定义 TaskBar 右键菜单（声明式方式）
+const hasTaskBarContextMenuSlot = computed(() => hasDeclarativeTaskBarContextMenu.value)
+provide('task-bar-context-menu-slot', hasTaskBarContextMenuSlot)
+provide('declarative-task-bar-context-menu', declarativeTaskBarContextMenu)
 
 interface Props {
   // 任务数据
@@ -155,6 +179,16 @@ interface Props {
   // 任务行自定义样式，支持对象或函数，优先级高于 taskListRowClassName
   // 函数形式：(row: Task, rowIndex: number) => StyleValue
   taskListRowStyle?: StyleValue | ((row: Task, rowIndex: number) => StyleValue)
+  // 是否启用 TaskList（TaskRow）右键菜单（默认为 true）
+  // 当设置为 true 且未声明 TaskListContextMenu 组件时，使用系统默认菜单
+  // 当设置为 true 且声明了 TaskListContextMenu 组件时，使用自定义菜单
+  // 当设置为 false 时，无论是否声明组件，TaskRow 右键菜单都失效
+  enableTaskListContextMenu?: boolean
+  // 是否启用 TaskBar 右键菜单（默认为 true）
+  // 当设置为 true 且未声明 TaskBarContextMenu 组件时，使用系统默认菜单
+  // 当设置为 true 且声明了 TaskBarContextMenu 组件时，使用自定义菜单
+  // 当设置为 false 时，无论是否声明组件，TaskBar 右键菜单都失效
+  enableTaskBarContextMenu?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）

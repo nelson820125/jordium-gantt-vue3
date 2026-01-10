@@ -3061,6 +3061,9 @@ const handleTimelineScroll = (event: Event) => {
   // 立即更新关键滚动位置信息（用于虚拟滚动）
   timelineScrollLeft.value = scrollLeft
 
+  // 滚动时关闭所有右键菜单
+  window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
+
   // 优化：滚动时失效 bodyRect 缓存（用于连接线拖拽）
   bodyRectInvalidated = true
 
@@ -4306,6 +4309,7 @@ const handleAddSuccessor = (task: Task) => {
                 v-else-if="task.type !== 'milestone-group' && task.type !== 'milestone'"
                 :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                 :task="task"
+                :row-index="originalIndex"
                 :row-height="50"
                 :day-width="dayWidth"
                 :start-date="
@@ -4358,6 +4362,12 @@ const handleAddSuccessor = (task: Task) => {
               >
                 <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
                   <slot name="custom-task-content" v-bind="barScope" />
+                </template>
+                <template
+                  v-if="$slots['task-bar-context-menu']"
+                  #task-bar-context-menu="contextMenuScope"
+                >
+                  <slot name="task-bar-context-menu" v-bind="contextMenuScope" />
                 </template>
               </TaskBar>
             </div>

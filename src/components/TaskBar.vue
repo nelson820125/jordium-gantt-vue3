@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots } from 'vue'
+import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots, inject, type ComputedRef } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
@@ -17,6 +17,7 @@ interface Props {
   startDate: Date
   isParent?: boolean
   onClick?: (task: Task, event: MouseEvent) => void
+  rowIndex?: number
   // 新增：用于粘性文字显示的滚动位置信息
   scrollLeft?: number
   containerWidth?: number
@@ -95,6 +96,49 @@ defineSlots<{
 }>()
 
 const slots = useSlots()
+
+// 注入右键菜单配置
+const enableTaskBarContextMenu = inject<ComputedRef<boolean>>('enable-task-bar-context-menu', computed(() => true))
+const hasTaskBarContextMenuSlot = inject<ComputedRef<boolean>>('task-bar-context-menu-slot', computed(() => false))
+const declarativeTaskBarContextMenu = inject<ComputedRef<any>>('declarative-task-bar-context-menu', computed(() => null))
+
+// 判断是否应该显示任何右键菜单
+const shouldShowAnyContextMenu = computed(() => {
+  // 如果 enableTaskBarContextMenu 为 false，则不显示任何菜单
+  if (!enableTaskBarContextMenu.value) {
+    return false
+  }
+  return true
+})
+
+// 判断是否显示默认右键菜单（enableTaskBarContextMenu=true 且没有自定义 slot 时显示）
+const shouldShowDefaultContextMenu = computed(() => {
+  if (!enableTaskBarContextMenu.value) {
+    return false
+  }
+  return !hasTaskBarContextMenuSlot.value
+})
+
+// 判断是否显示自定义右键菜单（enableTaskBarContextMenu=true 且有自定义 slot 时显示）
+const shouldShowCustomContextMenu = computed(() => {
+  if (!enableTaskBarContextMenu.value) {
+    return false
+  }
+  if (!hasTaskBarContextMenuSlot.value) {
+    return false
+  }
+
+  // 检查 taskType 过滤
+  const config = declarativeTaskBarContextMenu.value
+  if (config?.taskType !== undefined) {
+    const taskType = props.task.type || 'task'
+    const allowedTypes = Array.isArray(config.taskType) ? config.taskType : [config.taskType]
+    return allowedTypes.includes(taskType)
+  }
+
+  return true
+})
+
 const { getTranslation } = useI18n()
 const t = (key: string): string => {
   return getTranslation(key)
@@ -1290,6 +1334,7 @@ onMounted(() => {
 
   // 监听全局关闭菜单事件
   window.addEventListener('close-all-taskbar-menus', closeContextMenu)
+  document.addEventListener('click', handleDocumentClick)
 
   // 清理函数
   onUnmounted(() => {
@@ -1302,11 +1347,18 @@ onMounted(() => {
     window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
     window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
     window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+    document.removeEventListener('click', handleDocumentClick)
 
     // 清除长按定时器
     if (longPressTimer.value !== null) {
       clearTimeout(longPressTimer.value)
       longPressTimer.value = null
+    }
+
+    // 清理单击定时器
+    if (clickTimer !== null) {
+      clearTimeout(clickTimer)
+      clickTimer = null
     }
   })
 })
@@ -2249,6 +2301,12 @@ const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuTask = computed(() => props.task)
 
 function handleContextMenu(event: MouseEvent) {
+  // 如果不应该显示任何菜单，直接阻止
+  if (!shouldShowAnyContextMenu.value) {
+    event.preventDefault()
+    return
+  }
+
   // 高亮模式下禁用右键菜单
   if (props.isHighlighted || props.isPrimaryHighlight) {
     event.preventDefault()
@@ -2257,7 +2315,8 @@ function handleContextMenu(event: MouseEvent) {
 
   // 先广播关闭所有TaskBar菜单
   window.dispatchEvent(new CustomEvent('close-all-taskbar-menus'))
-  if (props.task.type !== 'task' && props.task.type !== 'story') {
+  const taskType = props.task.type || 'task'
+  if (taskType !== 'task' && taskType !== 'story') {
     // 为了排除里程碑类型
     event.preventDefault()
     contextMenuVisible.value = false
@@ -2269,6 +2328,20 @@ function handleContextMenu(event: MouseEvent) {
 }
 function closeContextMenu() {
   contextMenuVisible.value = false
+}
+
+// 处理文档点击事件，点击菜单外部时关闭
+function handleDocumentClick(event: MouseEvent) {
+  if (!contextMenuVisible.value) return
+
+  const target = event.target as HTMLElement
+  // 检查点击是否在右键菜单内部
+  const contextMenuElement = document.querySelector('.task-context-menu')
+  if (contextMenuElement && contextMenuElement.contains(target)) {
+    return
+  }
+
+  closeContextMenu()
 }
 
 const handleTaskDelete = (task: Task, deleteChildren?: boolean) => {
@@ -2324,19 +2397,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     task: props.task,
     type: anchorEvent.type,
   })
-}// 监听全局关闭菜单事件
-onMounted(() => {
-  window.addEventListener('close-all-taskbar-menus', closeContextMenu)
-})
-onUnmounted(() => {
-  window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
-
-  // 清理单击定时器
-  if (clickTimer !== null) {
-    clearTimeout(clickTimer)
-    clickTimer = null
-  }
-})
+}
 </script>
 
 <template>
@@ -2532,7 +2593,9 @@ onUnmounted(() => {
       @click.stop="handleBubbleClick"
     ></div>
 
+    <!-- 默认右键菜单 -->
     <TaskContextMenu
+      v-if="shouldShowDefaultContextMenu"
       :visible="contextMenuVisible"
       :task="contextMenuTask"
       :position="contextMenuPosition"
@@ -2545,6 +2608,26 @@ onUnmounted(() => {
       @delete="handleTaskDelete"
       @delete-link="handleDeleteLink"
     />
+
+    <!-- 声明式右键菜单 -->
+    <Teleport to="body">
+      <div
+        v-if="shouldShowCustomContextMenu && contextMenuVisible && declarativeTaskBarContextMenu?.defaultSlot"
+        class="gantt-context-menu-wrapper"
+        :style="{
+          position: 'fixed',
+          left: `${contextMenuPosition.x}px`,
+          top: `${contextMenuPosition.y}px`,
+          zIndex: 9999,
+        }"
+      >
+        <component
+          :is="declarativeTaskBarContextMenu.defaultSlot"
+          :row="contextMenuTask"
+          :$index="props.rowIndex ?? -1"
+        />
+      </div>
+    </Teleport>
   </div>
 
   <!-- Tooltip 弹窗 -->

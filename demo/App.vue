@@ -733,6 +733,12 @@ const handleTaskRowMoved = async (payload: {
   //   showMessage('保存失败，请刷新页面', 'error', { closable: true })
   // }
 }
+
+// 自定义右键菜单操作处理
+const handleCustomMenuAction = (action: string, task: Task) => {
+  showMessage(`自定义操作: ${action} - 任务: ${task.name}`, 'info', { closable: true })
+  // 菜单会自动关闭（通过点击外部或滚动）
+}
 </script>
 
 <template>
@@ -1363,8 +1369,47 @@ const handleTaskRowMoved = async (payload: {
         </TaskListColumn>
         <TaskListColumn prop="startDate" :label="t.startDate" width="200" align="center" />
         <TaskListColumn prop="endDate" :label="t.endDate" width="200" align="center" />
+
+        <!-- 使用声明式的 TaskListContextMenu 组件 - 推荐方式 -->
+        <TaskListContextMenu :task-type="['task']">
+          <template #default="scope">
+            <div class="custom-menu">
+              <div class="custom-menu-header">声明式 TaskList 菜单</div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
+                ➡️ 延长任务
+              </div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('move', scope.row)">
+                📅 移动任务
+              </div>
+              <div class="custom-menu-divider"></div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', scope.row)">
+                📄 复制任务
+              </div>
+            </div>
+          </template>
+        </TaskListContextMenu>
+
+        <!-- 使用声明式的 TaskBarContextMenu 组件 - 推荐方式 -->
+        <TaskBarContextMenu>
+          <template #default="scope">
+            <div class="custom-menu">
+              <div class="custom-menu-header">声明式 TaskBar 菜单</div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
+                ➡️ 延长任务
+              </div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('move', scope.row)">
+                📅 移动任务
+              </div>
+              <div class="custom-menu-divider"></div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', scope.row)">
+                📄 复制任务
+              </div>
+            </div>
+          </template>
+        </TaskBarContextMenu>
       </GanttChart>
     </div>
+
     <div class="license-info">
       <span>MIT License @ 2025 JORDIUM.COM</span>
       <a href="https://opensource.org/licenses/MIT">
@@ -2739,4 +2784,84 @@ const handleTaskRowMoved = async (payload: {
 :global(html[data-theme='dark']) :deep(.task-row-info:hover) {
   background: linear-gradient(90deg, #353535 0%, #3d3d3d 100%) !important;
 }
+
+/* 自定义右键菜单样式 */
+.custom-menu {
+  position: fixed;
+  z-index: 999999 !important;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.custom-menu-header {
+  padding: 10px 16px;
+  font-weight: bold;
+  color: #333;
+  background: #f8f8f8;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 4px;
+}
+
+.custom-menu-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.custom-menu-item:hover {
+  background: #f0f0f0;
+}
+
+.custom-menu-item.danger {
+  color: #ff4d4f;
+}
+
+.custom-menu-item.danger:hover {
+  background: #fff1f0;
+}
+
+.custom-menu-divider {
+  height: 1px;
+  background: #eee;
+  margin: 4px 0;
+}
+
+/* 暗色主题下的自定义菜单 */
+:global(html[data-theme='dark']) .custom-menu {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+:global(html[data-theme='dark']) .custom-menu-header {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border-bottom-color: #444;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item {
+  color: #e0e0e0;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item:hover {
+  background: #353535;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item.danger {
+  color: #ff6b6b;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item.danger:hover {
+  background: #3a2020;
+}
+
+:global(html[data-theme='dark']) .custom-menu-divider {
+  background: #444;
+}
 </style>
+

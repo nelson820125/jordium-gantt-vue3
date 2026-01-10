@@ -330,6 +330,9 @@ onUnmounted(() => {
         <template v-if="hasRowSlot" #custom-task-content="rowScope">
           <slot name="custom-task-content" v-bind="rowScope" />
         </template>
+        <template v-if="slots['task-list-context-menu']" #task-list-context-menu="contextMenuScope">
+          <slot name="task-list-context-menu" v-bind="contextMenuScope" />
+        </template>
       </TaskRow>
 
       <div class="task-list-body-spacer" :style="{ height: `${endSpacerHeight}px` }"></div>

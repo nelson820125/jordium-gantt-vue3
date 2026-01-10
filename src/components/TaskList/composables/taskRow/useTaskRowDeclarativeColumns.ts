@@ -13,6 +13,7 @@ export function useTaskRowDeclarativeColumns(
   isStoryTask: Ref<boolean>,
   hasChildren: Ref<boolean>,
   showTaskIcon: Ref<boolean | undefined>,
+  rowIndex: Ref<number | undefined>,
 ) {
   // 判断是否是第一列
   const isFirstColumn = (index: number) => index === 0
@@ -47,7 +48,7 @@ export function useTaskRowDeclarativeColumns(
             },
             [column.defaultSlot({
               row: task.value,
-              $index: index,
+              $index: rowIndex.value ?? -1,
             })],
           ),
         ])
@@ -128,7 +129,7 @@ export function useTaskRowDeclarativeColumns(
     if (column.defaultSlot) {
       return column.defaultSlot({
         row: task.value,
-        $index: index,
+        $index: rowIndex.value ?? -1,
       })
     }
 

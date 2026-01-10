@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
+import { GanttChart, TaskListColumn, useI18n, TaskListContextMenu, TaskBarContextMenu } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const { t, getTranslation } = useI18n();
@@ -11,6 +11,26 @@ const tasks = ref([
     name: '项目启动',
     startDate: '2025-10-30',
     endDate: '2025-11-5',
+    progress: 100,
+    department: '管理部',
+    departmentCode: 'D001',
+    type: 'task',
+  },
+  {
+    id: 2,
+    name: '项目启动2',
+    startDate: '2025-11-30',
+    endDate: '2025-12-5',
+    progress: 100,
+    department: '管理部',
+    departmentCode: 'D001',
+    type: 'task',
+  },
+  {
+    id: 3,
+    name: '项目启动3',
+    startDate: '2025-11-30',
+    endDate: '2025-12-5',
     progress: 100,
     department: '管理部',
     departmentCode: 'D001',
@@ -62,6 +82,7 @@ const customMessages = {
 
 const showAddTaskDrawer = ref(false);
 const showAddMilestoneDialog = ref(false);
+const showTodayLocate = ref(true);
 
 // 定义可动态配置的列
 const availableColumns = ref<TaskListColumnConfig[]>([
@@ -206,6 +227,11 @@ const onTaskAdded = (res) => {
   
   // 不需要手动push，组件已处理
 };
+
+// 自定义右键菜单操作处理
+const handleCustomMenuAction = (action: string, task: Task, onClose: () => void) => {
+  alert(`自定义操作: ${action} - 任务: ${task.name}`, 'info', { closable: true })
+}
 </script>
 
 <template>
@@ -222,8 +248,6 @@ const onTaskAdded = (res) => {
         :allow-drag-and-resize="true"
         :enable-task-row-move="true"
         :assignee-options="assigneeOptions"
-        task-list-column-render-mode="declarative"
-        @task-row-moved="handleTaskRowMoved"
         @add-milestone="showAddMilestoneDialog = true"
         @task-double-click="onTaskDblclick"
         @task-click="onTaskClick"
@@ -244,12 +268,51 @@ const onTaskAdded = (res) => {
         </template>
       </TaskListColumn>
       <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate', '结束的时间')" width="250" />
+
+      <!-- 使用声明式的 TaskListContextMenu 组件 - 推荐方式 -->
+        <TaskListContextMenu>
+          <template #default="scope">
+            <div class="custom-menu">
+              <div class="custom-menu-header">声明式 TaskList 菜单</div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
+                ➡️ 延长任务
+              </div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('move', scope.row)">
+                📅 移动任务
+              </div>
+              <div class="custom-menu-divider"></div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', scope.row)">
+                📄 复制任务
+              </div>
+            </div>
+          </template>
+        </TaskListContextMenu>
+
+        <!-- 使用声明式的 TaskBarContextMenu 组件 - 推荐方式 -->
+        <TaskBarContextMenu>
+          <template #default="scope">
+            <div class="custom-menu">
+              <div class="custom-menu-header">声明式 TaskBar 菜单</div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
+                ➡️ 延长任务
+              </div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('move', scope.row)">
+                📅 移动任务
+              </div>
+              <div class="custom-menu-divider"></div>
+              <div class="custom-menu-item" @click="handleCustomMenuAction('copy', scope.row)">
+                📄 复制任务
+              </div>
+            </div>
+          </template>
+        </TaskBarContextMenu>  
     </GanttChart>
     </div>
     <!-- 自定义添加任务按钮 -->
     <div>
       <button class="btn btn-primary" @click="showAddTaskDrawer = true">添加任务</button>
       <button class="btn btn-primary" @click="showAddMilestoneDialog = true">添加里程碑</button>
+      <button class="btn btn-primary" @click="showTodayLocate = !showTodayLocate">开启/关闭今日按钮</button>
     </div>
     
     <!-- 自定义抽屉组件 (原生HTML替代 el-drawer) -->
@@ -457,5 +520,84 @@ const onTaskAdded = (res) => {
 @keyframes slideIn {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+
+/* 自定义右键菜单样式 */
+.custom-menu {
+  position: fixed;
+  z-index: 999999 !important;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.custom-menu-header {
+  padding: 10px 16px;
+  font-weight: bold;
+  color: #333;
+  background: #f8f8f8;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 4px;
+}
+
+.custom-menu-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.custom-menu-item:hover {
+  background: #f0f0f0;
+}
+
+.custom-menu-item.danger {
+  color: #ff4d4f;
+}
+
+.custom-menu-item.danger:hover {
+  background: #fff1f0;
+}
+
+.custom-menu-divider {
+  height: 1px;
+  background: #eee;
+  margin: 4px 0;
+}
+
+/* 暗色主题下的自定义菜单 */
+:global(html[data-theme='dark']) .custom-menu {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+:global(html[data-theme='dark']) .custom-menu-header {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border-bottom-color: #444;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item {
+  color: #e0e0e0;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item:hover {
+  background: #353535;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item.danger {
+  color: #ff6b6b;
+}
+
+:global(html[data-theme='dark']) .custom-menu-item.danger:hover {
+  background: #3a2020;
+}
+
+:global(html[data-theme='dark']) .custom-menu-divider {
+  background: #444;
 }
 </style>
