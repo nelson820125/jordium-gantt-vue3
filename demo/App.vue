@@ -1390,7 +1390,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </TaskListContextMenu>
 
         <!-- 使用声明式的 TaskBarContextMenu 组件 - 推荐方式 -->
-        <TaskBarContextMenu>
+        <!-- <TaskBarContextMenu>
           <template #default="scope">
             <div class="custom-menu">
               <div class="custom-menu-header">声明式 TaskBar 菜单</div>
@@ -1406,7 +1406,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               </div>
             </div>
           </template>
-        </TaskBarContextMenu>
+        </TaskBarContextMenu> -->
       </GanttChart>
     </div>
 
