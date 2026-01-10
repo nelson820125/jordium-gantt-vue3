@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 拆分TaskList子组件代码，更易读、易维护
 - Split TaskList sub-component code for better readability and maintainability
 
+### Fixed
+- 🔧 依赖包happy-dom，jspdf，vitest漏洞升级
+- 🔧 Upgraded vulnerabilities in dependent packages happy-dom, jspdf, vitest
+
 ## [1.6.2] - 2025-12-23
 
 ### Fixed
