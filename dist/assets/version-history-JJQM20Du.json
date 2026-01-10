@@ -418,5 +418,21 @@
       "🔧 Fixed: Issue with external use of I18n",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to he-shihao-3687@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.7.0",
+    "date": "2026-01-10",
+    "notes": [
+      "🎉 新增：TaskList和TaskBar声明式定义ContextMenu方式, 使用组件TaskListContextMenu和TaskBarContextMenu",
+      "🎉 新增：TaskListContextMenu和TaskBarContextMenu的default Slots",
+      "🎉 新增：TaskListContextMenu和TaskBarContextMenu是否展示属性 - enable-task-list-context-menu和enable-task-bar-context-menu",
+      "🎉 优化：拆分TaskList子组件代码，更易读、易维护",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 fhjfhj@gitee的使用及反馈</span>",
+      "🎉 Added: Declarative definition ContextMenu method for TaskList and TaskBar using the TaskListContextMenu and TaskBarContextMenu components",
+      "🎉 Added: default Slots for TaskListContextMenu and TaskBarContextMenu",
+      "🎉 Added: Properties to control the display of TaskListContextMenu and TaskBarContextMenu - enable-task-list-context-menu and enable-task-bar-context-menu",
+      "🎉 Optimized: Split TaskList sub-component code for better readability and maintainability",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to fhjfhj@gitee for their use and feedback</span>"
+    ]
   }
 ]
