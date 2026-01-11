@@ -1,5 +1,21 @@
 # <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="32" style="vertical-align:middle;margin-right:8px;" /> jordium-gantt-vue3
 
+<style>
+.version-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #409eff;
+  background-color: #ecf5ff;
+  border: 1px solid #d9ecff;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+</style>
+
 <p align="center">
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
     <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
@@ -197,7 +213,12 @@ npm run dev
 | `enableTaskRowMove`         | `boolean`                                                                                 | `false` | 是否允许拖拽和摆放TaskRow                                      |
 | `enableTaskListContextMenu` | `boolean`                                                                                 | `true`  | 是否启用 TaskList（TaskRow）右键菜单功能。为 `true` 时：未声明 `task-list-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                     |
 | `enableTaskBarContextMenu`  | `boolean`                                                                                 | `true`  | 是否启用 TaskBar 右键菜单功能。为 `true` 时：未声明 `task-bar-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                               |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          | 
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
+| `locale` <sup class="version-badge">1.7.1</sup> | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | 语言设置（响应式）。设置后组件内部语言将跟随变化                |
+| `theme` <sup class="version-badge">1.7.1</sup> | `'light' \| 'dark'`                                                                       | `'light'` | 主题模式（响应式）。设置后组件主题将跟随变化                    |
+| `timeScale` <sup class="version-badge">1.7.1</sup> | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
+| `fullscreen` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `false` | 全屏状态控制（响应式）。设置后组件全屏状态将跟随变化            |
+| `expandAll` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `true` | 展开/收起所有任务（响应式）。设置后所有任务的展开状态将跟随变化  | 
 
 #### TaskListColumn 属性
 
@@ -532,6 +553,61 @@ const handleTaskAdded = e => {
 const handleMilestoneSaved = milestone => {
   console.log('里程碑已保存:', milestone)
 }
+</script>
+```
+
+#### 示例4：外部组件控制状态（TimeScale、Fullscreen、Expand/Collapse、Locale、Theme）
+
+通过响应式Props绑定来控制组件状态，组件状态会自动跟随Props变化。
+
+```vue
+<template>
+  <div>
+    <!-- 外部控制面板 -->
+    <div class="control-panel">
+      <button @click="propsFullscreen = !propsFullscreen">切换全屏</button>
+      <button @click="propsExpandAll = !propsExpandAll">展开/收起所有</button>
+      <button @click="propsLocale = 'zh-CN'">中文</button>
+      <button @click="propsLocale = 'en-US'">English</button>
+      <button @click="propsTimeScale = 'day'">日视图</button>
+      <button @click="propsTimeScale = 'week'">周视图</button>
+      <button @click="propsTimeScale = 'month'">月视图</button>
+      <button @click="propsTheme = 'light'">亮色主题</button>
+      <button @click="propsTheme = 'dark'">暗色主题</button>
+    </div>
+
+    <!-- 甘特图组件 -->
+    <div style="height: 600px;">
+      <GanttChart
+        :tasks="tasks"
+        :milestones="milestones"
+        :locale="propsLocale"
+        :theme="propsTheme"
+        :time-scale="propsTimeScale"
+        :fullscreen="propsFullscreen"
+        :expand-all="propsExpandAll"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const tasks = ref([
+  { id: 1, name: '任务1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
+  { id: 2, name: '任务2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
+])
+const milestones = ref([])
+
+// Props控制变量
+const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
+const propsTheme = ref<'light' | 'dark'>('light')
+const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const propsFullscreen = ref(false)
+const propsExpandAll = ref(false)
 </script>
 ```
 
@@ -2031,6 +2107,168 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 > - 不同视图独立优化，切换视图时自动调整到最佳显示效果
 > - 避免出现时间线过窄或留白过多的问题
 > - 适用不同分辨率展示
+
+### Expose 方法
+
+GanttChart 组件通过 `defineExpose` 暴露了一系列方法，允许父组件通过模板引用 (`ref`) 直接调用这些方法来控制组件行为。这种命令式的控制方式适合需要精确控制时机的场景。
+
+#### 可用的 Expose 方法
+
+| 方法名 | 参数 | 返回值 | 说明 |
+| --- | --- | --- | --- |
+| `setLocale` <sup class="version-badge">1.7.1</sup> | `locale: 'zh-CN' \| 'en-US'` | `void` | 设置组件语言 |
+| `currentLocale` <sup class="version-badge">1.7.1</sup> | - | `'zh-CN' \| 'en-US'` | 获取当前语言设置 |
+| `setTheme` <sup class="version-badge">1.7.1</sup> | `mode: 'light' \| 'dark'` | `void` | 设置主题模式 |
+| `currentTheme` <sup class="version-badge">1.7.1</sup> | - | `'light' \| 'dark'` | 获取当前主题模式 |
+| `setTimeScale` <sup class="version-badge">1.7.1</sup> | `scale: TimelineScale` | `void` | 设置时间刻度（`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`） |
+| `currentScale` <sup class="version-badge">1.7.1</sup> | - | `TimelineScale` | 获取当前时间刻度 |
+| `toggleFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 切换全屏状态 |
+| `enterFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 进入全屏模式 |
+| `exitFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 退出全屏模式 |
+| `isFullscreen` <sup class="version-badge">1.7.1</sup> | - | `boolean` | 获取当前是否处于全屏状态 |
+| `toggleExpandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | 切换展开/收起所有任务 |
+| `expandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | 展开所有任务 |
+| `collapseAll` <sup class="version-badge">1.7.1</sup> | - | `void` | 收起所有任务 |
+| `isExpandAll` <sup class="version-badge">1.7.1</sup> | - | `boolean` | 获取当前是否全部展开 |
+| `scrollToToday` <sup class="version-badge">1.7.1</sup> | - | `void` | 滚动到今天的位置 |
+| `scrollToTask` <sup class="version-badge">1.7.1</sup> | `taskId: number \| string` | `void` | 滚动到指定任务（任务会自动展开到可见状态） |
+| `scrollToDate` <sup class="version-badge">1.7.1</sup> | `date: string \| Date` | `void` | 滚动到指定日期位置（格式：`'YYYY-MM-DD'` 或 Date 对象） |
+
+#### 使用示例
+
+**基础用法：命令式控制**
+
+```vue
+<template>
+  <div>
+    <!-- 外部控制按钮 -->
+    <div class="control-panel">
+      <button @click="handleSetLocale('zh-CN')">中文</button>
+      <button @click="handleSetLocale('en-US')">English</button>
+      <button @click="handleSetTheme('light')">亮色主题</button>
+      <button @click="handleSetTheme('dark')">暗色主题</button>
+      <button @click="handleSetTimeScale('day')">日视图</button>
+      <button @click="handleSetTimeScale('week')">周视图</button>
+      <button @click="handleSetTimeScale('month')">月视图</button>
+      <button @click="ganttRef?.toggleFullscreen()">切换全屏</button>
+      <button @click="ganttRef?.toggleExpandAll()">展开/收起所有</button>
+      <button @click="ganttRef?.scrollToToday()">定位到今天</button>
+      <button @click="handleScrollToTask">滚动到任务2</button>
+      <button @click="handleScrollToDate">滚动到2025-06-01</button>
+    </div>
+
+    <!-- 状态显示 -->
+    <div class="status-panel">
+      <p>当前语言: {{ currentLang }}</p>
+      <p>当前主题: {{ currentThemeMode }}</p>
+      <p>当前刻度: {{ currentTimeScale }}</p>
+      <p>全屏状态: {{ isFullscreenMode ? '是' : '否' }}</p>
+      <p>展开状态: {{ isAllExpanded ? '全部展开' : '部分收起' }}</p>
+    </div>
+
+    <!-- 甘特图组件 -->
+    <div style="height: 600px;">
+      <GanttChart
+        ref="ganttRef"
+        :tasks="tasks"
+        :milestones="milestones"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { TimelineScale } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+// 组件引用
+const ganttRef = ref<InstanceType<typeof GanttChart>>()
+
+// 状态变量
+const currentLang = ref<'zh-CN' | 'en-US'>('zh-CN')
+const currentThemeMode = ref<'light' | 'dark'>('light')
+const currentTimeScale = ref<TimelineScale>('week')
+const isFullscreenMode = ref(false)
+const isAllExpanded = ref(true)
+
+// 任务数据
+const tasks = ref([
+  { id: 1, name: '任务1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
+  { id: 2, name: '任务2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
+])
+const milestones = ref([])
+
+// 语言控制
+const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
+  ganttRef.value?.setLocale(locale)
+  currentLang.value = ganttRef.value?.currentLocale() || locale
+}
+
+// 主题控制
+const handleSetTheme = (mode: 'light' | 'dark') => {
+  ganttRef.value?.setTheme(mode)
+  currentThemeMode.value = ganttRef.value?.currentTheme() || mode
+}
+
+// 时间刻度控制
+const handleSetTimeScale = (scale: TimelineScale) => {
+  ganttRef.value?.setTimeScale(scale)
+  currentTimeScale.value = ganttRef.value?.currentScale() || scale
+}
+
+// 滚动到指定任务
+const handleScrollToTask = () => {
+  ganttRef.value?.scrollToTask(2)
+}
+
+// 滚动到指定日期
+const handleScrollToDate = () => {
+  ganttRef.value?.scrollToDate('2025-06-01')
+}
+</script>
+
+<style scoped>
+.control-panel {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.status-panel {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.status-panel p {
+  margin: 5px 0;
+}
+</style>
+```
+
+#### 最佳实践
+
+1. **命令式 vs 响应式**
+   - 使用 **Expose 方法**：需要精确控制调用时机，如按钮点击、特定事件触发
+   - 使用 **Props 绑定**：状态需要跟随数据源自动更新，如与 URL 参数同步
+
+2. **获取状态**
+   - 提供了成对的 getter 方法（如 `currentLocale()`、`currentTheme()`）
+   - 可在调用 setter 后立即获取最新状态进行验证
+
+3. **错误处理**
+   - 调用前检查 `ref` 是否已挂载：`ganttRef.value?.methodName()`
+   - 在 `onMounted` 生命周期之后调用更安全
+
+**完整示例可参考：**
+- npm-demo 项目：`npm-demo/src/components/GanttTest.vue`
+- npm-webpack-demo 项目：`npm-webpack-demo/src/App.vue`
+
+---
 
 ### 主题与国际化
 

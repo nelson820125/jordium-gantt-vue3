@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-01-11
+
+### Added
+- 🎉 新增：GanttChart新增属性，locale, theme, timeScale, fullscreen, expandAll供外部调用
+- 🎉 新增：GanttChart暴露国际化相关方法，setLocale & currentLocale
+- 🎉 新增：GanttChart暴露主题相关方法，setTheme & currentTheme，setTimeScale & currentScale
+- 🎉 新增：GanttChart暴露全屏相关方法，toggleFullscreen & enterFullscreen & exitFullscreen & isFullscreen
+- 🎉 新增：GanttChart暴露展开/收起相关方法，toggleExpandAll & expandAll & collapseAll & isExpandAll
+- 🎉 新增：GanttChart暴露滑至今日/任务/指定日期相关方法，scrollToToday & scrollToTask & scrollToDate
+- 🎉 Added: New properties in GanttChart - locale, theme, timeScale, fullscreen, expandAll for external calls
+- 🎉 Added: Exposed internationalization related methods in GanttChart - setLocale & currentLocale
+- 🎉 Added: Exposed theme related methods in GanttChart - setTheme & currentTheme, setTimeScale & currentScale
+- 🎉 Added: Exposed fullscreen related methods in GanttChart - toggleFullscreen & enterFullscreen & exitFullscreen & isFullscreen
+- 🎉 Added: Exposed expand/collapse related methods in GanttChart - toggleExpandAll & expandAll & collapseAll & isExpandAll
+- 🎉 Added: Exposed methods in GanttChart to scroll to today/task/specified date - scrollToToday & scrollToTask & scrollToDate
+
 ## [1.7.0] - 2026-01-10
 
 ### Added

@@ -58,6 +58,11 @@ const props = withDefaults(defineProps<Props>(), {
   taskListRowStyle: undefined,
   enableTaskListContextMenu: true,
   enableTaskBarContextMenu: true,
+  fullscreen: false,
+  expandAll: true,
+  locale: 'zh-CN',
+  timeScale: 'week',
+  theme: 'light',
 })
 
 const emit = defineEmits([
@@ -189,6 +194,16 @@ interface Props {
   // 当设置为 true 且声明了 TaskBarContextMenu 组件时，使用自定义菜单
   // 当设置为 false 时，无论是否声明组件，TaskBar 右键菜单都失效
   enableTaskBarContextMenu?: boolean
+  // 全屏状态控制（响应式）
+  fullscreen?: boolean
+  // 展开/收起所有任务（响应式）
+  expandAll?: boolean
+  // 语言设置（响应式）
+  locale?: 'zh-CN' | 'en-US'
+  // 时间刻度（响应式）
+  timeScale?: TimelineScale
+  // 主题模式（响应式）
+  theme?: 'light' | 'dark'
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -694,7 +709,7 @@ const handleTaskRowMoved = (payload: {
   // 通知 TaskList 更新父级任务数据
   nextTick(() => {
     window.dispatchEvent(new CustomEvent('task-updated', {
-      detail: result.movedTask
+      detail: result.movedTask,
     }))
   })
 
@@ -730,6 +745,90 @@ const handleCollapseAll = () => {
     }
   }
 }
+
+// === 展开/收起相关方法 ===
+/**
+ * 展开所有任务
+ */
+const expandAllTasks = () => {
+  handleExpandAll()
+}
+
+/**
+ * 收起所有任务
+ */
+const collapseAllTasks = () => {
+  handleCollapseAll()
+}
+
+/**
+ * 切换展开/收起所有任务
+ */
+const toggleExpandAllTasks = () => {
+  // 检查是否所有有子任务的任务都已展开
+  const checkAllExpanded = (tasks: Task[]): boolean => {
+    for (const task of tasks) {
+      if (task.children && task.children.length > 0) {
+        if (task.collapsed) {
+          return false
+        }
+        if (!checkAllExpanded(task.children)) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+
+  if (props.tasks) {
+    const allExpanded = checkAllExpanded(props.tasks)
+    if (allExpanded) {
+      collapseAllTasks()
+    } else {
+      expandAllTasks()
+    }
+  }
+}
+
+/**
+ * 获取当前是否所有任务都已展开
+ */
+const getIsExpandAll = (): boolean => {
+  if (!props.tasks || props.tasks.length === 0) {
+    return true
+  }
+
+  const checkAllExpanded = (tasks: Task[]): boolean => {
+    for (const task of tasks) {
+      if (task.children && task.children.length > 0) {
+        if (task.collapsed) {
+          return false
+        }
+        if (!checkAllExpanded(task.children)) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+
+  return checkAllExpanded(props.tasks)
+}
+
+// 监听 Props expandAll 变化
+watch(
+  () => props.expandAll,
+  (newValue) => {
+    if (newValue !== undefined) {
+      if (newValue) {
+        expandAllTasks()
+      } else {
+        collapseAllTasks()
+      }
+    }
+  },
+  { immediate: true },
+)
 
 // 处理TaskDrawer请求任务列表
 const handleRequestTaskList = () => {
@@ -817,11 +916,42 @@ onUnmounted(() => {
   window.removeEventListener('context-menu', handleTaskContextMenu as EventListener)
 })
 
+// 主题状态管理
+const currentThemeMode = ref<'light' | 'dark'>('light')
+
+/**
+ * 设置主题模式
+ * @param mode 主题模式，默认为 'dark'
+ */
+const setTheme = (mode?: 'light' | 'dark') => {
+  const targetMode = mode || 'dark'
+  currentThemeMode.value = targetMode
+  document.documentElement.setAttribute('data-theme', targetMode)
+}
+
+/**
+ * 获取当前主题模式
+ */
+const currentTheme = (): string => {
+  return currentThemeMode.value
+}
+
+// 监听 Props theme 变化
+watch(
+  () => props.theme,
+  (newTheme) => {
+    if (newTheme && newTheme !== currentThemeMode.value) {
+      setTheme(newTheme)
+    }
+  },
+  { immediate: true },
+)
+
 // 全屏状态管理
 const isFullscreen = ref(false)
 
 // 多语言支持
-const { t, locale } = useI18n()
+const { t, locale: i18nLocale } = useI18n()
 const collapseTaskListText = computed(() => t.value.collapseTaskList)
 const expandTaskListText = computed(() => t.value.expandTaskList)
 
@@ -1443,6 +1573,63 @@ const handleTimelineScaleChanged = (scale: TimelineScale) => {
   })
 }
 
+// === 时间维度相关方法 ===
+// 时间刻度顺序定义
+const TIME_SCALE_ORDER: TimelineScale[] = ['hour', 'day', 'week', 'month', 'quarter', 'year']
+
+/**
+ * 设置时间刻度
+ * @param scale 时间刻度，默认为 'week'
+ */
+const setTimeScale = (scale?: TimelineScale) => {
+  const targetScale = scale || 'week'
+  if (TIME_SCALE_ORDER.includes(targetScale)) {
+    handleTimeScaleChange(targetScale)
+  }
+}
+
+/**
+ * 放大时间刻度（显示更细粒度）
+ * year -> quarter -> month -> week -> day -> hour
+ */
+const zoomIn = () => {
+  const currentIndex = TIME_SCALE_ORDER.indexOf(currentTimeScale.value)
+  if (currentIndex > 0) {
+    const newScale = TIME_SCALE_ORDER[currentIndex - 1]
+    handleTimeScaleChange(newScale)
+  }
+}
+
+/**
+ * 缩小时间刻度（显示更粗粒度）
+ * hour -> day -> week -> month -> quarter -> year
+ */
+const zoomOut = () => {
+  const currentIndex = TIME_SCALE_ORDER.indexOf(currentTimeScale.value)
+  if (currentIndex < TIME_SCALE_ORDER.length - 1) {
+    const newScale = TIME_SCALE_ORDER[currentIndex + 1]
+    handleTimeScaleChange(newScale)
+  }
+}
+
+/**
+ * 获取当前时间刻度
+ */
+const currentScale = (): string => {
+  return currentTimeScale.value
+}
+
+// 监听 Props timeScale 变化
+watch(
+  () => props.timeScale,
+  (newScale) => {
+    if (newScale && newScale !== currentTimeScale.value) {
+      handleTimeScaleChange(newScale)
+    }
+  },
+  { immediate: true },
+)
+
 // 处理关闭高亮
 const handleClearHighlight = () => {
   if (timelineRef.value?.clearHighlight) {
@@ -1672,7 +1859,7 @@ const pdfExportHandler = async () => {
 
     // 添加日期
     pdf.setFontSize(10)
-    const currentDate = new Date().toLocaleDateString(locale.value)
+    const currentDate = new Date().toLocaleDateString(i18nLocale.value)
     pdf.text(`${dateLabel}: ${currentDate}`, pdfWidth - 10, 10, { align: 'right' })
 
     // 添加甘特图图片
@@ -1729,6 +1916,78 @@ const handleFullscreenToggle = (event: CustomEvent) => {
     )
   }, 500) // 比动画时间稍长一点，确保完全完成
 }
+
+// === 全屏相关方法 ===
+/**
+ * 进入全屏模式
+ */
+const enterFullscreen = () => {
+  if (!isFullscreen.value) {
+    isFullscreen.value = true
+    if (props.onFullscreenChange && typeof props.onFullscreenChange === 'function') {
+      props.onFullscreenChange(true)
+    }
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('timeline-container-resized', {
+          detail: { source: 'fullscreen-toggle' },
+        }),
+      )
+    }, 500)
+  }
+}
+
+/**
+ * 退出全屏模式
+ */
+const exitFullscreen = () => {
+  if (isFullscreen.value) {
+    isFullscreen.value = false
+    if (props.onFullscreenChange && typeof props.onFullscreenChange === 'function') {
+      props.onFullscreenChange(false)
+    }
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('timeline-container-resized', {
+          detail: { source: 'fullscreen-toggle' },
+        }),
+      )
+    }, 500)
+  }
+}
+
+/**
+ * 切换全屏模式
+ */
+const toggleFullscreen = () => {
+  if (isFullscreen.value) {
+    exitFullscreen()
+  } else {
+    enterFullscreen()
+  }
+}
+
+/**
+ * 获取当前是否全屏
+ */
+const getIsFullscreen = (): boolean => {
+  return isFullscreen.value
+}
+
+// 监听 Props fullscreen 变化
+watch(
+  () => props.fullscreen,
+  (newValue) => {
+    if (newValue !== undefined && newValue !== isFullscreen.value) {
+      if (newValue) {
+        enterFullscreen()
+      } else {
+        exitFullscreen()
+      }
+    }
+  },
+  { immediate: true },
+)
 
 // 更新或添加里程碑到列表中
 const updateOrAddMilestone = (milestones: Task[], milestone: Task): boolean => {
@@ -1898,21 +2157,93 @@ const defaultTodayLocate = () => {
   const offset = timelinePanelW ? timelinePanelW / 2 : 200 // 偏移量让今天居中显示
   const scrollPosition = (totalDays - 1) * 30 - offset
 
-  // 滚动到指定位置
-  const timeline = document.querySelector('.timeline') as HTMLElement
-  if (timeline) {
-    timeline.scrollLeft = Math.max(0, scrollPosition)
+  if (timelinePanel) {
+    timelinePanel.scrollLeft = Math.max(0, scrollPosition)
+  }
+}
 
-    // 添加今日高亮效果到对应的日期列
-    const todayColumn = timeline.querySelector('.day-column.today') as HTMLElement
-    if (todayColumn) {
-      todayColumn.classList.add('today-highlight')
-      setTimeout(() => {
-        todayColumn.classList.remove('today-highlight')
-      }, 2000)
+// === 今日定位相关方法 ===
+/**
+ * 滚动到今日位置
+ */
+const scrollToToday = () => {
+  if (timelineRef.value && typeof timelineRef.value.scrollToTodayCenter === 'function') {
+    timelineRef.value.scrollToTodayCenter()
+  } else {
+    defaultTodayLocate()
+  }
+}
+
+/**
+ * 滚动到指定任务
+ * @param taskId 任务ID
+ */
+const scrollToTask = (taskId: string | number) => {
+  // 查找任务并滚动到对应位置
+  const findTaskById = (tasks: Task[], id: string | number): Task | null => {
+    for (const task of tasks) {
+      if (task.id === id || String(task.id) === String(id)) {
+        return task
+      }
+      if (task.children && task.children.length > 0) {
+        const found = findTaskById(task.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  if (props.tasks) {
+    const task = findTaskById(props.tasks, taskId)
+    if (task && task.startDate) {
+      // 使用Timeline的scrollToDate方法
+      if (timelineRef.value && typeof timelineRef.value.scrollToDate === 'function') {
+        timelineRef.value.scrollToDate(task.startDate)
+      }
     }
   }
 }
+
+/**
+ * 滚动到指定日期
+ * @param date 日期（Date对象或日期字符串）
+ */
+const scrollToDate = (date: Date | string) => {
+  // 使用Timeline的scrollToDate方法
+  if (timelineRef.value && typeof timelineRef.value.scrollToDate === 'function') {
+    timelineRef.value.scrollToDate(date)
+  }
+}
+
+// === 语言切换相关方法 ===
+/**
+ * 获取当前语言
+ */
+const currentLocale = (): string => {
+  return i18nLocale.value
+}
+
+/**
+ * 设置语言
+ * @param locale 语言代码
+ */
+const setLocale = (locale: 'zh-CN' | 'en-US') => {
+  const { setLocale: setI18nLocale } = useI18n()
+  setI18nLocale(locale)
+}
+
+// 监听 Props locale 变化
+watch(
+  () => props.locale,
+  (newLocale) => {
+    if (newLocale && newLocale !== i18nLocale.value) {
+      // 导入 setLocale 方法
+      const { setLocale } = useI18n()
+      setLocale(newLocale)
+    }
+  },
+  { immediate: true },
+)
 
 // 窗口大小变化处理函数
 const handleWindowResize = () => {
@@ -2335,6 +2666,40 @@ function handleMilestoneDialogDelete(milestoneId: number) {
   // 4. 关闭对话框
   handleMilestoneDialogClose()
 }
+
+// 暴露方法供外部调用
+defineExpose({
+  // 全屏相关
+  enterFullscreen,
+  exitFullscreen,
+  toggleFullscreen,
+  isFullscreen: getIsFullscreen,
+
+  // 展开/收起相关
+  expandAll: expandAllTasks,
+  collapseAll: collapseAllTasks,
+  toggleExpandAll: toggleExpandAllTasks,
+  isExpandAll: getIsExpandAll,
+
+  // 今日定位相关
+  scrollToToday,
+  scrollToTask,
+  scrollToDate,
+
+  // 语言切换相关
+  setLocale,
+  currentLocale,
+
+  // 时间维度相关
+  setTimeScale,
+  zoomIn,
+  zoomOut,
+  currentScale,
+
+  // 主题相关
+  setTheme,
+  currentTheme,
+})
 </script>
 
 <template>
@@ -2347,6 +2712,10 @@ function handleMilestoneDialogDelete(milestoneId: number) {
     <GanttToolbar
       v-if="props.showToolbar"
       :config="props.toolbarConfig"
+      :time-scale="currentTimeScale"
+      :theme="currentThemeMode"
+      :fullscreen="isFullscreen"
+      :expand-all="getIsExpandAll()"
       :on-today-locate="todayLocateHandler"
       :on-export-csv="csvExportHandler"
       :on-export-pdf="pdfExportHandler"

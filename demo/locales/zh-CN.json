@@ -24,5 +24,92 @@
       "story": "需求【{name}】",
       "task": "任务【{name}】"
     }
+  },
+  "toolSettings": {
+    "title": "工具设置",
+    "currentStatus": {
+      "title": "当前状态",
+      "fullscreen": "全屏",
+      "expandAll": "展开所有",
+      "locale": "语言",
+      "timeScale": "时间刻度",
+      "theme": "主题",
+      "controlMode": "控制模式",
+      "active": "激活",
+      "inactive": "未激活",
+      "expanded": "已展开",
+      "collapsed": "已收起"
+    },
+    "controlMode": {
+      "title": "控制模式",
+      "expose": "Expose 方法",
+      "props": "Props 控制",
+      "exposeHint": "通过 ref.value.method() 调用组件方法",
+      "propsHint": "通过修改 Props 控制组件状态"
+    },
+    "exposeMethods": {
+      "sectionTitle": "Expose 方法控制",
+      "fullscreen": {
+        "title": "全屏",
+        "enter": "进入",
+        "exit": "退出",
+        "toggle": "切换"
+      },
+      "expand": {
+        "title": "展开",
+        "all": "全部",
+        "none": "无",
+        "toggle": "切换"
+      },
+      "timeScale": {
+        "title": "时间刻度",
+        "hour": "小时",
+        "day": "日",
+        "week": "周",
+        "month": "月",
+        "quarter": "季度",
+        "year": "年",
+        "zoomIn": "放大",
+        "zoomOut": "缩小"
+      },
+      "locale": {
+        "title": "语言",
+        "zhCN": "中文",
+        "enUS": "英文"
+      },
+      "theme": {
+        "title": "主题",
+        "light": "明亮",
+        "dark": "暗黑"
+      },
+      "navigation": {
+        "title": "导航",
+        "today": "今日",
+        "taskIdPlaceholder": "任务ID",
+        "go": "前往"
+      }
+    },
+    "propsControl": {
+      "sectionTitle": "Props 属性控制",
+      "locale": {
+        "title": "语言属性"
+      },
+      "theme": {
+        "title": "主题属性"
+      },
+      "timeScale": {
+        "title": "时间刻度属性"
+      },
+      "fullscreen": {
+        "title": "全屏属性",
+        "true": "真",
+        "false": "假"
+      },
+      "expandAll": {
+        "title": "展开所有属性",
+        "true": "真",
+        "false": "假"
+      }
+    }
   }
 }

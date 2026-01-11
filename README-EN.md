@@ -1,5 +1,21 @@
 ﻿# <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="32" style="vertical-align:middle;margin-right:8px;" /> jordium-gantt-vue3
 
+<style>
+.version-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #409eff;
+  background-color: #ecf5ff;
+  border: 1px solid #d9ecff;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+</style>
+
 <p align="center">
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
     <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
@@ -200,6 +216,11 @@ npm run dev
 | `enableTaskListContextMenu` | `boolean`                                                                             | `true`  | Whether to enable TaskList (TaskRow) context menu. When `true`: uses built-in menu if `task-list-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled           |
 | `enableTaskBarContextMenu`  | `boolean`                                                                             | `true`  | Whether to enable TaskBar context menu. When `true`: uses built-in menu if `task-bar-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled                      |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
+| `locale` <sup class="version-badge">1.7.1</sup> | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | Language setting (reactive). Component's internal language will follow changes                |
+| `theme` <sup class="version-badge">1.7.1</sup> | `'light' \| 'dark'`                                                                       | `'light'` | Theme mode (reactive). Component's theme will follow changes                    |
+| `timeScale` <sup class="version-badge">1.7.1</sup> | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | Time scale (reactive). Timeline scale will follow changes                  |
+| `fullscreen` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `false` | Fullscreen state control (reactive). Component's fullscreen state will follow changes            |
+| `expandAll` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `true` | Expand/collapse all tasks (reactive). All tasks' expand state will follow changes  |
 
 #### TaskListColumn Component Props
 
@@ -534,6 +555,61 @@ const handleTaskAdded = e => {
 const handleMilestoneSaved = milestone => {
   console.log('Milestone saved:', milestone)
 }
+</script>
+```
+
+#### Example 4: External Component State Control (TimeScale, Fullscreen, Expand/Collapse, Locale, Theme)
+
+Control component state through reactive Props binding. Component state will automatically follow Props changes.
+
+```vue
+<template>
+  <div>
+    <!-- External control panel -->
+    <div class="control-panel">
+      <button @click="propsFullscreen = !propsFullscreen">Toggle Fullscreen</button>
+      <button @click="propsExpandAll = !propsExpandAll">Expand/Collapse All</button>
+      <button @click="propsLocale = 'zh-CN'">中文</button>
+      <button @click="propsLocale = 'en-US'">English</button>
+      <button @click="propsTimeScale = 'day'">Day View</button>
+      <button @click="propsTimeScale = 'week'">Week View</button>
+      <button @click="propsTimeScale = 'month'">Month View</button>
+      <button @click="propsTheme = 'light'">Light Theme</button>
+      <button @click="propsTheme = 'dark'">Dark Theme</button>
+    </div>
+
+    <!-- Gantt chart component -->
+    <div style="height: 600px;">
+      <GanttChart
+        :tasks="tasks"
+        :milestones="milestones"
+        :locale="propsLocale"
+        :theme="propsTheme"
+        :time-scale="propsTimeScale"
+        :fullscreen="propsFullscreen"
+        :expand-all="propsExpandAll"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const tasks = ref([
+  { id: 1, name: 'Task 1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
+  { id: 2, name: 'Task 2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
+])
+const milestones = ref([])
+
+// Props control variables
+const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
+const propsTheme = ref<'light' | 'dark'>('light')
+const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const propsFullscreen = ref(false)
+const propsExpandAll = ref(false)
 </script>
 ```
 
@@ -2040,6 +2116,168 @@ The component has built-in intelligent timeline range calculation logic, ensurin
 > - Different views independently optimized, auto-adjusts to best display effect when switching views
 > - Avoids issues with timeline being too narrow or having excessive whitespace
 > - Suitable for displaying at different resolutions
+
+### Expose Methods
+
+The GanttChart component exposes a series of methods through `defineExpose`, allowing parent components to directly call these methods via template references (`ref`) to control component behavior. This imperative control approach is suitable for scenarios requiring precise timing control.
+
+#### Available Expose Methods
+
+| Method | Parameters | Return Value | Description |
+| --- | --- | --- | --- |
+| `setLocale` <sup class="version-badge">1.7.1</sup> | `locale: 'zh-CN' \| 'en-US'` | `void` | Set component language |
+| `currentLocale` <sup class="version-badge">1.7.1</sup> | - | `'zh-CN' \| 'en-US'` | Get current language setting |
+| `setTheme` <sup class="version-badge">1.7.1</sup> | `mode: 'light' \| 'dark'` | `void` | Set theme mode |
+| `currentTheme` <sup class="version-badge">1.7.1</sup> | - | `'light' \| 'dark'` | Get current theme mode |
+| `setTimeScale` <sup class="version-badge">1.7.1</sup> | `scale: TimelineScale` | `void` | Set time scale (`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`) |
+| `currentScale` <sup class="version-badge">1.7.1</sup> | - | `TimelineScale` | Get current time scale |
+| `toggleFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Toggle fullscreen state |
+| `enterFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Enter fullscreen mode |
+| `exitFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Exit fullscreen mode |
+| `isFullscreen` <sup class="version-badge">1.7.1</sup> | - | `boolean` | Get current fullscreen state |
+| `toggleExpandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | Toggle expand/collapse all tasks |
+| `expandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | Expand all tasks |
+| `collapseAll` <sup class="version-badge">1.7.1</sup> | - | `void` | Collapse all tasks |
+| `isExpandAll` <sup class="version-badge">1.7.1</sup> | - | `boolean` | Get current expand all state |
+| `scrollToToday` <sup class="version-badge">1.7.1</sup> | - | `void` | Scroll to today's position |
+| `scrollToTask` <sup class="version-badge">1.7.1</sup> | `taskId: number \| string` | `void` | Scroll to specified task (task will auto-expand to visible state) |
+| `scrollToDate` <sup class="version-badge">1.7.1</sup> | `date: string \| Date` | `void` | Scroll to specified date position (format: `'YYYY-MM-DD'` or Date object) |
+
+#### Usage Example
+
+**Basic Usage: Imperative Control**
+
+```vue
+<template>
+  <div>
+    <!-- External control buttons -->
+    <div class="control-panel">
+      <button @click="handleSetLocale('zh-CN')">中文</button>
+      <button @click="handleSetLocale('en-US')">English</button>
+      <button @click="handleSetTheme('light')">Light Theme</button>
+      <button @click="handleSetTheme('dark')">Dark Theme</button>
+      <button @click="handleSetTimeScale('day')">Day View</button>
+      <button @click="handleSetTimeScale('week')">Week View</button>
+      <button @click="handleSetTimeScale('month')">Month View</button>
+      <button @click="ganttRef?.toggleFullscreen()">Toggle Fullscreen</button>
+      <button @click="ganttRef?.toggleExpandAll()">Expand/Collapse All</button>
+      <button @click="ganttRef?.scrollToToday()">Locate Today</button>
+      <button @click="handleScrollToTask">Scroll to Task 2</button>
+      <button @click="handleScrollToDate">Scroll to 2025-06-01</button>
+    </div>
+
+    <!-- Status display -->
+    <div class="status-panel">
+      <p>Current Language: {{ currentLang }}</p>
+      <p>Current Theme: {{ currentThemeMode }}</p>
+      <p>Current Scale: {{ currentTimeScale }}</p>
+      <p>Fullscreen: {{ isFullscreenMode ? 'Yes' : 'No' }}</p>
+      <p>Expand State: {{ isAllExpanded ? 'All Expanded' : 'Partially Collapsed' }}</p>
+    </div>
+
+    <!-- Gantt chart component -->
+    <div style="height: 600px;">
+      <GanttChart
+        ref="ganttRef"
+        :tasks="tasks"
+        :milestones="milestones"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { TimelineScale } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+// Component reference
+const ganttRef = ref<InstanceType<typeof GanttChart>>()
+
+// State variables
+const currentLang = ref<'zh-CN' | 'en-US'>('zh-CN')
+const currentThemeMode = ref<'light' | 'dark'>('light')
+const currentTimeScale = ref<TimelineScale>('week')
+const isFullscreenMode = ref(false)
+const isAllExpanded = ref(true)
+
+// Task data
+const tasks = ref([
+  { id: 1, name: 'Task 1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
+  { id: 2, name: 'Task 2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
+])
+const milestones = ref([])
+
+// Language control
+const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
+  ganttRef.value?.setLocale(locale)
+  currentLang.value = ganttRef.value?.currentLocale() || locale
+}
+
+// Theme control
+const handleSetTheme = (mode: 'light' | 'dark') => {
+  ganttRef.value?.setTheme(mode)
+  currentThemeMode.value = ganttRef.value?.currentTheme() || mode
+}
+
+// Time scale control
+const handleSetTimeScale = (scale: TimelineScale) => {
+  ganttRef.value?.setTimeScale(scale)
+  currentTimeScale.value = ganttRef.value?.currentScale() || scale
+}
+
+// Scroll to specified task
+const handleScrollToTask = () => {
+  ganttRef.value?.scrollToTask(2)
+}
+
+// Scroll to specified date
+const handleScrollToDate = () => {
+  ganttRef.value?.scrollToDate('2025-06-01')
+}
+</script>
+
+<style scoped>
+.control-panel {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.status-panel {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.status-panel p {
+  margin: 5px 0;
+}
+</style>
+```
+
+#### Best Practices
+
+1. **Imperative vs Reactive**
+   - Use **Expose Methods**: When you need precise control over timing, such as button clicks or specific event triggers
+   - Use **Props Binding**: When state needs to automatically update following data source, such as syncing with URL parameters
+
+2. **Getting State**
+   - Provides paired getter methods (like `currentLocale()`, `currentTheme()`)
+   - Can immediately get the latest state for verification after calling setters
+
+3. **Error Handling**
+   - Check if `ref` is mounted before calling: `ganttRef.value?.methodName()`
+   - Safer to call after `onMounted` lifecycle
+
+**Complete examples can be found in:**
+- npm-demo project: `npm-demo/src/components/GanttTest.vue`
+- npm-webpack-demo project: `npm-webpack-demo/src/App.vue`
+
+---
 
 ### Theme & Internationalization
 

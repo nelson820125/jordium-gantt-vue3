@@ -1,9 +1,237 @@
 <template>
   <div>
-    <div style="height: 600px;">
+    <!-- 工具设置面板 -->
+    <div class="tool-settings-panel">
+      <h3>🔧 External Control Demo</h3>
+
+      <!-- 当前状态显示 -->
+      <div class="status-section">
+        <div class="status-item">
+          <span class="status-label">Fullscreen:</span>
+          <span :class="['status-value', { active: fullscreenStatus }]">
+            {{ fullscreenStatus ? '✓ Yes' : '✗ No' }}
+          </span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Expand All:</span>
+          <span :class="['status-value', { active: expandStatus }]">
+            {{ expandStatus ? '✓ Yes' : '✗ No' }}
+          </span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Locale:</span>
+          <span class="status-value active">{{ currentLocaleStatus }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Time Scale:</span>
+          <span class="status-value active">{{ currentScaleStatus }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Theme:</span>
+          <span class="status-value active">{{ currentThemeStatus }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Control Mode:</span>
+          <span class="status-value active" :style="{ color: controlMode === 'props' ? '#67c23a' : '#409eff' }">
+            {{ controlMode === 'props' ? '📝 Props' : '⚡ Expose' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 控制模式切换 -->
+      <div class="control-mode-section">
+        <h4>🎛️ Control Mode</h4>
+        <div class="button-group">
+          <button
+            class="mode-button"
+            :class="{ active: controlMode === 'expose' }"
+            @click="controlMode = 'expose'"
+          >
+            ⚡ Expose Methods
+          </button>
+          <button
+            class="mode-button"
+            :class="{ active: controlMode === 'props' }"
+            @click="controlMode = 'props'"
+          >
+            📝 Props Control
+          </button>
+        </div>
+      </div>
+
+      <!-- Expose 方法控制 -->
+      <div v-show="controlMode === 'expose'" class="control-section">
+        <h4>⚡ Expose Methods Control</h4>
+
+        <div class="controls-flow">
+          <div class="control-group">
+            <label>Fullscreen:</label>
+            <button class="control-btn" @click="handleToggleFullscreen">Toggle Fullscreen</button>
+          </div>
+
+          <div class="control-group">
+            <label>Expand All:</label>
+            <button class="control-btn" @click="handleToggleExpandAll">Toggle Expand All</button>
+          </div>
+
+          <div class="control-group">
+            <label>Locale:</label>
+            <div class="button-group">
+              <button class="control-btn" @click="handleSetLocale('zh-CN')">中文</button>
+              <button class="control-btn" @click="handleSetLocale('en-US')">English</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Time Scale:</label>
+            <div class="button-group">
+              <button class="control-btn" @click="handleSetTimeScale('day')">Day</button>
+              <button class="control-btn" @click="handleSetTimeScale('week')">Week</button>
+              <button class="control-btn" @click="handleSetTimeScale('month')">Month</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Theme:</label>
+            <div class="button-group">
+              <button class="control-btn" @click="handleSetTheme('light')">☀️ Light</button>
+              <button class="control-btn" @click="handleSetTheme('dark')">🌙 Dark</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Props 控制 -->
+      <div v-show="controlMode === 'props'" class="control-section">
+        <h4>📝 Props Control</h4>
+
+        <div class="controls-flow">
+          <div class="control-group">
+            <label>Locale Prop:</label>
+            <div class="button-group">
+              <button
+                class="control-btn"
+                :class="{ primary: propsLocale === 'zh-CN' }"
+                @click="propsLocale = 'zh-CN'"
+              >
+                中文
+              </button>
+              <button
+                class="control-btn"
+                :class="{ primary: propsLocale === 'en-US' }"
+                @click="propsLocale = 'en-US'"
+              >
+                English
+              </button>
+            </div>
+            <p class="prop-info">:locale="{{ propsLocale }}"</p>
+          </div>
+
+          <div class="control-group">
+            <label>Theme Prop:</label>
+            <div class="button-group">
+              <button
+                class="control-btn"
+                :class="{ primary: propsTheme === 'light' }"
+                @click="propsTheme = 'light'"
+              >
+                ☀️ Light
+              </button>
+              <button
+                class="control-btn"
+                :class="{ primary: propsTheme === 'dark' }"
+                @click="propsTheme = 'dark'"
+              >
+                🌙 Dark
+              </button>
+            </div>
+            <p class="prop-info">:theme="{{ propsTheme }}"</p>
+          </div>
+
+          <div class="control-group">
+            <label>Time Scale Prop:</label>
+            <div class="button-group">
+              <button
+                class="control-btn"
+                :class="{ primary: propsTimeScale === 'day' }"
+                @click="propsTimeScale = 'day'"
+              >
+                Day
+              </button>
+              <button
+                class="control-btn"
+                :class="{ primary: propsTimeScale === 'week' }"
+                @click="propsTimeScale = 'week'"
+              >
+                Week
+              </button>
+              <button
+                class="control-btn"
+                :class="{ primary: propsTimeScale === 'month' }"
+                @click="propsTimeScale = 'month'"
+              >
+                Month
+              </button>
+            </div>
+            <p class="prop-info">:time-scale="{{ propsTimeScale }}"</p>
+          </div>
+
+          <div class="control-group">
+            <label>Fullscreen Prop:</label>
+            <div class="button-group">
+              <button
+                class="control-btn"
+                :class="{ primary: propsFullscreen }"
+                @click="propsFullscreen = true"
+              >
+                ✓ True
+              </button>
+              <button
+                class="control-btn"
+                :class="{ primary: !propsFullscreen }"
+                @click="propsFullscreen = false"
+              >
+                ✗ False
+              </button>
+            </div>
+            <p class="prop-info">:fullscreen="{{ propsFullscreen }}"</p>
+          </div>
+
+          <div class="control-group">
+            <label>Expand All Prop:</label>
+            <div class="button-group">
+              <button
+                class="control-btn"
+                :class="{ primary: propsExpandAll }"
+                @click="propsExpandAll = true"
+              >
+                ✓ True
+              </button>
+              <button
+                class="control-btn"
+                :class="{ primary: !propsExpandAll }"
+                @click="propsExpandAll = false"
+              >
+                ✗ False
+              </button>
+            </div>
+            <p class="prop-info">:expand-all="{{ propsExpandAll }}"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gantt Chart -->
+    <div style="height: 600px; margin-top: 20px;">
       <GanttChart
+        ref="ganttRef"
         :tasks="tasks"
         :milestones="milestones"
+        :locale="controlMode === 'props' ? propsLocale : undefined"
+        :theme="controlMode === 'props' ? propsTheme : undefined"
+        :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
+        :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
+        :expand-all="controlMode === 'props' ? propsExpandAll : undefined"
         :task-list-config="taskListConfig"
         :toolbar-config="toolbarConfig"
         :use-default-drawer="false"
@@ -88,9 +316,88 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { GanttChart, Task } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+// GanttChart ref
+const ganttRef = ref(null)
+
+// 控制模式：'expose' 使用expose方法，'props' 使用Props
+const controlMode = ref<'expose' | 'props'>('expose')
+
+// 状态变量
+const fullscreenStatus = ref(false)
+const expandStatus = ref(false)
+const currentLocaleStatus = ref<'zh-CN' | 'en-US'>('zh-CN')
+const currentScaleStatus = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const currentThemeStatus = ref<'light' | 'dark'>('light')
+
+// Props控制变量
+const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
+const propsTheme = ref<'light' | 'dark'>('light')
+const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const propsFullscreen = ref(false)
+const propsExpandAll = ref(false)
+
+// 监听 Props 变化，同步 status
+watch(propsLocale, (newLocale) => {
+  currentLocaleStatus.value = newLocale
+})
+watch(propsTheme, (newTheme) => {
+  currentThemeStatus.value = newTheme
+})
+watch(propsTimeScale, (newScale) => {
+  currentScaleStatus.value = newScale
+})
+watch(propsFullscreen, (newFullscreen) => {
+  fullscreenStatus.value = newFullscreen
+})
+watch(propsExpandAll, (newExpandAll) => {
+  expandStatus.value = newExpandAll
+})
+
+// 更新状态函数
+const updateStatus = () => {
+  if (ganttRef.value) {
+    fullscreenStatus.value = ganttRef.value.isFullscreen()
+    expandStatus.value = ganttRef.value.isExpandAll()
+    currentLocaleStatus.value = ganttRef.value.currentLocale()
+    currentScaleStatus.value = ganttRef.value.currentScale()
+    currentThemeStatus.value = ganttRef.value.currentTheme()
+  }
+}
+
+// Expose 方法处理器
+const handleToggleFullscreen = () => {
+  ganttRef.value?.toggleFullscreen()
+  updateStatus()
+  propsFullscreen.value = ganttRef.value?.isFullscreen() ?? false
+}
+
+const handleToggleExpandAll = () => {
+  ganttRef.value?.toggleExpandAll()
+  updateStatus()
+  propsExpandAll.value = ganttRef.value?.isExpandAll() ?? false
+}
+
+const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
+  ganttRef.value?.setLocale(locale)
+  currentLocaleStatus.value = locale
+  propsLocale.value = locale
+}
+
+const handleSetTimeScale = (scale: 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year') => {
+  ganttRef.value?.setTimeScale(scale)
+  updateStatus()
+  propsTimeScale.value = scale
+}
+
+const handleSetTheme = (mode: 'light' | 'dark') => {
+  ganttRef.value?.setTheme(mode)
+  updateStatus()
+  propsTheme.value = mode
+}
 
 // 定义类型接口
 interface TaskListColumnConfig {
@@ -294,6 +601,190 @@ const onTaskAdded = (res) => {
 </script>
 
 <style scoped>
+/* 工具设置面板 */
+.tool-settings-panel {
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.tool-settings-panel h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.tool-settings-panel h4 {
+  margin: 15px 0 10px 0;
+  font-size: 14px;
+  color: #606266;
+  font-weight: 600;
+}
+
+/* 状态显示区域 */
+.status-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.status-label {
+  color: #909399;
+  font-weight: 500;
+}
+
+.status-value {
+  color: #606266;
+  font-weight: 600;
+}
+
+.status-value.active {
+  color: #409eff;
+}
+
+/* 控制模式区域 */
+.control-mode-section {
+  margin-bottom: 15px;
+}
+
+.mode-button {
+  padding: 8px 20px;
+  border: 1px solid #dcdfe6;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.mode-button:hover {
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.mode-button.active {
+  background: #409eff;
+  color: white;
+  border-color: #409eff;
+}
+
+/* 控制区域 */
+.control-section {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+/* 控制项流式布局容器 */
+.controls-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.control-btn {
+  padding: 6px 16px;
+  border: 1px solid #dcdfe6;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.control-btn:hover {
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.control-btn.primary {
+  background: #67c23a;
+  color: white;
+  border-color: #67c23a;
+}
+
+.prop-info {
+  margin: 5px 0 0 0;
+  font-size: 11px;
+  color: #909399;
+  font-family: 'Courier New', monospace;
+}
+
+/* 暗色主题 */
+:global(html[data-theme='dark']) .tool-settings-panel {
+  background: #1e1e1e;
+  border-color: #3a3a3a;
+}
+
+:global(html[data-theme='dark']) .tool-settings-panel h3,
+:global(html[data-theme='dark']) .tool-settings-panel h4 {
+  color: #e0e0e0;
+}
+
+:global(html[data-theme='dark']) .status-section {
+  background: #2a2a2a;
+}
+
+:global(html[data-theme='dark']) .status-item {
+  background: #1e1e1e;
+}
+
+:global(html[data-theme='dark']) .control-section {
+  background: #2a2a2a;
+}
+
+:global(html[data-theme='dark']) .mode-button,
+:global(html[data-theme='dark']) .control-btn {
+  background: #2a2a2a;
+  border-color: #3a3a3a;
+  color: #e0e0e0;
+}
+
+:global(html[data-theme='dark']) .mode-button:hover,
+:global(html[data-theme='dark']) .control-btn:hover {
+  border-color: #409eff;
+}
+
+:global(html[data-theme='dark']) .mode-button.active {
+  background: #409eff;
+}
+
 /* 抽屉遮罩层 */
 .drawer-overlay {
   position: fixed;

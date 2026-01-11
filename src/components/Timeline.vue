@@ -2504,6 +2504,154 @@ const scrollToToday = () => {
   }, 500) // 等待滚动完成后再添加高亮
 }
 
+/**
+ * 滚动到指定日期（居中显示）
+ * @param date 日期（Date对象或日期字符串）
+ */
+const scrollToDate = (date: Date | string) => {
+  const targetDate = typeof date === 'string' ? new Date(date) : date
+  const timelineStart = timelineConfig.value.startDate
+
+  // 确保日期计算的精确性 - 使用年月日，忽略时分秒
+  const targetNormalized = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate(),
+  )
+
+  // 根据不同的时间刻度使用不同的起始日期
+  let startNormalized: Date
+  if (
+    currentTimeScale.value === TimelineScale.YEAR ||
+    currentTimeScale.value === TimelineScale.QUARTER
+  ) {
+    const yearRange = getYearTimelineRange()
+    startNormalized = new Date(
+      yearRange.startDate.getFullYear(),
+      yearRange.startDate.getMonth(),
+      yearRange.startDate.getDate(),
+    )
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    const monthRange = getMonthTimelineRange()
+    startNormalized = new Date(
+      monthRange.startDate.getFullYear(),
+      monthRange.startDate.getMonth(),
+      monthRange.startDate.getDate(),
+    )
+  } else {
+    startNormalized = new Date(
+      timelineStart.getFullYear(),
+      timelineStart.getMonth(),
+      timelineStart.getDate(),
+    )
+  }
+
+  // 计算目标日期距离时间线开始日期的天数
+  const timeDiff = targetNormalized.getTime() - startNormalized.getTime()
+  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+
+  // 计算目标日期在时间线中的像素位置（根据当前时间刻度）
+  let datePosition: number
+
+  if (currentTimeScale.value === TimelineScale.HOUR) {
+    // 小时视图：精确到小时的定位
+    const targetHour = targetDate.getHours()
+    const targetMinute = targetDate.getMinutes()
+
+    // 基础天数偏移（到目标日0点的位置）
+    const baseDayPosition = daysDiff * dayWidth.value
+
+    // 小时偏移：每小时40px
+    const hourOffset = targetHour * 40
+
+    // 分钟偏移：在当前小时内的精确位置
+    const minuteOffset = (targetMinute / 60) * 40
+
+    datePosition = baseDayPosition + hourOffset + minuteOffset
+  } else if (currentTimeScale.value === TimelineScale.QUARTER) {
+    // 季度视图：计算季度偏移
+    const targetYear = targetNormalized.getFullYear()
+    const baseYear = startNormalized.getFullYear()
+
+    const yearWidth = 240 // 每年4季度 * 60px
+    const quarterWidth = 60
+
+    // 计算年份偏移
+    const yearOffset = targetYear - baseYear
+    datePosition = yearOffset * yearWidth
+
+    // 计算季度内的偏移
+    const targetQuarter = Math.floor(targetNormalized.getMonth() / 3)
+    datePosition += targetQuarter * quarterWidth
+
+    // 计算季度内的天数偏移（季度内的细微定位）
+    const quarterStartMonth = targetQuarter * 3
+    const quarterStartDate = new Date(targetYear, quarterStartMonth, 1)
+    const daysIntoQuarter = Math.floor(
+      (targetNormalized.getTime() - quarterStartDate.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    const avgDaysInQuarter = 91 // 平均每季度91天
+    datePosition += (daysIntoQuarter / avgDaysInQuarter) * quarterWidth
+  } else if (currentTimeScale.value === TimelineScale.YEAR) {
+    // 年视图：计算年内偏移
+    const targetYear = targetNormalized.getFullYear()
+    const baseYear = startNormalized.getFullYear()
+
+    const yearWidth = 360 // 每年360px
+
+    // 计算年份偏移
+    const yearOffset = targetYear - baseYear
+    datePosition = yearOffset * yearWidth
+
+    // 计算年内的天数偏移
+    const yearStartDate = new Date(targetYear, 0, 1)
+    const daysIntoYear = Math.floor(
+      (targetNormalized.getTime() - yearStartDate.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    const daysInYear = 365 // 不考虑闰年的简化处理
+    datePosition += (daysIntoYear / daysInYear) * yearWidth
+  } else if (currentTimeScale.value === TimelineScale.MONTH) {
+    // 月视图：需要累计每个月的实际宽度
+    const targetYear = targetNormalized.getFullYear()
+    const targetMonth = targetNormalized.getMonth()
+    const baseYear = startNormalized.getFullYear()
+    const baseMonth = startNormalized.getMonth()
+
+    const monthWidth = 60 // 每月60px
+
+    // 计算跨越的月数
+    const monthsDiff = (targetYear - baseYear) * 12 + (targetMonth - baseMonth)
+    datePosition = monthsDiff * monthWidth
+
+    // 计算月内的天数偏移
+    const targetDay = targetNormalized.getDate()
+    const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+    datePosition += (targetDay / daysInMonth) * monthWidth
+  } else if (currentTimeScale.value === TimelineScale.WEEK) {
+    // 周视图：每周60px
+    const weekWidth = 60
+    datePosition = (daysDiff / 7) * weekWidth
+  } else {
+    // 日视图：每天30px
+    datePosition = daysDiff * dayWidth.value
+  }
+
+  // 使用缓存的容器元素
+  const timeline = timelineContainerElement.value
+  if (!timeline) return
+
+  const containerWidth = timeline.clientWidth
+
+  // 计算居中滚动位置
+  const centeredScrollPosition = datePosition - containerWidth / 2
+
+  // 滚动到指定位置，确保目标日期在中间
+  timeline.scrollTo({
+    left: Math.max(0, centeredScrollPosition),
+    behavior: 'smooth',
+  })
+}
+
 // 更新任务
 const updateTask = (updatedTask: Task) => {
   // 不直接修改props数据，而是通过事件通知父组件
@@ -3366,6 +3514,7 @@ defineExpose({
   scrollToTasks,
   scrollToToday,
   scrollToTodayCenter,
+  scrollToDate,
   // 时间线配置
   timelineConfig,
   // 时间刻度更新
