@@ -24,5 +24,92 @@
       "story": "Story [{name}]",
       "task": "Task [{name}]"
     }
+  },
+  "toolSettings": {
+    "title": "Tool Settings",
+    "currentStatus": {
+      "title": "Current Status",
+      "fullscreen": "Fullscreen",
+      "expandAll": "Expand All",
+      "locale": "Locale",
+      "timeScale": "Time Scale",
+      "theme": "Theme",
+      "controlMode": "Control Mode",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expanded": "Expanded",
+      "collapsed": "Collapsed"
+    },
+    "controlMode": {
+      "title": "Control Mode",
+      "expose": "Expose Methods",
+      "props": "Props Control",
+      "exposeHint": "Call component methods via ref.value.method()",
+      "propsHint": "Control component state by modifying Props"
+    },
+    "exposeMethods": {
+      "sectionTitle": "Expose Methods Control",
+      "fullscreen": {
+        "title": "Fullscreen",
+        "enter": "Enter",
+        "exit": "Exit",
+        "toggle": "Toggle"
+      },
+      "expand": {
+        "title": "Expand",
+        "all": "All",
+        "none": "None",
+        "toggle": "Toggle"
+      },
+      "timeScale": {
+        "title": "Scale",
+        "hour": "Hour",
+        "day": "Day",
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter",
+        "year": "Year",
+        "zoomIn": "Zoom In",
+        "zoomOut": "Zoom Out"
+      },
+      "locale": {
+        "title": "Locale",
+        "zhCN": "中文",
+        "enUS": "EN"
+      },
+      "theme": {
+        "title": "Theme",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "navigation": {
+        "title": "Nav",
+        "today": "Today",
+        "taskIdPlaceholder": "Task ID",
+        "go": "Go"
+      }
+    },
+    "propsControl": {
+      "sectionTitle": "Props Control",
+      "locale": {
+        "title": "Locale Prop"
+      },
+      "theme": {
+        "title": "Theme Prop"
+      },
+      "timeScale": {
+        "title": "TimeScale Prop"
+      },
+      "fullscreen": {
+        "title": "Fullscreen Prop",
+        "true": "True",
+        "false": "False"
+      },
+      "expandAll": {
+        "title": "ExpandAll Prop",
+        "true": "True",
+        "false": "False"
+      }
+    }
   }
 }

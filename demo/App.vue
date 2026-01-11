@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 // GanttChart 和 TaskListColumn 已经通过 app.use(JordiumGantt) 全局注册，无需导入
 // import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
@@ -21,6 +21,12 @@ import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
 const { locale: demoLocale, messages: demoMessages, setLocale: setDemoLocale, formatMessage, getTaskTypeName, getParentName } = useDemoLocale()
+
+// Tool Settings 多语言
+const ts = computed(() => demoMessages.value.toolSettings || {})
+
+// GanttChart ref
+const gantt = ref<InstanceType<typeof import('../src/components/GanttChart.vue').default> | null>(null)
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
@@ -256,6 +262,56 @@ const isTaskListConfigCollapsed = ref(true)
 // TaskBar 配置区域折叠状态（默认收起）
 const isTaskBarConfigCollapsed = ref(true)
 
+// Tool 设置区域折叠状态（默认展开用于演示）
+const isToolSettingsCollapsed = ref(false)
+
+// Tool 设置状态变量
+const fullscreenStatus = ref(false)
+const expandStatus = ref(false)
+const currentLocaleStatus = ref('zh-CN')
+const currentScaleStatus = ref('week')
+const currentThemeStatus = ref('light')
+const scrollToTaskId = ref('')
+const scrollToDateValue = ref('')
+
+// 控制模式：'expose' 使用expose方法，'props' 使用Props
+const controlMode = ref<'expose' | 'props'>('expose')
+
+// Props控制变量
+const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
+const propsTheme = ref<'light' | 'dark'>('light')
+const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const propsFullscreen = ref(false)
+const propsExpandAll = ref(false)
+
+// 监听 propsLocale 变化，同步更新 demo 的 locale 状态和 status
+watch(propsLocale, (newLocale) => {
+  // 当通过 Props 控制语言时，同步更新 demo 自身的语言设置
+  setDemoLocale(newLocale)
+  // 同步 status 状态
+  currentLocaleStatus.value = newLocale
+})
+
+// 监听 propsTheme 变化，同步 status
+watch(propsTheme, (newTheme) => {
+  currentThemeStatus.value = newTheme
+})
+
+// 监听 propsTimeScale 变化，同步 status
+watch(propsTimeScale, (newScale) => {
+  currentScaleStatus.value = newScale
+})
+
+// 监听 propsFullscreen 变化，同步 status
+watch(propsFullscreen, (newFullscreen) => {
+  fullscreenStatus.value = newFullscreen
+})
+
+// 监听 propsExpandAll 变化，同步 status
+watch(propsExpandAll, (newExpandAll) => {
+  expandStatus.value = newExpandAll
+})
+
 // 切换配置面板折叠状态
 const toggleConfigPanel = () => {
   isConfigPanelCollapsed.value = !isConfigPanelCollapsed.value
@@ -273,6 +329,124 @@ const toggleTaskListConfig = () => {
 // 切换 TaskBar 配置区域
 const toggleTaskBarConfig = () => {
   isTaskBarConfigCollapsed.value = !isTaskBarConfigCollapsed.value
+}
+
+// 切换 Tool 设置区域
+const toggleToolSettings = () => {
+  isToolSettingsCollapsed.value = !isToolSettingsCollapsed.value
+}
+
+// Tool 设置控制函数
+const updateStatus = () => {
+  if (gantt.value) {
+    fullscreenStatus.value = gantt.value.isFullscreen()
+    expandStatus.value = gantt.value.isExpandAll()
+    currentLocaleStatus.value = gantt.value.currentLocale()
+    currentScaleStatus.value = gantt.value.currentScale()
+    currentThemeStatus.value = gantt.value.currentTheme()
+  }
+}
+
+const handleEnterFullscreen = () => {
+  gantt.value?.enterFullscreen()
+  updateStatus()
+  // 同步 Props 控制变量
+  propsFullscreen.value = true
+}
+
+const handleExitFullscreen = () => {
+  gantt.value?.exitFullscreen()
+  updateStatus()
+  // 同步 Props 控制变量
+  propsFullscreen.value = false
+}
+
+const handleToggleFullscreen = () => {
+  gantt.value?.toggleFullscreen()
+  updateStatus()
+  // 同步 Props 控制变量
+  propsFullscreen.value = gantt.value?.isFullscreen() ?? false
+}
+
+const handleExpandAll = () => {
+  gantt.value?.expandAll()
+  updateStatus()
+  // 同步 Props 控制变量
+  propsExpandAll.value = true
+}
+
+const handleCollapseAll = () => {
+  gantt.value?.collapseAll()
+  updateStatus()
+  // 同步 Props 控制变量
+  propsExpandAll.value = false
+}
+
+const handleToggleExpandAll = () => {
+  gantt.value?.toggleExpandAll()
+  updateStatus()
+  // 同步 Props 控制变量
+  propsExpandAll.value = gantt.value?.isExpandAll() ?? false
+}
+
+const handleScrollToToday = () => {
+  gantt.value?.scrollToToday()
+  showMessage('已滚动到今天', 'success')
+}
+
+const handleScrollToTask = () => {
+  if (scrollToTaskId.value.trim()) {
+    gantt.value?.scrollToTask(scrollToTaskId.value)
+    showMessage(`已滚动到任务: ${scrollToTaskId.value}`, 'success')
+  } else {
+    showMessage('请输入任务ID', 'warning')
+  }
+}
+
+const handleScrollToDate = () => {
+  if (scrollToDateValue.value.trim()) {
+    gantt.value?.scrollToDate(scrollToDateValue.value)
+    showMessage(`已滚动到日期: ${scrollToDateValue.value}`, 'success')
+  } else {
+    showMessage('请输入日期 (YYYY-MM-DD)', 'warning')
+  }
+}
+
+const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
+  // 切换语言
+  setDemoLocale(locale)
+  gantt.value?.setLocale(locale)
+  currentLocaleStatus.value = locale
+  // 同步 Props 控制变量
+  propsLocale.value = locale
+  const languageText = locale === 'zh-CN' ? '中文' : 'English'
+  showMessage(`语言已切换为: ${languageText}`, 'info')
+}
+
+const handleSetTimeScale = (scale: 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year') => {
+  gantt.value?.setTimeScale(scale)
+  updateStatus()
+  // 同步 Props 控制变量
+  propsTimeScale.value = scale
+}
+
+const handleSetTheme = (mode: 'light' | 'dark') => {
+  gantt.value?.setTheme(mode)
+  updateStatus()
+  // 同步 Props 控制变量
+  propsTheme.value = mode
+  const themeText = mode === 'dark' ? 'Dark' : 'Light'
+  showMessage(`Theme switched to: ${themeText}`, 'info')
+}
+
+const handleZoomIn = () => {
+  gantt.value?.zoomIn()
+  updateStatus()
+}
+
+const handleZoomOut = () => {
+  gantt.value?.zoomOut()
+  updateStatus()
 }
 
 // Task Click Dialog 状态管理
@@ -588,6 +762,10 @@ function handleMilestoneDragEnd(newMilestone) {
 
 onMounted(() => {
   switchDataSource(currentDataSource.value, { silent: true, force: true })
+  // 初始化Tool设置状态
+  nextTick(() => {
+    updateStatus()
+  })
 })
 
 // 清理被删除任务的predecessor依赖关系
@@ -1217,14 +1395,422 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               </div>
             </transition>
           </div>
+
+          <!-- Tool 设置区域 -->
+          <div class="config-section">
+            <div class="section-header" @click="toggleToolSettings">
+              <div class="section-header-title">
+                <svg
+                  class="section-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                {{ ts.title || 'Tool 设置' }} / External Control API
+              </div>
+              <button
+                class="section-collapse-button"
+                :class="{ collapsed: isToolSettingsCollapsed }"
+              >
+                <svg
+                  class="collapse-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Tool 设置内容 -->
+            <transition name="section-content">
+              <div v-show="!isToolSettingsCollapsed" class="section-content">
+                <!-- 状态显示面板 -->
+                <div class="subsection">
+                  <h5 class="subsection-title">📊 {{ ts.currentStatus?.title || 'Current Status' }}</h5>
+                  <div class="status-panel">
+                    <div class="status-item">
+                      <span class="status-label">{{ ts.currentStatus?.fullscreen || 'Fullscreen' }}:</span>
+                      <span class="status-value" :class="{ active: fullscreenStatus }">
+                        {{ fullscreenStatus ? `✅ ${ts.currentStatus?.active || 'Active'}` : `❌ ${ts.currentStatus?.inactive || 'Inactive'}` }}
+                      </span>
+                    </div>
+                    <div class="status-item">
+                      <span class="status-label">{{ ts.currentStatus?.expandAll || 'Expand All' }}:</span>
+                      <span class="status-value" :class="{ active: expandStatus }">
+                        {{ expandStatus ? `✅ ${ts.currentStatus?.expanded || 'Expanded'}` : `❌ ${ts.currentStatus?.collapsed || 'Collapsed'}` }}
+                      </span>
+                    </div>
+                    <div class="status-item">
+                      <span class="status-label">{{ ts.currentStatus?.locale || 'Locale' }}:</span>
+                      <span class="status-value active">{{ currentLocaleStatus }}</span>
+                    </div>
+                    <div class="status-item">
+                      <span class="status-label">{{ ts.currentStatus?.timeScale || 'TimeScale' }}:</span>
+                      <span class="status-value active">{{ currentScaleStatus }}</span>
+                    </div>
+                    <div class="status-item">
+                      <span class="status-label">{{ ts.currentStatus?.theme || 'Theme' }}:</span>
+                      <span class="status-value active">{{ currentThemeStatus }}</span>
+                    </div>
+                    <div class="status-item">
+                      <span class="status-label">{{ ts.currentStatus?.controlMode || 'Control Mode' }}:</span>
+                      <span class="status-value active" :style="{ color: controlMode === 'props' ? '#67c23a' : '#409eff' }">{{ controlMode === 'props' ? '📝 Props' : '⚡ Expose' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 控制模式切换 -->
+                <div class="subsection">
+                  <h5 class="subsection-title">🎛️ {{ ts.controlMode?.title || 'Control Mode' }}</h5>
+                  <div class="control-mode-switch">
+                    <button
+                      class="mode-button"
+                      :class="{ active: controlMode === 'expose' }"
+                      @click="controlMode = 'expose'"
+                    >
+                      ⚡ {{ ts.controlMode?.expose || 'Expose Methods' }}
+                    </button>
+                    <button
+                      class="mode-button"
+                      :class="{ active: controlMode === 'props' }"
+                      @click="controlMode = 'props'"
+                    >
+                      📝 {{ ts.controlMode?.props || 'Props Control' }}
+                    </button>
+                  </div>
+                  <p class="control-mode-hint">
+                    {{ controlMode === 'expose' ? (ts.controlMode?.exposeHint || '通过 ref.value.method() 调用组件方法') : (ts.controlMode?.propsHint || '通过修改 Props 控制组件状态') }}
+                  </p>
+                </div>
+
+                <!-- Expose Methods 控制区域 -->
+                <div v-show="controlMode === 'expose'" class="subsection">
+                  <h4 class="section-subtitle">⚡ {{ ts.exposeMethods?.sectionTitle || 'Expose 方法控制' }}</h4>
+                  <div class="tool-control-flow">
+                    <!-- Fullscreen Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🖥️ {{ ts.exposeMethods?.fullscreen?.title || 'Fullscreen' }}</h5>
+                      <div class="tool-button-group">
+                        <button class="tool-button" @click="handleEnterFullscreen">
+                          {{ ts.exposeMethods?.fullscreen?.enter || 'Enter' }}
+                        </button>
+                        <button class="tool-button" @click="handleExitFullscreen">
+                          {{ ts.exposeMethods?.fullscreen?.exit || 'Exit' }}
+                        </button>
+                        <button class="tool-button primary" @click="handleToggleFullscreen">
+                          {{ ts.exposeMethods?.fullscreen?.toggle || 'Toggle' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- Expand/Collapse Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📂 {{ ts.exposeMethods?.expand?.title || 'Expand' }}</h5>
+                      <div class="tool-button-group">
+                        <button class="tool-button" @click="handleExpandAll">{{ ts.exposeMethods?.expand?.all || 'All' }}</button>
+                        <button class="tool-button" @click="handleCollapseAll">{{ ts.exposeMethods?.expand?.none || 'None' }}</button>
+                        <button class="tool-button primary" @click="handleToggleExpandAll">
+                          {{ ts.exposeMethods?.expand?.toggle || 'Toggle' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- TimeScale Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📏 {{ ts.exposeMethods?.timeScale?.title || 'Scale' }}</h5>
+                      <div class="tool-button-group">
+                        <button class="tool-button" @click="handleSetTimeScale('hour')">
+                          {{ ts.exposeMethods?.timeScale?.hour || 'Hour' }}
+                        </button>
+                        <button class="tool-button" @click="handleSetTimeScale('day')">
+                          {{ ts.exposeMethods?.timeScale?.day || 'Day' }}
+                        </button>
+                        <button class="tool-button" @click="handleSetTimeScale('week')">
+                          {{ ts.exposeMethods?.timeScale?.week || 'Week' }}
+                        </button>
+                        <button class="tool-button" @click="handleSetTimeScale('month')">
+                          {{ ts.exposeMethods?.timeScale?.month || 'Month' }}
+                        </button>
+                        <button class="tool-button" @click="handleSetTimeScale('quarter')">
+                          {{ ts.exposeMethods?.timeScale?.quarter || 'Quarter' }}
+                        </button>
+                        <button class="tool-button" @click="handleSetTimeScale('year')">
+                          {{ ts.exposeMethods?.timeScale?.year || 'Year' }}
+                        </button>
+                        <span style="margin: 0 4px; color: var(--gantt-border-color, #dcdfe6);">|</span>
+                        <button class="tool-button primary" @click="handleZoomIn">➕</button>
+                        <button class="tool-button primary" @click="handleZoomOut">➖</button>
+                      </div>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- Locale Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🌐 {{ ts.exposeMethods?.locale?.title || 'Locale' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: currentLocaleStatus === 'zh-CN' }"
+                          @click="handleSetLocale('zh-CN')"
+                        >
+                          {{ ts.exposeMethods?.locale?.zhCN || '中文' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: currentLocaleStatus === 'en-US' }"
+                          @click="handleSetLocale('en-US')"
+                        >
+                          {{ ts.exposeMethods?.locale?.enUS || 'EN' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- Theme Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🎨 {{ ts.exposeMethods?.theme?.title || 'Theme' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: currentThemeStatus === 'light' }"
+                          @click="handleSetTheme('light')"
+                        >
+                          ☀️ {{ ts.exposeMethods?.theme?.light || 'Light' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: currentThemeStatus === 'dark' }"
+                          @click="handleSetTheme('dark')"
+                        >
+                          🌙 {{ ts.exposeMethods?.theme?.dark || 'Dark' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- Navigation Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🧭 {{ ts.exposeMethods?.navigation?.title || 'Nav' }}</h5>
+                      <div class="tool-button-group">
+                        <button class="tool-button primary" @click="handleScrollToToday">
+                          📅
+                        </button>
+                        <input
+                          v-model="scrollToTaskId"
+                          type="text"
+                          class="tool-input"
+                          :placeholder="ts.exposeMethods?.navigation?.taskIdPlaceholder || 'Task ID'"
+                        />
+                        <button class="tool-button" @click="handleScrollToTask">{{ ts.exposeMethods?.navigation?.go || 'Go' }}</button>
+                        <input
+                          v-model="scrollToDateValue"
+                          type="date"
+                          class="tool-input"
+                        />
+                        <button class="tool-button" @click="handleScrollToDate">{{ ts.exposeMethods?.navigation?.go || 'Go' }}</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Props 控制区域 -->
+                <div v-show="controlMode === 'props'" class="subsection">
+                  <h4 class="section-subtitle">📝 {{ ts.propsControl?.sectionTitle || 'Props 属性控制' }}</h4>
+                  <div class="tool-control-flow">
+                    <!-- Locale Props Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🌐 {{ ts.propsControl?.locale?.title || 'Locale Prop' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsLocale === 'zh-CN' }"
+                          @click="propsLocale = 'zh-CN'"
+                        >
+                          {{ ts.exposeMethods?.locale?.zhCN || '中文' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsLocale === 'en-US' }"
+                          @click="propsLocale = 'en-US'"
+                        >
+                          {{ ts.exposeMethods?.locale?.enUS || 'EN' }}
+                        </button>
+                      </div>
+                      <p class="prop-info">:locale="{{ propsLocale }}"</p>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- Theme Props Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🎨 {{ ts.propsControl?.theme?.title || 'Theme Prop' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTheme === 'light' }"
+                          @click="propsTheme = 'light'"
+                        >
+                          ☀️ {{ ts.exposeMethods?.theme?.light || 'Light' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTheme === 'dark' }"
+                          @click="propsTheme = 'dark'"
+                        >
+                          🌙 {{ ts.exposeMethods?.theme?.dark || 'Dark' }}
+                        </button>
+                      </div>
+                      <p class="prop-info">:theme="{{ propsTheme }}"</p>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- TimeScale Props Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📅 {{ ts.propsControl?.timeScale?.title || 'TimeScale Prop' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTimeScale === 'hour' }"
+                          @click="propsTimeScale = 'hour'"
+                        >
+                          {{ ts.exposeMethods?.timeScale?.hour || 'Hour' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTimeScale === 'day' }"
+                          @click="propsTimeScale = 'day'"
+                        >
+                          {{ ts.exposeMethods?.timeScale?.day || 'Day' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTimeScale === 'week' }"
+                          @click="propsTimeScale = 'week'"
+                        >
+                          {{ ts.exposeMethods?.timeScale?.week || 'Week' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTimeScale === 'month' }"
+                          @click="propsTimeScale = 'month'"
+                        >
+                          {{ ts.exposeMethods?.timeScale?.month || 'Month' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTimeScale === 'quarter' }"
+                          @click="propsTimeScale = 'quarter'"
+                        >
+                          {{ ts.exposeMethods?.timeScale?.quarter || 'Quarter' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsTimeScale === 'year' }"
+                          @click="propsTimeScale = 'year'"
+                        >
+                          {{ ts.exposeMethods?.timeScale?.year || 'Year' }}
+                        </button>
+                      </div>
+                      <p class="prop-info">:time-scale="{{ propsTimeScale }}"</p>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- Fullscreen Props Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">🖥️ {{ ts.propsControl?.fullscreen?.title || 'Fullscreen Prop' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsFullscreen === true }"
+                          @click="propsFullscreen = true"
+                        >
+                          ✅ {{ ts.propsControl?.fullscreen?.true || 'True' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsFullscreen === false }"
+                          @click="propsFullscreen = false"
+                        >
+                          ❌ {{ ts.propsControl?.fullscreen?.false || 'False' }}
+                        </button>
+                      </div>
+                      <p class="prop-info">:fullscreen="{{ propsFullscreen }}"</p>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- ExpandAll Props Control -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📂 {{ ts.propsControl?.expandAll?.title || 'ExpandAll Prop' }}</h5>
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsExpandAll === true }"
+                          @click="propsExpandAll = true"
+                        >
+                          ✅ {{ ts.propsControl?.expandAll?.true || 'True' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: propsExpandAll === false }"
+                          @click="propsExpandAll = false"
+                        >
+                          ❌ {{ ts.propsControl?.expandAll?.false || 'False' }}
+                        </button>
+                      </div>
+                      <p class="prop-info">:expand-all="{{ propsExpandAll }}"</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
         </div>
       </transition>
     </div>
 
     <div class="gantt-wrapper">
       <GanttChart
+        ref="gantt"
         :tasks="tasks"
         :milestones="milestones"
+        :locale="controlMode === 'props' ? propsLocale : undefined"
+        :theme="controlMode === 'props' ? propsTheme : undefined"
+        :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
+        :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
+        :expand-all="controlMode === 'props' ? propsExpandAll : undefined"
         :toolbar-config="toolbarConfig"
         :task-list-config="taskListConfig"
         :task-bar-config="taskBarConfig"
@@ -1466,8 +2052,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 <style scoped>
 .app-container {
   width: 100%;
-  height: 100%;
-  padding: 10px;
+  min-width: 1200px;
+  min-height: 100vh;
+  padding: 0;
   box-sizing: border-box;
   background: var(--gantt-bg-secondary, #f0f2f5);
   display: flex;
@@ -1479,7 +2066,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   border: 1px solid var(--gantt-border-color, #e4e7ed);
   border-radius: 8px;
   padding: 16px;
-  margin-bottom: 10px;
+  margin: 0 10px 20px 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -1579,10 +2166,10 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #e4e7ed);
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin: 0 10px 20px 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .config-panel:hover {
@@ -1602,6 +2189,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   user-select: none;
   transition: background-color 0.2s ease;
   border-bottom: 1px solid var(--gantt-border-color, #e4e7ed);
+  gap: 12px;
 }
 
 .config-panel.collapsed .config-header {
@@ -1614,7 +2202,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
 .config-content {
   padding: 0 16px 16px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .collapse-button {
@@ -1670,6 +2258,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .config-icon {
@@ -1707,6 +2298,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   font-size: 14px;
   font-weight: 600;
   color: var(--gantt-text-primary, #333);
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .section-collapse-button {
@@ -1769,7 +2363,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
 /* 子区域样式 */
 .subsection {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding-left: 12px;
   border-left: 2px solid var(--gantt-border-color, #e4e7ed);
 }
@@ -1778,10 +2372,24 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   font-size: 13px;
   font-weight: 600;
   color: var(--gantt-text-secondary, #666);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.section-subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gantt-primary-color, #409eff);
+  margin: 12px 0;
+  padding: 8px 12px;
+  background: var(--gantt-primary-light, #ecf5ff);
+  border-radius: 6px;
+  border-left: 4px solid var(--gantt-primary-color, #409eff);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .subsection-title::before {
@@ -2009,7 +2617,12 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 .page-title {
-  margin: 20px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--gantt-bg-secondary, #f0f2f5);
+  margin: 0;
+  padding: 20px 10px;
   font-size: 1.8rem;
   font-weight: 600;
   color: var(--gantt-text-primary, #333);
@@ -2017,6 +2630,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .title-left {
@@ -2202,8 +2816,8 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 .gantt-wrapper {
-  flex: 1 1 0%;
-  min-height: 0;
+  max-height: 60vh;
+  margin: 0 10px 20px 10px;
   min-width: 0;
   display: flex;
   align-items: flex-start;
@@ -2231,6 +2845,12 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 :global(html[data-theme='dark']) body {
   background: #1e1e1e !important;
   color: #e5e5e5 !important;
+}
+
+/* 暗色主题下的页面标题 */
+:global(html[data-theme='dark']) .page-title {
+  background: #1e1e1e;
+  color: #e5e5e5;
 }
 
 /* 暗色主题下的配置面板样式 */
@@ -2308,6 +2928,12 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
 :global(html[data-theme='dark']) .subsection-title {
   color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .section-subtitle {
+  color: var(--gantt-primary-color, #66b3ff);
+  background: rgba(102, 179, 255, 0.15);
+  border-left-color: var(--gantt-primary-color, #66b3ff);
 }
 
 :global(html[data-theme='dark']) .subsection-title::before {
@@ -2862,6 +3488,369 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
 :global(html[data-theme='dark']) .custom-menu-divider {
   background: #444;
+}
+
+/* Tool 设置样式 */
+.status-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border-radius: 8px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-label {
+  font-size: 12px;
+  color: var(--gantt-text-secondary, #909399);
+  font-weight: 500;
+}
+
+.status-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gantt-text-primary, #303133);
+  padding: 4px 8px;
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border-radius: 4px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.status-value.active {
+  color: var(--gantt-primary-color, #409eff);
+  border-color: var(--gantt-primary-color, #409eff);
+  background: var(--gantt-primary-light, #ecf5ff);
+}
+
+/* Control Mode Switch */
+.control-mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mode-button {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 2px solid var(--gantt-border-color, #dcdfe6);
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  color: var(--gantt-text-secondary, #909399);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.mode-button:hover {
+  border-color: var(--gantt-primary-color, #409eff);
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.mode-button.active {
+  background: var(--gantt-primary-color, #409eff);
+  border-color: var(--gantt-primary-color, #409eff);
+  color: white;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.control-mode-hint {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--gantt-text-secondary, #909399);
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border-radius: 4px;
+  border-left: 3px solid var(--gantt-primary-color, #409eff);
+}
+
+.prop-info {
+  margin: 4px 0 0 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  color: var(--gantt-text-secondary, #909399);
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  border-radius: 3px;
+  border: 1px dashed var(--gantt-border-color, #e4e7ed);
+}
+
+/* Tool控制行布局 - 并排两个控制区域 */
+.tool-control-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tool-control-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-control-item .subsection-title {
+  margin-bottom: 8px;
+}
+
+/* 4个控制区域单行布局 */
+.tool-control-row-full {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.tool-control-item-quarter {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-control-item-quarter .subsection-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* 5个控制区域单行布局 */
+.tool-control-row-five {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.tool-control-item-fifth {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-control-item-fifth .subsection-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+/* 流式布局 */
+.tool-control-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.tool-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-control-group .subsection-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 分隔线 */
+.tool-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--gantt-border-color, #dcdfe6);
+  margin: 0 4px;
+  align-self: center;
+}
+
+/* 导航控制单行布局 */
+.tool-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.tool-button-group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tool-button {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  color: var(--gantt-text-primary, #606266);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tool-button:hover {
+  background: var(--gantt-background-hover, #e8f4fd);
+  border-color: var(--gantt-primary-color, #409eff);
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.tool-button.primary {
+  background: var(--gantt-primary-color, #409eff);
+  border-color: var(--gantt-primary-color, #409eff);
+  color: white;
+}
+
+.tool-button.primary:hover {
+  background: var(--gantt-primary-hover, #66b1ff);
+  border-color: var(--gantt-primary-hover, #66b1ff);
+}
+
+.tool-button.small {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.tool-button.tiny {
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.tool-button.compact {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.tool-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tool-label {
+  font-size: 12px;
+  color: var(--gantt-text-primary, #606266);
+  font-weight: 500;
+  min-width: 100px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tool-label.compact {
+  min-width: auto;
+  font-size: 11px;
+}
+
+.tool-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  background: var(--gantt-bg-secondary, #f8f9fa);
+  color: var(--gantt-text-primary, #606266);
+  transition: border-color 0.2s;
+}
+
+.tool-input.small {
+  min-width: 80px;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.tool-input.compact {
+  min-width: 80px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.tool-input.tiny {
+  min-width: 60px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.tool-input:focus {
+  outline: none;
+  border-color: var(--gantt-primary-color, #409eff);
+}
+
+.tool-input::placeholder {
+  color: var(--gantt-text-placeholder, #c0c4cc);
+}
+
+.tool-note {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--gantt-text-secondary, #909399);
+  background: var(--gantt-background-secondary, #f9fafb);
+  border-left: 3px solid var(--gantt-primary-color, #409eff);
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+/* 暗色主题支持 */
+:global(html[data-theme='dark']) .status-panel {
+  background: var(--gantt-bg-secondary, #1a202c);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .status-value {
+  background: var(--gantt-bg-secondary, #1a202c);
+  color: var(--gantt-text-primary, #e2e8f0);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .status-value.active {
+  background: rgba(64, 158, 255, 0.15);
+  border-color: var(--gantt-primary-color, #66b3ff);
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .tool-button {
+  background: var(--gantt-bg-secondary, #1a202c);
+  color: var(--gantt-text-primary, #e2e8f0);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .tool-button:hover {
+  background: var(--gantt-hover-bg, #2d3748);
+  border-color: var(--gantt-primary-color, #66b3ff);
+  color: var(--gantt-primary-color, #66b3ff);
+}
+
+:global(html[data-theme='dark']) .tool-button.primary {
+  background: var(--gantt-primary-color, #409eff);
+  border-color: var(--gantt-primary-color, #409eff);
+  color: white;
+}
+
+:global(html[data-theme='dark']) .tool-button.primary:hover {
+  background: var(--gantt-primary-hover, #66b1ff);
+  border-color: var(--gantt-primary-hover, #66b1ff);
+}
+
+:global(html[data-theme='dark']) .tool-divider {
+  background: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .tool-input {
+  background: var(--gantt-bg-primary, #2d3748);
+  color: var(--gantt-text-primary, #e2e8f0);
+  border-color: var(--gantt-border-color, #4a5568);
+}
+
+:global(html[data-theme='dark']) .tool-label {
+  color: var(--gantt-text-secondary, #a0aec0);
+}
+
+:global(html[data-theme='dark']) .tool-note {
+  background: var(--gantt-bg-secondary, #1a202c);
+  color: var(--gantt-text-secondary, #a0aec0);
+  border-left-color: var(--gantt-primary-color, #66b3ff);
 }
 </style>
 

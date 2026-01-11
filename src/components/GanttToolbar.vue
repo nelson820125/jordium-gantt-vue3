@@ -10,6 +10,10 @@ type Language = 'zh' | 'en'
 
 const props = withDefaults(defineProps<Props>(), {
   config: () => ({}),
+  timeScale: undefined,
+  theme: undefined,
+  fullscreen: undefined,
+  expandAll: undefined,
   onAddTask: undefined,
   onAddMilestone: undefined,
   onTodayLocate: undefined,
@@ -50,6 +54,10 @@ const localeMap: Record<Language, 'zh-CN' | 'en-US'> = {
 
 interface Props {
   config?: ToolbarConfig
+  timeScale?: TimelineScale
+  theme?: 'light' | 'dark'
+  fullscreen?: boolean
+  expandAll?: boolean
   // 自定义事件处理器
   onAddTask?: () => void
   onAddMilestone?: () => void
@@ -89,6 +97,45 @@ const isDarkMode = ref(getInitialTheme())
 const isFullscreen = ref(false)
 const showLanguageDropdown = ref(false)
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
+
+// 如果外部通过 Prop 传入 timeScale，则同步到本地状态
+watch(
+  () => props.timeScale,
+  (newScale) => {
+    if (newScale && newScale !== currentTimeScale.value) {
+      currentTimeScale.value = newScale
+    }
+  },
+  { immediate: true },
+)
+
+// 监听 theme prop
+watch(
+  () => props.theme,
+  (newTheme) => {
+    if (newTheme) {
+      const newMode = newTheme === 'dark'
+      if (isDarkMode.value !== newMode) {
+        isDarkMode.value = newMode
+        document.documentElement.setAttribute('data-theme', newTheme)
+      }
+    }
+  },
+  { immediate: true },
+)
+
+// 监听 fullscreen prop
+watch(
+  () => props.fullscreen,
+  (newFullscreen) => {
+    if (newFullscreen !== undefined && isFullscreen.value !== newFullscreen) {
+      isFullscreen.value = newFullscreen
+    }
+  },
+  { immediate: true },
+)
+
+// 监听 expandAll prop （注：这里不需要内部状态，只是用于 UI 显示）
 
 // 翻译函数 - 使用 useI18n 提供的 getTranslation 函数
 const t = (key: string): string => {
