@@ -21,7 +21,7 @@ export type {
   TaskListConfig,
   TaskListColumnConfig,
   TaskListColumnType,
-  ColumnFormatter
+  ColumnFormatter,
 } from './models/configs/TaskListConfig'
 export type { TaskBarConfig } from './models/configs/TaskBarConfig'
 export type { ToolbarConfig } from './models/configs/ToolbarConfig'

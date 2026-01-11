@@ -10,6 +10,18 @@ defineOptions({
   name: 'TaskListColumn',
 })
 
+withDefaults(defineProps<Props>(), {
+  align: 'left',
+})
+
+// 定义 slot
+defineSlots<{
+  // 列头部插槽
+  header?:() => any
+  // 列内容默认插槽，接收 scope 对象 { row: Task, $index: number }
+  default?: (scope: { row: any; $index: number }) => any
+}>()
+
 interface Props {
   // 列的属性名（用于访问任务数据）
   prop?: string
@@ -22,18 +34,6 @@ interface Props {
   // CSS 类名
   cssClass?: string
 }
-
-withDefaults(defineProps<Props>(), {
-  align: 'left',
-})
-
-// 定义 slot
-defineSlots<{
-  // 列头部插槽
-  header?: () => any
-  // 列内容默认插槽，接收 scope 对象 { row: Task, $index: number }
-  default?: (scope: { row: any; $index: number }) => any
-}>()
 
 // 注意：此组件不渲染任何内容，仅用于声明列配置
 // 实际渲染由 TaskList 和 TaskRow 处理

@@ -196,7 +196,6 @@ const handleCancel = () => {
 .btn-confirm:active {
   background: #3a8ee6;
 }
-
 </style>
 
 <style>

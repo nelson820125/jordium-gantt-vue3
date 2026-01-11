@@ -2130,6 +2130,8 @@ The GanttChart component exposes a series of methods through `defineExpose`, all
 | `setTheme` <sup class="version-badge">1.7.1</sup> | `mode: 'light' \| 'dark'` | `void` | Set theme mode |
 | `currentTheme` <sup class="version-badge">1.7.1</sup> | - | `'light' \| 'dark'` | Get current theme mode |
 | `setTimeScale` <sup class="version-badge">1.7.1</sup> | `scale: TimelineScale` | `void` | Set time scale (`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`) |
+| `zoomIn` <sup class="version-badge">1.7.1</sup> | - | `void` | zoom in time scale（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
+| `zoomOut` <sup class="version-badge">1.7.1</sup> | - | `void` | zoom out time scale（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
 | `currentScale` <sup class="version-badge">1.7.1</sup> | - | `TimelineScale` | Get current time scale |
 | `toggleFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Toggle fullscreen state |
 | `enterFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Enter fullscreen mode |

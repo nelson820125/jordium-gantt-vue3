@@ -36,7 +36,7 @@ export function createParentTask(overrides: Partial<Task> = {}): Task {
  */
 export function createChildTask(
   parentId: number,
-  overrides: Partial<Task> = {}
+  overrides: Partial<Task> = {},
 ): Task {
   return {
     id: 2,
@@ -200,7 +200,7 @@ export function createTaskTree(): Task[] {
 /**
  * 创建扁平任务列表
  */
-export function createFlatTaskList(count: number = 10): Task[] {
+export function createFlatTaskList(count = 10): Task[] {
   return Array.from({ length: count }, (_, index) => ({
     id: index + 1,
     name: `Task ${index + 1}`,

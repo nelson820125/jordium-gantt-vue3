@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { GanttChart, TaskListColumn, useI18n, TaskListContextMenu, TaskBarContextMenu } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
-const { t, getTranslation } = useI18n();
+const { t, getTranslation } = useI18n()
 
 // GanttChart ref
 const ganttRef = ref(null)
@@ -114,7 +114,7 @@ const tasks = ref([
     department: '管理部',
     departmentCode: 'D001',
     type: 'task',
-  }
+  },
 ])
 
 const milestones = ref([
@@ -123,8 +123,8 @@ const milestones = ref([
     name: '项目立项',
     startDate: '2025-10-29',
     type: 'milestone',
-    icon: 'diamond'
-  }
+    icon: 'diamond',
+  },
 ])
 
 const customMessages = {
@@ -139,7 +139,7 @@ const customMessages = {
     gantt: {
       planStartDate: '计划开始时间',
       //planEndDate: '计划结束时间',
-    }
+    },
   },
   'en-US': {
     department: 'Department',
@@ -152,16 +152,16 @@ const customMessages = {
     gantt: {
       planStartDate: 'Plan Start Date',
       planEndDate: 'Plan End Date',
-    }
-  }
+    },
+  },
 }
 // const tasks = ref([])
 
 // const milestones = ref([])
 
-const showAddTaskDrawer = ref(false);
-const showAddMilestoneDialog = ref(false);
-const showTodayLocate = ref(true);
+const showAddTaskDrawer = ref(false)
+const showAddMilestoneDialog = ref(false)
+const showTodayLocate = ref(true)
 
 // 定义可动态配置的列
 const availableColumns = ref<TaskListColumnConfig[]>([
@@ -186,7 +186,7 @@ const taskListConfig = {
   defaultWidth: '50%',  // 默认展开宽度50%
   minWidth: '300px',      // 最小宽度300px（默认280px）
   maxWidth: '1200px',      // 最大宽度1200px（默认1160px）
-  columns: availableColumns.value
+  columns: availableColumns.value,
 }
 
 // toolbar配置示例
@@ -201,18 +201,17 @@ const toolbarConfig: ToolbarConfig = {
   showFullscreen: true,            // 显示全屏按钮
   showTimeScale: true,             // 显示时间刻度按钮组
   timeScaleDimensions: [           // 显示所有时间刻度维度
-    'hour', 'day', 'week', 'month', 'quarter', 'year'
+    'hour', 'day', 'week', 'month', 'quarter', 'year',
   ],
   defaultTimeScale: 'week',        // 默认选中周视图
-  showExpandCollapse: false         // 显示展开/折叠按钮
+  showExpandCollapse: false,         // 显示展开/折叠按钮
 }
-
 
 const newTask = ref({
   name: '',
   startDate: '',
-  endDate: ''
-});
+  endDate: '',
+})
 
 const addTask = () => {
   tasks.value.push({
@@ -221,10 +220,10 @@ const addTask = () => {
     startDate: newTask.value.startDate,
     endDate: newTask.value.endDate,
     progress: 0,
-  });
-  newTask.value = { name: '', startDate: '', endDate: '' };
-  showAddTaskDrawer.value = false;
-};
+  })
+  newTask.value = { name: '', startDate: '', endDate: '' }
+  showAddTaskDrawer.value = false
+}
 
 const addMilestone = () => {
   milestones.value.push({
@@ -233,11 +232,11 @@ const addMilestone = () => {
     startDate: newTask.value.startDate,
     progress: 0,
     type: 'milestone',
-    icon: 'diamond'
-  });
+    icon: 'diamond',
+  })
   console.log('milestones: ', milestones.value)
-  newTask.value = { name: '', startDate: '', endDate: '' };
-  showAddMilestoneDialog.value = false;
+  newTask.value = { name: '', startDate: '', endDate: '' }
+  showAddMilestoneDialog.value = false
 }
 
 const onTaskDblclick = (task) => {
@@ -294,18 +293,18 @@ const handleTaskRowMoved = async (payload: {
 // 此回调仅用于补充业务逻辑，例如根据assignee填充assigneeName等
 const onTaskAdded = (res) => {
   // 组件已自动添加任务，这里只需要找到并更新额外字段
-  const addedTask = tasks.value.find(t => t.id === res.task.id);
+  const addedTask = tasks.value.find(t => t.id === res.task.id)
 
   if (addedTask && addedTask.assignee) {
     // 根据assignee值查找对应的label并赋值给assigneeName
-    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee);
+    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee)
     if (assigneeOption) {
-      addedTask.assigneeName = assigneeOption.label;
+      addedTask.assigneeName = assigneeOption.label
     }
   }
 
   // 不需要手动push，组件已处理
-};
+}
 
 // 自定义右键菜单操作处理
 const handleCustomMenuAction = (action: string, task: Task, onClose: () => void) => {
@@ -656,8 +655,8 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
 
     <!-- 自定义Dialog组件基于element plus -->
     <el-dialog
-      title="自定义添加里程碑组件 - Element Plus"
       v-model="showAddMilestoneDialog"
+      title="自定义添加里程碑组件 - Element Plus"
       width="400px"
       @close="newTask = { name: '', startDate: '', endDate: '' }"
     >

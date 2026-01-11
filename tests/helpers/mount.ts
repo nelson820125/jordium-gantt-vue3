@@ -8,7 +8,7 @@ import type { ComponentPublicInstance } from 'vue'
  */
 export function mountComponent<T extends ComponentPublicInstance>(
   component: any,
-  options = {}
+  options = {},
 ): VueWrapper<T> {
   return mount(component, {
     global: {
@@ -48,7 +48,7 @@ export function sleep(ms: number): Promise<void> {
 export function triggerMouseEvent(
   element: Element,
   eventType: string,
-  options: MouseEventInit = {}
+  options: MouseEventInit = {},
 ) {
   const event = new MouseEvent(eventType, {
     bubbles: true,
