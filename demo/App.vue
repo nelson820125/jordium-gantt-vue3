@@ -2066,7 +2066,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   border: 1px solid var(--gantt-border-color, #e4e7ed);
   border-radius: 8px;
   padding: 16px;
-  margin: 0 10px 20px 10px;
+  margin: 20px 10px 20px 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
