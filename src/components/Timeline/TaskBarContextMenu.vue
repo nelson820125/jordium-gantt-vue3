@@ -9,22 +9,22 @@ defineOptions({
   name: 'TaskBarContextMenu',
 })
 
-interface Props {
-  // 指定哪些任务类型显示此右键菜单
-  // 不设置时遵循现有逻辑，设置后仅对指定类型任务显示
-  taskType?: string | string[]
-}
-
 defineProps<Props>()
 
 // 定义 slot
 defineSlots<{
   // 默认插槽，接收菜单上下文对象
-  default?: (scope: {
+  default?:(scope: {
     row: any
     $index: number
   }) => any
 }>()
+
+interface Props {
+  // 指定哪些任务类型显示此右键菜单
+  // 不设置时遵循现有逻辑，设置后仅对指定类型任务显示
+  taskType?: string | string[]
+}
 
 // 注意：此组件不渲染任何内容，仅用于声明菜单配置
 // 实际渲染由 TaskBar 处理，菜单定位和显示状态由内部自动管理

@@ -56,11 +56,11 @@ defineSlots<{
   <!-- 优先级2: custom-task-content Slot (向后兼容) - 仅替换文本部分 -->
   <template v-else-if="hasContentSlot">
     <TaskRowIcon
-      :isMilestoneGroup="isMilestoneGroup"
-      :isParentTask="isParentTask"
-      :hasChildren="hasChildren"
-      :isStoryTask="isStoryTask"
-      :showIcon="showTaskIcon"
+      :is-milestone-group="isMilestoneGroup"
+      :is-parent-task="isParentTask"
+      :has-children="hasChildren"
+      :is-story-task="isStoryTask"
+      :show-icon="showTaskIcon"
     />
 
     <span
@@ -70,14 +70,14 @@ defineSlots<{
     >
       <slot name="custom-task-content" />
       <TaskRowBadges
-        :formattedTimer="formattedTimer"
-        :isTimerRunning="!!task.isTimerRunning"
-        :timerElapsedTime="task.timerElapsedTime"
-        :isOvertime="isOvertime"
-        :overdueDays="overdueDays"
-        :overtimeText="overtimeText"
-        :overdueText="overdueText"
-        :daysText="daysText"
+        :formatted-timer="formattedTimer"
+        :is-timer-running="!!task.isTimerRunning"
+        :timer-elapsed-time="task.timerElapsedTime"
+        :is-overtime="isOvertime"
+        :overdue-days="overdueDays"
+        :overtime-text="overtimeText"
+        :overdue-text="overdueText"
+        :days-text="daysText"
       />
     </span>
   </template>
@@ -85,11 +85,11 @@ defineSlots<{
   <!-- 优先级3: 默认渲染 -->
   <template v-else>
     <TaskRowIcon
-      :isMilestoneGroup="isMilestoneGroup"
-      :isParentTask="isParentTask"
-      :hasChildren="hasChildren"
-      :isStoryTask="isStoryTask"
-      :showIcon="showTaskIcon"
+      :is-milestone-group="isMilestoneGroup"
+      :is-parent-task="isParentTask"
+      :has-children="hasChildren"
+      :is-story-task="isStoryTask"
+      :show-icon="showTaskIcon"
     />
 
     <span
@@ -99,14 +99,14 @@ defineSlots<{
     >
       {{ task.name }}
       <TaskRowBadges
-        :formattedTimer="formattedTimer"
-        :isTimerRunning="!!task.isTimerRunning"
-        :timerElapsedTime="task.timerElapsedTime"
-        :isOvertime="isOvertime"
-        :overdueDays="overdueDays"
-        :overtimeText="overtimeText"
-        :overdueText="overdueText"
-        :daysText="daysText"
+        :formatted-timer="formattedTimer"
+        :is-timer-running="!!task.isTimerRunning"
+        :timer-elapsed-time="task.timerElapsedTime"
+        :is-overtime="isOvertime"
+        :overdue-days="overdueDays"
+        :overtime-text="overtimeText"
+        :overdue-text="overdueText"
+        :days-text="daysText"
       />
     </span>
   </template>

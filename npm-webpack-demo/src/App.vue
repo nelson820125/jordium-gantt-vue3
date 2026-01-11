@@ -1,3 +1,287 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { GanttChart, Task } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+// GanttChart ref
+const ganttRef = ref(null)
+
+// 控制模式：'expose' 使用expose方法，'props' 使用Props
+const controlMode = ref<'expose' | 'props'>('expose')
+
+// 状态变量
+const fullscreenStatus = ref(false)
+const expandStatus = ref(false)
+const currentLocaleStatus = ref<'zh-CN' | 'en-US'>('zh-CN')
+const currentScaleStatus = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const currentThemeStatus = ref<'light' | 'dark'>('light')
+
+// Props控制变量
+const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
+const propsTheme = ref<'light' | 'dark'>('light')
+const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
+const propsFullscreen = ref(false)
+const propsExpandAll = ref(false)
+
+// 监听 Props 变化，同步 status
+watch(propsLocale, (newLocale) => {
+  currentLocaleStatus.value = newLocale
+})
+watch(propsTheme, (newTheme) => {
+  currentThemeStatus.value = newTheme
+})
+watch(propsTimeScale, (newScale) => {
+  currentScaleStatus.value = newScale
+})
+watch(propsFullscreen, (newFullscreen) => {
+  fullscreenStatus.value = newFullscreen
+})
+watch(propsExpandAll, (newExpandAll) => {
+  expandStatus.value = newExpandAll
+})
+
+// 更新状态函数
+const updateStatus = () => {
+  if (ganttRef.value) {
+    fullscreenStatus.value = ganttRef.value.isFullscreen()
+    expandStatus.value = ganttRef.value.isExpandAll()
+    currentLocaleStatus.value = ganttRef.value.currentLocale()
+    currentScaleStatus.value = ganttRef.value.currentScale()
+    currentThemeStatus.value = ganttRef.value.currentTheme()
+  }
+}
+
+// Expose 方法处理器
+const handleToggleFullscreen = () => {
+  ganttRef.value?.toggleFullscreen()
+  updateStatus()
+  propsFullscreen.value = ganttRef.value?.isFullscreen() ?? false
+}
+
+const handleToggleExpandAll = () => {
+  ganttRef.value?.toggleExpandAll()
+  updateStatus()
+  propsExpandAll.value = ganttRef.value?.isExpandAll() ?? false
+}
+
+const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
+  ganttRef.value?.setLocale(locale)
+  currentLocaleStatus.value = locale
+  propsLocale.value = locale
+}
+
+const handleSetTimeScale = (scale: 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year') => {
+  ganttRef.value?.setTimeScale(scale)
+  updateStatus()
+  propsTimeScale.value = scale
+}
+
+const handleSetTheme = (mode: 'light' | 'dark') => {
+  ganttRef.value?.setTheme(mode)
+  updateStatus()
+  propsTheme.value = mode
+}
+
+// 定义类型接口
+interface TaskListColumnConfig {
+  key: string;
+  label: string;
+  visible: boolean;
+  width?: number;
+}
+
+interface ToolbarConfig {
+  showAddTask?: boolean;
+  showAddMilestone?: boolean;
+  showTodayLocate?: boolean;
+  showExportCsv?: boolean;
+  showExportPdf?: boolean;
+  showLanguage?: boolean;
+  showTheme?: boolean;
+  showFullscreen?: boolean;
+  showTimeScale?: boolean;
+  timeScaleDimensions?: string[];
+  defaultTimeScale?: string;
+  showExpandCollapse?: boolean;
+}
+
+const tasks = ref([
+  {
+    id: 1,
+    name: '项目启动',
+    startDate: '2025-10-30',
+    endDate: '2025-11-5',
+    progress: 100,
+    department: '管理部',
+    departmentCode: 'D001',
+    type: 'task',
+    assignee: '',
+    assigneeName: '',
+  },
+])
+
+const milestones = ref([
+  {
+    id: 101,
+    name: '项目立项',
+    startDate: '2025-10-29',
+    type: 'milestone',
+    icon: 'diamond',
+  },
+])
+
+const customMessages = {
+  'zh-CN': {
+    department: '部门',
+    departmentCode: '部门编号',
+  },
+  'en-US': {
+    department: 'Department',
+    departmentCode: 'Department Code',
+  },
+}
+// const tasks = ref([])
+
+// const milestones = ref([])
+const showAddTaskDrawer = ref(false)
+const showAddMilestoneDialog = ref(false)
+
+// 定义可动态配置的列
+const availableColumns = ref<TaskListColumnConfig[]>([
+  { key: 'startDate', label: '开始日期', visible: true },
+  { key: 'endDate', label: '结束日期', visible: true },
+  { key: 'progress', label: '进度', visible: true },
+  { key: 'department', label: '部门', visible: true, width: 120 },
+  { key: 'departmentCode', label: '部门编号', visible: true },
+  { key: 'assigneeName', label: '负责人', visible: true },
+])
+
+// 自定义负责人列表
+const assigneeOptions = ref([
+  { value: 'zhangsan', label: '张三' },
+  { value: 'lisi', label: '李四' },
+  { value: 'wangwu', label: '王五' },
+])
+
+// TaskList宽度配置示例
+const taskListConfig = {
+  defaultWidth: '50%',  // 默认展开宽度50%
+  minWidth: '300px',      // 最小宽度300px（默认280px）
+  maxWidth: '1200px',      // 最大宽度1200px（默认1160px）
+  columns: availableColumns.value,
+}
+
+// toolbar配置示例
+const toolbarConfig: ToolbarConfig = {
+  showAddTask: true,               // 显示添加任务按钮
+  showAddMilestone: true,          // 显示添加里程碑按钮
+  showTodayLocate: true,           // 显示定位到今天按钮
+  showExportCsv: true,             // 显示导出CSV按钮
+  showExportPdf: true,             // 显示导出PDF按钮
+  showLanguage: true,              // 显示语言切换按钮
+  showTheme: true,                 // 显示主题切换按钮
+  showFullscreen: true,            // 显示全屏按钮
+  showTimeScale: true,             // 显示时间刻度按钮组
+  timeScaleDimensions: [           // 显示所有时间刻度维度
+    'hour', 'day', 'week', 'month', 'quarter', 'year',
+  ],
+  defaultTimeScale: 'week',        // 默认选中周视图
+  showExpandCollapse: false,         // 显示展开/折叠按钮
+}
+
+const newTask = ref({
+  name: '',
+  startDate: '',
+  endDate: '',
+})
+
+const addTask = () => {
+  tasks.value.push({
+    id: tasks.value.length + 1,
+    name: newTask.value.name,
+    startDate: newTask.value.startDate,
+    endDate: newTask.value.endDate,
+    progress: 0,
+    department: '未分配',
+    departmentCode: 'D000',
+    assignee: '',
+    assigneeName: '',
+    type: 'task',
+  })
+  newTask.value = { name: '', startDate: '', endDate: '' }
+  showAddTaskDrawer.value = false
+}
+
+const addMilestone = () => {
+  milestones.value.push({
+    id: milestones.value.length + 101,
+    name: newTask.value.name,
+    startDate: newTask.value.startDate,
+    type: 'milestone',
+    icon: 'diamond',
+  })
+  console.log('milestones: ', milestones.value)
+  newTask.value = { name: '', startDate: '', endDate: '' }
+  showAddMilestoneDialog.value = false
+}
+
+const onTaskDblclick = (task: any) => {
+  alert(`双击任务: ${task.name}`)
+}
+const onTaskClick = (task: any) => {
+  alert(`单击任务: ${task.name}`)
+}
+const onMilestoneDblclick = (milestone: any) => {
+  alert(`双击里程碑: ${milestone.name}`)
+}
+
+// 任务行拖拽完成事件
+const handleTaskRowMoved = (payload: {
+  draggedTask: Task
+  targetTask: Task
+  position: 'after' | 'child'
+}) => {
+  const { draggedTask, targetTask, position } = payload
+
+  alert(`任务 [${draggedTask.name}] 被拖拽到任务 [${targetTask.name}] ${position === 'after' ? '之后' : '下方作为子任务'}`)
+
+  // 组件已自动更新任务的层级关系和位置
+  // position === 'after': 任务被放置在目标任务之后（同级）
+  // position === 'child': 任务被放置为目标任务的子任务（第一个子任务位置）
+
+  // 这里可以：
+  // 1. 显示确认对话框，让用户确认是否移动
+  // 2. 调用后端 API 保存新的任务层级关系
+  // 3. 更新相关的依赖关系
+
+  // 示例：调用后端 API
+  // await api.updateTaskHierarchy({
+  //   taskId: draggedTask.id,
+  //   targetTaskId: targetTask.id,
+  //   position: position
+  // })
+}
+
+// 任务添加后回调
+const onTaskAdded = (res) => {
+  const addedTask = tasks.value.find(t => t.id === res.task.id)
+  if (addedTask) {
+    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
+    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee)
+    if (assigneeOption) {
+      addedTask.assigneeName = assigneeOption.label
+    }
+  } else {
+    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
+    const assigneeOption = assigneeOptions.value.find(option => option.value === res.task.assignee)
+    if (assigneeOption) {
+      res.task.assigneeName = assigneeOption.label
+    }
+    tasks.value.push(res.task)
+  }
+}
+</script>
+
 <template>
   <div>
     <!-- 工具设置面板 -->
@@ -290,8 +574,8 @@
 
     <!-- 自定义Dialog组件基于element plus -->
     <el-dialog
-      title="自定义添加里程碑组件 - Element Plus"
       v-model="showAddMilestoneDialog"
+      title="自定义添加里程碑组件 - Element Plus"
       width="400px"
       @close="newTask = { name: '', startDate: '', endDate: '' }"
     >
@@ -314,291 +598,6 @@
     </el-dialog>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { GanttChart, Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
-
-// GanttChart ref
-const ganttRef = ref(null)
-
-// 控制模式：'expose' 使用expose方法，'props' 使用Props
-const controlMode = ref<'expose' | 'props'>('expose')
-
-// 状态变量
-const fullscreenStatus = ref(false)
-const expandStatus = ref(false)
-const currentLocaleStatus = ref<'zh-CN' | 'en-US'>('zh-CN')
-const currentScaleStatus = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
-const currentThemeStatus = ref<'light' | 'dark'>('light')
-
-// Props控制变量
-const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
-const propsTheme = ref<'light' | 'dark'>('light')
-const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
-const propsFullscreen = ref(false)
-const propsExpandAll = ref(false)
-
-// 监听 Props 变化，同步 status
-watch(propsLocale, (newLocale) => {
-  currentLocaleStatus.value = newLocale
-})
-watch(propsTheme, (newTheme) => {
-  currentThemeStatus.value = newTheme
-})
-watch(propsTimeScale, (newScale) => {
-  currentScaleStatus.value = newScale
-})
-watch(propsFullscreen, (newFullscreen) => {
-  fullscreenStatus.value = newFullscreen
-})
-watch(propsExpandAll, (newExpandAll) => {
-  expandStatus.value = newExpandAll
-})
-
-// 更新状态函数
-const updateStatus = () => {
-  if (ganttRef.value) {
-    fullscreenStatus.value = ganttRef.value.isFullscreen()
-    expandStatus.value = ganttRef.value.isExpandAll()
-    currentLocaleStatus.value = ganttRef.value.currentLocale()
-    currentScaleStatus.value = ganttRef.value.currentScale()
-    currentThemeStatus.value = ganttRef.value.currentTheme()
-  }
-}
-
-// Expose 方法处理器
-const handleToggleFullscreen = () => {
-  ganttRef.value?.toggleFullscreen()
-  updateStatus()
-  propsFullscreen.value = ganttRef.value?.isFullscreen() ?? false
-}
-
-const handleToggleExpandAll = () => {
-  ganttRef.value?.toggleExpandAll()
-  updateStatus()
-  propsExpandAll.value = ganttRef.value?.isExpandAll() ?? false
-}
-
-const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
-  ganttRef.value?.setLocale(locale)
-  currentLocaleStatus.value = locale
-  propsLocale.value = locale
-}
-
-const handleSetTimeScale = (scale: 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year') => {
-  ganttRef.value?.setTimeScale(scale)
-  updateStatus()
-  propsTimeScale.value = scale
-}
-
-const handleSetTheme = (mode: 'light' | 'dark') => {
-  ganttRef.value?.setTheme(mode)
-  updateStatus()
-  propsTheme.value = mode
-}
-
-// 定义类型接口
-interface TaskListColumnConfig {
-  key: string;
-  label: string;
-  visible: boolean;
-  width?: number;
-}
-
-interface ToolbarConfig {
-  showAddTask?: boolean;
-  showAddMilestone?: boolean;
-  showTodayLocate?: boolean;
-  showExportCsv?: boolean;
-  showExportPdf?: boolean;
-  showLanguage?: boolean;
-  showTheme?: boolean;
-  showFullscreen?: boolean;
-  showTimeScale?: boolean;
-  timeScaleDimensions?: string[];
-  defaultTimeScale?: string;
-  showExpandCollapse?: boolean;
-}
-
-const tasks = ref([
-  {
-    id: 1,
-    name: '项目启动',
-    startDate: '2025-10-30',
-    endDate: '2025-11-5',
-    progress: 100,
-    department: '管理部',
-    departmentCode: 'D001',
-    type: 'task',
-    assignee: '',
-    assigneeName: ''
-  }
-])
-
-const milestones = ref([
-  {
-    id: 101,
-    name: '项目立项',
-    startDate: '2025-10-29',
-    type: 'milestone',
-    icon: 'diamond'
-  }
-])
-
-const customMessages = {
-  'zh-CN': {
-    department: '部门',
-    departmentCode: '部门编号',
-  },
-  'en-US': {
-    department: 'Department',
-    departmentCode: 'Department Code',
-  }
-}
-// const tasks = ref([])
-
-// const milestones = ref([])
-const showAddTaskDrawer = ref(false);
-const showAddMilestoneDialog = ref(false);
-
-// 定义可动态配置的列
-const availableColumns = ref<TaskListColumnConfig[]>([
-  { key: 'startDate', label: '开始日期', visible: true },
-  { key: 'endDate', label: '结束日期', visible: true },
-  { key: 'progress', label: '进度', visible: true },
-  { key: 'department', label: '部门', visible: true, width: 120 },
-  { key: 'departmentCode', label: '部门编号', visible: true },
-  { key: 'assigneeName', label: '负责人', visible: true },
-])
-
-// 自定义负责人列表
-const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
-])
-
-// TaskList宽度配置示例
-const taskListConfig = {
-  defaultWidth: '50%',  // 默认展开宽度50%
-  minWidth: '300px',      // 最小宽度300px（默认280px）
-  maxWidth: '1200px',      // 最大宽度1200px（默认1160px）
-  columns: availableColumns.value
-}
-
-// toolbar配置示例
-const toolbarConfig: ToolbarConfig = {
-  showAddTask: true,               // 显示添加任务按钮
-  showAddMilestone: true,          // 显示添加里程碑按钮
-  showTodayLocate: true,           // 显示定位到今天按钮
-  showExportCsv: true,             // 显示导出CSV按钮
-  showExportPdf: true,             // 显示导出PDF按钮
-  showLanguage: true,              // 显示语言切换按钮
-  showTheme: true,                 // 显示主题切换按钮
-  showFullscreen: true,            // 显示全屏按钮
-  showTimeScale: true,             // 显示时间刻度按钮组
-  timeScaleDimensions: [           // 显示所有时间刻度维度
-    'hour', 'day', 'week', 'month', 'quarter', 'year'
-  ],
-  defaultTimeScale: 'week',        // 默认选中周视图
-  showExpandCollapse: false         // 显示展开/折叠按钮
-}
-
-
-const newTask = ref({
-  name: '',
-  startDate: '',
-  endDate: ''
-});
-
-const addTask = () => {
-  tasks.value.push({
-    id: tasks.value.length + 1,
-    name: newTask.value.name,
-    startDate: newTask.value.startDate,
-    endDate: newTask.value.endDate,
-    progress: 0,
-    department: '未分配',
-    departmentCode: 'D000',
-    assignee: '',
-    assigneeName: '',
-    type: 'task',
-  });
-  newTask.value = { name: '', startDate: '', endDate: '' };
-  showAddTaskDrawer.value = false;
-};
-
-const addMilestone = () => {
-  milestones.value.push({
-    id: milestones.value.length + 101,
-    name: newTask.value.name,
-    startDate: newTask.value.startDate,
-    type: 'milestone',
-    icon: 'diamond'
-  });
-  console.log('milestones: ', milestones.value)
-  newTask.value = { name: '', startDate: '', endDate: '' };
-  showAddMilestoneDialog.value = false;
-}
-
-const onTaskDblclick = (task: any) => {
-  alert(`双击任务: ${task.name}`)
-}
-const onTaskClick = (task: any) => {
-  alert(`单击任务: ${task.name}`)
-}
-const onMilestoneDblclick = (milestone: any) => {
-  alert(`双击里程碑: ${milestone.name}`)
-}
-
-// 任务行拖拽完成事件
-const handleTaskRowMoved = (payload: {
-  draggedTask: Task
-  targetTask: Task
-  position: 'after' | 'child'
-}) => {
-  const { draggedTask, targetTask, position } = payload
-
-  alert(`任务 [${draggedTask.name}] 被拖拽到任务 [${targetTask.name}] ${position === 'after' ? '之后' : '下方作为子任务'}`)
-
-  // 组件已自动更新任务的层级关系和位置
-  // position === 'after': 任务被放置在目标任务之后（同级）
-  // position === 'child': 任务被放置为目标任务的子任务（第一个子任务位置）
-
-  // 这里可以：
-  // 1. 显示确认对话框，让用户确认是否移动
-  // 2. 调用后端 API 保存新的任务层级关系
-  // 3. 更新相关的依赖关系
-
-  // 示例：调用后端 API
-  // await api.updateTaskHierarchy({
-  //   taskId: draggedTask.id,
-  //   targetTaskId: targetTask.id,
-  //   position: position
-  // })
-}
-
-// 任务添加后回调
-const onTaskAdded = (res) => {
-  const addedTask = tasks.value.find(t => t.id === res.task.id);
-  if (addedTask) {
-    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
-    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee);
-    if (assigneeOption) {
-      addedTask.assigneeName = assigneeOption.label;
-    }
-  } else {
-    // 使用addedTask.assignee去查找assigneeOptions的label进行赋值
-    const assigneeOption = assigneeOptions.value.find(option => option.value === res.task.assignee);
-    if (assigneeOption) {
-      res.task.assigneeName = assigneeOption.label;
-    }
-    tasks.value.push(res.task);
-  }
-};
-</script>
 
 <style scoped>
 /* 工具设置面板 */

@@ -2121,6 +2121,8 @@ GanttChart 组件通过 `defineExpose` 暴露了一系列方法，允许父组�
 | `setTheme` <sup class="version-badge">1.7.1</sup> | `mode: 'light' \| 'dark'` | `void` | 设置主题模式 |
 | `currentTheme` <sup class="version-badge">1.7.1</sup> | - | `'light' \| 'dark'` | 获取当前主题模式 |
 | `setTimeScale` <sup class="version-badge">1.7.1</sup> | `scale: TimelineScale` | `void` | 设置时间刻度（`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`） |
+| `zoomIn` <sup class="version-badge">1.7.1</sup> | - | `void` | 缩小时间刻度（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
+| `zoomOut` <sup class="version-badge">1.7.1</sup> | - | `void` | 放大时间刻度（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
 | `currentScale` <sup class="version-badge">1.7.1</sup> | - | `TimelineScale` | 获取当前时间刻度 |
 | `toggleFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 切换全屏状态 |
 | `enterFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 进入全屏模式 |

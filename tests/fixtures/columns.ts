@@ -4,7 +4,7 @@ import { TaskListColumnConfig } from '@/models/configs/TaskListConfig'
  * 创建基础列配置
  */
 export function createColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     key: 'name',
@@ -19,7 +19,7 @@ export function createColumn(
  * 创建名称列配置
  */
 export function createNameColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     type: 'name',
@@ -35,7 +35,7 @@ export function createNameColumn(
  * 创建前置任务列配置
  */
 export function createPredecessorColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     type: 'predecessor',
@@ -51,7 +51,7 @@ export function createPredecessorColumn(
  * 创建负责人列配置
  */
 export function createAssigneeColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     type: 'assignee',
@@ -67,7 +67,7 @@ export function createAssigneeColumn(
  * 创建开始日期列配置
  */
 export function createStartDateColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     type: 'startDate',
@@ -83,7 +83,7 @@ export function createStartDateColumn(
  * 创建结束日期列配置
  */
 export function createEndDateColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     type: 'endDate',
@@ -99,7 +99,7 @@ export function createEndDateColumn(
  * 创建进度列配置
  */
 export function createProgressColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     type: 'progress',
@@ -115,7 +115,7 @@ export function createProgressColumn(
  * 创建自定义列配置
  */
 export function createCustomColumn(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     key: 'customField',
@@ -130,7 +130,7 @@ export function createCustomColumn(
  * 创建带格式化函数的列配置
  */
 export function createColumnWithFormatter(
-  overrides: Partial<TaskListColumnConfig> = {}
+  overrides: Partial<TaskListColumnConfig> = {},
 ): TaskListColumnConfig {
   return {
     key: 'formatted',

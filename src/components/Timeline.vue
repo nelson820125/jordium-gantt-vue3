@@ -1049,7 +1049,7 @@ const hasCircularDependency = (taskId: number, targetId: number): boolean => {
 
 // 创建连接
 const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 'successor') => {
-  console.log("----> hello:", {
+  console.log('----> hello:', {
     mode,
     sourceTask,
     targetTask,
