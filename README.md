@@ -1,21 +1,5 @@
 # <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="32" style="vertical-align:middle;margin-right:8px;" /> jordium-gantt-vue3
 
-<style>
-.version-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #409eff;
-  background-color: #ecf5ff;
-  border: 1px solid #d9ecff;
-  border-radius: 3px;
-  margin-left: 4px;
-  vertical-align: middle;
-}
-</style>
-
 <p align="center">
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
     <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
@@ -214,11 +198,11 @@ npm run dev
 | `enableTaskListContextMenu` | `boolean`                                                                                 | `true`  | 是否启用 TaskList（TaskRow）右键菜单功能。为 `true` 时：未声明 `task-list-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                     |
 | `enableTaskBarContextMenu`  | `boolean`                                                                                 | `true`  | 是否启用 TaskBar 右键菜单功能。为 `true` 时：未声明 `task-bar-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                               |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
-| `locale` <sup class="version-badge">1.7.1</sup> | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | 语言设置（响应式）。设置后组件内部语言将跟随变化                |
-| `theme` <sup class="version-badge">1.7.1</sup> | `'light' \| 'dark'`                                                                       | `'light'` | 主题模式（响应式）。设置后组件主题将跟随变化                    |
-| `timeScale` <sup class="version-badge">1.7.1</sup> | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
-| `fullscreen` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `false` | 全屏状态控制（响应式）。设置后组件全屏状态将跟随变化            |
-| `expandAll` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `true` | 展开/收起所有任务（响应式）。设置后所有任务的展开状态将跟随变化  | 
+| `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | 语言设置（响应式）。设置后组件内部语言将跟随变化                |
+| `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | 主题模式（响应式）。设置后组件主题将跟随变化                    |
+| `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
+| `fullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 全屏状态控制（响应式）。设置后组件全屏状态将跟随变化            |
+| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 展开/收起所有任务（响应式）。设置后所有任务的展开状态将跟随变化  | 
 
 #### TaskListColumn 属性
 
@@ -2116,25 +2100,25 @@ GanttChart 组件通过 `defineExpose` 暴露了一系列方法，允许父组�
 
 | 方法名 | 参数 | 返回值 | 说明 |
 | --- | --- | --- | --- |
-| `setLocale` <sup class="version-badge">1.7.1</sup> | `locale: 'zh-CN' \| 'en-US'` | `void` | 设置组件语言 |
-| `currentLocale` <sup class="version-badge">1.7.1</sup> | - | `'zh-CN' \| 'en-US'` | 获取当前语言设置 |
-| `setTheme` <sup class="version-badge">1.7.1</sup> | `mode: 'light' \| 'dark'` | `void` | 设置主题模式 |
-| `currentTheme` <sup class="version-badge">1.7.1</sup> | - | `'light' \| 'dark'` | 获取当前主题模式 |
-| `setTimeScale` <sup class="version-badge">1.7.1</sup> | `scale: TimelineScale` | `void` | 设置时间刻度（`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`） |
-| `zoomIn` <sup class="version-badge">1.7.1</sup> | - | `void` | 缩小时间刻度（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
-| `zoomOut` <sup class="version-badge">1.7.1</sup> | - | `void` | 放大时间刻度（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
-| `currentScale` <sup class="version-badge">1.7.1</sup> | - | `TimelineScale` | 获取当前时间刻度 |
-| `toggleFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 切换全屏状态 |
-| `enterFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 进入全屏模式 |
-| `exitFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | 退出全屏模式 |
-| `isFullscreen` <sup class="version-badge">1.7.1</sup> | - | `boolean` | 获取当前是否处于全屏状态 |
-| `toggleExpandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | 切换展开/收起所有任务 |
-| `expandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | 展开所有任务 |
-| `collapseAll` <sup class="version-badge">1.7.1</sup> | - | `void` | 收起所有任务 |
-| `isExpandAll` <sup class="version-badge">1.7.1</sup> | - | `boolean` | 获取当前是否全部展开 |
-| `scrollToToday` <sup class="version-badge">1.7.1</sup> | - | `void` | 滚动到今天的位置 |
-| `scrollToTask` <sup class="version-badge">1.7.1</sup> | `taskId: number \| string` | `void` | 滚动到指定任务（任务会自动展开到可见状态） |
-| `scrollToDate` <sup class="version-badge">1.7.1</sup> | `date: string \| Date` | `void` | 滚动到指定日期位置（格式：`'YYYY-MM-DD'` 或 Date 对象） |
+| `setLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `locale: 'zh-CN' \| 'en-US'` | `void` | 设置组件语言 |
+| `currentLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'zh-CN' \| 'en-US'` | 获取当前语言设置 |
+| `setTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `mode: 'light' \| 'dark'` | `void` | 设置主题模式 |
+| `currentTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'light' \| 'dark'` | 获取当前主题模式 |
+| `setTimeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `scale: TimelineScale` | `void` | 设置时间刻度（`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`） |
+| `zoomIn` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 缩小时间刻度（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
+| `zoomOut` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 放大时间刻度（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
+| `currentScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `TimelineScale` | 获取当前时间刻度 |
+| `toggleFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 切换全屏状态 |
+| `enterFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 进入全屏模式 |
+| `exitFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 退出全屏模式 |
+| `isFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | 获取当前是否处于全屏状态 |
+| `toggleExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 切换展开/收起所有任务 |
+| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 展开所有任务 |
+| `collapseAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 收起所有任务 |
+| `isExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | 获取当前是否全部展开 |
+| `scrollToToday` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 滚动到今天的位置 |
+| `scrollToTask` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `taskId: number \| string` | `void` | 滚动到指定任务（任务会自动展开到可见状态） |
+| `scrollToDate` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `date: string \| Date` | `void` | 滚动到指定日期位置（格式：`'YYYY-MM-DD'` 或 Date 对象） |
 
 #### 使用示例
 

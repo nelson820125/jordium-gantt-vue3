@@ -1,21 +1,5 @@
 ﻿# <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="32" style="vertical-align:middle;margin-right:8px;" /> jordium-gantt-vue3
 
-<style>
-.version-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #409eff;
-  background-color: #ecf5ff;
-  border: 1px solid #d9ecff;
-  border-radius: 3px;
-  margin-left: 4px;
-  vertical-align: middle;
-}
-</style>
-
 <p align="center">
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
     <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
@@ -216,11 +200,11 @@ npm run dev
 | `enableTaskListContextMenu` | `boolean`                                                                             | `true`  | Whether to enable TaskList (TaskRow) context menu. When `true`: uses built-in menu if `task-list-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled           |
 | `enableTaskBarContextMenu`  | `boolean`                                                                             | `true`  | Whether to enable TaskBar context menu. When `true`: uses built-in menu if `task-bar-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled                      |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
-| `locale` <sup class="version-badge">1.7.1</sup> | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | Language setting (reactive). Component's internal language will follow changes                |
-| `theme` <sup class="version-badge">1.7.1</sup> | `'light' \| 'dark'`                                                                       | `'light'` | Theme mode (reactive). Component's theme will follow changes                    |
-| `timeScale` <sup class="version-badge">1.7.1</sup> | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | Time scale (reactive). Timeline scale will follow changes                  |
-| `fullscreen` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `false` | Fullscreen state control (reactive). Component's fullscreen state will follow changes            |
-| `expandAll` <sup class="version-badge">1.7.1</sup> | `boolean`                                                                                 | `true` | Expand/collapse all tasks (reactive). All tasks' expand state will follow changes  |
+| `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | Language setting (reactive). Component's internal language will follow changes                |
+| `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | Theme mode (reactive). Component's theme will follow changes                    |
+| `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | Time scale (reactive). Timeline scale will follow changes                  |
+| `fullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Fullscreen state control (reactive). Component's fullscreen state will follow changes            |
+| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Expand/collapse all tasks (reactive). All tasks' expand state will follow changes  |
 
 #### TaskListColumn Component Props
 
@@ -2125,25 +2109,25 @@ The GanttChart component exposes a series of methods through `defineExpose`, all
 
 | Method | Parameters | Return Value | Description |
 | --- | --- | --- | --- |
-| `setLocale` <sup class="version-badge">1.7.1</sup> | `locale: 'zh-CN' \| 'en-US'` | `void` | Set component language |
-| `currentLocale` <sup class="version-badge">1.7.1</sup> | - | `'zh-CN' \| 'en-US'` | Get current language setting |
-| `setTheme` <sup class="version-badge">1.7.1</sup> | `mode: 'light' \| 'dark'` | `void` | Set theme mode |
-| `currentTheme` <sup class="version-badge">1.7.1</sup> | - | `'light' \| 'dark'` | Get current theme mode |
-| `setTimeScale` <sup class="version-badge">1.7.1</sup> | `scale: TimelineScale` | `void` | Set time scale (`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`) |
-| `zoomIn` <sup class="version-badge">1.7.1</sup> | - | `void` | zoom in time scale（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
-| `zoomOut` <sup class="version-badge">1.7.1</sup> | - | `void` | zoom out time scale（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
-| `currentScale` <sup class="version-badge">1.7.1</sup> | - | `TimelineScale` | Get current time scale |
-| `toggleFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Toggle fullscreen state |
-| `enterFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Enter fullscreen mode |
-| `exitFullscreen` <sup class="version-badge">1.7.1</sup> | - | `void` | Exit fullscreen mode |
-| `isFullscreen` <sup class="version-badge">1.7.1</sup> | - | `boolean` | Get current fullscreen state |
-| `toggleExpandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | Toggle expand/collapse all tasks |
-| `expandAll` <sup class="version-badge">1.7.1</sup> | - | `void` | Expand all tasks |
-| `collapseAll` <sup class="version-badge">1.7.1</sup> | - | `void` | Collapse all tasks |
-| `isExpandAll` <sup class="version-badge">1.7.1</sup> | - | `boolean` | Get current expand all state |
-| `scrollToToday` <sup class="version-badge">1.7.1</sup> | - | `void` | Scroll to today's position |
-| `scrollToTask` <sup class="version-badge">1.7.1</sup> | `taskId: number \| string` | `void` | Scroll to specified task (task will auto-expand to visible state) |
-| `scrollToDate` <sup class="version-badge">1.7.1</sup> | `date: string \| Date` | `void` | Scroll to specified date position (format: `'YYYY-MM-DD'` or Date object) |
+| `setLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `locale: 'zh-CN' \| 'en-US'` | `void` | Set component language |
+| `currentLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'zh-CN' \| 'en-US'` | Get current language setting |
+| `setTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `mode: 'light' \| 'dark'` | `void` | Set theme mode |
+| `currentTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'light' \| 'dark'` | Get current theme mode |
+| `setTimeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `scale: TimelineScale` | `void` | Set time scale (`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`) |
+| `zoomIn` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | zoom in time scale（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
+| `zoomOut` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | zoom out time scale（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
+| `currentScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `TimelineScale` | Get current time scale |
+| `toggleFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle fullscreen state |
+| `enterFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Enter fullscreen mode |
+| `exitFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Exit fullscreen mode |
+| `isFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get current fullscreen state |
+| `toggleExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle expand/collapse all tasks |
+| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Expand all tasks |
+| `collapseAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Collapse all tasks |
+| `isExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get current expand all state |
+| `scrollToToday` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Scroll to today's position |
+| `scrollToTask` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `taskId: number \| string` | `void` | Scroll to specified task (task will auto-expand to visible state) |
+| `scrollToDate` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `date: string \| Date` | `void` | Scroll to specified date position (format: `'YYYY-MM-DD'` or Date object) |
 
 #### Usage Example
 
