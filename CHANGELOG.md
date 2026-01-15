@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] - 2026-01-15
+
+### Added
+- 🎉 新增：GanttChart新增属性，enableLinkAnchor用于控制Taskbar的关系线锚点
+- 🎉 Added: New property in GanttChart - enableLinkAnchor to control the relationship line anchor points of Taskbar
+
 ## [1.7.1] - 2026-01-11
 
 ### Added
