@@ -456,5 +456,15 @@
       "🎉 Added: Exposed methods in GanttChart to scroll to today/task/specified date - scrollToToday & scrollToTask & scrollToDate",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to name-hard@github for their use and suggestions</span>"
     ]
+  },
+  {
+    "version": "1.7.2",
+    "date": "2026-01-15",
+    "notes": [
+      "🎉 新增：GanttChart新增属性，enableLinkAnchor用于控制Taskbar的关系线锚点",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢 YQ6494@gitee的使用及建议</span>",
+      "🎉 Added: New property in GanttChart - enableLinkAnchor to control the relationship line anchor points of Taskbar",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to YQ6494@gitee for their use and suggestions</span>"
+    ]
   }
 ]

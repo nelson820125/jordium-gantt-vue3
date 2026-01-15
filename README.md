@@ -36,8 +36,12 @@
 </p>
 
 <p align="center">
+  <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
+    <strong>📱 Gitee在线演示</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://nelson820125.github.io/jordium-gantt-vue3/">
-    <strong>📱 在线演示</strong>
+    <strong>📱 Github在线演示</strong>
   </a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://github.com/nelson820125/jordium-gantt-vue3">
@@ -203,6 +207,7 @@ npm run dev
 | `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
 | `fullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 全屏状态控制（响应式）。设置后组件全屏状态将跟随变化            |
 | `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 展开/收起所有任务（响应式）。设置后所有任务的展开状态将跟随变化  | 
+| `enableLinkAnchor` ![v1.7.2](https://img.shields.io/badge/v1.7.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否开启Taskbar的关系线锚点，默认值: true  | 
 
 #### TaskListColumn 属性
 

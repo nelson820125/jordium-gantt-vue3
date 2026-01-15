@@ -36,8 +36,12 @@
 </p>
 
 <p align="center">
+  <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
+    <strong>📱 Gitee Live Demo</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://nelson820125.github.io/jordium-gantt-vue3/">
-    <strong>📱 Live Demo</strong>
+    <strong>📱 Github Live Demo</strong>
   </a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://github.com/nelson820125/jordium-gantt-vue3">
@@ -205,6 +209,7 @@ npm run dev
 | `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | Time scale (reactive). Timeline scale will follow changes                  |
 | `fullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Fullscreen state control (reactive). Component's fullscreen state will follow changes            |
 | `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Expand/collapse all tasks (reactive). All tasks' expand state will follow changes  |
+| `enableLinkAnchor` ![v1.7.2](https://img.shields.io/badge/v1.7.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable Link Anchor，Default: true  | 
 
 #### TaskListColumn Component Props
 

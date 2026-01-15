@@ -10,6 +10,9 @@ import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { DEFAULT_TASK_BAR_CONFIG } from '../models/configs/TaskBarConfig'
 
+// 从 GanttChart 注入 enableLinkAnchor 配置
+const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', computed(() => true))
+
 interface Props {
   task: Task
   rowHeight: number
@@ -2547,7 +2550,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     <!-- 连接线触点 - 只在非高亮模式且非父级任务时显示 -->
     <!-- 前置任务触点（左侧） -->
     <LinkAnchor
-      v-if="!isParent && !isInHighlightMode"
+      v-if="enableLinkAnchor && !isParent && !isInHighlightMode"
       type="predecessor"
       :task-id="task.id"
       :visible="isTaskBarHovered"
@@ -2561,7 +2564,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     />
     <!-- 后置任务触点（右侧） -->
     <LinkAnchor
-      v-if="!isParent && !isInHighlightMode"
+      v-if="enableLinkAnchor && !isParent && !isInHighlightMode"
       type="successor"
       :task-id="task.id"
       :visible="isTaskBarHovered"

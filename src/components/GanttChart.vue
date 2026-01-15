@@ -58,6 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
   taskListRowStyle: undefined,
   enableTaskListContextMenu: true,
   enableTaskBarContextMenu: true,
+  enableLinkAnchor: true,
   fullscreen: false,
   expandAll: true,
   locale: 'zh-CN',
@@ -104,6 +105,9 @@ provide('gantt-column-slots', slots)
 // 提供右键菜单配置给子组件
 provide('enable-task-list-context-menu', computed(() => props.enableTaskListContextMenu))
 provide('enable-task-bar-context-menu', computed(() => props.enableTaskBarContextMenu))
+
+// 提供 LinkAnchor 配置给子组件
+provide('enable-link-anchor', computed(() => props.enableLinkAnchor))
 
 // 使用声明式右键菜单 composables
 const { hasDeclarativeContextMenu: hasDeclarativeTaskListContextMenu, declarativeContextMenu: declarativeTaskListContextMenu } =
@@ -194,6 +198,9 @@ interface Props {
   // 当设置为 true 且声明了 TaskBarContextMenu 组件时，使用自定义菜单
   // 当设置为 false 时，无论是否声明组件，TaskBar 右键菜单都失效
   enableTaskBarContextMenu?: boolean
+  // 是否启用 LinkAnchor 连接触点功能（默认为 true）
+  // 当设置为 false 时，TaskBar 上不显示前置/后置任务的连接触点
+  enableLinkAnchor?: boolean
   // 全屏状态控制（响应式）
   fullscreen?: boolean
   // 展开/收起所有任务（响应式）
