@@ -59,6 +59,8 @@ const props = withDefaults(defineProps<Props>(), {
   enableTaskListContextMenu: true,
   enableTaskBarContextMenu: true,
   enableLinkAnchor: true,
+  showActualTaskbar: false,
+  enableTaskBarTooltip: true,
   fullscreen: false,
   expandAll: true,
   locale: 'zh-CN',
@@ -201,6 +203,21 @@ interface Props {
   // 是否启用 LinkAnchor 连接触点功能（默认为 true）
   // 当设置为 false 时，TaskBar 上不显示前置/后置任务的连接触点
   enableLinkAnchor?: boolean
+  // 是否启用 TaskBar 气泡提示框（默认为 true）
+  // 当设置为 false 时，TaskBar 上不显示悬停气泡提示框
+  enableTaskBarTooltip?: boolean
+  // 是否显示实际任务条（默认为 false）
+  // 当设置为 true 且任务存在 actualStartDate 时，会在计划任务条下方显示实际任务条
+  showActualTaskbar?: boolean
+  // 自定义任务状态背景色（优先级高于默认配色，低于Task.barColor）
+  // 待处理任务背景色：任务未开始且未逾期时使用
+  pendingTaskBackgroundColor?: string
+  // 逾期任务背景色：当前日期晚于任务结束日期时使用
+  delayTaskBackgroundColor?: string
+  // 已完成任务背景色：任务进度达到100%时使用
+  completeTaskBackgroundColor?: string
+  // 进行中任务背景色：任务已开始但未完成且未逾期时使用
+  ongoingTaskBackgroundColor?: string
   // 全屏状态控制（响应式）
   fullscreen?: boolean
   // 展开/收起所有任务（响应式）
@@ -1201,6 +1218,8 @@ const milestonesForTimeline = computed((): Milestone[] => {
       startDate: task.startDate, // 此时已确保非空
       endDate: task.endDate,
       assignee: task.assignee,
+      assigneeName: task.assigneeName,
+      avatar: task.avatar,
       type: task.type || 'milestone',
       icon: task.icon,
       description: task.description,
@@ -2808,6 +2827,12 @@ defineExpose({
           :working-hours="props.workingHours"
           :task-bar-config="props.taskBarConfig"
           :allow-drag-and-resize="props.allowDragAndResize"
+          :show-actual-taskbar="props.showActualTaskbar"
+          :enable-task-bar-tooltip="props.enableTaskBarTooltip"
+          :pending-task-background-color="props.pendingTaskBackgroundColor"
+          :delay-task-background-color="props.delayTaskBackgroundColor"
+          :complete-task-background-color="props.completeTaskBackgroundColor"
+          :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
           :use-default-drawer="props.useDefaultDrawer"
           :use-default-milestone-dialog="props.useDefaultMilestoneDialog"
           :on-milestone-save="handleMilestoneSave"
@@ -2861,6 +2886,10 @@ defineExpose({
       :task="taskDrawerTask"
       :is-edit="taskDrawerEditMode"
       :assignee-options="props.assigneeOptions"
+      :pending-task-background-color="props.pendingTaskBackgroundColor"
+      :delay-task-background-color="props.delayTaskBackgroundColor"
+      :complete-task-background-color="props.completeTaskBackgroundColor"
+      :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
       @submit="handleTaskDrawerSubmit"
       @close="taskDrawerVisible = false"
       @start-timer="handleStartTimer"

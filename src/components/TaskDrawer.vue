@@ -21,6 +21,10 @@ interface Props {
   isEdit?: boolean
   onDelete?: (task: Task) => void
   assigneeOptions?: AssigneeOption[]
+  pendingTaskBackgroundColor?: string
+  delayTaskBackgroundColor?: string
+  completeTaskBackgroundColor?: string
+  ongoingTaskBackgroundColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +39,10 @@ const props = withDefaults(defineProps<Props>(), {
     { value: 'zhaoliu', label: '赵六' },
     { value: 'qianqi', label: '钱七' },
   ],
+  pendingTaskBackgroundColor: '#c0c4cc',
+  delayTaskBackgroundColor: '#f56c6c',
+  completeTaskBackgroundColor: '#67c23a',
+  ongoingTaskBackgroundColor: '#409eff',
 })
 
 const emit = defineEmits<{
@@ -146,6 +154,8 @@ const formData = reactive<Task>({
   assignee: '',
   startDate: '',
   endDate: '',
+  actualStartDate: '',
+  actualEndDate: '',
   predecessor: [],
   estimatedHours: 0,
   actualHours: 0,
@@ -334,6 +344,8 @@ const errors = reactive({
   type: '',
   startDate: '',
   endDate: '',
+  actualStartDate: '',
+  actualEndDate: '',
 })
 
 // 监听 visible 属性变化
@@ -397,6 +409,8 @@ const resetForm = () => {
     assignee: '',
     startDate: '',
     endDate: '',
+    actualStartDate: '',
+    actualEndDate: '',
     predecessor: [],
     estimatedHours: 0,
     actualHours: 0,
@@ -408,6 +422,9 @@ const resetForm = () => {
     timerEndTime: undefined,
     timerElapsedTime: 0,
     children: undefined,
+    bgColor: undefined,
+    avatar: undefined,
+    barColor: undefined,
   })
 
   // 清除错误信息
@@ -434,14 +451,19 @@ const validateForm = (): boolean => {
     isValid = false
   }
   if (!formData.startDate) {
-    errors.startDate = t.value.startDateRequired
+    errors.startDate = t.value.plannedStartDateRequired
     isValid = false
   }
   if (!formData.endDate) {
-    errors.endDate = t.value.endDateRequired
+    errors.endDate = t.value.plannedEndDateRequired
     isValid = false
   } else if (formData.startDate && new Date(formData.endDate) < new Date(formData.startDate)) {
-    errors.endDate = t.value.endDateInvalid
+    errors.endDate = t.value.plannedEndDateInvalid
+    isValid = false
+  }
+  // 验证实际日期（可选字段）
+  if (formData.actualStartDate && formData.actualEndDate && new Date(formData.actualEndDate) < new Date(formData.actualStartDate)) {
+    errors.actualEndDate = t.value.actualEndDateInvalid
     isValid = false
   }
   return isValid
@@ -654,6 +676,71 @@ const handleAssigneeChanged = (event: Event) => {
     formData.assigneeName = selected.label
   }
 }
+
+// 计算任务状态
+const taskStatus = computed(() => {
+  if (!props.task) return { text: '', color: '', bgColor: '', borderColor: '' }
+
+  const task = props.task
+  const progress = task.progress || 0
+  const now = new Date()
+  const endDate = task.endDate ? new Date(task.endDate) : null
+  const startDate = task.startDate ? new Date(task.startDate) : null
+  const actualStartDate = task.actualStartDate
+
+  // 待处理：没有实际开始日期并且进度为0
+  if (!actualStartDate && progress === 0) {
+    const color = props.pendingTaskBackgroundColor
+    return {
+      text: t.value.statusPending,
+      color: color,
+      bgColor: color + '20', // 添加20%透明度
+      borderColor: color,
+    }
+  }
+
+  // 已完成
+  if (progress >= 100) {
+    const color = props.completeTaskBackgroundColor
+    return {
+      text: t.value.statusCompleted,
+      color: color,
+      bgColor: color + '20',
+      borderColor: color,
+    }
+  }
+
+  // 已逾期：当前时间已超过结束日期，但未完成
+  if (endDate && now > endDate && progress < 100) {
+    const color = props.delayTaskBackgroundColor
+    return {
+      text: t.value.statusDelayed,
+      color: color,
+      bgColor: color + '20',
+      borderColor: color,
+    }
+  }
+
+  // 进行中：当前时间在开始日期之后，且未完成，且未逾期
+  if (startDate && now >= startDate && progress < 100) {
+    const color = props.ongoingTaskBackgroundColor
+    return {
+      text: t.value.statusOngoing,
+      color: color,
+      bgColor: color + '20',
+      borderColor: color,
+    }
+  }
+
+  // 默认待处理
+  const color = props.pendingTaskBackgroundColor
+  return {
+    text: t.value.statusPending,
+    color: color,
+    bgColor: color + '20',
+    borderColor: color,
+  }
+})
 </script>
 
 <template>
@@ -763,6 +850,18 @@ const handleAssigneeChanged = (event: Event) => {
           </span>
         </div>
         <div style="flex: 1"></div>
+        <!-- Status Badge -->
+        <div
+          v-if="isEdit && props.task"
+          class="status-badge"
+          :style="{
+            backgroundColor: taskStatus.bgColor,
+            color: taskStatus.color,
+            border: `1px solid ${taskStatus.borderColor}`,
+          }"
+        >
+          {{ taskStatus.text }}
+        </div>
         <button class="drawer-close-btn" type="button" @click="handleClose">
           <svg
             class="close-icon"
@@ -844,14 +943,14 @@ const handleAssigneeChanged = (event: Event) => {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="task-start-date">
-                {{ t.startDate }} <span class="required">*</span></label
+                {{ t.plannedStartDate }} <span class="required">*</span></label
               >
               <DatePicker
                 id="task-start-date"
                 v-model="formData.startDate"
                 :type="'datetime' as any"
                 value-format="YYYY-MM-DD HH:mm"
-                :placeholder="t.startDateRequired"
+                :placeholder="t.plannedStartDateRequired"
                 :class="{ error: errors.startDate }"
               />
               <span v-if="errors.startDate" class="error-text">{{ errors.startDate }}</span>
@@ -859,17 +958,49 @@ const handleAssigneeChanged = (event: Event) => {
 
             <div class="form-group">
               <label class="form-label" for="task-end-date">
-                {{ t.endDate }} <span class="required">*</span></label
+                {{ t.plannedEndDate }} <span class="required">*</span></label
               >
               <DatePicker
                 id="task-end-date"
                 v-model="formData.endDate"
                 :type="'datetime' as any"
                 value-format="YYYY-MM-DD HH:mm"
-                :placeholder="t.endDateRequired"
+                :placeholder="t.plannedEndDateRequired"
                 :class="{ error: errors.endDate }"
               />
               <span v-if="errors.endDate" class="error-text">{{ errors.endDate }}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="task-actual-start-date">
+                {{ t.actualStartDate }}</label
+              >
+              <DatePicker
+                id="task-actual-start-date"
+                v-model="formData.actualStartDate"
+                :type="'datetime' as any"
+                value-format="YYYY-MM-DD HH:mm"
+                :placeholder="t.actualStartDate"
+                :class="{ error: errors.actualStartDate }"
+              />
+              <span v-if="errors.actualStartDate" class="error-text">{{ errors.actualStartDate }}</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="task-actual-end-date">
+                {{ t.actualEndDate }}</label
+              >
+              <DatePicker
+                id="task-actual-end-date"
+                v-model="formData.actualEndDate"
+                :type="'datetime' as any"
+                value-format="YYYY-MM-DD HH:mm"
+                :placeholder="t.actualEndDate"
+                :class="{ error: errors.actualEndDate }"
+              />
+              <span v-if="errors.actualEndDate" class="error-text">{{ errors.actualEndDate }}</span>
             </div>
           </div>
 
@@ -1068,6 +1199,15 @@ const handleAssigneeChanged = (event: Event) => {
   color: var(--gantt-text-primary, #303133);
 }
 
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: 12px;
+}
+
 .drawer-close-btn {
   background: none;
   border: none;
@@ -1075,6 +1215,7 @@ const handleAssigneeChanged = (event: Event) => {
   padding: 4px;
   color: var(--gantt-text-muted, #909399);
   transition: color 0.2s;
+  margin-left: 12px;
 }
 
 .drawer-close-btn:hover {

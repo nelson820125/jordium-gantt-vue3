@@ -111,5 +111,21 @@
         "false": "假"
       }
     }
+  },
+  "taskBarConfig": {
+    "display": {
+      "showActualTaskBar": "显示实际TaskBar"
+    },
+    "colorConfig": {
+      "title": "自定义任务状态背景色",
+      "pendingTask": "待处理任务",
+      "delayTask": "逾期任务",
+      "completeTask": "已完成任务",
+      "ongoingTask": "进行中任务"
+    },
+    "enableTaskRowMove": {
+      "label": "启用TaskRow拖拽移动",
+      "hint": "允许通过拖拽TaskRow来调整任务的层级和顺序"
+    }
   }
 }

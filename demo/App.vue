@@ -25,6 +25,9 @@ const { locale: demoLocale, messages: demoMessages, setLocale: setDemoLocale, fo
 // Tool Settings 多语言
 const ts = computed(() => demoMessages.value.toolSettings || {})
 
+// TaskBar Config 多语言
+const taskBarConfigMessages = computed(() => demoMessages.value.taskBarConfig || {})
+
 // GanttChart ref
 const gantt = ref<InstanceType<typeof import('../src/components/GanttChart.vue').default> | null>(null)
 
@@ -241,6 +244,13 @@ const taskBarOptions = ref({
   enableDragDelay: false, // 是否启用拖拽延迟
   dragDelayTime: 150, // 拖拽延迟时间（毫秒）
 })
+
+// 自定义任务状态背景色
+const showActualTaskBar = ref(true)
+const pendingTaskBackgroundColor = ref('#409eff')
+const delayTaskBackgroundColor = ref('#f56c6c')
+const completeTaskBackgroundColor = ref('#909399')
+const ongoingTaskBackgroundColor = ref('#e6a23c')
 
 const taskBarConfig = computed<TaskBarConfig>(() => ({
   showAvatar: taskBarOptions.value.showAvatar,
@@ -1302,6 +1312,53 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                       <input v-model="taskBarOptions.showProgress" type="checkbox" />
                       <span class="taskbar-label">{{ t.taskBarConfig.display.showProgress }}</span>
                     </label>
+                    <label class="taskbar-control">
+                      <input v-model="showActualTaskBar" type="checkbox" />
+                      <span class="taskbar-label">{{ taskBarConfigMessages.display?.showActualTaskBar }}</span>
+                    </label>
+                  </div>
+
+                  <!-- 自定义任务状态背景色 -->
+                  <div class="color-config-group">
+                    <h6 class="color-config-title">{{ taskBarConfigMessages.colorConfig?.title }}</h6>
+                    <div class="color-inputs-row">
+                      <div class="color-input-item">
+                        <label class="color-label">{{ taskBarConfigMessages.colorConfig?.pendingTask }}</label>
+                        <input
+                          v-model="pendingTaskBackgroundColor"
+                          type="text"
+                          class="color-input"
+                          placeholder="#409eff"
+                        />
+                      </div>
+                      <div class="color-input-item">
+                        <label class="color-label">{{ taskBarConfigMessages.colorConfig?.delayTask }}</label>
+                        <input
+                          v-model="delayTaskBackgroundColor"
+                          type="text"
+                          class="color-input"
+                          placeholder="#f56c6c"
+                        />
+                      </div>
+                      <div class="color-input-item">
+                        <label class="color-label">{{ taskBarConfigMessages.colorConfig?.completeTask }}</label>
+                        <input
+                          v-model="completeTaskBackgroundColor"
+                          type="text"
+                          class="color-input"
+                          placeholder="#909399"
+                        />
+                      </div>
+                      <div class="color-input-item">
+                        <label class="color-label">{{ taskBarConfigMessages.colorConfig?.ongoingTask }}</label>
+                        <input
+                          v-model="ongoingTaskBackgroundColor"
+                          type="text"
+                          class="color-input"
+                          placeholder="#e6a23c"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1324,11 +1381,11 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                       <label class="taskbar-control">
                         <input v-model="enableTaskRowMove" type="checkbox" />
                         <span class="taskbar-label">
-                          启用TaskRow拖拽移动
+                          {{ taskBarConfigMessages.enableTaskRowMove?.label }}
                         </span>
                       </label>
                       <span class="control-hint">
-                        允许通过拖拽TaskRow来调整任务的层级和顺序
+                        {{ taskBarConfigMessages.enableTaskRowMove?.hint }}
                       </span>
                     </div>
                     <div class="control-row">
@@ -1819,12 +1876,16 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :allow-drag-and-resize="allowDragAndResize"
         :enable-task-row-move="enableTaskRowMove"
         :assignee-options="assigneeOptions"
-        :task-list-row-class-name="getTaskRowClassName"
-        :task-list-row-style="getTaskRowStyle"
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
         :task-list-column-render-mode="taskListColumnRenderMode"
+        :show-actual-taskbar="showActualTaskBar"
+        :enable-task-bar-tooltip="true"
+        :pending-task-background-color="pendingTaskBackgroundColor"
+        :delay-task-background-color="delayTaskBackgroundColor"
+        :complete-task-background-color="completeTaskBackgroundColor"
+        :ongoing-task-background-color="ongoingTaskBackgroundColor"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
@@ -2526,6 +2587,62 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
 .taskbar-control:hover .taskbar-label {
   color: var(--gantt-primary-color, #409eff);
+}
+
+/* 自定义颜色配置组 */
+.color-config-group {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--gantt-bg-tertiary, #fafafa);
+  border-radius: 8px;
+  border: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.color-config-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gantt-text-secondary, #606266);
+  margin: 0 0 12px 0;
+}
+
+.color-inputs-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.color-input-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.color-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gantt-text-secondary, #606266);
+}
+
+.color-input {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  border-radius: 4px;
+  background: var(--gantt-bg-primary, #ffffff);
+  color: var(--gantt-text-primary, #333);
+  transition: all 0.2s ease;
+}
+
+.color-input:focus {
+  outline: none;
+  border-color: var(--gantt-primary-color, #409eff);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.color-input::placeholder {
+  color: var(--gantt-text-placeholder, #c0c4cc);
 }
 
 /* TaskBar 高级配置样式 */

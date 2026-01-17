@@ -27,11 +27,114 @@ interface LocaleMessages {
       task: string
     }
   }
+  taskBarConfig: {
+    display: {
+      showActualTaskBar: string
+    }
+    colorConfig: {
+      title: string
+      pendingTask: string
+      delayTask: string
+      completeTask: string
+      ongoingTask: string
+    }
+    enableTaskRowMove: {
+      label: string
+      hint: string
+    }
+  }
+  toolSettings: {
+    title: string
+    currentStatus: {
+      title: string
+      fullscreen: string
+      expandAll: string
+      locale: string
+      timeScale: string
+      theme: string
+      controlMode: string
+      active: string
+      inactive: string
+      expanded: string
+      collapsed: string
+    }
+    controlMode: {
+      title: string
+      expose: string
+      props: string
+      exposeHint: string
+      propsHint: string
+    }
+    exposeMethods: {
+      sectionTitle: string
+      fullscreen: {
+        title: string
+        enter: string
+        exit: string
+        toggle: string
+      }
+      expand: {
+        title: string
+        all: string
+        none: string
+        toggle: string
+      }
+      timeScale: {
+        title: string
+        hour: string
+        day: string
+        week: string
+        month: string
+        quarter: string
+        year: string
+        zoomIn: string
+        zoomOut: string
+      }
+      locale: {
+        title: string
+        zhCN: string
+        enUS: string
+      }
+      theme: {
+        title: string
+        light: string
+        dark: string
+      }
+      navigation: {
+        title: string
+        today: string
+        taskIdPlaceholder: string
+        go: string
+      }
+    }
+    propsControl: {
+      sectionTitle: string
+      locale: {
+        title: string
+      }
+      theme: {
+        title: string
+      }
+      timeScale: {
+        title: string
+      }
+      fullscreen: {
+        title: string
+        true: string
+        false: string
+      }
+      expandAll: {
+        title: string
+        true: string
+        false: string
+      }
+    }
+  }
 }
 
 const localeMessages: Record<LocaleKey, LocaleMessages> = {
-  'zh-CN': zhCN,
-  'en-US': enUS,
+  'zh-CN': zhCN as any,
+  'en-US': enUS as any,
 }
 
 const currentLocale = ref<LocaleKey>('zh-CN')

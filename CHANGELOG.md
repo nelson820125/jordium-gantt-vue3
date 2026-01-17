@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-01-17
+
+### Added
+- 🎉 新增：GanttChart允许展示实际Taskbar
+- 🎉 新增：TaskDrawer增加实际开始日期和实际结束日期的属性
+- 🎉 新增：TaskDrawer增加当前Task状态：待处理、进行中、已完成、已逾期
+- 🎉 新增：GanttChart增加Taskbar不同状态下背景色预设属性pendingTaskBackgroundColor、delayTaskBackgroundColo- pleteTaskBackgroundColor、ongoingTaskBackgroundColor
+- 🎉 新增：Task对象增加barColor属性，允许自定义对应Taskbar的背景色，优先级高于GanttChart预设背景色
+- 🎉 新增：Taskbar增加气泡提示框
+- 🎉 新增：GanttChart增加showActualTaskbar属性用于控制是否展示实际Taskbar，默认值为false，需要时手动打开
+- 🎉 新增：GanttChart增加enableTaskbarTooltip属性用于控制是否展示Taskbar的气泡提示框，默认值为true，需要时手动关闭
+- 🎉 Added: GanttChart allows displaying actual Taskbar
+- 🎉 Added: TaskDrawer adds properties for actual start date and actual end date
+- 🎉 Added: TaskDrawer adds current Task status: Pending, Ongoing, Completed, Overdue
+- 🎉 Added: GanttChart adds preset background color properties for Taskbar in different statuses: pendingTaskBackgroundColor, delayTaskBackgroundColor, completeTaskBackgroundColor, ongoingTaskBackgroundColor
+- 🎉 Added: Task object adds barColor property to allow customization of the corresponding Taskbar background color, with higher priority than GanttChart preset background colors
+- 🎉 Added: Taskbar adds tooltip
+- 🎉 Added: GanttChart adds showActualTaskbar property to control whether to show actual Taskbar
+- 🎉 Added: GanttChart adds enableTaskbarTooltip property to control whether to show Taskbar tooltip
+
+### Enhancement
+- 🎉 优化：Task对象assignee以及avatar属性允许接收数组，标记多为负责人
+- Optimized: The assignee and avatar properties of the Task object now accept arrays to mark multiple assignees
+
 ## [1.7.2] - 2026-01-15
 
 ### Added

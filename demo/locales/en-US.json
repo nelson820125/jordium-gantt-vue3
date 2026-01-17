@@ -111,5 +111,21 @@
         "false": "False"
       }
     }
+  },
+  "taskBarConfig": {
+    "display": {
+      "showActualTaskBar": "Show Actual TaskBar"
+    },
+    "colorConfig": {
+      "title": "Custom Task Status Background Colors",
+      "pendingTask": "Pending Task",
+      "delayTask": "Overdue Task",
+      "completeTask": "Completed Task",
+      "ongoingTask": "Ongoing Task"
+    },
+    "enableTaskRowMove": {
+      "label": "Enable TaskRow Drag and Drop",
+      "hint": "Allow dragging TaskRow to adjust task hierarchy and order"
+    }
   }
 }

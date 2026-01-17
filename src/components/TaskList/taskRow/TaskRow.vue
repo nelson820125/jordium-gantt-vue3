@@ -226,6 +226,59 @@ const slotPayload = computed(() => ({
   daysText: daysText.value,
   progressClass: progressClass.value,
 }))
+
+// 计算左侧边框颜色 - 支持barColor自定义
+const leftBorderColor = computed(() => {
+  // 如果设置了barColor，优先使用
+  if (props.task.barColor) {
+    return props.task.barColor
+  }
+  // 否则返回null，使用CSS默认样式
+  return null
+})
+
+// 计算自定义边框样式
+const customBorderStyle = computed(() => {
+  if (leftBorderColor.value) {
+    return {
+      borderLeftColor: leftBorderColor.value
+    }
+  }
+  return {}
+})
+
+// 处理assignee列的显示数据
+const assigneeDisplayData = computed(() => {
+  const task = props.task
+  const avatar = task.avatar
+  const assignee = task.assignee
+
+  // 处理avatar列表
+  let avatarList: string[] = []
+  if (avatar) {
+    avatarList = Array.isArray(avatar) ? avatar : [avatar]
+  }
+
+  // 处理assignee列表
+  let assigneeList: string[] = []
+  if (assignee) {
+    assigneeList = Array.isArray(assignee) ? assignee : [assignee]
+  }
+
+  // 如果没有avatar，从assignee生成文字头像
+  const displayAvatars = avatarList.length > 0
+    ? avatarList.map(url => ({ type: 'image', url }))
+    : assigneeList.map(name => ({ type: 'text', name }))
+
+  // 生成显示的名称文本（换行拼接）
+  const nameText = assigneeList.join('\n') || '-'
+
+  return {
+    avatars: displayAvatars,
+    nameText,
+    hasMultiple: displayAvatars.length > 1
+  }
+})
 </script>
 
 <template>
@@ -243,7 +296,7 @@ const slotPayload = computed(() => ({
         'task-type-milestone': isMilestoneTask,
         [customRowClass]: customRowClass,
       }"
-      :style="customRowStyle"
+      :style="[customRowStyle, customBorderStyle]"
       @click="handleRowClick"
       @dblclick="handleTaskRowDoubleClick"
       @mousedown="handleMouseDown"
@@ -373,10 +426,25 @@ const slotPayload = computed(() => ({
           <!-- 负责人列 -->
           <template v-else-if="column.key === 'assignee'">
             <div class="assignee-info">
-              <div class="avatar">
-                {{ props.task.assignee ? props.task.assignee.charAt(0) : '-' }}
+              <!-- 多头像容器 -->
+              <div class="assignee-avatars-container">
+                <div
+                  v-for="(avatarItem, idx) in assigneeDisplayData.avatars"
+                  :key="idx"
+                  class="avatar"
+                  :style="{
+                    zIndex: idx + 1,
+                    marginLeft: idx > 0 ? '-8px' : '0'
+                  }"
+                >
+                  <!-- 图片头像 -->
+                  <img v-if="avatarItem.type === 'image'" :src="(avatarItem as any).url" :alt="`avatar-${idx}`" />
+                  <!-- 文字头像 -->
+                  <span v-else class="avatar-text">{{ (avatarItem as any).name.charAt(0).toUpperCase() }}</span>
+                </div>
               </div>
-              <span class="assignee-name">{{ props.task.assignee || '-' }}</span>
+              <!-- 名称显示，支持换行和超出显示... -->
+              <span class="assignee-name" :title="assigneeDisplayData.nameText">{{ assigneeDisplayData.nameText }}</span>
             </div>
           </template>
 
@@ -614,9 +682,29 @@ const slotPayload = computed(() => ({
   gap: 8px;
 }
 
+/* 多头像容器 */
+.assignee-avatars-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.assignee-avatars-container .avatar {
+  position: relative;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.assignee-avatars-container .avatar:hover {
+  transform: translateY(-2px) scale(1.1);
+  z-index: 999 !important;
+}
+
 .avatar {
   min-width: 25px;
   min-height: 25px;
+  width: 25px;
+  height: 25px;
   border-radius: 50%;
   background: var(--gantt-primary);
   color: var(--gantt-text-white);
@@ -627,11 +715,31 @@ const slotPayload = computed(() => ({
   font-weight: 500;
   border: 2px solid var(--gantt-border-medium);
   box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar .avatar-text {
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .assignee-name {
   font-size: 14px;
   color: var(--gantt-text-secondary);
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
 }
 
 .progress-value {

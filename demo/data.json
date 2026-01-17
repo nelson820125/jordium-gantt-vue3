@@ -27,21 +27,25 @@
           "description": "评估ADX-2024在健康志愿者和患者中的安全性、耐受性和药代动力学特征",
           "custom": "test11111",
           "priority": "高",
+          "barColor": "#7B3FF2",
           "children": [
             {
               "id": 1101,
               "name": "试验方案设计与<span style='font-weight: bold;color:red;'>伦理审查</span>",
               "assignee": "方案设计师 李明",
-              "avatar": "50-1.jpg",
+              "avatar": ["50-1.jpg", "50-2.jpg"],
               "startDate": "2025-01-01",
               "endDate": "2025-02-28",
+              "actualStartDate": "2025-01-03",
+              "actualEndDate": "2025-02-25",
               "progress": 100,
               "estimatedHours": 464,
               "actualHours": 480,
               "type": "task",
               "parentId": 1100,
               "description": "完成I期试验方案设计、伦理委员会审批及监管部门申报",
-              "custom": "test11111"
+              "custom": "test11111",
+              "barColor": "#2E7D6B"
             },
             {
               "id": 1102,
@@ -50,6 +54,8 @@
               "avatar": "50-2.jpg",
               "startDate": "2025-03-01",
               "endDate": "2025-04-30",
+              "actualStartDate": "2025-03-05",
+              "actualEndDate": "2025-04-28",
               "progress": 90,
               "estimatedHours": 1392.5,
               "actualHours": 1250.25,
@@ -57,15 +63,17 @@
               "predecessor": [1101],
               "parentId": 1100,
               "description": "招募24名健康志愿者，完成医学筛选和入组评估",
-              "custom": "test11111"
+              "custom": "test11111",
+              "barColor": "#FF4D4F"
             },
             {
               "id": 1103,
               "name": "药物给药与安全性监测",
               "assignee": "临床医生 Dr. Liu",
-              "avatar": "50-3.jpg",
+              "avatar": ["50-3.jpg", "50-2.jpg"],
               "startDate": "2025-05-01",
               "endDate": "2025-08-31",
+              "actualStartDate": "2025-05-10",
               "progress": 40,
               "estimatedHours": 3400,
               "actualHours": 1687,
@@ -73,7 +81,8 @@
               "predecessor": [1102],
               "parentId": 1100,
               "description": "按照剂量递增方案给药，密切监测不良反应和药代动力学参数",
-              "custom": "test11111"
+              "custom": "test11111",
+              "barColor": "#7B3FF2"
             }
           ],
           "collapsed": false
@@ -91,14 +100,16 @@
           "parentId": 1000,
           "description": "在目标患者群体中评估ADX-2024的初步疗效和进一步的安全性",
           "custom": "test11111",
+          "barColor": "#3F6DF6",
           "children": [
             {
               "id": 1201,
               "name": "多中心试验<span style='font-weight: bold; color: blue;'>启动</span>",
               "assignee": "项目经理 王芳",
-              "avatar": "50-10.jpg",
+              "avatar": ["50-10.jpg", "50-2.jpg"],
               "startDate": "2025-09-01",
               "endDate": "2025-11-30",
+              "actualStartDate": "2025-09-01",
               "progress": 25,
               "estimatedHours": 2160,
               "actualHours": 324,
@@ -106,13 +117,14 @@
               "predecessor": [1103],
               "parentId": 1200,
               "description": "启动5个临床中心，完成研究者培训和质量体系建立",
-              "custom": "test11111"
+              "custom": "test11111",
+              "barColor": "#3F6DF6"
             },
             {
               "id": 1202,
               "name": "患者入组与随机化",
               "assignee": "数据管理员 陈静",
-              "avatar": "50-6.jpg",
+              "avatar": ["50-6.jpg", "50-10.jpg"],
               "startDate": "2025-12-01",
               "endDate": "2026-03-31",
               "progress": 0,
@@ -138,7 +150,8 @@
               "predecessor": [1202],
               "parentId": 1200,
               "description": "定期评估患者疗效指标，收集安全性数据，进行中期分析",
-              "custom": "test11111"
+              "custom": "test11111",
+              "barColor": "#FFA43A"
             }
           ],
           "collapsed": false

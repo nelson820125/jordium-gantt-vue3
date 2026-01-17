@@ -3,11 +3,13 @@ export interface Task {
   id: number
   name: string
   predecessor?: number[] // 前置任务ID数组
-  assignee?: string // 记录唯一键值，如用户ID或用户名
+  assignee?: string | string[] // 记录唯一键值，如用户ID或用户名，支持单个或多个
   assigneeName?: string // 任务负责人名称
-  avatar?: string // 任务负责人头像URL
+  avatar?: string | string[] // 任务负责人头像URL，支持单个或多个头像数组
   startDate?: string
   endDate?: string
+  actualStartDate?: string // 实际开始日期
+  actualEndDate?: string // 实际结束日期
   progress?: number
   estimatedHours?: number
   actualHours?: number
@@ -27,6 +29,8 @@ export interface Task {
   timerElapsedTime?: number
   // 权限控制
   isEditable?: boolean // 是否可编辑（可拖拽、拉伸），默认为true
+  // 自定义样式
+  barColor?: string // 自定义TaskBar颜色，如 '#ff5733'，若不设置则使用默认颜色方案
   // 支持自定义属性 - 使用 unknown 允许任意类型
   [key: string]: unknown
 }
