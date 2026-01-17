@@ -37,6 +37,15 @@ interface Props {
   taskBarConfig?: TaskBarConfig
   // 是否允许拖拽和拉伸（默认为 true）
   allowDragAndResize?: boolean
+  // 是否显示实际任务条（默认为 false）
+  showActualTaskbar?: boolean
+  // 是否启用 TaskBar 气泡提示框（默认为 true）
+  enableTaskBarTooltip?: boolean
+  // 自定义任务状态背景色
+  pendingTaskBackgroundColor?: string
+  delayTaskBackgroundColor?: string
+  completeTaskBackgroundColor?: string
+  ongoingTaskBackgroundColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -55,6 +64,12 @@ const props = withDefaults(defineProps<Props>(), {
   }),
   taskBarConfig: undefined,
   allowDragAndResize: true,
+  showActualTaskbar: false,
+  enableTaskBarTooltip: true,
+  pendingTaskBackgroundColor: undefined,
+  delayTaskBackgroundColor: undefined,
+  completeTaskBackgroundColor: undefined,
+  ongoingTaskBackgroundColor: undefined,
 })
 
 // 定义emits
@@ -1049,11 +1064,6 @@ const hasCircularDependency = (taskId: number, targetId: number): boolean => {
 
 // 创建连接
 const createLink = (sourceTask: Task, targetTask: Task, mode: 'predecessor' | 'successor') => {
-  console.log('----> hello:', {
-    mode,
-    sourceTask,
-    targetTask,
-  })
   if (mode === 'predecessor') {
     // mode='predecessor' 表示从左侧 anchor 拖出
     // 从左侧 anchor 拖到右侧：sourceTask 依赖 targetTask
@@ -4478,6 +4488,12 @@ const handleAddSuccessor = (task: Task) => {
                 :current-time-scale="currentTimeScale"
                 :task-bar-config="props.taskBarConfig"
                 :allow-drag-and-resize="props.allowDragAndResize && !isInHighlightMode"
+                :show-actual-taskbar="props.showActualTaskbar"
+                :enable-task-bar-tooltip="props.enableTaskBarTooltip"
+                :pending-task-background-color="props.pendingTaskBackgroundColor"
+                :delay-task-background-color="props.delayTaskBackgroundColor"
+                :complete-task-background-color="props.completeTaskBackgroundColor"
+                :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
                 :is-highlighted="highlightedTaskIds.has(task.id)"
                 :is-primary-highlight="highlightedTaskId === task.id"
                 :is-in-highlight-mode="isInHighlightMode"

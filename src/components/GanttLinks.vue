@@ -509,7 +509,7 @@ defineExpose({
       top: `${offsetTop}px`,
       width: `${width}px`,
       height: `${height}px`,
-      zIndex: highlightedTaskId !== null ? 1001 : 25,
+      zIndex: highlightedTaskId !== null ? 2000 : 500,
       pointerEvents: 'none',
     }"
   />
