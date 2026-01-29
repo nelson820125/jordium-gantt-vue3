@@ -11,6 +11,7 @@ export { default as MilestonePoint } from './components/MilestonePoint.vue'
 export { default as MilestoneDialog } from './components/MilestoneDialog.vue'
 export { default as TaskRow } from './components/TaskList/taskRow/TaskRow.vue'
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
+export { Resource } from './models/classes/Resource.ts' // v1.9.0 导出Resource类
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 
 // 导出 composables 供外部使用
@@ -23,6 +24,12 @@ export type {
   TaskListColumnType,
   ColumnFormatter,
 } from './models/configs/TaskListConfig'
+export type {
+  ResourceListConfig,
+  ResourceListColumnConfig,
+  ResourceListColumnType,
+  ResourceColumnFormatter,
+} from './models/configs/ResourceListConfig' // v1.9.0 导出资源配置类型
 export type { TaskBarConfig } from './models/configs/TaskBarConfig'
 export type { ToolbarConfig } from './models/configs/ToolbarConfig'
 

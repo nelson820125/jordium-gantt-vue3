@@ -9,7 +9,7 @@ import { updateParentTasksData, getAllTasks } from './useTaskParentCalculation'
 
 export interface TaskListEventHandlersOptions {
   tasks: Ref<Task[]>
-  hoveredTaskId: Ref<number | null>
+  hoveredTaskId: Ref<number | string | null>
   isSplitterDragging: Ref<boolean>
   taskListScrollTop: Ref<number>
   taskListBodyRef: Ref<HTMLElement | null>
@@ -30,7 +30,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
 
   // ==================== 悬停事件处理 ====================
 
-  const handleTaskRowHover = (taskId: number | null) => {
+  const handleTaskRowHover = (taskId: number | string | null) => {
     if (isSplitterDragging.value) {
       return
     }

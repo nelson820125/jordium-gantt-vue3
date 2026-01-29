@@ -10,8 +10,16 @@ import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { DEFAULT_TASK_BAR_CONFIG } from '../models/configs/TaskBarConfig'
 
+// 禁用自动继承attributes，手动应用到wrapper
+defineOptions({
+  inheritAttrs: false
+})
+
 // 从 GanttChart 注入 enableLinkAnchor 配置
 const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', computed(() => true))
+
+// v1.9.0 注入视图模式，用于资源视图的垂直拖拽
+const viewMode = inject<any>('gantt-view-mode', { value: 'task' })
 
 interface Props {
   task: Task
@@ -59,6 +67,8 @@ interface Props {
   isInvalidLinkTarget?: boolean
   // 所有任务列表（用于右键菜单删除链接功能）
   allTasks?: Task[]
+  // v1.9.0 资源视图：是否存在资源冲突（时间重叠）
+  hasResourceConflict?: boolean
 }
 
 interface TaskStatus {
@@ -258,11 +268,19 @@ const isResizingLeft = ref(false)
 const isResizingRight = ref(false)
 const justFinishedDragOrResize = ref(false) // 标记刚刚完成拖拽或调整大小
 const dragStartX = ref(0)
+const dragStartY = ref(0)  // v1.9.0 用于资源视图垂直拖拽
 const dragStartLeft = ref(0)
 const dragStartWidth = ref(0)
 const resizeStartX = ref(0)
 const resizeStartWidth = ref(0)
 const resizeStartLeft = ref(0)
+
+// v1.9.0 拖拽预览效果（资源视图垂直拖拽）
+const dragPreviewVisible = ref(false)
+const dragPreviewPosition = ref({ x: 0, y: 0 })
+const dragPreviewOffsetX = ref(0) // 鼠标在TaskBar内的X偏移量，用于保持预览对齐
+const dragEndX = ref(0) // 记录松开鼠标时的X位置，用于计算新日期
+const tempTaskPixelLeft = ref<number | null>(null) // 资源视图拖拽时的精确像素位置
 
 // 长按检测状态
 const longPressTimer = ref<number | null>(null)
@@ -303,11 +321,13 @@ const nameTextWidth = ref(0)
 const taskBarStyle = computed(() => {
   // 季度视图拖拽时使用位置覆盖
   if (quarterDragOverride.value && props.currentTimeScale === TimelineScale.QUARTER) {
+    const taskBarHeight = props.rowHeight - 10
+    const topOffset = (props.rowHeight - taskBarHeight) / 2
     return {
       left: `${quarterDragOverride.value.left ?? 0}px`,
       width: `${quarterDragOverride.value.width ?? 100}px`,
-      height: `${props.rowHeight - 10}px`,
-      top: '4px',
+      height: `${taskBarHeight}px`,
+      top: `${topOffset}px`,
     }
   }
 
@@ -320,11 +340,13 @@ const taskBarStyle = computed(() => {
 
   // 如果startDate和endDate都不存在，返回0宽度（实际不会渲染，由shouldRenderTaskBar控制）
   if (!startDate && !endDate) {
+    const taskBarHeight = props.rowHeight - 10
+    const topOffset = (props.rowHeight - taskBarHeight) / 2
     return {
       left: '0px',
       width: '0px',
-      height: `${props.rowHeight - 10}px`,
-      top: '4px',
+      height: `${taskBarHeight}px`,
+      top: `${topOffset}px`,
     }
   }
 
@@ -337,19 +359,37 @@ const taskBarStyle = computed(() => {
   // 安全检查：renderStartDate和renderEndDate必定存在（因为上面已经检查过）
   // 但baseStart可能不存在，如果不存在则无法计算位置
   if (!renderStartDate || !renderEndDate || !renderBaseStart) {
+    const taskBarHeight = props.rowHeight - 10
+    const topOffset = (props.rowHeight - taskBarHeight) / 2
     return {
       left: '0px',
       width: '0px',
-      height: `${props.rowHeight - 10}px`,
-      top: '4px',
+      height: `${taskBarHeight}px`,
+      top: `${topOffset}px`,
     }
   }
 
   let left = 0
   let width = 0
 
-  // 小时视图：按分钟精确计算位置（需要考虑时间部分）
-  if (props.currentTimeScale === TimelineScale.HOUR) {
+  // v1.9.0 资源视图拖拽时，优先使用精确的像素位置
+  if (viewMode.value === 'resource' && tempTaskPixelLeft.value !== null) {
+    left = tempTaskPixelLeft.value
+    // 计算宽度（基于日期）
+    const startDate = createLocalDate(currentStartDate)
+    const endDate = createLocalDate(currentEndDate)
+    if (startDate && endDate) {
+      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+      const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
+      const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
+      const duration = daysDiff === 0 ? 1 : daysDiff + 1
+      width = duration * props.dayWidth
+    } else {
+      width = props.dayWidth // 默认宽度
+    }
+  } else if (props.currentTimeScale === TimelineScale.HOUR) {
+    // 小时视图：按分钟精确计算位置（需要考虑时间部分）
     // 确保 baseStart 是当天的 00:00:00
     const baseStartOfDay = new Date(renderBaseStart)
     baseStartOfDay.setHours(0, 0, 0, 0)
@@ -500,11 +540,15 @@ const taskBarStyle = computed(() => {
     }
   }
 
+  const taskBarHeight = props.rowHeight - 10
+  // v1.9.0 资源视图中使用固定top值，因为resource-row已经绝对定位
+  const topOffset = viewMode.value === 'resource' ? 5 : (props.rowHeight - taskBarHeight) / 2
+
   return {
     left: `${left}px`,
     width: `${width}px`,
-    height: `${props.rowHeight - 10}px`,
-    top: '4px',
+    height: `${taskBarHeight}px`,
+    top: `${topOffset}px`,
   }
 })
 
@@ -923,9 +967,12 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
 
   // 计算鼠标相对于TaskBar的位置
   mouseOffsetX.value = e.clientX - barRect.left
+  // v1.9.0 记录鼠标在TaskBar内的偏移量，用于拖拽预览对齐
+  dragPreviewOffsetX.value = e.clientX - barRect.left
 
   // 记录初始状态，但不立即激活拖拽
   dragStartX.value = e.clientX
+  dragStartY.value = e.clientY  // v1.9.0 记录Y坐标用于资源视图垂直拖拽
   dragStartLeft.value = parseInt(taskBarStyle.value.left)
   dragStartWidth.value = parseInt(taskBarStyle.value.width)
 
@@ -1017,6 +1064,34 @@ const dragTooltipPosition = ref({ x: 0, y: 0 })
 const dragTooltipContent = ref({ startDate: '', endDate: '' })
 
 const handleMouseMove = (e: MouseEvent) => {
+  // 记录最新的鼠标Y位置（用于资源视图垂直拖拽）
+  if (viewMode.value === 'resource') {
+    ;(window as any).lastDragMouseY = e.clientY
+
+    // v1.9.0 检测是否跨行拖拽
+    const timelineBody = document.querySelector('.timeline-body')
+    let isCrossRowDrag = false
+
+    if (timelineBody && isDragging.value && isDragThresholdMet.value) {
+      const bodyRect = timelineBody.getBoundingClientRect()
+      const relativeY = e.clientY - bodyRect.top + (timelineBody as HTMLElement).scrollTop
+      const currentRowIndex = Math.floor(relativeY / 51)
+      isCrossRowDrag = currentRowIndex !== props.rowIndex
+
+      // 只有在跨行拖拽时才显示预览
+      if (isCrossRowDrag) {
+        dragPreviewVisible.value = true
+        // 虚拟预览应该显示在鼠标位置
+        dragPreviewPosition.value = {
+          x: e.clientX - dragPreviewOffsetX.value,
+          y: e.clientY - (props.rowHeight / 2)
+        }
+      } else {
+        dragPreviewVisible.value = false
+      }
+    }
+  }
+
   // 如果处于高亮状态，立即返回，不执行任何拖拽/拉伸操作
   if (props.isHighlighted || props.isPrimaryHighlight) {
     return
@@ -1030,9 +1105,15 @@ const handleMouseMove = (e: MouseEvent) => {
   // 检查是否达到拖拽阈值
   if (!isDragThresholdMet.value) {
     const deltaX = Math.abs(e.clientX - dragStartX.value)
+    const deltaY = Math.abs(e.clientY - dragStartY.value)
+
+    // v1.9.0 资源视图中，同时考虑Y轴移动（垂直拖拽）
+    const threshold = viewMode.value === 'resource' && dragType.value === 'drag'
+      ? Math.max(deltaX, deltaY)  // 资源视图拖拽：X或Y有一个达到阈值即可
+      : deltaX  // 任务视图或拉伸：只考虑X轴
 
     // 如果移动距离小于阈值，不执行任何操作
-    if (deltaX < dragThreshold.value) {
+    if (threshold < dragThreshold.value) {
       return
     }
 
@@ -1057,7 +1138,11 @@ const handleMouseMove = (e: MouseEvent) => {
     new CustomEvent('drag-boundary-check', {
       detail: {
         mouseX: e.clientX,
+        mouseY: e.clientY,  // v1.9.0 添加Y坐标用于资源视图垂直拖拽检测
+        taskId: props.task.id,  // v1.9.0 添加taskId
+        rowIndex: props.rowIndex,  // v1.9.0 添加当前行索引
         isDragging: isDragging.value || isResizingLeft.value || isResizingRight.value,
+        isResourceView: viewMode.value === 'resource',  // v1.9.0 标识是否资源视图
       },
     }),
   )
@@ -1073,6 +1158,69 @@ const handleMouseMove = (e: MouseEvent) => {
 
   if (isDragging.value) {
     const deltaX = e.clientX - dragStartX.value
+
+    // v1.9.0 资源视图垂直拖拽：使用与任务视图相同的日期计算算法
+    if (viewMode.value === 'resource') {
+      // 计算TaskBar的新左边缘位置（鼠标位置 - 偏移量）
+      const taskBarNewLeft = e.clientX - dragPreviewOffsetX.value
+
+      // 需要获取timeline body的位置来计算相对位置
+      const timelineBody = document.querySelector('.timeline-body')
+      if (timelineBody) {
+        const bodyRect = timelineBody.getBoundingClientRect()
+        const scrollLeft = (timelineBody as HTMLElement).scrollLeft
+        // 计算相对于timeline body的位置
+        const relativeX = taskBarNewLeft - bodyRect.left + scrollLeft
+
+        // 保存精确的像素位置，避免通过日期往返计算导致的精度损失
+        tempTaskPixelLeft.value = relativeX
+
+        // 使用与任务视图相同的日期计算算法
+        let newStartDate: Date | null = null
+
+        if (props.timelineData &&
+            (props.currentTimeScale === TimelineScale.DAY ||
+             props.currentTimeScale === TimelineScale.MONTH ||
+             props.currentTimeScale === TimelineScale.QUARTER ||
+             props.currentTimeScale === TimelineScale.YEAR)) {
+          // 有timelineData时，使用精确的日期计算
+          newStartDate = calculateDateFromPosition(
+            relativeX,
+            props.timelineData,
+            props.currentTimeScale,
+          )
+        }
+
+        if (!newStartDate) {
+          // 没有timelineData或计算失败，使用简单算法
+          newStartDate = addDaysToLocalDate(props.startDate, relativeX / props.dayWidth)
+        }
+
+        // 计算任务持续时间（天数）
+        const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+        const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+        const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
+        const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+
+        // 计算新的结束日期
+        const newEndDate = new Date(newStartDate)
+        newEndDate.setDate(newEndDate.getDate() + Math.max(0, duration))
+
+        // 更新拖拽提示框内容
+        dragTooltipContent.value = {
+          startDate: formatDateToLocalString(newStartDate),
+          endDate: formatDateToLocalString(newEndDate),
+        }
+
+        // v1.9.0 更新tempTaskData，让TaskBar有视觉移动效果（同行和跨行都需要）
+        tempTaskData.value = {
+          startDate: formatDateToLocalString(newStartDate),
+          endDate: formatDateToLocalString(newEndDate),
+        }
+      }
+      // 资源视图直接返回，不执行后续的任务视图逻辑
+      return
+    }
 
     if (props.currentTimeScale === TimelineScale.HOUR) {
       // 小时视图：15分钟刻度对齐
@@ -1475,8 +1623,49 @@ const handleMouseUp = () => {
     }),
   )
 
+  // v1.9.0 资源视图垂直拖拽：检测是否移动到不同资源
+  let targetResourceRowIndex: number | undefined
+  let isCrossRowDrag = false
+
+  if (viewMode.value === 'resource' && isDragging.value && isDragThresholdMet.value) {
+    // 记录松开鼠标时的X位置（用于计算新日期）
+    dragEndX.value = (window as any).event?.clientX || 0
+
+    // 检测是否跨行
+    const timelineBody = document.querySelector('.timeline-body')
+    if (timelineBody) {
+      const bodyRect = timelineBody.getBoundingClientRect()
+      const mouseY = (window as any).lastDragMouseY || 0
+      const relativeY = mouseY - bodyRect.top + (timelineBody as HTMLElement).scrollTop
+      const targetRowIndex = Math.floor(relativeY / 51)
+      isCrossRowDrag = targetRowIndex !== props.rowIndex
+    }
+
+    // 只有跨行拖拽才发送drop事件
+    if (isCrossRowDrag) {
+      // 发送最后的鼠标位置给Timeline，让它确定目标资源
+      window.dispatchEvent(
+        new CustomEvent('resource-taskbar-drop', {
+          detail: {
+            taskId: props.task.id,
+            task: props.task,
+            sourceRowIndex: props.rowIndex,
+            mouseY: (window as any).lastDragMouseY || 0,
+            // v1.9.0 直接传递TaskBar已经计算好的精确日期，避免Timeline重复计算导致误差
+            calculatedStartDate: tempTaskData.value?.startDate,
+            calculatedEndDate: tempTaskData.value?.endDate,
+          },
+        }),
+      )
+    }
+
+    // 隐藏拖拽预览
+    dragPreviewVisible.value = false
+  }
+
   // 只有达到拖拽阈值且有临时数据时才提交更新
-  if (isDragThresholdMet.value && tempTaskData.value) {
+  // v1.9.0 资源视图跨行拖拽时不提交，由确认对话框处理
+  if (isDragThresholdMet.value && tempTaskData.value && !(viewMode.value === 'resource' && isCrossRowDrag)) {
     const updatedTask = {
       ...props.task,
       ...tempTaskData.value,
@@ -1518,6 +1707,7 @@ const handleMouseUp = () => {
   isDragThresholdMet.value = false
   isDelayPassed.value = false
   dragType.value = null
+  tempTaskPixelLeft.value = null  // v1.9.0 清除资源视图的像素位置缓存
 
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
@@ -1540,6 +1730,17 @@ onMounted(() => {
       nameResizeObserver.observe(taskBarNameRef.value)
     }
   })
+
+  // v1.9.0 监听资源拖拽取消事件
+  const handleResourceDragCancel = (event: Event) => {
+    const customEvent = event as CustomEvent
+    if (customEvent.detail.taskId === props.task.id) {
+      // 清除临时数据，让TaskBar恢复到原始位置
+      tempTaskData.value = null
+      tempTaskPixelLeft.value = null
+    }
+  }
+  window.addEventListener('resource-drag-cancel', handleResourceDragCancel as EventListener)
 
   // 监听时间刻度变化事件，重新计算位置
   const handleTimelineScaleUpdate = () => {
@@ -1576,6 +1777,7 @@ onMounted(() => {
     window.removeEventListener('timeline-scale-updated', handleTimelineScaleUpdate)
     window.removeEventListener('timeline-force-recalculate', handleForceRecalculate)
     window.removeEventListener('close-all-taskbar-menus', closeContextMenu)
+    window.removeEventListener('resource-drag-cancel', handleResourceDragCancel as EventListener)
     document.removeEventListener('click', handleDocumentClick)
 
     // 清除长按定时器
@@ -1959,6 +2161,7 @@ const tooltipPosition = ref({ x: 0, y: 0 })
 // TaskBar 悬停 tooltip 状态
 const showHoverTooltip = ref(false)
 const hoverTooltipPosition = ref({ x: 0, y: 0 })
+const isTooltipBelow = ref(false) // v1.9.0 标记tooltip是否显示在TaskBar下方
 let hoverTooltipTimer: number | null = null
 
 // 跟踪滚动状态，避免非滚动时的动画
@@ -2158,18 +2361,53 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
   isTaskBarHovered.value = true
 
   // 如果启用了TaskBar Tooltip（父级任务也显示tooltip）
-  if (props.enableTaskBarTooltip !== false) {
+  // 但在拖拽或拉伸时不显示tooltip
+  if (props.enableTaskBarTooltip !== false && !isDragging.value && !isResizingLeft.value && !isResizingRight.value) {
     // 保存event.currentTarget的引用，因为在setTimeout回调中它会变成null
     const targetElement = event.currentTarget as HTMLElement
+    // 保存鼠标位置
+    const mouseX = event.clientX
+    const mouseY = event.clientY
 
     // 延迟显示tooltip，避免快速滑过时显示
     hoverTooltipTimer = window.setTimeout(() => {
       showHoverTooltip.value = true
       const rect = targetElement.getBoundingClientRect()
-      hoverTooltipPosition.value = {
-        x: rect.left + rect.width / 2,
-        y: rect.top - 10,
+
+      // 计算tooltip的预估宽高（根据实际CSS设置）
+      const tooltipWidth = 250 // 预估宽度
+      const tooltipHeight = 120 // 预估高度（考虑实际内容高度）
+      const margin = 10 // 边距
+
+      // 视口尺寸
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+
+      // v1.9.0 改为基于TaskBar边界定位
+      // 水平位置：TaskBar中心对齐
+      let x = rect.left + rect.width / 2
+      // 默认显示在TaskBar上方边缘外（CSS transform: translateY(-100%)会向上偏移tooltip高度）
+      let y = rect.top - 10
+
+      // 水平边界检测：左侧超出
+      if (x - tooltipWidth / 2 < margin) {
+        x = margin + tooltipWidth / 2
       }
+      // 水平边界检测：右侧超出
+      if (x + tooltipWidth / 2 > viewportWidth - margin) {
+        x = viewportWidth - margin - tooltipWidth / 2
+      }
+
+      // 垂直边界检测：如果上方空间不足，显示在下方
+      if (rect.top - 10 - tooltipHeight < margin) {
+        // 显示在TaskBar下方
+        y = rect.bottom + 10
+        isTooltipBelow.value = true
+      } else {
+        isTooltipBelow.value = false
+      }
+
+      hoverTooltipPosition.value = { x, y }
     }, 300) // 300ms延迟
   }
 }
@@ -2184,6 +2422,17 @@ const handleTaskBarMouseLeave = () => {
   }
   showHoverTooltip.value = false
 }
+
+// 监听拖拽/拉伸状态，如果开始拖拽/拉伸，立即隐藏tooltip
+watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resizingR]) => {
+  if (dragging || resizingL || resizingR) {
+    showHoverTooltip.value = false
+    if (hoverTooltipTimer) {
+      clearTimeout(hoverTooltipTimer)
+      hoverTooltipTimer = null
+    }
+  }
+})
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string | undefined): string => {
@@ -2674,23 +2923,25 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 </script>
 
 <template>
-  <!-- 实际进度条（独立渲染在下层） -->
-  <div
-    v-if="actualBarStyle && shouldRenderTaskBar && !isParent"
-    class="actual-bar"
-    :data-task-id="`actual-${task.id}`"
-    :class="{
-      'highlighted': isHighlighted,
-      'primary-highlight': isPrimaryHighlight,
-      'dimmed': isDimmed,
-    }"
-    :style="{
-      ...actualBarStyle,
-      backgroundColor: taskStatus.color,
-      filter: 'brightness(1.15) saturate(0.9)', /* 加白并降低饱和度，与计划TaskBar色系一致 */
-      boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40`, /* 使用TaskBar颜色的阴影，移除白边 */
-    }"
-  >
+  <!-- 根容器：包裹所有非Teleport的元素，接收传递的style属性 -->
+  <div class="task-bar-wrapper" v-bind="$attrs">
+    <!-- 实际进度条（独立渲染在下层） -->
+    <div
+      v-if="actualBarStyle && shouldRenderTaskBar && !isParent"
+      class="actual-bar"
+      :data-task-id="`actual-${task.id}`"
+      :class="{
+        'highlighted': isHighlighted,
+        'primary-highlight': isPrimaryHighlight,
+        'dimmed': isDimmed,
+      }"
+      :style="{
+        ...actualBarStyle,
+        backgroundColor: taskStatus.color,
+        filter: 'brightness(1.15) saturate(0.9)', /* 加白并降低饱和度，与计划TaskBar色系一致 */
+        boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40`, /* 使用TaskBar颜色的阴影，移除白边 */
+      }"
+    >
     <div class="actual-bar-content">
       <span class="actual-progress">{{ task.progress || 0 }}%</span>
     </div>
@@ -2769,6 +3020,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       'primary-highlight': isPrimaryHighlight,
       dimmed: isDimmed,
       'has-actual': showActualTaskbar && hasActualProgress, /* 只有在showActualTaskbar=true时才标记有实际进度 */
+      'resource-conflict': props.hasResourceConflict, /* v1.9.0 资源冲突样式 */
     }"
     @click="handleTaskBarClick"
     @contextmenu="handleContextMenu"
@@ -2866,7 +3118,12 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       </div>
 
       <!-- 任务名称 - 有实际TaskBar时隐藏 -->
-      <div v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)" ref="taskBarNameRef" :style="getNameStyles()">
+      <div
+        v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
+        ref="taskBarNameRef"
+        :style="viewMode.value === 'resource' ? {} : getNameStyles()"
+        :class="{ 'task-name-wrapper': viewMode.value === 'resource' }"
+      >
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <div v-else class="task-name">
           {{ task.name }}
@@ -2877,7 +3134,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div
         v-if="barConfig.showProgress && shouldShowProgress && !(showActualTaskbar && hasActualProgress)"
         class="task-progress"
-        :style="getProgressStyles()"
+        :style="viewMode.value === 'resource' ? {} : getProgressStyles()"
       >
         {{ task.progress || 0 }}%
       </div>
@@ -2983,6 +3240,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       </div>
     </Teleport>
   </div>
+  </div><!-- 关闭task-bar-wrapper -->
 
   <!-- Tooltip 弹窗 -->
   <Teleport to="body">
@@ -3044,18 +3302,40 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     </div>
   </Teleport>
 
+  <!-- v1.9.0 拖拽预览效果（资源视图垂直拖拽） -->
+  <Teleport to="body">
+    <div
+      v-if="dragPreviewVisible"
+      class="drag-preview"
+      :style="{
+        left: `${dragPreviewPosition.x}px`,
+        top: `${dragPreviewPosition.y}px`,
+        width: taskBarStyle.width,
+        height: taskBarStyle.height,
+        backgroundColor: taskStatus.color,
+        borderColor: taskStatus.borderColor,
+      }"
+    >
+      <div class="drag-preview-content">{{ task.name }}</div>
+    </div>
+  </Teleport>
+
   <!-- TaskBar悬停提示框 -->
   <Teleport to="body">
     <div
       v-if="showHoverTooltip"
       class="task-hover-tooltip"
+      :class="{ 'tooltip-below': isTooltipBelow }"
       :style="{
         left: `${hoverTooltipPosition.x}px`,
         top: `${hoverTooltipPosition.y}px`,
         backgroundColor: taskStatus.color,
       }"
     >
-      <div class="hover-tooltip-arrow" :style="{ borderTopColor: taskStatus.color }"></div>
+      <div class="hover-tooltip-arrow" :style="{
+        borderTopColor: isTooltipBelow ? 'transparent' : taskStatus.color,
+        borderBottomColor: isTooltipBelow ? taskStatus.color : 'transparent'
+      }"></div>
       <div class="hover-tooltip-content">
         <div class="hover-tooltip-title">{{ task.name }}</div>
         <div class="hover-tooltip-row">
@@ -3080,6 +3360,18 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 </template>
 
 <style scoped>
+/* 根容器：透明容器，仅用于接收传递的style属性 */
+.task-bar-wrapper {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 让所有事件穿透到子元素 */
+}
+
+.task-bar-wrapper > * {
+  pointer-events: auto; /* 恢复子元素的事件响应 */
+}
+
 .task-bar {
   position: absolute;
   border-radius: 4px;
@@ -3088,12 +3380,18 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   transition:
     box-shadow 0.2s,
     transform 0.3s,
-    filter 0.3s;
+    filter 0.3s,
+    z-index 0s; /* v1.9.0 z-index不使用动画 */
   z-index: 100;
   border: 2px solid;
   /* 添加半透明黑色边框增强对比度 */
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   overflow: visible; /* 允许内容超出 TaskBar */
+}
+
+/* v1.9.0 悬停时提升z-index，确保资源视图中重叠的TaskBar可以正常交互 */
+.task-bar:hover {
+  z-index: 160 !important;
 }
 
 /* 有实际进度时，计划条使用虚线边框样式 */
@@ -3136,6 +3434,30 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 .task-bar.completed:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   cursor: pointer;
+}
+
+/* v1.9.0 资源冲突样式（根据UI规范）*/
+.task-bar.resource-conflict {
+  /* 左侧3px红色色带 */
+  border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
+  /* 浅红底色 */
+  background-color: rgba(245, 108, 108, 0.08) !important;
+  /* 斑马纹背景（叠加在底色上）*/
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(245, 108, 108, 0.12) 10px,
+      rgba(245, 108, 108, 0.12) 20px
+    ) !important;
+}
+
+/* 冲突状态的文字保持清晰可读 */
+.task-bar.resource-conflict .task-name,
+.task-bar.resource-conflict .task-progress {
+  color: var(--gantt-text-primary);
+  font-weight: 600;
 }
 
 .task-bar.dragging {
@@ -3537,6 +3859,13 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   padding-left: 8px;
 }
 
+/* 资源视图中的标题包裹器，禁用绝对定位 */
+.task-name-wrapper {
+  position: relative;
+  width: 100%;
+  text-align: center;
+}
+
 .task-name {
   white-space: nowrap;
   overflow: visible;
@@ -3552,6 +3881,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   font-size: 11px;
   font-weight: 700; /* 加粗显示 */
   z-index: 10;
+  line-height: 1.2;
   /* 移除背景样式，保持原始状态 */
 }
 
@@ -3876,6 +4206,31 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   backdrop-filter: blur(2px);
 }
 
+/* v1.9.0 拖拽预览效果 */
+.drag-preview {
+  position: fixed;
+  opacity: 0.5;
+  border-radius: 6px;
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+  z-index: 999999998;
+  pointer-events: none;
+  /* v1.9.0 不使用transform居中，直接定位保持时间对齐 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.drag-preview-content {
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 .drag-tooltip .tooltip-row {
   display: flex;
   justify-content: space-between;
@@ -3911,20 +4266,35 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   z-index: 999999999;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, -100%); /* 默认显示在上方 */
   margin-top: -8px;
+}
+
+/* 显示在下方时的样式 */
+.task-hover-tooltip.tooltip-below {
+  transform: translate(-50%, 0); /* 显示在下方 */
+  margin-top: 0;
 }
 
 .hover-tooltip-arrow {
   position: absolute;
   left: 50%;
-  bottom: -5px;
+  bottom: -5px; /* 默认箭头在底部，指向下方 */
   transform: translateX(-50%);
   width: 0;
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   border-top: 6px solid rgba(0, 0, 0, 0.85);
+  border-bottom: 0;
+}
+
+/* 显示在下方时，箭头在顶部，指向上方 */
+.tooltip-below .hover-tooltip-arrow {
+  bottom: auto;
+  top: -5px;
+  border-top: 0;
+  border-bottom: 6px solid rgba(0, 0, 0, 0.85);
 }
 
 .hover-tooltip-content {

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, useSlots, computed, inject } from 'vue'
-import type { StyleValue, Slots } from 'vue'
+import type { StyleValue, Slots, Ref, ComputedRef } from 'vue'
 import TaskRow from './taskRow/TaskRow.vue'
 import { useI18n } from '../../composables/useI18n'
 import type { Task } from '../../models/classes/Task'
+import type { Resource } from '../../models/classes/Resource'
 import type { TaskListConfig, TaskListColumnConfig } from '../../models/configs/TaskListConfig'
+import type { ResourceListConfig, ResourceListColumnConfig } from '../../models/configs/ResourceListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../../models/configs/TaskListConfig'
+import { DEFAULT_RESOURCE_LIST_COLUMNS } from '../../models/configs/ResourceListConfig'
 import { useTaskRowDrag } from '../../composables/useTaskRowDrag'
 import { useTaskListColumns } from './composables/taskList/useTaskListColumns'
 import { useTaskListLayout } from './composables/taskList/useTaskListLayout'
@@ -43,10 +46,19 @@ const emit = defineEmits<{
       newParent: Task | null
     },
   ]
+  'resource-click': [resource: Resource] // v1.9.0 资源行点击事件
 }>()
 
 const slots = useSlots()
 const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// v1.9.0 从 GanttChart 注入视图模式和数据源
+const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
+const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
+const listConfig = inject<ComputedRef<TaskListConfig | ResourceListConfig | undefined>>(
+  'gantt-list-config',
+  computed(() => undefined),
+)
 
 // 从 GanttChart 注入列级 slots
 const columnSlots = inject<Slots>('gantt-column-slots', {})
@@ -54,12 +66,27 @@ const columnSlots = inject<Slots>('gantt-column-slots', {})
 // 多语言支持
 const { t } = useI18n()
 
+// v1.9.0 根据视图模式获取默认列配置
+const getDefaultColumns = computed(() => {
+  if (viewMode.value === 'resource') {
+    return DEFAULT_RESOURCE_LIST_COLUMNS as unknown as TaskListColumnConfig[]
+  }
+  return DEFAULT_TASK_LIST_COLUMNS
+})
+
+// v1.9.0 根据视图模式和inject的配置计算最终列配置
+const finalColumnsConfig = computed(() => {
+  // 优先使用inject的配置，否则使用props
+  const config = listConfig.value || props.taskListConfig
+  return config?.columns || getDefaultColumns.value
+})
+
 // 使用声明式列管理 composable
 const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
   useTaskListColumns(
     computed(() => props.taskListColumnRenderMode || 'default'),
     slots,
-    props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS,
+    finalColumnsConfig.value,
   )
 
 // 计算实际使用的列配置
@@ -76,12 +103,18 @@ const visibleColumns = computed(() => {
   if (props.taskListColumnRenderMode === 'declarative') {
     return [] as TaskListColumnConfig[]
   }
-  const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
-  return columns.filter(col => col.visible !== false)
+  return finalColumnsConfig.value.filter(col => col.visible !== false)
 })
 
-// 使用 props.tasks 的引用，不创建副本
-const localTasks = computed(() => props.tasks || [])
+// v1.9.0 使用注入的数据源或props.tasks
+const localTasks = computed(() => {
+  if (viewMode.value === 'resource') {
+    // 资源视图：使用dataSource作为资源列表
+    return (dataSource.value || []) as Task[]
+  }
+  // 任务视图：使用props.tasks
+  return (props.tasks || []) as Task[]
+})
 
 // 使用布局计算 composable
 const {
@@ -92,8 +125,8 @@ const {
   endSpacerHeight,
 } = useTaskListLayout(localTasks)
 
-// 悬停状态管理
-const hoveredTaskId = ref<number | null>(null)
+// 悬停状态管理 - v1.9.0 支持资源视图中的字符串ID
+const hoveredTaskId = ref<number | string | null>(null)
 
 // 拖拽状态管理
 const isSplitterDragging = ref(false)
@@ -203,6 +236,11 @@ const handleTaskRowMoved = (payload: {
     oldParent: null,
     newParent: null,
   })
+}
+
+// v1.9.0 处理资源行点击事件
+const handleResourceClick = (resource: Resource) => {
+  emit('resource-click', resource)
 }
 
 // 全局拖拽管理器

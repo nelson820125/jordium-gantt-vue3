@@ -5,6 +5,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import normalData from './data.json'
 import largeData from './data-large-1m.json'
+import resourcesData from './data-resources.json'
 import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
@@ -15,7 +16,9 @@ import { useI18n } from '../src/composables/useI18n'
 import { useDemoLocale } from './useDemoLocale'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
+import { Resource } from '../src/models/classes/Resource'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
+import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
 import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
 
 const { showMessage } = useMessage()
@@ -33,6 +36,8 @@ const gantt = ref<InstanceType<typeof import('../src/components/GanttChart.vue')
 
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
+const resources = ref<Resource[]>([])
+const viewMode = ref<'task' | 'resource'>('task')
 
 const rawDataSources = [
   {
@@ -80,6 +85,56 @@ const applyDataSource = (source: RawDataSource) => {
   const payload = source.payload as { tasks?: Task[]; milestones?: Task[] }
   tasks.value = cloneData(payload.tasks ?? [])
   milestones.value = cloneData(payload.milestones ?? [])
+
+  // 从独立的资源数据文件加载资源数据
+  const resourcePayload = resourcesData as { resources?: any[] }
+  if (resourcePayload.resources) {
+    resources.value = resourcePayload.resources.map(resData => {
+      // 使用Resource类创建资源实例
+      return new Resource({
+        id: resData.id,
+        name: resData.name,
+        type: resData.type,
+        avatar: resData.avatar,
+        description: resData.description,
+        department: resData.department,
+        skills: resData.skills,
+        utilization: resData.utilization,
+        tasks: resData.tasks || []
+      })
+    })
+  } else {
+    // 向后兼容：如果没有独立的资源数据，从任务中生成
+    const resourceMap = new Map<string, Resource>()
+    tasks.value.forEach(task => {
+      if (task.assignee && !resourceMap.has(task.assignee)) {
+        resourceMap.set(task.assignee, new Resource({
+          id: task.assignee,
+          name: task.assignee,
+          type: 'user',
+          avatar: task.assigneeAvatar || undefined,
+          tasks: []
+        }))
+      }
+    })
+
+    // 将任务分配到对应资源
+    tasks.value.forEach(task => {
+      if (task.assignee) {
+        const resource = resourceMap.get(task.assignee)
+        if (resource) {
+          resource.addTask(task)
+        }
+      }
+    })
+
+    // 计算每个资源的利用率
+    resourceMap.forEach(resource => {
+      resource.updateUtilization()
+    })
+
+    resources.value = Array.from(resourceMap.values())
+  }
 }
 
 const getSourceTexts = (key: DataSourceKey) => {
@@ -216,11 +271,80 @@ const taskListConfig = computed<TaskListConfig>(() => ({
     widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
 }))
 
+// 资源列表配置
+const resourceListConfig = computed<ResourceListConfig>(() => ({
+  columns: [
+    {
+      key: 'name',
+      label: '资源名称',
+      visible: true,
+      width: 150,
+      formatter: (resource: Resource) => resource.name || '-',
+    },
+    {
+      key: 'type',
+      label: '类型',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => resource.type || '-',
+    },
+    {
+      key: 'taskCount',
+      label: '任务数',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => resource.tasks?.length?.toString() || '0',
+    },
+    {
+      key: 'utilization',
+      label: '利用率',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => {
+        if (resource.utilization != null) {
+          return `${resource.utilization}%`
+        }
+        // 简单计算：基于任务数量的利用率
+        const taskCount = resource.tasks?.length || 0
+        const utilizationPercent = Math.min(taskCount * 20, 100) // 假设每个任务占20%
+        return `${utilizationPercent}%`
+      },
+    },
+  ],
+  defaultWidth:
+    widthUnit.value === '%'
+      ? `${widthPercentage.value.defaultWidth}%`
+      : taskListWidth.value.defaultWidth,
+  minWidth:
+    widthUnit.value === '%' ? `${widthPercentage.value.minWidth}%` : taskListWidth.value.minWidth,
+  maxWidth:
+    widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
+}))
+
+
 // 控制是否允许拖拽和拉伸
 const allowDragAndResize = ref(true)
 
 // 控制是否启用TaskRow拖拽移动
 const enableTaskRowMove = ref(true)
+
+// v1.9.0 资源视图垂直拖拽确认对话框
+const resourceDragConfirmVisible = ref(false)
+const resourceDragData = ref<{
+  task: Task | null
+  sourceResourceIndex: number
+  targetResourceIndex: number
+  targetResource: Resource | null
+  newStartDate?: string
+  newEndDate?: string
+}>({
+  task: null,
+  sourceResourceIndex: -1,
+  targetResourceIndex: -1,
+  targetResource: null,
+  newStartDate: undefined,
+  newEndDate: undefined,
+})
 
 // 指派人员选项列表
 const assigneeOptions = ref([
@@ -920,6 +1044,96 @@ const handleTaskRowMoved = async (payload: {
   //   console.error('保存任务层级失败:', error)
   //   showMessage('保存失败，请刷新页面', 'error', { closable: true })
   // }
+}
+
+// v1.9.0 处理资源视图垂直拖拽结束事件
+const handleResourceDragEnd = (event: {
+  task: Task
+  sourceResourceIndex: number
+  targetResourceIndex: number
+  targetResource: Resource
+  newStartDate?: string
+  newEndDate?: string
+}) => {
+  // 保存拖拽数据并显示确认对话框
+  resourceDragData.value = {
+    task: event.task,
+    sourceResourceIndex: event.sourceResourceIndex,
+    targetResourceIndex: event.targetResourceIndex,
+    targetResource: event.targetResource,
+    newStartDate: event.newStartDate,
+    newEndDate: event.newEndDate,
+  }
+  resourceDragConfirmVisible.value = true
+}
+
+// 确认资源分配
+const confirmResourceDrag = () => {
+  const { task, sourceResourceIndex, targetResourceIndex, targetResource, newStartDate, newEndDate } = resourceDragData.value
+  if (!task || !targetResource) return
+
+  // v1.9.0 跨行拖拽时需要更新任务的日期，使任务显示在正确的时间位置
+  if (newStartDate && newEndDate) {
+    task.startDate = newStartDate
+    task.endDate = newEndDate
+  }
+
+  // 从源资源中移除任务
+  const sourceResource = resources.value[sourceResourceIndex]
+  if (sourceResource && sourceResource.tasks) {
+    const taskIndex = sourceResource.tasks.findIndex(t => t.id === task.id)
+    if (taskIndex !== -1) {
+      sourceResource.tasks.splice(taskIndex, 1)
+    }
+  }
+
+  // 添加任务到目标资源
+  const destResource = resources.value[targetResourceIndex]
+  if (destResource) {
+    if (!destResource.tasks) {
+      destResource.tasks = []
+    }
+    destResource.tasks.push(task)
+  }
+
+  // 显示资源分配和日期更新信息
+  const dateInfo = newStartDate && newEndDate ? `，日期已调整为 ${newStartDate} ~ ${newEndDate}` : ''
+  showMessage(`任务 "${task.name}" 已分配给资源 "${targetResource.name}"${dateInfo}`, 'success')
+  resourceDragConfirmVisible.value = false
+
+  // 重置拖拽数据
+  resourceDragData.value = {
+    task: null,
+    sourceResourceIndex: -1,
+    targetResourceIndex: -1,
+    targetResource: null,
+    newStartDate: undefined,
+    newEndDate: undefined
+  }
+}
+
+// 取消资源分配
+const cancelResourceDrag = () => {
+  resourceDragConfirmVisible.value = false
+
+  // v1.9.0 通知TaskBar清除临时数据，恢复到原始位置
+  window.dispatchEvent(
+    new CustomEvent('resource-drag-cancel', {
+      detail: {
+        taskId: resourceDragData.value.task?.id
+      }
+    })
+  )
+
+  // 重置拖拽数据
+  resourceDragData.value = {
+    task: null,
+    sourceResourceIndex: -1,
+    targetResourceIndex: -1,
+    targetResource: null,
+    newStartDate: undefined,
+    newEndDate: undefined
+  }
 }
 
 // 自定义右键菜单操作处理
@@ -1863,6 +2077,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         ref="gantt"
         :tasks="tasks"
         :milestones="milestones"
+        :resources="resources"
+        :view-mode="viewMode"
+        :resource-list-config="resourceListConfig"
         :locale="controlMode === 'props' ? propsLocale : undefined"
         :theme="controlMode === 'props' ? propsTheme : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
@@ -1910,6 +2127,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         @task-added="handleTaskAddEvent"
         @task-updated="handleTaskUpdateEvent"
         @task-row-moved="handleTaskRowMoved"
+        @view-mode-change="mode => viewMode = mode"
+        @resource-click="resource => showMessage(`资源点击: ${resource.name}`, 'info')"
+        @resource-drag-end="handleResourceDragEnd"
       >
         <!-- 自定义任务名称内容 (TaskRow 和 TaskBar) -->
         <template #custom-task-content="item">
@@ -2107,10 +2327,139 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </div>
       </div>
     </div>
+
+    <!-- v1.9.0 资源拖拽确认对话框 -->
+    <div v-if="resourceDragConfirmVisible" class="modal-overlay" @click.self="cancelResourceDrag">
+      <div class="resource-drag-dialog">
+        <div class="resource-drag-dialog-header">
+          <h3>确认资源分配</h3>
+        </div>
+        <div class="resource-drag-dialog-body">
+          <p v-if="resourceDragData.task && resourceDragData.targetResource">
+            将任务 <strong>"{{ resourceDragData.task.name }}"</strong> 分配给资源
+            <strong>"{{ resourceDragData.targetResource.name }}"</strong>？
+          </p>
+          <div v-if="resourceDragData.task" class="task-info">
+            <p>原开始日期：{{ resourceDragData.task.startDate }}</p>
+            <p>原结束日期：{{ resourceDragData.task.endDate }}</p>
+            <template v-if="resourceDragData.newStartDate && resourceDragData.newEndDate">
+              <p style="color: #409eff; font-weight: 600; margin-top: 8px;">新开始日期：{{ resourceDragData.newStartDate }}</p>
+              <p style="color: #409eff; font-weight: 600;">新结束日期：{{ resourceDragData.newEndDate }}</p>
+            </template>
+          </div>
+        </div>
+        <div class="resource-drag-dialog-footer">
+          <button class="cancel-button" @click="cancelResourceDrag">取消</button>
+          <button class="confirm-button" @click="confirmResourceDrag">确认</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 蒙版层 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* 资源拖拽确认对话框 */
+.resource-drag-dialog {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 400px;
+  max-width: 500px;
+  overflow: hidden;
+}
+
+.resource-drag-dialog-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #f5f7fa;
+}
+
+.resource-drag-dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.resource-drag-dialog-body {
+  padding: 20px;
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.resource-drag-dialog-body p {
+  margin: 0 0 12px 0;
+}
+
+.resource-drag-dialog-body strong {
+  color: #303133;
+  font-weight: 600;
+}
+
+.resource-drag-dialog-body .task-info {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.resource-drag-dialog-body .task-info p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.resource-drag-dialog-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.resource-drag-dialog-footer button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button {
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  color: #606266;
+}
+
+.cancel-button:hover {
+  background: #f5f7fa;
+  border-color: #c0c4cc;
+}
+
+.confirm-button {
+  background: #409eff;
+  color: white;
+}
+
+.confirm-button:hover {
+  background: #66b1ff;
+}
+
 .app-container {
   width: 100%;
   min-width: 1200px;
@@ -3441,6 +3790,83 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
 .confirm-button:active {
   background: var(--gantt-primary-color-active, #3a8ee6);
+}
+
+/* v1.9.0 资源拖拽确认对话框样式 */
+.resource-drag-dialog {
+  position: relative;
+  width: 500px;
+  max-width: 90vw;
+  background: var(--gantt-bg-primary, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.resource-drag-dialog-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.resource-drag-dialog-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gantt-text-primary, #303133);
+}
+
+.resource-drag-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.resource-drag-dialog-body p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--gantt-text-primary, #303133);
+}
+
+.resource-drag-dialog-body .task-info {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--gantt-bg-secondary, #f5f7fa);
+  border-radius: 4px;
+}
+
+.resource-drag-dialog-body .task-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--gantt-text-secondary, #606266);
+}
+
+.resource-drag-dialog-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--gantt-border-color, #e4e7ed);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel-button {
+  padding: 8px 20px;
+  background: transparent;
+  color: var(--gantt-text-primary, #303133);
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.cancel-button:hover {
+  color: var(--gantt-primary-color, #409eff);
+  border-color: var(--gantt-primary-color, #409eff);
+  background: var(--gantt-primary-light-9, #ecf5ff);
 }
 
 /* 暗黑模式适配 */

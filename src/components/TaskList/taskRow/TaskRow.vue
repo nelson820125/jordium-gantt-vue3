@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, useSlots, toRef, inject, type ComputedRef } from 'vue'
+import { ref, computed, useSlots, toRef, inject, type ComputedRef, type Ref } from 'vue'
 import type { StyleValue } from 'vue'
 import { useI18n } from '../../../composables/useI18n'
 import { formatPredecessorDisplay } from '../../../utils/predecessorUtils'
 import type { Task } from '../../../models/classes/Task'
+import type { Resource } from '../../../models/classes/Resource'
 import type { TaskListColumnConfig } from '../../../models/configs/TaskListConfig'
 import type { DeclarativeColumnConfig } from '../composables/taskList/useTaskListColumns'
 import TaskContextMenu from '../../TaskContextMenu.vue'
@@ -21,7 +22,7 @@ interface TaskRowSlotProps {
   level: number
   indent: string
   isHovered: boolean
-  hoveredTaskId: number | null
+  hoveredTaskId: number | string | null
   isParent: boolean
   hasChildren: boolean
   collapsed: boolean
@@ -42,8 +43,8 @@ interface Props {
   level: number
   rowIndex?: number
   isHovered?: boolean
-  hoveredTaskId?: number | null
-  onHover?: (taskId: number | null) => void
+  hoveredTaskId?: number | string | null
+  onHover?: (taskId: number | string | null) => void
   columns: TaskListColumnConfig[]
   declarativeColumns?: DeclarativeColumnConfig[]
   renderMode?: 'default' | 'declarative'
@@ -81,6 +82,14 @@ const daysText = computed(() => t.value?.days ?? '')
 
 const slots = useSlots()
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// v1.9.0 Inject view mode to detect if we're rendering a resource
+const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
+
+// v1.9.0 Detect if current row is a resource
+const isResourceRow = computed(() => {
+  return viewMode.value === 'resource' && 'tasks' in props.task
+})
 
 // 注入右键菜单配置
 const enableTaskListContextMenu = inject<ComputedRef<boolean>>('enable-task-list-context-menu', computed(() => true))
@@ -289,6 +298,7 @@ const assigneeDisplayData = computed(() => {
       :data-task-id="props.task.id"
       :class="{
         'task-row-hovered': isHovered,
+        'task-type-story': viewMode === 'resource', /* v1.9.0 资源视图始终显示左边框 */
         'parent-task': isParentTask,
         'milestone-group-row': isMilestoneGroup,
         'task-type-story': isStoryTask,
@@ -358,11 +368,21 @@ const assigneeDisplayData = computed(() => {
 
           <!-- 叶子节点的占位空间（无折叠按钮且无图标显示时） -->
           <span
-            v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false"
+            v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false && !isResourceRow"
             class="leaf-spacer"
           ></span>
 
+          <!-- v1.9.0 资源视图：直接显示资源名称 -->
+          <div v-if="isResourceRow" class="resource-row-name">
+            <div v-if="(props.task as any).avatar" class="resource-avatar">
+              <img :src="(props.task as any).avatar" :alt="(props.task as any).name" />
+            </div>
+            <span class="resource-name-text">{{ (props.task as any).name || '-' }}</span>
+          </div>
+
+          <!-- 任务视图：正常渲染 -->
           <TaskRowNameContent
+            v-else
             :task="props.task"
             :is-parent-task="isParentTask"
             :has-children="hasChildren"
@@ -417,7 +437,12 @@ const assigneeDisplayData = computed(() => {
             {{ column.formatter(props.task, column) }}
           </template>
 
-          <!-- 优先级3: 内置列类型渲染 -->
+          <!-- v1.9.0 资源视图：使用formatter或直接显示资源属性 -->
+          <template v-else-if="isResourceRow">
+            {{ (props.task as any)[column.key] || '-' }}
+          </template>
+
+          <!-- 优先级3: 内置列类型渲染（任务视图） -->
           <!-- 前置任务列 -->
           <template v-else-if="column.key === 'predecessor'">
             {{ formatPredecessorDisplay(props.task.predecessor) }}
@@ -540,24 +565,20 @@ const assigneeDisplayData = computed(() => {
   align-items: center;
   color: var(--gantt-text-secondary);
   cursor: pointer;
-  transition: all 0.3s ease;
-  transform: scale(1);
-  transform-origin: 5px center; /* 从左侧偏右5px的位置作为放大中心 */
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
   z-index: 1;
   position: relative;
 }
 
 .task-row:hover {
   background-color: var(--gantt-bg-hover);
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
 }
 
 .task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
-  transform: scale(1.02) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
   z-index: 10 !important;
 }
 
@@ -568,15 +589,13 @@ const assigneeDisplayData = computed(() => {
 
 .task-row.parent-task:hover {
   background: var(--gantt-bg-hover-parent, var(--gantt-bg-hover));
-  transform: scale(1.02);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
 }
 
 .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent, var(--gantt-bg-hover)) !important;
-  transform: scale(1.02) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
   z-index: 10 !important;
 }
 
@@ -586,12 +605,9 @@ const assigneeDisplayData = computed(() => {
   background: linear-gradient(90deg, var(--gantt-bg-tertiary) 0%, var(--gantt-bg-primary) 100%);
 }
 
-.milestone-group-row:hover {
+.mbox-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  ilestone-group-row:hover {
   background: linear-gradient(90deg, var(--gantt-bg-hover-parent) 0%, var(--gantt-bg-hover) 100%);
-  transform: scale(1.02);
-  box-shadow:
-    0 6px 16px rgba(245, 108, 108, 0.3),
-    0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 10;
   border-left-color: var(--gantt-danger, #f56c6c);
   border-left-width: 4px; /* 悬停时边框稍微加粗 */
@@ -610,30 +626,30 @@ const assigneeDisplayData = computed(() => {
   border-left: 3px solid var(--gantt-danger, #f56c6c);
 }
 
-/* 任务类型悬停时保持并增强左边框 */
+/* 任务类型悬停时保持左边框，无需加粗 */
 .task-type-story:hover {
-  border-left: 5px solid var(--gantt-primary, #409eff);
+  border-left: 3px solid var(--gantt-primary, #409eff);
 }
 
 .task-type-task:hover {
-  border-left: 5px solid var(--gantt-warning, #e6a23c);
+  border-left: 3px solid var(--gantt-warning, #e6a23c);
 }
 
 .task-type-milestone:hover {
-  border-left: 5px solid var(--gantt-danger, #f56c6c);
+  border-left: 3px solid var(--gantt-danger, #f56c6c);
 }
 
 /* 悬停状态下的左边框保持 */
 .task-row-hovered.task-type-story {
-  border-left: 5px solid var(--gantt-primary, #409eff) !important;
+  border-left: 3px solid var(--gantt-primary, #409eff) !important;
 }
 
 .task-row-hovered.task-type-task {
-  border-left: 5px solid var(--gantt-warning, #e6a23c) !important;
+  border-left: 3px solid var(--gantt-warning, #e6a23c) !important;
 }
 
 .task-row-hovered.task-type-milestone {
-  border-left: 5px solid var(--gantt-danger, #f56c6c) !important;
+  border-left: 3px solid var(--gantt-danger, #f56c6c) !important;
 }
 
 :global(html[data-theme='dark']) .milestone-group-row {
@@ -787,35 +803,25 @@ const assigneeDisplayData = computed(() => {
 
 /* 暗黑模式的悬停效果 */
 :global(html[data-theme='dark']) .task-row:hover {
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 :global(html[data-theme='dark']) .task-row.task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
 }
 
 :global(html[data-theme='dark']) .task-row.parent-task:hover {
-  box-shadow:
-    0 6px 16px rgba(255, 255, 255, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 :global(html[data-theme='dark']) .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent) !important;
-  box-shadow:
-    0 6px 16px rgba(255, 255, 255, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
 }
 
 :global(html[data-theme='dark']) .milestone-group-row:hover {
-  box-shadow:
-    0 6px 16px rgba(246, 124, 124, 0.4),
-    0 2px 8px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* TaskRow拖拽样式 */
@@ -833,6 +839,35 @@ const assigneeDisplayData = computed(() => {
 .task-row-drop-target.drop-child {
   border: 2px solid var(--gantt-primary, #409eff) !important;
   background-color: rgba(64, 158, 255, 0.05) !important;
+}
+
+/* v1.9.0 资源视图行样式 */
+.resource-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--gantt-text-primary);
+}
+
+.resource-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.resource-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resource-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 :global(html[data-theme='dark']) .task-row-drop-target.drop-after {

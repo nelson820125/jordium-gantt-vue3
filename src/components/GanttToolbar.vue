@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<Props>(), {
   theme: undefined,
   fullscreen: undefined,
   expandAll: undefined,
+  viewMode: 'task', // v1.9.0 默认任务视图
   onAddTask: undefined,
   onAddMilestone: undefined,
   onTodayLocate: undefined,
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
   onTimeScaleChange: undefined,
   onExpandAll: undefined,
   onCollapseAll: undefined,
+  onViewModeChange: undefined, // v1.9.0
 })
 
 const emit = defineEmits<{
@@ -40,6 +42,7 @@ const emit = defineEmits<{
   'time-scale-change': [scale: TimelineScale]
   'expand-all': []
   'collapse-all': []
+  'view-mode-change': [mode: 'task' | 'resource'] // v1.9.0 视图切换事件
 }>()
 
 // LocalStorage keys
@@ -58,6 +61,7 @@ interface Props {
   theme?: 'light' | 'dark'
   fullscreen?: boolean
   expandAll?: boolean
+  viewMode?: 'task' | 'resource' // v1.9.0 视图模式
   // 自定义事件处理器
   onAddTask?: () => void
   onAddMilestone?: () => void
@@ -70,6 +74,7 @@ interface Props {
   onTimeScaleChange?: (scale: TimelineScale) => void
   onExpandAll?: () => void
   onCollapseAll?: () => void
+  onViewModeChange?: (mode: 'task' | 'resource') => void // v1.9.0 视图切换回调
   // 外部确认接口
   onSettingsConfirm?: (
     type: 'theme' | 'language',
@@ -97,6 +102,18 @@ const isDarkMode = ref(getInitialTheme())
 const isFullscreen = ref(false)
 const showLanguageDropdown = ref(false)
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
+const currentViewMode = ref<'task' | 'resource'>('task') // v1.9.0 视图模式状态
+
+// v1.9.0 监听 viewMode prop
+watch(
+  () => props.viewMode,
+  (newMode) => {
+    if (newMode && newMode !== currentViewMode.value) {
+      currentViewMode.value = newMode
+    }
+  },
+  { immediate: true },
+)
 
 // 如果外部通过 Prop 传入 timeScale，则同步到本地状态
 watch(
@@ -207,6 +224,18 @@ const handleCollapseAll = () => {
     props.onCollapseAll()
   } else {
     emit('collapse-all')
+  }
+}
+
+// v1.9.0 视图模式切换处理
+const handleViewModeChange = (mode: 'task' | 'resource') => {
+  if (currentViewMode.value !== mode) {
+    currentViewMode.value = mode
+    if (props.onViewModeChange && typeof props.onViewModeChange === 'function') {
+      props.onViewModeChange(mode)
+    } else {
+      emit('view-mode-change', mode)
+    }
   }
 }
 
@@ -528,6 +557,58 @@ onUnmounted(() => {
             <line x1="8" y1="12" x2="16" y2="12"></line>
           </svg>
           {{ t('addMilestone') }}
+        </button>
+      </div>
+
+      <!-- v1.9.0 视图模式切换按钮组 - 使用 Segmented Control 样式 -->
+      <div class="gantt-view-mode-control">
+        <div class="view-mode-track">
+          <div
+            class="view-mode-thumb"
+            :style="{
+              transform: `translateX(${currentViewMode === 'task' ? '0%' : '100%'})`
+            }"
+          ></div>
+        </div>
+        <button
+          class="view-mode-item"
+          :class="{ active: currentViewMode === 'task' }"
+          :title="t('taskView') || '任务视图'"
+          @click="handleViewModeChange('task')"
+        >
+          <svg
+            class="gantt-btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+          {{ t('taskView') || '任务视图' }}
+        </button>
+        <button
+          class="view-mode-item"
+          :class="{ active: currentViewMode === 'resource' }"
+          :title="t('resourceView') || '资源视图'"
+          @click="handleViewModeChange('resource')"
+        >
+          <svg
+            class="gantt-btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          {{ t('resourceView') || '资源视图' }}
         </button>
       </div>
 
@@ -1267,6 +1348,124 @@ onUnmounted(() => {
   width: 16px;
   height: 16px;
   stroke-width: 2;
+}
+
+/* v1.9.0 视图模式切换 Segmented Control 样式 */
+.gantt-view-mode-control {
+  position: relative;
+  display: inline-flex;
+  background: var(--gantt-bg-primary, #ffffff);
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  border-radius: 6px;
+  padding: 1px;
+  margin-right: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+  height: 36px;
+}
+
+.gantt-view-mode-control:hover {
+  border-color: var(--gantt-primary-light, #79bbff);
+}
+
+.view-mode-track {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  pointer-events: none;
+}
+
+.view-mode-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: var(--gantt-primary, #409eff);
+  border-radius: 5px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 1px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.view-mode-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 100px;
+  z-index: 1;
+  border-radius: 5px;
+  user-select: none;
+  color: var(--gantt-text-primary, #303133);
+}
+
+.view-mode-item:hover:not(.active) {
+  color: var(--gantt-primary, #409eff);
+  background: var(--gantt-bg-hover, rgba(64, 158, 255, 0.06));
+}
+
+.view-mode-item:active:not(.active) {
+  background: var(--gantt-bg-active, rgba(64, 158, 255, 0.12));
+}
+
+.view-mode-item.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.view-mode-item .gantt-btn-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  stroke-width: 2;
+}
+
+/* 暗黑模式下的视图模式切换样式 */
+:global(html[data-theme='dark']) .gantt-view-mode-control {
+  background: var(--gantt-bg-secondary, #4b4b4b);
+  border-color: var(--gantt-border-color, #808080);
+}
+
+:global(html[data-theme='dark']) .gantt-view-mode-control:hover {
+  border-color: var(--gantt-primary, #3399ff);
+}
+
+:global(html[data-theme='dark']) .view-mode-thumb {
+  background: var(--gantt-primary, #3399ff);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 1px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+:global(html[data-theme='dark']) .view-mode-item {
+  color: #ffffff !important;
+}
+
+:global(html[data-theme='dark']) .view-mode-item:hover:not(.active) {
+  color: var(--gantt-primary, #3399ff);
+  background: rgba(51, 153, 255, 0.12);
+}
+
+:global(html[data-theme='dark']) .view-mode-item:active:not(.active) {
+  background: rgba(51, 153, 255, 0.2);
+}
+
+:global(html[data-theme='dark']) .view-mode-item.active {
+  color: #ffffff;
 }
 
 /* 暗黑模式下的按钮组样式 */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted, inject } from 'vue'
 
 interface Props {
   // 触点类型
@@ -26,6 +26,9 @@ const props = withDefaults(defineProps<Props>(), {
   globalDragging: false,
 })
 
+// 注入视图模式，在资源视图下禁用LinkAnchor
+const viewMode = inject<any>('gantt-view-mode', { value: 'task' })
+
 const emit = defineEmits<{
   'drag-start': [{ taskId: number; type: 'predecessor' | 'successor'; x: number; y: number }]
   'drag-move': [{ x: number; y: number }]
@@ -37,6 +40,11 @@ const isHoveredAnchor = ref(false)
 
 // 优化的显示逻辑
 const shouldShow = computed(() => {
+  // 在资源视图下禁用LinkAnchor
+  if (viewMode.value === 'resource') {
+    return false
+  }
+
   // 在以下情况显示触点：
   // 1. TaskBar 被悬停
   // 2. 全局有拖拽操作进行中（其他任务正在拖拽连接线）

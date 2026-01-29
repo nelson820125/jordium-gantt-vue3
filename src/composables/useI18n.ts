@@ -94,6 +94,9 @@ const messages = {
     exportPdf: '导出 PDF',
     expandAll: '全部展开',
     collapseAll: '全部折叠',
+    // v1.9.0 视图模式
+    taskView: '任务视图',
+    resourceView: '资源视图',
     language: '中文',
     languageTooltip: '选择语言',
     lightMode: '明亮模式',
@@ -376,6 +379,9 @@ const messages = {
     exportPdf: 'Export PDF',
     expandAll: 'Expand All',
     collapseAll: 'Collapse All',
+    // v1.9.0 视图模式
+    taskView: 'Task View',
+    resourceView: 'Resource View',
     language: 'English',
     languageTooltip: 'Select language',
     lightMode: 'Light Mode',

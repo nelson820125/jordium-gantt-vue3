@@ -1,0 +1,244 @@
+{
+  "resources": [
+    {
+      "id": "resource-chen",
+      "name": "首席研究员 Dr. Chen",
+      "type": "研究员",
+      "avatar": "https://i.pravatar.cc/150?img=1",
+      "department": "临床研究部",
+      "skills": ["临床试验管理", "项目规划", "团队领导"],
+      "utilization": 85,
+      "tasks": [
+        {
+          "id": 1000,
+          "name": "新药ADX-2024临床试验项目",
+          "startDate": "2025-01-01",
+          "endDate": "2027-12-31",
+          "progress": 15,
+          "type": "story"
+        },
+        {
+          "id": 5001,
+          "name": "研究方案评审",
+          "startDate": "2025-03-01",
+          "endDate": "2025-03-15",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 5002,
+          "name": "数据安全监察会议",
+          "startDate": "2025-06-10",
+          "endDate": "2025-06-12",
+          "progress": 80,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-wang",
+      "name": "I期试验主任 Dr. Wang",
+      "type": "试验主任",
+      "avatar": "https://i.pravatar.cc/150?img=2",
+      "department": "I期临床研究组",
+      "skills": ["I期试验设计", "药代动力学", "安全性评估"],
+      "utilization": 92,
+      "tasks": [
+        {
+          "id": 1100,
+          "name": "I期临床试验",
+          "startDate": "2025-01-01",
+          "endDate": "2025-08-31",
+          "progress": 65,
+          "type": "story"
+        },
+        {
+          "id": 5003,
+          "name": "受试者招募",
+          "startDate": "2025-03-01",
+          "endDate": "2025-04-30",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 5004,
+          "name": "给药与观察",
+          "startDate": "2025-05-01",
+          "endDate": "2025-07-31",
+          "progress": 45,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-li",
+      "name": "方案设计师 李明",
+      "type": "方案设计师",
+      "avatar": "https://i.pravatar.cc/150?img=3",
+      "department": "临床研究部",
+      "skills": ["方案设计", "伦理审查", "监管申报"],
+      "utilization": 75,
+      "tasks": [
+        {
+          "id": 1101,
+          "name": "试验方案设计与伦理审查",
+          "startDate": "2025-01-01",
+          "endDate": "2025-02-28",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 5005,
+          "name": "II期方案准备",
+          "startDate": "2025-07-01",
+          "endDate": "2025-08-15",
+          "progress": 30,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-zhang",
+      "name": "数据分析师 张伟",
+      "type": "数据分析师",
+      "avatar": "https://i.pravatar.cc/150?img=4",
+      "department": "数据管理与统计部",
+      "skills": ["统计分析", "数据可视化", "报告撰写"],
+      "utilization": 68,
+      "tasks": [
+        {
+          "id": 1103,
+          "name": "数据收集与分析",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-15",
+          "progress": 50,
+          "type": "task"
+        },
+        {
+          "id": 5006,
+          "name": "中期数据报告",
+          "startDate": "2025-06-15",
+          "endDate": "2025-07-01",
+          "progress": 70,
+          "type": "task"
+        },
+        {
+          "id": 5007,
+          "name": "统计模型优化",
+          "startDate": "2025-07-15",
+          "endDate": "2025-08-10",
+          "progress": 25,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-liu",
+      "name": "质量保证专员 刘芳",
+      "type": "质量保证",
+      "avatar": "https://i.pravatar.cc/150?img=5",
+      "department": "质量保证部",
+      "skills": ["GCP审计", "质量控制", "SOP管理"],
+      "utilization": 88,
+      "tasks": [
+        {
+          "id": 1104,
+          "name": "I期总结报告",
+          "startDate": "2025-08-15",
+          "endDate": "2025-08-31",
+          "progress": 20,
+          "type": "task"
+        },
+        {
+          "id": 5008,
+          "name": "GCP合规性审计",
+          "startDate": "2025-04-01",
+          "endDate": "2025-04-15",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 5009,
+          "name": "文档质量检查",
+          "startDate": "2025-07-01",
+          "endDate": "2025-07-31",
+          "progress": 60,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-zhao",
+      "name": "II期试验协调员 赵敏",
+      "type": "试验协调员",
+      "avatar": "https://i.pravatar.cc/150?img=6",
+      "department": "II期临床研究组",
+      "skills": ["试验协调", "中心管理", "受试者跟踪"],
+      "utilization": 55,
+      "tasks": [
+        {
+          "id": 1200,
+          "name": "II期临床试验",
+          "startDate": "2025-09-01",
+          "endDate": "2026-12-31",
+          "progress": 8,
+          "type": "story"
+        },
+        {
+          "id": 5010,
+          "name": "研究中心筛选",
+          "startDate": "2025-08-01",
+          "endDate": "2025-08-31",
+          "progress": 90,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-wu",
+      "name": "设备管理员 吴强",
+      "type": "设备管理",
+      "avatar": "https://i.pravatar.cc/150?img=7",
+      "department": "设备与后勤部",
+      "skills": ["设备维护", "库存管理", "供应链协调"],
+      "utilization": 42,
+      "tasks": [
+        {
+          "id": 5011,
+          "name": "试验设备采购",
+          "startDate": "2025-02-01",
+          "endDate": "2025-02-28",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 5012,
+          "name": "设备校准与维护",
+          "startDate": "2025-05-15",
+          "endDate": "2025-05-20",
+          "progress": 100,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-huang",
+      "name": "III期项目经理 黄建国",
+      "type": "项目经理",
+      "avatar": "https://i.pravatar.cc/150?img=8",
+      "department": "III期临床研究组",
+      "skills": ["大型试验管理", "多中心协调", "里程碑管理"],
+      "utilization": 35,
+      "tasks": [
+        {
+          "id": 1300,
+          "name": "III期临床试验",
+          "startDate": "2026-01-01",
+          "endDate": "2027-12-31",
+          "progress": 2,
+          "type": "story"
+        }
+      ]
+    }
+  ]
+}

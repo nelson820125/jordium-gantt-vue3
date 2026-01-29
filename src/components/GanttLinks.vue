@@ -28,7 +28,7 @@ interface Props {
   offsetTop?: number // Canvas 在垂直方向的偏移量（用于虚拟渲染）
   highlightedTaskId: number | null
   highlightedTaskIds: Set<number>
-  hoveredTaskId: number | null
+  hoveredTaskId: number | string | null // v1.9.0 支持资源视图中的字符串ID
   // 月份分隔线配置
   verticalLines?: VerticalLine[]
   showVerticalLines?: boolean

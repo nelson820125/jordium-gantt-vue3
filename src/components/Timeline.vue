@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef, inject } from 'vue'
+import type { Ref, ComputedRef } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
 import GanttLinks from './GanttLinks.vue'
@@ -10,9 +11,11 @@ import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 import { perfMonitor } from '../utils/perfMonitor'
 import type { Task } from '../models/classes/Task'
+import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
+import { detectResourceConflicts } from '../utils/resourceUtils'
 
 // 定义Props接口
 interface Props {
@@ -86,6 +89,7 @@ const emit = defineEmits<{
   'successor-added': [{ targetTask: Task; newTask: Task }] // 后置任务已添加
   delete: [task: Task, deleteChildren?: boolean]
   'link-deleted': [{ sourceTaskId: number; targetTaskId: number; updatedTask: Task }] // 链接已删除
+  'resource-drag-end': [{ task: Task; sourceResourceIndex: number; targetResourceIndex: number; targetResource: Resource }] // v1.9.0 资源视图垂直拖拽结束
 }>()
 
 // 多语言
@@ -95,6 +99,27 @@ const { formatYearMonth, formatMonth, getTranslation } = useI18n()
 const t = (key: string): string => {
   return getTranslation(key)
 }
+
+// v1.9.0 从 GanttChart 注入视图模式和数据源
+const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
+const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
+
+// v1.9.0 计算资源冲突
+const resourceConflicts = computed(() => {
+  if (viewMode.value !== 'resource') return new Map()
+
+  const resources = dataSource.value as Resource[]
+  const conflictsMap = new Map<string | number, Set<number>>()
+
+  resources.forEach(resource => {
+    const conflicts = detectResourceConflicts(resource)
+    if (conflicts.size > 0) {
+      conflictsMap.set(resource.id, conflicts)
+    }
+  })
+
+  return conflictsMap
+})
 
 // 获取以今天为中心的时间线范围（缓存结果，避免每次计算创建新对象）
 const cachedTodayCenteredRange = (() => {
@@ -146,8 +171,15 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
 // 优化：使用常量避免每次创建新空数组
 const EMPTY_TASKS_ARRAY: Task[] = []
 
-// 使用props传入的任务和里程碑数据
-const tasks = computed(() => props.tasks ?? EMPTY_TASKS_ARRAY)
+// v1.9.0 使用视图模式决定数据源：资源视图使用dataSource，任务视图使用props.tasks
+const tasks = computed(() => {
+  if (viewMode.value === 'resource') {
+    // 资源视图：使用注入的 dataSource (Resource[])
+    return (dataSource.value || []) as unknown as Task[]
+  }
+  // 任务视图：使用 props.tasks
+  return props.tasks ?? EMPTY_TASKS_ARRAY
+})
 
 // DOM 元素缓存，避免重复查询
 const timelineContainerElement = ref<HTMLElement | null>(null)
@@ -206,8 +238,20 @@ const computeTasksDateRange = (): TaskDateRange => {
     }
   }
 
-  for (const task of tasks.value) {
-    collectDatesFromTask(task)
+  // v1.9.0 资源视图：从Resource.tasks中提取任务日期
+  if (viewMode.value === 'resource') {
+    for (const resource of tasks.value as any) {
+      if (resource.tasks && Array.isArray(resource.tasks)) {
+        for (const task of resource.tasks) {
+          collectDatesFromTask(task)
+        }
+      }
+    }
+  } else {
+    // 任务视图：直接遍历任务
+    for (const task of tasks.value) {
+      collectDatesFromTask(task)
+    }
   }
 
   if (dates.length === 0) {
@@ -2796,10 +2840,36 @@ function handleBarMounted(payload: {
 
 // 向上传递 TaskBar 拖拽/拉伸事件
 const handleTaskBarDragEnd = (updatedTask: Task) => {
+  // 如果是资源视图，需要更新dataSource中的资源数据
+  if (viewMode.value === 'resource' && dataSource.value) {
+    for (const resource of dataSource.value as any[]) {
+      if (resource.tasks) {
+        const taskIndex = resource.tasks.findIndex((t: Task) => t.id === updatedTask.id)
+        if (taskIndex !== -1) {
+          // 更新资源中的任务数据
+          resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
+          break
+        }
+      }
+    }
+  }
   // 通过全局事件或 emit/props 回调传递给 GanttChart
   window.dispatchEvent(new CustomEvent('taskbar-drag-end', { detail: updatedTask }))
 }
 const handleTaskBarResizeEnd = (updatedTask: Task) => {
+  // 如果是资源视图，需要更新dataSource中的资源数据
+  if (viewMode.value === 'resource' && dataSource.value) {
+    for (const resource of dataSource.value as any[]) {
+      if (resource.tasks) {
+        const taskIndex = resource.tasks.findIndex((t: Task) => t.id === updatedTask.id)
+        if (taskIndex !== -1) {
+          // 更新资源中的任务数据
+          resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
+          break
+        }
+      }
+    }
+  }
   window.dispatchEvent(new CustomEvent('taskbar-resize-end', { detail: updatedTask }))
 }
 
@@ -2875,6 +2945,9 @@ onMounted(() => {
 
   // 监听TaskBar高亮事件
   window.addEventListener('taskbar-highlighted', handleTaskBarHighlighted as EventListener)
+
+  // 监听资源视图垂直拖拽事件
+  window.addEventListener('resource-taskbar-drop', handleResourceTaskBarDrop as EventListener)
 
   // 设置ResizeObserver监听timeline-body的尺寸变化
   nextTick(() => {
@@ -3069,6 +3142,42 @@ const handleTaskBarHighlighted = () => {
   setTimeout(() => {
     document.removeEventListener('mousemove', handleNextMouseMove)
   }, 5000)
+}
+
+// v1.9.0 资源视图垂直拖拽：处理TaskBar拖放到不同资源行
+const handleResourceTaskBarDrop = (event: Event) => {
+  const customEvent = event as CustomEvent
+  const { taskId, task, sourceRowIndex, mouseY, mouseX } = customEvent.detail
+
+  // 计算目标资源行索引
+  const timelineBody = timelineBodyElement.value
+  if (!timelineBody) return
+
+  const bodyRect = timelineBody.getBoundingClientRect()
+  const relativeY = mouseY - bodyRect.top + timelineBody.scrollTop
+  const targetRowIndex = Math.floor(relativeY / 51) // 51px是每行的高度
+
+  // v1.9.0 直接使用TaskBar传递过来的精确日期，避免重复计算导致误差
+  const newStartDate = customEvent.detail.calculatedStartDate
+  const newEndDate = customEvent.detail.calculatedEndDate
+
+  // 获取资源列表
+  const resources = dataSource.value as Resource[]
+
+  // 如果目标行与源行不同，发送事件给父组件（demo）处理
+  if (targetRowIndex !== sourceRowIndex && targetRowIndex >= 0 && targetRowIndex < resources.length) {
+    const targetResource = resources[targetRowIndex]
+
+    // 发送事件给父组件，让demo显示确认对话框
+    emit('resource-drag-end', {
+      task,
+      sourceResourceIndex: sourceRowIndex,
+      targetResourceIndex: targetRowIndex,
+      targetResource,
+      newStartDate, // v1.9.0 新的开始日期
+      newEndDate,   // v1.9.0 新的结束日期
+    })
+  }
 }
 
 // 鼠标按下开始拖拽（在时间轴表头和body区域）
@@ -3322,7 +3431,7 @@ const stopAutoScroll = () => {
 
 // 处理拖拽边界检测事件
 const handleDragBoundaryCheck = (event: CustomEvent) => {
-  const { mouseX, isDragging: dragState } = event.detail
+  const { mouseX, mouseY, isDragging: dragState, isResourceView, taskId, rowIndex } = event.detail
 
   if (!dragState || !timelineContainer.value) {
     stopAutoScroll()
@@ -3331,6 +3440,25 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
 
   const containerRect = timelineContainer.value.getBoundingClientRect()
   const relativeX = mouseX - containerRect.left
+
+  // v1.9.0 资源视图垂直拖拽检测
+  if (isResourceView && mouseY && timelineBodyElement.value) {
+    const bodyRect = timelineBodyElement.value.getBoundingClientRect()
+    const relativeY = mouseY - bodyRect.top
+    const targetRowIndex = Math.floor(relativeY / 51)  // 每行高度51px
+
+    // 如果移动到不同行，发送事件通知（可以用于显示拖拽指示器等）
+    if (targetRowIndex !== rowIndex && targetRowIndex >= 0) {
+      window.dispatchEvent(new CustomEvent('resource-drag-over', {
+        detail: {
+          taskId,
+          sourceRowIndex: rowIndex,
+          targetRowIndex,
+          mouseY: relativeY
+        }
+      }))
+    }
+  }
 
   // 检查是否在左边界滚动区域
   if (relativeX <= EDGE_SCROLL_ZONE && timelineContainer.value.scrollLeft > 0) {
@@ -3371,6 +3499,7 @@ onUnmounted(() => {
   )
   window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
   window.removeEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
+  window.removeEventListener('resource-taskbar-drop', handleResourceTaskBarDrop as EventListener)
 
   // 清理ResizeObserver
   if (resizeObserver) {
@@ -3656,6 +3785,16 @@ watch([timelineData, timelineContainerWidth], () => {
     taskBarRenderTimer = null
   }, 100)
 })
+
+// 监听viewMode和dataSource变化，刷新缓存和时间线
+watch(
+  [viewMode, dataSource],
+  () => {
+    invalidateTaskDateRangeCache()
+    debouncedUpdateTimelineRange()
+  },
+  { deep: true },
+)
 
 // 监听tasks变化，清理不再存在的任务的位置信息
 watch(
@@ -4384,8 +4523,9 @@ const handleAddSuccessor = (task: Task) => {
         <!-- 同时需要考虑左侧TaskList包含1px的bottom border -->
         <div class="task-bar-container" :style="{ height: `${contentHeight}px` }">
           <div class="task-rows" :style="{ height: `${contentHeight}px` }">
-            <!-- 使用虚拟滚动渲染可见任务 -->
+            <!-- 任务视图：使用虚拟滚动渲染可见任务 -->
             <div
+              v-if="viewMode === 'task'"
               v-for="{ task, originalIndex } in visibleTasks"
               :key="task.id"
               class="task-row"
@@ -4535,6 +4675,96 @@ const handleAddSuccessor = (task: Task) => {
                   <slot name="task-bar-context-menu" v-bind="contextMenuScope" />
                 </template>
               </TaskBar>
+            </div>
+
+            <!-- 资源视图：一行渲染多个 TaskBar -->
+            <div
+              v-else-if="viewMode === 'resource'"
+              v-for="{ task: resource, originalIndex } in visibleTasks"
+              :key="resource.id"
+              class="task-row resource-row"
+              :class="{ 'task-row-hovered': hoveredTaskId === resource.id }"
+              :style="{ top: `${originalIndex * 51}px` }"
+              @mouseenter="handleTaskRowHover(resource.id)"
+              @mouseleave="handleTaskRowHover(null)"
+            >
+              <!-- 为资源下的每个任务渲染 TaskBar -->
+              <template v-if="(resource as any).tasks && (resource as any).tasks.length > 0">
+                <TaskBar
+                  v-for="(task, taskIndex) in (resource as any).tasks"
+                  :key="`taskbar-${task.id}-${taskBarRenderKey}`"
+                  :task="task"
+                  :row-index="originalIndex"
+                  :row-height="51"
+                  :day-width="dayWidth"
+                  :start-date="
+                    currentTimeScale === TimelineScale.YEAR
+                      ? getYearTimelineRange().startDate
+                      : currentTimeScale === TimelineScale.MONTH
+                        ? getMonthTimelineRange().startDate
+                        : timelineConfig.startDate
+                  "
+                  :scroll-left="timelineScrollLeft"
+                  :container-width="timelineContainerWidth"
+                  :hide-bubbles="hideBubbles"
+                  :timeline-data="
+                    currentTimeScale === TimelineScale.HOUR ? optimizedTimelineData : timelineData
+                  "
+                  :current-time-scale="currentTimeScale"
+                  :task-bar-config="props.taskBarConfig"
+                  :allow-drag-and-resize="props.allowDragAndResize && !isInHighlightMode"
+                  :show-actual-taskbar="props.showActualTaskbar"
+                  :enable-task-bar-tooltip="props.enableTaskBarTooltip"
+                  :pending-task-background-color="props.pendingTaskBackgroundColor"
+                  :delay-task-background-color="props.delayTaskBackgroundColor"
+                  :complete-task-background-color="props.completeTaskBackgroundColor"
+                  :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
+                  :is-highlighted="highlightedTaskIds.has(task.id)"
+                  :is-primary-highlight="highlightedTaskId === task.id"
+                  :is-in-highlight-mode="isInHighlightMode"
+                  :drag-link-mode="dragLinkMode"
+                  :is-link-drag-source="linkDragSourceTask?.id === task.id"
+                  :is-valid-link-target="
+                    linkDragTargetTask?.id === task.id && isValidLinkTarget === true
+                  "
+                  :is-invalid-link-target="
+                    linkDragTargetTask?.id === task.id && isValidLinkTarget === false
+                  "
+                  :all-tasks="tasks"
+                  :has-resource-conflict="resourceConflicts.get(resource.id)?.has(task.id) || false"
+                  :style="{
+                    zIndex: taskIndex,
+                  }"
+                  @update:task="updateTask"
+                  @bar-mounted="handleBarMounted"
+                  @click="handleTaskBarClick(task, $event)"
+                  @dblclick="handleTaskBarDoubleClick(task)"
+                  @drag-end="handleTaskBarDragEnd"
+                  @resize-end="handleTaskBarResizeEnd"
+                  @scroll-to-position="handleScrollToPosition"
+                  @context-menu="handleTaskBarContextMenu"
+                  @start-timer="handleStartTimer"
+                  @stop-timer="handleStopTimer"
+                  @add-predecessor="handleAddPredecessor"
+                  @add-successor="handleAddSuccessor"
+                  @delete="handleTaskDelete"
+                  @delete-link="handleDeleteLink"
+                  @long-press="setHighlightTask"
+                  @link-drag-start="handleLinkDragStart"
+                  @link-drag-move="handleLinkDragMove"
+                  @link-drag-end="handleLinkDragEnd"
+                >
+                  <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
+                    <slot name="custom-task-content" v-bind="barScope" />
+                  </template>
+                  <template
+                    v-if="$slots['task-bar-context-menu']"
+                    #task-bar-context-menu="contextMenuScope"
+                  >
+                    <slot name="task-bar-context-menu" v-bind="contextMenuScope" />
+                  </template>
+                </TaskBar>
+              </template>
             </div>
           </div>
         </div>
@@ -4881,6 +5111,18 @@ const handleAddSuccessor = (task: Task) => {
   left: 0;
   width: 100%;
   height: 51px; /** 为了对齐左侧的Task List Row高度，同时需要包含List Row的Bottom Border 1px */
+  pointer-events: auto;
+  z-index: 11;
+  transition: background-color 0.2s ease;
+}
+
+/* 资源视图行样式 */
+.resource-row {
+  /* 不使用flex，保持TaskBar的绝对定位 */
+  position: absolute !important;
+  left: 0;
+  width: 100%;
+  height: 51px !important;
   pointer-events: auto;
   z-index: 11;
   transition: background-color 0.2s ease;

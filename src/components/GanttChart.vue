@@ -13,10 +13,12 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
+import type { Resource } from '../models/classes/Resource'
 import { useTaskListContextMenu } from './TaskList/composables/taskList/useTaskListContextMenu'
 import { useTaskBarContextMenu } from './Timeline/composables/useTaskBarContextMenu'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import type { TaskListConfig } from '../models/configs/TaskListConfig'
+import type { ResourceListConfig } from '../models/configs/ResourceListConfig'
 import {
   DEFAULT_TASK_LIST_WIDTH,
   DEFAULT_TASK_LIST_MIN_WIDTH,
@@ -30,6 +32,8 @@ import { useMessage } from '../composables/useMessage'
 const props = withDefaults(defineProps<Props>(), {
   tasks: () => [],
   milestones: () => [],
+  resources: () => [],
+  viewMode: 'task',
   useDefaultDrawer: true,
   useDefaultMilestoneDialog: true,
   toolbarConfig: () => ({}),
@@ -48,6 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
     afternoon: { start: 13, end: 17 },
   }),
   taskListConfig: undefined,
+  resourceListConfig: undefined,
   taskListColumnRenderMode: 'default',
   taskBarConfig: undefined,
   autoSortByStartDate: false,
@@ -96,10 +101,33 @@ const emit = defineEmits([
   'add-successor',
   // TaskRow拖拽事件
   'task-row-moved',
+  // v1.9.0 资源视图事件
+  'view-mode-change', // 视图模式切换事件
+  'resource-click', // 资源行点击事件
+  'taskbar-resource-change', // 任务跨资源移动事件
+  'resource-drag-end', // v1.9.0 资源视图垂直拖拽结束事件
 ])
 
 const { showMessage } = useMessage()
 const slots = useSlots()
+
+// v1.9.0 视图模式状态管理
+const currentViewMode = ref<'task' | 'resource'>(props.viewMode || 'task')
+
+// 根据视图模式计算当前使用的数据源
+const currentDataSource = computed(() => {
+  return currentViewMode.value === 'resource' ? props.resources : props.tasks
+})
+
+// 根据视图模式计算当前使用的列表配置
+const currentListConfig = computed(() => {
+  return currentViewMode.value === 'resource' ? props.resourceListConfig : props.taskListConfig
+})
+
+// 提供视图模式和数据源给子组件
+provide('gantt-view-mode', currentViewMode)
+provide('gantt-data-source', currentDataSource)
+provide('gantt-list-config', currentListConfig)
 
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
@@ -132,6 +160,10 @@ interface Props {
   tasks?: Task[]
   // 里程碑数据
   milestones?: Task[]
+  // v1.9.0 资源数据（资源计划视图使用）
+  resources?: Resource[]
+  // v1.9.0 视图模式：'task' 任务计划视图 | 'resource' 资源计划视图
+  viewMode?: 'task' | 'resource'
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
   // 是否使用默认的MilestoneDialog
@@ -170,6 +202,8 @@ interface Props {
   }
   // 任务列表配置
   taskListConfig?: TaskListConfig
+  // v1.9.0 资源列表配置（资源计划视图使用）
+  resourceListConfig?: ResourceListConfig
   // 任务列表列渲染模式：'default' 使用 taskListConfig.columns 配置，'declarative' 使用声明式 <task-list-column> 标签
   taskListColumnRenderMode?: 'default' | 'declarative'
   // TaskBar 配置
@@ -397,6 +431,24 @@ watch(
 
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
+
+// v1.9.0 视图模式切换处理函数
+const handleViewModeChange = (newMode: 'task' | 'resource') => {
+  if (currentViewMode.value !== newMode) {
+    currentViewMode.value = newMode
+    emit('view-mode-change', newMode)
+  }
+}
+
+// v1.9.0 响应式监听viewMode prop变化
+watch(
+  () => props.viewMode,
+  newMode => {
+    if (newMode && currentViewMode.value !== newMode) {
+      currentViewMode.value = newMode
+    }
+  },
+)
 
 // 计算是否显示关闭按钮
 const showCloseButton = computed(() => {
@@ -2658,6 +2710,11 @@ function handleLinkDeleted(event: {
   emit('link-deleted', event)
 }
 
+// v1.9.0 资源视图垂直拖拽结束事件
+function handleResourceDragEnd(event: { task: Task; sourceResourceIndex: number; targetResourceIndex: number; targetResource: Resource }) {
+  emit('resource-drag-end', event)
+}
+
 // 处理里程碑双击事件
 function handleMilestoneDoubleClick(milestone: Milestone) {
   // 先触发外部事件，让外部可以自定义处理
@@ -2742,6 +2799,7 @@ defineExpose({
       :theme="currentThemeMode"
       :fullscreen="isFullscreen"
       :expand-all="getIsExpandAll()"
+      :view-mode="currentViewMode"
       :on-today-locate="todayLocateHandler"
       :on-export-csv="csvExportHandler"
       :on-export-pdf="pdfExportHandler"
@@ -2751,10 +2809,12 @@ defineExpose({
       :on-time-scale-change="handleTimeScaleChange"
       :on-expand-all="handleExpandAll"
       :on-collapse-all="handleCollapseAll"
+      :on-view-mode-change="handleViewModeChange"
       @add-task="handleToolbarAddTask"
       @add-milestone="milestoneAddHandler"
       @expand-all="handleExpandAll"
       @collapse-all="handleCollapseAll"
+      @view-mode-change="handleViewModeChange"
     />
 
     <!-- 甘特图主体 -->
@@ -2848,6 +2908,7 @@ defineExpose({
           @successor-added="handleSuccessorAdded"
           @delete="handleTaskDelete"
           @link-deleted="handleLinkDeleted"
+          @resource-drag-end="handleResourceDragEnd"
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
             <slot name="custom-task-content" v-bind="barScope" />
