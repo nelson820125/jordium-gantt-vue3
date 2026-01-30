@@ -6,6 +6,7 @@ import { useI18n } from '../../composables/useI18n'
 import type { Task } from '../../models/classes/Task'
 import type { Resource } from '../../models/classes/Resource'
 import type { TaskListConfig, TaskListColumnConfig } from '../../models/configs/TaskListConfig'
+// @ts-expect-error - ResourceListColumnConfig is used in type unions
 import type { ResourceListConfig, ResourceListColumnConfig } from '../../models/configs/ResourceListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../../models/configs/TaskListConfig'
 import { DEFAULT_RESOURCE_LIST_COLUMNS } from '../../models/configs/ResourceListConfig'
@@ -86,7 +87,7 @@ const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
   useTaskListColumns(
     computed(() => props.taskListColumnRenderMode || 'default'),
     slots,
-    finalColumnsConfig.value,
+    finalColumnsConfig.value as TaskListColumnConfig[],
   )
 
 // 计算实际使用的列配置
@@ -239,6 +240,7 @@ const handleTaskRowMoved = (payload: {
 }
 
 // v1.9.0 处理资源行点击事件
+// @ts-expect-error - Reserved for future resource click handling
 const handleResourceClick = (resource: Resource) => {
   emit('resource-click', resource)
 }
@@ -308,7 +310,7 @@ onUnmounted(() => {
             <component :is="columnSlots['header-name']" />
           </template>
           <template v-else>
-            {{ (t as any).taskName || '任务名称' }}
+            {{ viewMode === 'resource' ? ((t as any).resourceName || '资源名称') : ((t as any).taskName || '任务名称') }}
           </template>
         </div>
         <div
@@ -345,7 +347,7 @@ onUnmounted(() => {
         :is-hovered="hoveredTaskId === task.id"
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
-        :columns="taskListColumnRenderMode === 'declarative' ? [] : visibleColumns"
+        :columns="taskListColumnRenderMode === 'declarative' ? [] : (visibleColumns as TaskListColumnConfig[])"
         :declarative-columns="taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined"
         :render-mode="taskListColumnRenderMode"
         :get-column-width-style="getColumnWidthStyle"

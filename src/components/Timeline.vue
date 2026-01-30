@@ -15,7 +15,7 @@ import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
-import { detectResourceConflicts } from '../utils/resourceUtils'
+import { assignTaskRows } from '../utils/taskLayoutUtils' // v1.9.0 换行布局算法
 
 // 定义Props接口
 interface Props {
@@ -89,7 +89,7 @@ const emit = defineEmits<{
   'successor-added': [{ targetTask: Task; newTask: Task }] // 后置任务已添加
   delete: [task: Task, deleteChildren?: boolean]
   'link-deleted': [{ sourceTaskId: number; targetTaskId: number; updatedTask: Task }] // 链接已删除
-  'resource-drag-end': [{ task: Task; sourceResourceIndex: number; targetResourceIndex: number; targetResource: Resource }] // v1.9.0 资源视图垂直拖拽结束
+  'resource-drag-end': [{ task: Task; sourceResourceIndex: number; targetResourceIndex: number; targetResource: Resource; newStartDate?: string; newEndDate?: string }] // v1.9.0 资源视图垂直拖拽结束
 }>()
 
 // 多语言
@@ -104,21 +104,60 @@ const t = (key: string): string => {
 const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
 const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
 
-// v1.9.0 计算资源冲突
-const resourceConflicts = computed(() => {
-  if (viewMode.value !== 'resource') return new Map()
+// v1.9.0 从 GanttChart 注入资源冲突信息（由 GanttChart 计算并响应 updateTaskTrigger）
+const resourceConflicts = inject<ComputedRef<Map<string, Set<number>>>>('resourceConflicts', computed(() => new Map()))
+
+// v1.9.0 计算资源视图的任务行布局（换行）
+const resourceTaskLayouts = computed(() => {
+  const layoutMap = new Map<string | number, {
+    taskRowMap: Map<string | number, number>,
+    rowHeights: number[],
+    totalHeight: number
+  }>()
+
+  if (viewMode.value !== 'resource') {
+    return layoutMap
+  }
 
   const resources = dataSource.value as Resource[]
-  const conflictsMap = new Map<string | number, Set<number>>()
 
   resources.forEach(resource => {
-    const conflicts = detectResourceConflicts(resource)
-    if (conflicts.size > 0) {
-      conflictsMap.set(resource.id, conflicts)
+    const resourceTasks = (resource as any).tasks || []
+    if (resourceTasks.length > 0) {
+      const result = assignTaskRows(resourceTasks, resource.id, 51)
+      layoutMap.set(resource.id, result)
+    } else {
+      // 没有任务的资源，使用默认高度
+      layoutMap.set(resource.id, {
+        taskRowMap: new Map(),
+        rowHeights: [51],
+        totalHeight: 51
+      })
     }
   })
 
-  return conflictsMap
+  return layoutMap
+})
+
+// v1.9.0 计算资源行的累积位置（用于资源视图）
+const resourceRowPositions = computed(() => {
+  const positions = new Map<string | number, number>()
+
+  if (viewMode.value !== 'resource') {
+    return positions
+  }
+
+  const resources = dataSource.value as Resource[]
+  let cumulativeTop = 0
+
+  resources.forEach(resource => {
+    positions.set(resource.id, cumulativeTop)
+    const layout = resourceTaskLayouts.value.get(resource.id)
+    const resourceHeight = layout?.totalHeight || 51
+    cumulativeTop += resourceHeight
+  })
+
+  return positions
 })
 
 // 获取以今天为中心的时间线范围（缓存结果，避免每次计算创建新对象）
@@ -664,7 +703,7 @@ const getYearTimelineRange = () => {
 }
 
 // 悬停状态管理
-const hoveredTaskId = ref<number | null>(null)
+const hoveredTaskId = ref<number | string | null>(null)
 
 // 高亮状态管理（用于长按高亮功能）
 const highlightedTaskId = ref<number | null>(null)
@@ -1342,26 +1381,82 @@ const visibleHourRange = computed(() => {
   }
 })
 
-// 计算纵向可视区域的任务范围
+// 计算纵向可视区域的任务范围（支持动态行高）
 const visibleTaskRange = computed(() => {
   const scrollTop = timelineBodyScrollTop.value
   const containerHeight = timelineBodyHeight.value || 600
 
-  // 计算可视区域的开始和结束任务索引
-  const startIndex = Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER
-  const endIndex = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER
+  if (viewMode.value === 'resource') {
+    // 资源视图：基于资源行的实际高度计算可见范围
+    const resources = dataSource.value as Resource[]
 
-  return {
-    startIndex: Math.max(0, startIndex),
-    endIndex: Math.min(tasks.value.length, Math.max(startIndex + 1, endIndex)),
+    let startIndex = 0
+    let endIndex = resources.length
+
+    // 找到第一个可见的资源行
+    for (let i = 0; i < resources.length; i++) {
+      const resourceId = resources[i].id
+      const rowTop = resourceRowPositions.value.get(resourceId) || 0
+      const layout = resourceTaskLayouts.value.get(resourceId)
+      const rowHeight = layout?.totalHeight || ROW_HEIGHT
+      const rowBottom = rowTop + rowHeight
+
+      if (rowBottom >= scrollTop - ROW_HEIGHT * VERTICAL_BUFFER) {
+        startIndex = i
+        break
+      }
+    }
+
+    // 找到最后一个可见的资源行
+    const scrollBottom = scrollTop + containerHeight
+    for (let i = startIndex; i < resources.length; i++) {
+      const resourceId = resources[i].id
+      const rowTop = resourceRowPositions.value.get(resourceId) || 0
+
+      if (rowTop > scrollBottom + ROW_HEIGHT * VERTICAL_BUFFER) {
+        endIndex = i
+        break
+      }
+    }
+
+    return {
+      startIndex: Math.max(0, startIndex),
+      endIndex: Math.min(resources.length, endIndex),
+    }
+  } else {
+    // 任务视图：使用固定行高计算
+    const startIndex = Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER
+    const endIndex = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER
+
+    return {
+      startIndex: Math.max(0, startIndex),
+      endIndex: Math.min(tasks.value.length, Math.max(startIndex + 1, endIndex)),
+    }
   }
 })
 
 // 获取虚拟滚动优化后的可见任务列表
 const visibleTasks = computed(() => {
   const { startIndex, endIndex } = visibleTaskRange.value
+
+  // 任务视图：返回可见的任务列表
   return tasks.value.slice(startIndex, endIndex).map((task, index) => ({
     task,
+    originalIndex: startIndex + index,
+  }))
+})
+
+// v1.9.0 资源视图的可见资源列表
+const visibleResources = computed(() => {
+  const { startIndex, endIndex } = visibleTaskRange.value
+
+  if (viewMode.value !== 'resource') {
+    return []
+  }
+
+  const resources = dataSource.value as Resource[]
+  return resources.slice(startIndex, endIndex).map((resource, index) => ({
+    resource,
     originalIndex: startIndex + index,
   }))
 })
@@ -1688,7 +1783,7 @@ const handleTimelineContainerResized = () => {
 }
 
 // 处理任务行悬停事件
-const handleTaskRowHover = (taskId: number | null) => {
+const handleTaskRowHover = (taskId: number | string | null) => {
   // 如果正在拖拽Splitter或拖动滚动，则不响应悬停事件
   if (isSplitterDragging.value || isDragging.value) {
     return
@@ -1705,11 +1800,25 @@ const handleTaskRowHover = (taskId: number | null) => {
 
 // 计算Timeline内容的总高度
 const contentHeight = computed(() => {
-  // 每个任务行高度51px (50px + 1px border)
+  const minHeight = 400 // 最小高度确保有足够的空间
+
+  // v1.9.0 资源视图：使用实际的累计高度
+  if (viewMode.value === 'resource') {
+    const resources = dataSource.value as Resource[]
+    let totalHeight = 0
+
+    resources.forEach(resource => {
+      const layout = resourceTaskLayouts.value.get(resource.id)
+      totalHeight += layout?.totalHeight || 51
+    })
+
+    return Math.max(totalHeight, minHeight, timelineBodyHeight.value)
+  }
+
+  // 任务视图：每个任务行高度51px (50px + 1px border)
   const rowHeight = 51
   const taskCount = tasks.value.length
   const minHeightFromTasks = taskCount * rowHeight
-  const minHeight = 400 // 最小高度确保有足够的空间
 
   // 返回任务高度、最小高度和容器高度中的最大值
   return Math.max(minHeightFromTasks, minHeight, timelineBodyHeight.value)
@@ -3147,6 +3256,7 @@ const handleTaskBarHighlighted = () => {
 // v1.9.0 资源视图垂直拖拽：处理TaskBar拖放到不同资源行
 const handleResourceTaskBarDrop = (event: Event) => {
   const customEvent = event as CustomEvent
+  // @ts-expect-error - taskId和mouseX预留但当前未使用
   const { taskId, task, sourceRowIndex, mouseY, mouseX } = customEvent.detail
 
   // 计算目标资源行索引
@@ -3155,14 +3265,40 @@ const handleResourceTaskBarDrop = (event: Event) => {
 
   const bodyRect = timelineBody.getBoundingClientRect()
   const relativeY = mouseY - bodyRect.top + timelineBody.scrollTop
-  const targetRowIndex = Math.floor(relativeY / 51) // 51px是每行的高度
+
+  // v1.9.0 使用动态的资源行位置来计算目标行索引
+  const resources = dataSource.value as Resource[]
+  let targetRowIndex = -1
+  let minDistance = Infinity
+
+  // 遍历资源，找到距离鼠标位置最近的资源行中心
+  for (let i = 0; i < resources.length; i++) {
+    const resource = resources[i]
+    const resourceId = String(resource.id)
+    const rowTop = resourceRowPositions.value.get(resourceId) || 0
+    const layout = resourceTaskLayouts.value.get(resourceId)
+    const rowHeight = layout?.totalHeight || 51
+    const rowCenter = rowTop + rowHeight / 2
+    const distance = Math.abs(relativeY - rowCenter)
+
+    if (distance < minDistance) {
+      minDistance = distance
+      targetRowIndex = i
+    }
+  }
+
+  // 如果没有找到目标行（不太可能），使用最近的边界
+  if (targetRowIndex === -1 && resources.length > 0) {
+    if (relativeY < 0) {
+      targetRowIndex = 0
+    } else {
+      targetRowIndex = resources.length - 1
+    }
+  }
 
   // v1.9.0 直接使用TaskBar传递过来的精确日期，避免重复计算导致误差
   const newStartDate = customEvent.detail.calculatedStartDate
   const newEndDate = customEvent.detail.calculatedEndDate
-
-  // 获取资源列表
-  const resources = dataSource.value as Resource[]
 
   // 如果目标行与源行不同，发送事件给父组件（demo）处理
   if (targetRowIndex !== sourceRowIndex && targetRowIndex >= 0 && targetRowIndex < resources.length) {
@@ -3444,19 +3580,40 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
   // v1.9.0 资源视图垂直拖拽检测
   if (isResourceView && mouseY && timelineBodyElement.value) {
     const bodyRect = timelineBodyElement.value.getBoundingClientRect()
-    const relativeY = mouseY - bodyRect.top
-    const targetRowIndex = Math.floor(relativeY / 51)  // 每行高度51px
+    const relativeY = mouseY - bodyRect.top + timelineBodyElement.value.scrollTop
+
+    // 使用动态的资源行位置来计算目标行索引（基于最近的行中心）
+    const resources = dataSource.value as Resource[]
+    let targetRowIndex = -1
+    let minDistance = Infinity
+
+    for (let i = 0; i < resources.length; i++) {
+      const resource = resources[i]
+      const resourceId = String(resource.id)
+      const rowTop = resourceRowPositions.value.get(resourceId) || 0
+      const layout = resourceTaskLayouts.value.get(resourceId)
+      const rowHeight = layout?.totalHeight || 51
+      const rowCenter = rowTop + rowHeight / 2
+      const distance = Math.abs(relativeY - rowCenter)
+
+      if (distance < minDistance) {
+        minDistance = distance
+        targetRowIndex = i
+      }
+    }
 
     // 如果移动到不同行，发送事件通知（可以用于显示拖拽指示器等）
-    if (targetRowIndex !== rowIndex && targetRowIndex >= 0) {
-      window.dispatchEvent(new CustomEvent('resource-drag-over', {
-        detail: {
-          taskId,
-          sourceRowIndex: rowIndex,
-          targetRowIndex,
-          mouseY: relativeY
-        }
-      }))
+    if (targetRowIndex !== -1 && targetRowIndex !== rowIndex) {
+      window.dispatchEvent(
+        new CustomEvent('resource-drag-over', {
+          detail: {
+            taskId,
+            sourceRowIndex: rowIndex,
+            targetRowIndex,
+            mouseY: relativeY,
+          },
+        }),
+      )
     }
   }
 
@@ -4680,11 +4837,14 @@ const handleAddSuccessor = (task: Task) => {
             <!-- 资源视图：一行渲染多个 TaskBar -->
             <div
               v-else-if="viewMode === 'resource'"
-              v-for="{ task: resource, originalIndex } in visibleTasks"
+              v-for="{ resource, originalIndex } in visibleResources"
               :key="resource.id"
               class="task-row resource-row"
               :class="{ 'task-row-hovered': hoveredTaskId === resource.id }"
-              :style="{ top: `${originalIndex * 51}px` }"
+              :style="{
+                top: `${resourceRowPositions.get(resource.id) || 0}px`,
+                height: `${resourceTaskLayouts.get(resource.id)?.totalHeight || 51}px`
+              }"
               @mouseenter="handleTaskRowHover(resource.id)"
               @mouseleave="handleTaskRowHover(null)"
             >
@@ -4696,6 +4856,8 @@ const handleAddSuccessor = (task: Task) => {
                   :task="task"
                   :row-index="originalIndex"
                   :row-height="51"
+                  :task-sub-row="resourceTaskLayouts.get(resource.id)?.taskRowMap.get(task.id) || 0"
+                  :row-heights="resourceTaskLayouts.get(resource.id)?.rowHeights || [51]"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -4731,7 +4893,8 @@ const handleAddSuccessor = (task: Task) => {
                     linkDragTargetTask?.id === task.id && isValidLinkTarget === false
                   "
                   :all-tasks="tasks"
-                  :has-resource-conflict="resourceConflicts.get(resource.id)?.has(task.id) || false"
+                  :has-resource-conflict="resourceConflicts.get(String(resource.id))?.has(task.id) || false"
+                  :current-resource-id="resource.id"
                   :style="{
                     zIndex: taskIndex,
                   }"
@@ -5122,7 +5285,7 @@ const handleAddSuccessor = (task: Task) => {
   position: absolute !important;
   left: 0;
   width: 100%;
-  height: 51px !important;
+  /* height由内联样式动态设置，不使用固定值 */
   pointer-events: auto;
   z-index: 11;
   transition: background-color 0.2s ease;

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots, inject, type ComputedRef } from 'vue'
+import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots, inject, type ComputedRef, type Ref } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
@@ -18,8 +18,29 @@ defineOptions({
 // 从 GanttChart 注入 enableLinkAnchor 配置
 const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', computed(() => true))
 
-// v1.9.0 注入视图模式，用于资源视图的垂直拖拽
-const viewMode = inject<any>('gantt-view-mode', { value: 'task' })
+// v1.9.0 计算当前资源的投入占比
+const resourcePercent = computed(() => {
+  // 如果直接传递了占比，使用传递的值
+  if (props.resourceAllocationPercent !== undefined) {
+    return Math.max(20, Math.min(100, props.resourceAllocationPercent))
+  }
+
+  // 在资源视图中，尝试从task.resources中查找当前资源的占比
+  if (viewMode.value === 'resource' && props.currentResourceId && props.task.resources) {
+    const allocation = props.task.resources.find((r: any) => r.id === props.currentResourceId)
+    if (allocation && allocation.percent !== undefined) {
+      return Math.max(20, Math.min(100, allocation.percent))
+    }
+  }
+
+  // 默认100%（向后兼容）
+  return 100
+})
+
+// v1.9.0 是否显示占比文字（占比<100%时显示）
+const shouldShowPercentText = computed(() => {
+  return viewMode.value === 'resource' && resourcePercent.value < 100
+})
 
 interface Props {
   task: Task
@@ -69,6 +90,14 @@ interface Props {
   allTasks?: Task[]
   // v1.9.0 资源视图：是否存在资源冲突（时间重叠）
   hasResourceConflict?: boolean
+  // v1.9.0 资源视图：当前资源在任务中的投入占比 (20-100)
+  resourceAllocationPercent?: number
+  // v1.9.0 资源视图：当前资源ID（用于查找占比信息）
+  currentResourceId?: string | number
+  // v1.9.0 资源视图：任务在子行中的索引（换行布局）
+  taskSubRow?: number
+  // v1.9.0 资源视图：每个子行的高度数组（换行布局）
+  rowHeights?: number[]
 }
 
 interface TaskStatus {
@@ -118,6 +147,13 @@ defineSlots<{
 }>()
 
 const slots = useSlots()
+
+// 注入视图模式
+const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
+
+// 注入资源布局信息（用于判断跨行拖拽边界）
+const resourceRowPositions = inject<ComputedRef<Map<string, number>>>('resourceRowPositions', computed(() => new Map()))
+const resourceTaskLayouts = inject<ComputedRef<Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>>>('resourceTaskLayouts', computed(() => new Map()))
 
 // 注入右键菜单配置
 const enableTaskBarContextMenu = inject<ComputedRef<boolean>>('enable-task-bar-context-menu', computed(() => true))
@@ -540,9 +576,42 @@ const taskBarStyle = computed(() => {
     }
   }
 
-  const taskBarHeight = props.rowHeight - 10
-  // v1.9.0 资源视图中使用固定top值，因为resource-row已经绝对定位
-  const topOffset = viewMode.value === 'resource' ? 5 : (props.rowHeight - taskBarHeight) / 2
+  // v1.9.0 计算TaskBar高度：保持基础高度一致，资源视图中应用占比缩放
+  const baseTaskBarHeight = props.rowHeight - 10 // 基础高度（与任务视图一致）
+  let taskBarHeight = baseTaskBarHeight
+
+  if (viewMode.value === 'resource') {
+    // 资源视图：在基础高度上应用占比缩放
+    const percentValue = resourcePercent.value / 100
+    taskBarHeight = baseTaskBarHeight * percentValue
+  }
+
+  // v1.9.0 计算垂直位置：资源视图中支持换行布局
+  let topOffset = (props.rowHeight - taskBarHeight) / 2 // 默认：居中对齐
+
+  if (viewMode.value === 'resource' && props.taskSubRow !== undefined && props.rowHeights && props.rowHeights.length > 0) {
+    // 换行布局：根据子行索引和每行高度计算垂直位置
+    const subRow = props.taskSubRow
+    const rowHeights = props.rowHeights
+    const currentRowHeight = rowHeights[subRow] || 51
+
+    // 计算当前子行距离顶部的偏移量（累加前面所有行的高度）
+    let cumulativeOffset = 0
+    for (let i = 0; i < subRow; i++) {
+      cumulativeOffset += rowHeights[i] || 51
+    }
+
+    // 在当前子行内底边对齐
+    // 第一行：padding-top(5px) + 可用空间
+    // 后续行：可用空间（无padding-top）
+    if (subRow === 0) {
+      // 第一行：顶部5px padding，底部对齐
+      topOffset = cumulativeOffset + (currentRowHeight - 5 - taskBarHeight)
+    } else {
+      // 后续行：底部对齐（底部5px padding）
+      topOffset = cumulativeOffset + (currentRowHeight - 5 - taskBarHeight)
+    }
+  }
 
   return {
     left: `${left}px`,
@@ -1068,15 +1137,23 @@ const handleMouseMove = (e: MouseEvent) => {
   if (viewMode.value === 'resource') {
     ;(window as any).lastDragMouseY = e.clientY
 
-    // v1.9.0 检测是否跨行拖拽
+    // v1.9.0 检测是否跨行拖拽（基于资源行的实际高度）
     const timelineBody = document.querySelector('.timeline-body')
     let isCrossRowDrag = false
 
-    if (timelineBody && isDragging.value && isDragThresholdMet.value) {
+    if (timelineBody && isDragging.value && isDragThresholdMet.value && props.currentResourceId) {
       const bodyRect = timelineBody.getBoundingClientRect()
       const relativeY = e.clientY - bodyRect.top + (timelineBody as HTMLElement).scrollTop
-      const currentRowIndex = Math.floor(relativeY / 51)
-      isCrossRowDrag = currentRowIndex !== props.rowIndex
+
+      // 获取当前资源行的位置和高度
+      const currentResourceId = String(props.currentResourceId)
+      const currentRowTop = resourceRowPositions.value.get(currentResourceId) || 0
+      const currentRowLayout = resourceTaskLayouts.value.get(currentResourceId)
+      const currentRowHeight = currentRowLayout?.totalHeight || 51
+      const currentRowBottom = currentRowTop + currentRowHeight
+
+      // 判断鼠标是否超出当前资源行的边界
+      isCrossRowDrag = relativeY < currentRowTop || relativeY >= currentRowBottom
 
       // 只有在跨行拖拽时才显示预览
       if (isCrossRowDrag) {
@@ -1624,21 +1701,30 @@ const handleMouseUp = () => {
   )
 
   // v1.9.0 资源视图垂直拖拽：检测是否移动到不同资源
+  // @ts-expect-error - targetResourceRowIndex预留变量，未来可能使用
   let targetResourceRowIndex: number | undefined
   let isCrossRowDrag = false
 
-  if (viewMode.value === 'resource' && isDragging.value && isDragThresholdMet.value) {
+  if (viewMode.value === 'resource' && isDragging.value && isDragThresholdMet.value && props.currentResourceId) {
     // 记录松开鼠标时的X位置（用于计算新日期）
     dragEndX.value = (window as any).event?.clientX || 0
 
-    // 检测是否跨行
+    // 检测是否跨行（基于资源行的实际高度）
     const timelineBody = document.querySelector('.timeline-body')
     if (timelineBody) {
       const bodyRect = timelineBody.getBoundingClientRect()
       const mouseY = (window as any).lastDragMouseY || 0
       const relativeY = mouseY - bodyRect.top + (timelineBody as HTMLElement).scrollTop
-      const targetRowIndex = Math.floor(relativeY / 51)
-      isCrossRowDrag = targetRowIndex !== props.rowIndex
+
+      // 获取当前资源行的位置和高度
+      const currentResourceId = String(props.currentResourceId)
+      const currentRowTop = resourceRowPositions.value.get(currentResourceId) || 0
+      const currentRowLayout = resourceTaskLayouts.value.get(currentResourceId)
+      const currentRowHeight = currentRowLayout?.totalHeight || 51
+      const currentRowBottom = currentRowTop + currentRowHeight
+
+      // 判断鼠标是否超出当前资源行的边界
+      isCrossRowDrag = relativeY < currentRowTop || relativeY >= currentRowBottom
     }
 
     // 只有跨行拖拽才发送drop事件
@@ -2366,7 +2452,9 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
     // 保存event.currentTarget的引用，因为在setTimeout回调中它会变成null
     const targetElement = event.currentTarget as HTMLElement
     // 保存鼠标位置
+    // @ts-expect-error - 预留变量，未来可能使用
     const mouseX = event.clientX
+    // @ts-expect-error - 预留变量，未来可能使用
     const mouseY = event.clientY
 
     // 延迟显示tooltip，避免快速滑过时显示
@@ -2381,6 +2469,7 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
 
       // 视口尺寸
       const viewportWidth = window.innerWidth
+      // @ts-expect-error - 预留变量，未来可能使用
       const viewportHeight = window.innerHeight
 
       // v1.9.0 改为基于TaskBar边界定位
@@ -3121,12 +3210,16 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div
         v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
         ref="taskBarNameRef"
-        :style="viewMode.value === 'resource' ? {} : getNameStyles()"
-        :class="{ 'task-name-wrapper': viewMode.value === 'resource' }"
+        :style="viewMode === 'resource' ? {} : getNameStyles()"
+        :class="{ 'task-name-wrapper': viewMode === 'resource' }"
       >
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <div v-else class="task-name">
           {{ task.name }}
+          <!-- v1.9.0 资源视图：显示占比文字 -->
+          <span v-if="shouldShowPercentText" class="resource-percent-text">
+            {{ resourcePercent }}%
+          </span>
         </div>
       </div>
 
@@ -3134,7 +3227,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div
         v-if="barConfig.showProgress && shouldShowProgress && !(showActualTaskbar && hasActualProgress)"
         class="task-progress"
-        :style="viewMode.value === 'resource' ? {} : getProgressStyles()"
+        :style="viewMode === 'resource' ? {} : getProgressStyles()"
       >
         {{ task.progress || 0 }}%
       </div>
@@ -3255,6 +3348,11 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div class="tooltip-arrow"></div>
       <div class="tooltip-title">{{ task.name }}</div>
       <div class="tooltip-content">
+        <!-- v1.9.0 资源视图：显示投入占比 -->
+        <div v-if="viewMode === 'resource' && resourcePercent < 100" class="tooltip-row">
+          <span class="tooltip-label">{{ t('investment') || '投入' }}:</span>
+          <span class="tooltip-value">{{ resourcePercent }}%</span>
+        </div>
         <div class="tooltip-row">
           <span class="tooltip-label"> {{ t('startDate') }}:</span>
           <span class="tooltip-value">{{ formatDisplayDate(task.startDate) }}</span>
@@ -3274,6 +3372,10 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
         <div class="tooltip-row">
           <span class="tooltip-label"> {{ t('progress') }}:</span>
           <span class="tooltip-value">{{ task.progress || 0 }}%</span>
+        </div>
+        <!-- v1.9.0 资源冲突警告 -->
+        <div v-if="props.hasResourceConflict" class="tooltip-row tooltip-warning">
+          <span class="tooltip-label">⚠️ {{ t('resourceOverloaded') || '资源超负荷' }}</span>
         </div>
       </div>
     </div>
@@ -3876,6 +3978,31 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   /* 移除背景样式，保持原始状态 */
 }
 
+/* v1.9.0 资源占比文字样式 */
+.resource-percent-text {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gantt-text-on-primary, inherit);
+  opacity: 0.9;
+}
+
+/* TaskBar宽度<40px时隐藏占比文字 */
+.task-bar[style*="width: 4px"],
+.task-bar[style*="width: 8px"],
+.task-bar[style*="width: 12px"],
+.task-bar[style*="width: 16px"],
+.task-bar[style*="width: 20px"],
+.task-bar[style*="width: 24px"],
+.task-bar[style*="width: 28px"],
+.task-bar[style*="width: 32px"],
+.task-bar[style*="width: 36px"] {
+  .resource-percent-text {
+    display: none;
+  }
+}
+
 .task-progress {
   opacity: 0.9;
   font-size: 11px;
@@ -4188,6 +4315,19 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   font-weight: 600;
   text-align: right;
   color: #ffffff;
+}
+
+/* v1.9.0 Tooltip警告行样式 */
+.tooltip-warning {
+  border-top: 1px solid rgba(255, 107, 107, 0.3);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+
+.tooltip-warning .tooltip-label {
+  color: #ff6b6b;
+  font-weight: 600;
+  opacity: 1;
 }
 
 /* === 拖拽实时反馈提示框样式 === */

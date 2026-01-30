@@ -9,6 +9,7 @@ import MilestoneDialog from './MilestoneDialog.vue'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
+import { assignTaskRows } from '../utils/taskLayoutUtils'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
@@ -128,6 +129,103 @@ const currentListConfig = computed(() => {
 provide('gantt-view-mode', currentViewMode)
 provide('gantt-data-source', currentDataSource)
 provide('gantt-list-config', currentListConfig)
+
+// 计算资源视图下的任务布局信息
+const resourceTaskLayouts = computed(() => {
+  const layouts = new Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>()
+
+  if (currentViewMode.value === 'resource') {
+    const resources = currentDataSource.value as Resource[]
+    const baseRowHeight = 51
+
+    // 依赖 updateTaskTrigger 以便在任务更新时重新计算布局
+    if (updateTaskTrigger.value >= 0) {
+      resources.forEach(resource => {
+        const resourceId = String(resource.id)
+        if (resource.tasks && resource.tasks.length > 0) {
+          const layout = assignTaskRows(resource.tasks, resourceId, baseRowHeight)
+          layouts.set(resourceId, layout)
+        } else {
+          // 没有任务的资源使用默认高度
+          layouts.set(resourceId, {
+            taskRowMap: new Map(),
+            rowHeights: [baseRowHeight],
+            totalHeight: baseRowHeight
+          })
+        }
+      })
+    }
+  }
+
+  return layouts
+})
+
+// 计算资源行的累积位置
+const resourceRowPositions = computed(() => {
+  const positions = new Map<string, number>()
+
+  if (currentViewMode.value === 'resource') {
+    const resources = currentDataSource.value as Resource[]
+    let cumulativeTop = 0
+
+    resources.forEach(resource => {
+      const resourceId = String(resource.id)
+      positions.set(resourceId, cumulativeTop)
+      const layout = resourceTaskLayouts.value.get(resourceId)
+      const resourceHeight = layout?.totalHeight || 51
+      cumulativeTop += resourceHeight
+    })
+  }
+
+  return positions
+})
+
+// 计算资源冲突状态（依赖updateTaskTrigger以便实时更新）
+const resourceConflicts = computed(() => {
+  if (currentViewMode.value !== 'resource') return new Map()
+
+  const resources = currentDataSource.value as Resource[]
+  const conflictsMap = new Map<string, Set<number>>()
+
+  // 依赖 updateTaskTrigger 以便在任务更新时重新计算冲突
+  if (updateTaskTrigger.value >= 0) {
+    resources.forEach(resource => {
+      const conflicts = new Set<number>()
+      const tasks = resource.tasks || []
+      const validTasks = tasks.filter(task => task.startDate && task.endDate)
+
+      // 两两比较检测冲突
+      for (let i = 0; i < validTasks.length; i++) {
+        for (let j = i + 1; j < validTasks.length; j++) {
+          const task1 = validTasks[i]
+          const task2 = validTasks[j]
+
+          // 检查时间重叠
+          const start1 = new Date(task1.startDate!).getTime()
+          const end1 = new Date(task1.endDate!).getTime()
+          const start2 = new Date(task2.startDate!).getTime()
+          const end2 = new Date(task2.endDate!).getTime()
+
+          if (start1 < end2 && start2 < end1) {
+            conflicts.add(task1.id)
+            conflicts.add(task2.id)
+          }
+        }
+      }
+
+      if (conflicts.size > 0) {
+        conflictsMap.set(String(resource.id), conflicts)
+      }
+    })
+  }
+
+  return conflictsMap
+})
+
+// 提供资源布局信息给子组件
+provide('resourceTaskLayouts', resourceTaskLayouts)
+provide('resourceRowPositions', resourceRowPositions)
+provide('resourceConflicts', resourceConflicts)
 
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
@@ -641,19 +739,15 @@ const handleToggleTaskList = (event: CustomEvent) => {
 // --- 事件链路：监听 Timeline 传递上来的拖拽/拉伸事件，更新数据并通过 emit 暴露 ---
 function handleTaskBarDragEnd(event: CustomEvent) {
   const updatedTask = event.detail
-  // 更新 props.tasks 中的任务数据
-  if (props.tasks) {
-    updateTaskInTree(props.tasks, updatedTask)
-  }
+  // 更新任务数据并同步到资源视图
+  updateTaskAndSyncToResources(updatedTask)
   updateTaskTrigger.value++
   emit('taskbar-drag-end', updatedTask)
 }
 function handleTaskBarResizeEnd(event: CustomEvent) {
   const updatedTask = event.detail
-  // 更新 props.tasks 中的任务数据
-  if (props.tasks) {
-    updateTaskInTree(props.tasks, updatedTask)
-  }
+  // 更新任务数据并同步到资源视图
+  updateTaskAndSyncToResources(updatedTask)
   updateTaskTrigger.value++
   emit('taskbar-resize-end', updatedTask)
 }
@@ -2423,59 +2517,39 @@ function handleToolbarAddTask() {
 
 // 监听TaskDrawer、TaskList、Timeline的计时事件，统一处理
 const handleStartTimer = (task: Task) => {
-  // 任务树内状态同步
-  if (props.tasks) {
-    const updateTask = (tasks: Task[]): boolean => {
-      for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id === task.id) {
-          tasks[i].isTimerRunning = true
-          tasks[i].timerStartTime = task.timerStartTime || Date.now()
-          tasks[i].timerEndTime = undefined
-          tasks[i].timerElapsedTime = 0
-          return true
-        }
-        if (tasks[i].children?.length) {
-          if (updateTask(tasks[i].children as Task[])) return true
-        }
-      }
-      return false
-    }
-    updateTask(props.tasks)
-  }
+  // 任务树内状态同步，同时同步到资源视图
+  updateTaskStateInTree(task.id, (t) => {
+    t.isTimerRunning = true
+    t.timerStartTime = task.timerStartTime || Date.now()
+    t.timerEndTime = undefined
+    t.timerElapsedTime = 0
+  })
+
   closeContextMenu()
   emit('timer-started', task)
 }
 
 const handleStopTimer = (task: Task) => {
-  // 任务树内状态同步
-  if (props.tasks) {
-    const updateTask = (tasks: Task[]): boolean => {
-      for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id === task.id) {
-          if (tasks[i].isTimerRunning && tasks[i].timerStartTime !== undefined) {
-            const elapsed = tasks[i].timerElapsedTime || 0
-            tasks[i].timerElapsedTime = elapsed + (Date.now() - tasks[i].timerStartTime!)
-            tasks[i].timerEndTime = Date.now()
-          }
-          tasks[i].isTimerRunning = false
-          if (
-            taskDrawerVisible.value &&
-            taskDrawerTask.value &&
-            taskDrawerTask.value.id === task.id
-          ) {
-            taskDrawerTask.value.isTimerRunning = false
-            taskDrawerTask.value.timerEndTime = Date.now()
-          }
-          return true
-        }
-        if (tasks[i].children?.length) {
-          if (updateTask(tasks[i].children as Task[])) return true
-        }
-      }
-      return false
+  // 任务树内状态同步，同时同步到资源视图
+  updateTaskStateInTree(task.id, (t) => {
+    if (t.isTimerRunning && t.timerStartTime !== undefined) {
+      const elapsed = t.timerElapsedTime || 0
+      t.timerElapsedTime = elapsed + (Date.now() - t.timerStartTime)
+      t.timerEndTime = Date.now()
     }
-    updateTask(props.tasks)
-  }
+    t.isTimerRunning = false
+
+    // 同步更新TaskDrawer中的任务
+    if (
+      taskDrawerVisible.value &&
+      taskDrawerTask.value &&
+      taskDrawerTask.value.id === task.id
+    ) {
+      taskDrawerTask.value.isTimerRunning = false
+      taskDrawerTask.value.timerEndTime = Date.now()
+    }
+  })
+
   closeContextMenu()
   emit('timer-stopped', task)
 }
@@ -2613,6 +2687,75 @@ const updateTaskInTree = (tasks: Task[], updatedTask: Task): boolean => {
   return false
 }
 
+// v1.9.0 更新任务并同步到资源视图
+const updateTaskAndSyncToResources = (updatedTask: Task) => {
+  // 1. 更新原始任务数据
+  if (props.tasks) {
+    updateTaskInTree(props.tasks, updatedTask)
+  }
+
+  // 2. 如果是资源视图，同步更新资源中的任务
+  if (currentViewMode.value === 'resource' && props.resources) {
+    // 查找任务所属的资源（通过assignee）
+    props.resources.forEach(resource => {
+      const taskIndex = resource.tasks.findIndex(t => t.id === updatedTask.id)
+      if (taskIndex !== -1) {
+        // 如果责任人变了，需要移动任务
+        if (updatedTask.assignee && updatedTask.assignee !== resource.id) {
+          // 从原资源中移除
+          resource.tasks.splice(taskIndex, 1)
+
+          // 添加到新资源
+          const newResource = props.resources.find(r => r.id === updatedTask.assignee)
+          if (newResource) {
+            newResource.tasks.push({ ...updatedTask })
+          }
+        } else {
+          // 责任人未变，只更新任务数据
+          resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
+        }
+      } else if (updatedTask.assignee === resource.id) {
+        // 任务新分配给这个资源
+        resource.tasks.push({ ...updatedTask })
+      }
+    })
+  }
+}
+
+// v1.9.0 在任务树中更新任务状态（用于timer等部分更新）
+const updateTaskStateInTree = (taskId: number, updateFn: (task: Task) => void): boolean => {
+  const updateInList = (tasks: Task[]): boolean => {
+    for (let i = 0; i < tasks.length; i++) {
+      if (tasks[i].id === taskId) {
+        updateFn(tasks[i])
+        return true
+      }
+      if (tasks[i].children?.length) {
+        if (updateInList(tasks[i].children as Task[])) return true
+      }
+    }
+    return false
+  }
+
+  // 更新原始任务数据
+  let updated = false
+  if (props.tasks) {
+    updated = updateInList(props.tasks)
+  }
+
+  // 如果是资源视图，同步更新资源中的任务
+  if (updated && currentViewMode.value === 'resource' && props.resources) {
+    props.resources.forEach(resource => {
+      const task = resource.tasks.find(t => t.id === taskId)
+      if (task) {
+        updateFn(task)
+      }
+    })
+  }
+
+  return updated
+}
+
 // 在 handleTaskDrawerSubmit 里补充：如果是添加前置任务，自动将新任务id加入目标任务的 predecessor
 function handleTaskDrawerSubmit(task: Task) {
   if (!taskDrawerEditMode.value) {
@@ -2636,9 +2779,8 @@ function handleTaskDrawerSubmit(task: Task) {
       taskToAddSuccessorTo.value = null
     }
   } else {
-    if (props.tasks) {
-      updateTaskInTree(props.tasks, task)
-    }
+    // 更新任务数据并同步到资源视图
+    updateTaskAndSyncToResources(task)
     updateTaskTrigger.value++
     // emit 任务更新事件
     emit('task-updated', { task })
@@ -2671,6 +2813,17 @@ function handleTaskDelete(task: Task, deleteChildren?: boolean) {
   if (props.tasks) {
     removeTaskFromTree(props.tasks, task.id, deleteChildren)
   }
+
+  // v1.9.0 如果是资源视图，同步从资源中删除任务
+  if (currentViewMode.value === 'resource' && props.resources) {
+    props.resources.forEach(resource => {
+      const taskIndex = resource.tasks.findIndex(t => t.id === task.id)
+      if (taskIndex !== -1) {
+        resource.tasks.splice(taskIndex, 1)
+      }
+    })
+  }
+
   taskDrawerVisible.value = false
   taskDrawerTask.value = null
   // emit 删除事件

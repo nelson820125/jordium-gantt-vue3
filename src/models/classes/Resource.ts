@@ -16,6 +16,7 @@ export class Resource {
   department?: string
   skills?: string[]
   utilization?: number
+  color?: string // 自定义资源行左边框颜色，如 '#ff5733'，若不设置则使用默认颜色方案
   tasks: Task[]
   [key: string]: unknown
 
@@ -28,6 +29,7 @@ export class Resource {
     department?: string
     skills?: string[]
     utilization?: number
+    color?: string
     tasks?: Task[]
     [key: string]: unknown
   }) {
@@ -39,6 +41,7 @@ export class Resource {
     this.department = data.department
     this.skills = data.skills
     this.utilization = data.utilization
+    this.color = data.color
     this.tasks = data.tasks || []
 
     // 复制其他自定义属性
@@ -87,5 +90,99 @@ export class Resource {
    */
   updateUtilization(): void {
     this.utilization = this.calculateUtilization()
+  }
+
+  /**
+   * 检测任务是否存在时间重叠
+   * @returns 是否存在任务重叠
+   */
+  hasTaskOverlap(): boolean {
+    if (this.tasks.length < 2) return false
+
+    // 过滤掉没有开始日期和结束日期的任务
+    const validTasks = this.tasks.filter(task => task.startDate && task.endDate)
+    if (validTasks.length < 2) return false
+
+    // 按开始日期排序
+    const sortedTasks = [...validTasks].sort((a, b) => {
+      const dateA = new Date(a.startDate!).getTime()
+      const dateB = new Date(b.startDate!).getTime()
+      return dateA - dateB
+    })
+
+    // 检测相邻任务是否重叠
+    for (let i = 0; i < sortedTasks.length - 1; i++) {
+      const currentTask = sortedTasks[i]
+      const nextTask = sortedTasks[i + 1]
+
+      const currentEnd = new Date(currentTask.endDate!).getTime()
+      const nextStart = new Date(nextTask.startDate!).getTime()
+
+      // 如果当前任务的结束时间晚于下一个任务的开始时间，则存在重叠
+      if (currentEnd > nextStart) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * v1.9.0 检测资源是否超载（基于占用比例）
+   * 超载定义：同一时间段内，资源总占用比例 > 100%
+   * @returns 是否资源超载
+   */
+  isOverloaded(): boolean {
+    if (this.tasks.length < 2) return false
+
+    // 过滤掉没有开始日期和结束日期的任务
+    const validTasks = this.tasks.filter(task => task.startDate && task.endDate)
+    if (validTasks.length < 2) return false
+
+    // 检测任意时间点的总占比是否超过100%
+    for (let i = 0; i < validTasks.length; i++) {
+      for (let j = i + 1; j < validTasks.length; j++) {
+        const task1 = validTasks[i]
+        const task2 = validTasks[j]
+
+        // 检查两个任务是否有时间交集
+        const start1 = new Date(task1.startDate!).getTime()
+        const end1 = new Date(task1.endDate!).getTime()
+        const start2 = new Date(task2.startDate!).getTime()
+        const end2 = new Date(task2.endDate!).getTime()
+
+        // 判断时间是否重叠
+        if (start1 < end2 && start2 < end1) {
+          // 有重叠，计算总占比
+          const percent1 = this.getTaskAllocationPercent(task1)
+          const percent2 = this.getTaskAllocationPercent(task2)
+
+          if (percent1 + percent2 > 100) {
+            return true // 超负荷
+          }
+        }
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * v1.9.0 获取任务中当前资源的投入占比
+   * @param task 任务对象
+   * @returns 占比百分比 (20-100)，默认100
+   */
+  private getTaskAllocationPercent(task: any): number {
+    if (!task.resources || !Array.isArray(task.resources)) {
+      return 100 // 未配置resources时，默认100%
+    }
+
+    const allocation = task.resources.find((r: any) => r.id === this.id)
+    if (!allocation) {
+      return 100 // 未找到当前资源的分配信息，默认100%
+    }
+
+    const percent = allocation.percent ?? 100
+    return Math.max(20, Math.min(100, percent)) // 限制范围 20-100
   }
 }

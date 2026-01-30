@@ -86,7 +86,7 @@ const applyDataSource = (source: RawDataSource) => {
   tasks.value = cloneData(payload.tasks ?? [])
   milestones.value = cloneData(payload.milestones ?? [])
 
-  // 从独立的资源数据文件加载资源数据
+  // v1.9.0 从资源数据文件加载
   const resourcePayload = resourcesData as { resources?: any[] }
   if (resourcePayload.resources) {
     resources.value = resourcePayload.resources.map(resData => {
@@ -100,9 +100,18 @@ const applyDataSource = (source: RawDataSource) => {
         department: resData.department,
         skills: resData.skills,
         utilization: resData.utilization,
+        color: resData.color,
         tasks: resData.tasks || []
       })
     })
+
+    // 更新assigneeOptions，添加资源作为责任人选项
+    const resourceAssigneeOptions = resources.value.map(res => ({
+      value: res.id as string,
+      label: res.name,
+      avatar: res.avatar
+    }))
+    assigneeOptions.value = [...resourceAssigneeOptions]
   } else {
     // 向后兼容：如果没有独立的资源数据，从任务中生成
     const resourceMap = new Map<string, Resource>()
@@ -278,22 +287,8 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
       key: 'name',
       label: '资源名称',
       visible: true,
-      width: 150,
+      width: 200,
       formatter: (resource: Resource) => resource.name || '-',
-    },
-    {
-      key: 'type',
-      label: '类型',
-      visible: true,
-      width: 100,
-      formatter: (resource: Resource) => resource.type || '-',
-    },
-    {
-      key: 'taskCount',
-      label: '任务数',
-      visible: true,
-      width: 100,
-      formatter: (resource: Resource) => resource.tasks?.length?.toString() || '0',
     },
     {
       key: 'utilization',
@@ -309,6 +304,20 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
         const utilizationPercent = Math.min(taskCount * 20, 100) // 假设每个任务占20%
         return `${utilizationPercent}%`
       },
+    },
+    {
+      key: 'type',
+      label: '类型',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => resource.type || '-',
+    },
+    {
+      key: 'taskCount',
+      label: '任务数',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => resource.tasks?.length?.toString() || '0',
     },
   ],
   defaultWidth:
@@ -2145,7 +2154,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
          <template #header-name>
           <div style="display: flex; align-items: center; gap: 6px;">
             <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="32" height="32" style="border-radius: 50%;" />
-            <strong style="font-size: 14px;">{{ t.taskName }}</strong>
+            <strong style="font-size: 14px;">{{ viewMode === 'task' ? t.taskName : t.resourceName }}</strong>
           </div>
          </template>
          <template #column-name="{ task, column, value }">
@@ -2203,10 +2212,10 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </template>
 
         <!-- 使用 TaskListColumn 组件自定义列 声明式模式 -->
-        <TaskListColumn prop="name" :label="t.taskName" width="300" align="center">
+        <TaskListColumn prop="name" :label="viewMode === 'task' ? t.taskName : t.resourceName" width="300" align="center">
           <template #header>
             <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="32" height="32" style="border-radius: 50%;" />
-            <strong style="font-size: 14px;">{{ t.taskName }}</strong>
+            <strong style="font-size: 14px;">{{ viewMode === 'task' ? t.taskName : t.resourceName }}</strong>
           </template>
           <template #default="scope">
             <div style="display: flex; align-items: center; gap: 6px;">

@@ -9,6 +9,7 @@ const messages = {
     dateNotSet: '未设置',
     // TaskList Header
     taskName: '任务名称',
+    resourceName: '资源名称',
     predecessor: '前置任务',
     assignee: '分配人',
     startDate: '开始日期',
@@ -205,6 +206,12 @@ const messages = {
     taskDeletedSuccess: '已删除任务',
     // 选择器占位符
     selectAssignee: '请选择负责人',
+    // v1.9.0 资源分配
+    resourceAllocation: '资源分配',
+    selectResource: '选择资源',
+    addResource: '添加资源',
+    percentMinError: '最小占比为20%',
+    percentMaxWarning: '占比超过100%将标记为超负荷',
     // 通用消息
     customCsvExportCalled: '自定义CSV导出被调用',
     languageSwitchedTo: '语言切换到：{language}',
@@ -295,6 +302,7 @@ const messages = {
     dateNotSet: 'Not set',
     // TaskList Header
     taskName: 'Task Name',
+    resourceName: 'Resource Name',
     predecessor: 'Predecessor',
     assignee: 'Assignee',
     startDate: 'Start Date',
@@ -492,6 +500,12 @@ const messages = {
     taskDeletedSuccess: 'Task deleted',
     // Selector placeholders
     selectAssignee: 'Select assignee',
+    // v1.9.0 Resource allocation
+    resourceAllocation: 'Resource Allocation',
+    selectResource: 'Select resource',
+    addResource: 'Add Resource',
+    percentMinError: 'Minimum percentage is 20%',
+    percentMaxWarning: 'Percentage over 100% will be marked as overloaded',
     // Common messages
     customCsvExportCalled: 'Custom CSV export called',
     languageSwitchedTo: 'Language switched to: {language}',

@@ -1,5 +1,6 @@
-import { ref, computed, type Ref } from 'vue'
+import { ref, computed, inject, type Ref, type ComputedRef } from 'vue'
 import type { Task } from '../../../../models/classes/Task'
+import type { Resource } from '../../../../models/classes/Resource'
 
 /**
  * TaskList 布局计算逻辑
@@ -29,6 +30,15 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
   const taskListScrollTop = ref(0)
   const taskListBodyHeight = ref(0)
 
+  // v1.9.0 注入视图模式和资源布局信息
+  const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
+  const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
+  const resourceTaskLayouts = inject<ComputedRef<Map<string | number, {
+    taskRowMap: Map<string | number, number>,
+    rowHeights: number[],
+    totalHeight: number
+  }>>>('resourceTaskLayouts', computed(() => new Map()))
+
   /**
    * 获取当前折叠状态下的可见任务列表（扁平化）
    */
@@ -55,22 +65,81 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
   const flattenedTasks = computed(() => getFlattenedVisibleTasks(tasks.value))
 
   /**
-   * 计算可视区域任务范围
+   * v1.9.0 计算每个任务/资源的累计高度位置（支持动态行高）
+   */
+  const cumulativeHeights = computed<number[]>(() => {
+    if (viewMode.value === 'resource') {
+      // 资源视图：使用每个资源的实际高度
+      const resources = dataSource.value as Resource[]
+      const heights: number[] = [0] // 第一个位置是0
+      let cumulative = 0
+
+      resources.forEach(resource => {
+        const layout = resourceTaskLayouts.value.get(resource.id)
+        const height = layout?.totalHeight || ROW_HEIGHT
+        cumulative += height
+        heights.push(cumulative)
+      })
+
+      return heights
+    } else {
+      // 任务视图：使用固定行高
+      const heights: number[] = [0]
+      for (let i = 1; i <= flattenedTasks.value.length; i++) {
+        heights.push(i * ROW_HEIGHT)
+      }
+      return heights
+    }
+  })
+
+  /**
+   * 根据滚动位置查找对应的任务/资源索引（二分查找）
+   */
+  const findIndexByScrollTop = (scrollTop: number): number => {
+    const heights = cumulativeHeights.value
+    let left = 0
+    let right = heights.length - 1
+
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2)
+      if (heights[mid] <= scrollTop) {
+        left = mid + 1
+      } else {
+        right = mid
+      }
+    }
+
+    return Math.max(0, left - 1)
+  }
+
+  /**
+   * 计算可视区域任务范围（支持动态行高）
    */
   const visibleTaskRange = computed<VisibleTaskRange>(() => {
     const scrollTop = taskListScrollTop.value
     const containerHeight = taskListBodyHeight.value || 600
+    const heights = cumulativeHeights.value
 
-    const startIndex = Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER
-    const endIndex = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER
+    if (heights.length <= 1) {
+      return { startIndex: 0, endIndex: 0 }
+    }
 
-    const total = flattenedTasks.value.length
-    const clampedStart = Math.min(Math.max(0, startIndex), total)
-    const clampedEnd = Math.min(total, Math.max(clampedStart + 1, endIndex))
+    // 找到起始索引（考虑缓冲区）
+    let startIndex = findIndexByScrollTop(scrollTop)
+    startIndex = Math.max(0, startIndex - VERTICAL_BUFFER)
+
+    // 找到结束索引（考虑缓冲区）
+    const scrollBottom = scrollTop + containerHeight
+    let endIndex = findIndexByScrollTop(scrollBottom)
+    endIndex = Math.min(heights.length - 1, endIndex + VERTICAL_BUFFER + 1)
+
+    const total = viewMode.value === 'resource'
+      ? (dataSource.value as Resource[]).length
+      : flattenedTasks.value.length
 
     return {
-      startIndex: clampedStart,
-      endIndex: clampedEnd,
+      startIndex: Math.min(startIndex, total),
+      endIndex: Math.min(endIndex, total),
     }
   })
 
@@ -88,13 +157,22 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
   })
 
   /**
-   * Spacer 高度用于撑起滚动区域
+   * Spacer 高度用于撑起滚动区域（支持动态行高）
    */
-  const totalContentHeight = computed(() => flattenedTasks.value.length * ROW_HEIGHT)
-  const startSpacerHeight = computed(() => visibleTaskRange.value.startIndex * ROW_HEIGHT)
+  const totalContentHeight = computed(() => {
+    const heights = cumulativeHeights.value
+    return heights.length > 0 ? heights[heights.length - 1] : 0
+  })
+
+  const startSpacerHeight = computed(() => {
+    const startIdx = visibleTaskRange.value.startIndex
+    return cumulativeHeights.value[startIdx] || 0
+  })
+
   const endSpacerHeight = computed(() => {
-    const visibleHeight = visibleTasks.value.length * ROW_HEIGHT
-    return Math.max(0, totalContentHeight.value - startSpacerHeight.value - visibleHeight)
+    const endIdx = visibleTaskRange.value.endIndex
+    const endHeight = cumulativeHeights.value[endIdx] || 0
+    return Math.max(0, totalContentHeight.value - endHeight)
   })
 
   return {

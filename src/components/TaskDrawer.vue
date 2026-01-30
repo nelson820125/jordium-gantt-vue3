@@ -167,6 +167,7 @@ const formData = reactive<Task>({
   timerEndTime: undefined, // 计时器结束时间
   timerElapsedTime: 0, // 计时器已用时间
   children: undefined, // 子任务列表
+  resources: [], // v1.9.0 资源分配列表（包含占比）
 })
 
 // 任务列表数据
@@ -425,6 +426,7 @@ const resetForm = () => {
     bgColor: undefined,
     avatar: undefined,
     barColor: undefined,
+    resources: [], // v1.9.0 资源分配
   })
 
   // 清除错误信息
@@ -677,6 +679,42 @@ const handleAssigneeChanged = (event: Event) => {
   }
 }
 
+// v1.9.0 资源占比管理
+const addResource = () => {
+  if (!formData.resources) {
+    formData.resources = []
+  }
+  formData.resources.push({
+    id: '',
+    name: '',
+    percent: 100,
+  })
+}
+
+const removeResource = (index: number) => {
+  if (formData.resources && formData.resources.length > index) {
+    formData.resources.splice(index, 1)
+  }
+}
+
+const handleResourceChange = (index: number, field: 'id' | 'percent', value: string | number) => {
+  if (!formData.resources || !formData.resources[index]) return
+
+  if (field === 'id') {
+    const selected = props.assigneeOptions?.find(option => option.value === value)
+    if (selected) {
+      formData.resources[index].id = selected.value
+      formData.resources[index].name = selected.label
+    }
+  } else if (field === 'percent') {
+    let percent = typeof value === 'string' ? parseInt(value) : value
+    // 校验范围 20-100
+    if (percent < 20) percent = 20
+    if (percent > 100) percent = 100
+    formData.resources[index].percent = percent
+  }
+}
+
 // 计算任务状态
 const taskStatus = computed(() => {
   if (!props.task) return { text: '', color: '', bgColor: '', borderColor: '' }
@@ -923,6 +961,71 @@ const taskStatus = computed(() => {
                 {{ assignee.label }}
               </option>
             </select>
+          </div>
+
+          <!-- v1.9.0 资源分配（含占比配置） -->
+          <div class="form-group">
+            <label class="form-label">{{ t.resourceAllocation || '资源分配' }}</label>
+            <div class="resource-list">
+              <div
+                v-for="(resource, index) in formData.resources"
+                :key="index"
+                class="resource-item"
+              >
+                <select
+                  v-model="resource.id"
+                  class="form-select resource-select"
+                  @change="handleResourceChange(index, 'id', ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">{{ t.selectResource || '选择资源' }}</option>
+                  <option
+                    v-for="assignee in props.assigneeOptions"
+                    :key="assignee.key ?? assignee.value"
+                    :value="assignee.value"
+                  >
+                    {{ assignee.label }}
+                  </option>
+                </select>
+
+                <div class="percent-input-wrapper">
+                  <select
+                    v-model.number="resource.percent"
+                    class="form-select percent-select"
+                    @change="handleResourceChange(index, 'percent', ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option :value="25">25%</option>
+                    <option :value="50">50%</option>
+                    <option :value="75">75%</option>
+                    <option :value="100">100%</option>
+                  </select>
+                  <input
+                    type="number"
+                    v-model.number="resource.percent"
+                    class="form-input percent-input"
+                    min="20"
+                    max="100"
+                    @input="handleResourceChange(index, 'percent', ($event.target as HTMLInputElement).value)"
+                  />
+                  <span class="percent-unit">%</span>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-remove-resource"
+                  @click="removeResource(index)"
+                  title="删除资源"
+                >
+                  ×
+                </button>
+              </div>
+              <button
+                type="button"
+                class="btn-add-resource"
+                @click="addResource"
+              >
+                + {{ t.addResource || '添加资源' }}
+              </button>
+            </div>
           </div>
 
           <!-- 上级任务选择 -->
@@ -1569,5 +1672,97 @@ const taskStatus = computed(() => {
 :global(html[data-theme='dark']) .form-input::placeholder,
 :global(html[data-theme='dark']) .form-textarea::placeholder {
   color: var(--gantt-text-muted, #9e9e9e) !important;
+}
+
+/* v1.9.0 资源分配样式 */
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--gantt-bg-secondary, #f5f7fa);
+  border-radius: 4px;
+}
+
+.resource-select {
+  flex: 1;
+  min-width: 140px;
+}
+
+.percent-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.percent-select {
+  width: 80px;
+}
+
+.percent-input {
+  width: 60px;
+  padding: 6px 8px;
+}
+
+.percent-unit {
+  font-size: 14px;
+  color: var(--gantt-text-secondary, #606266);
+}
+
+.btn-remove-resource {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--gantt-border-base, #dcdfe6);
+  border-radius: 4px;
+  color: var(--gantt-text-secondary, #606266);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.btn-remove-resource:hover {
+  background: var(--gantt-danger-light, #fef0f0);
+  border-color: var(--gantt-danger, #f56c6c);
+  color: var(--gantt-danger, #f56c6c);
+}
+
+.btn-add-resource {
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: 1px dashed var(--gantt-border-base, #dcdfe6);
+  border-radius: 4px;
+  color: var(--gantt-primary, #409eff);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-add-resource:hover {
+  border-color: var(--gantt-primary, #409eff);
+  background: var(--gantt-primary-light, #ecf5ff);
+}
+
+:global(html[data-theme='dark']) .resource-item {
+  background: var(--gantt-bg-secondary, rgba(255, 255, 255, 0.05)) !important;
+}
+
+:global(html[data-theme='dark']) .btn-remove-resource:hover {
+  background: var(--gantt-danger-dark, rgba(245, 108, 108, 0.2)) !important;
+}
+
+:global(html[data-theme='dark']) .btn-add-resource:hover {
+  background: var(--gantt-primary-dark, rgba(64, 158, 255, 0.2)) !important;
 }
 </style>

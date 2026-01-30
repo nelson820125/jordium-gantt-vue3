@@ -8,6 +8,7 @@
       "department": "临床研究部",
       "skills": ["临床试验管理", "项目规划", "团队领导"],
       "utilization": 85,
+      "color": "#2196f3",
       "tasks": [
         {
           "id": 1000,
@@ -15,7 +16,10 @@
           "startDate": "2025-01-01",
           "endDate": "2027-12-31",
           "progress": 15,
-          "type": "story"
+          "type": "story",
+          "resources": [
+            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "percent": 100 }
+          ]
         },
         {
           "id": 5001,
@@ -23,7 +27,10 @@
           "startDate": "2025-03-01",
           "endDate": "2025-03-15",
           "progress": 100,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "percent": 75 }
+          ]
         },
         {
           "id": 5002,
@@ -31,7 +38,10 @@
           "startDate": "2025-06-10",
           "endDate": "2025-06-12",
           "progress": 80,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "percent": 50 }
+          ]
         }
       ]
     },
@@ -43,6 +53,7 @@
       "department": "I期临床研究组",
       "skills": ["I期试验设计", "药代动力学", "安全性评估"],
       "utilization": 92,
+      "color": "#4caf50",
       "tasks": [
         {
           "id": 1100,
@@ -50,7 +61,10 @@
           "startDate": "2025-01-01",
           "endDate": "2025-08-31",
           "progress": 65,
-          "type": "story"
+          "type": "story",
+          "resources": [
+            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "percent": 100 }
+          ]
         },
         {
           "id": 5003,
@@ -58,7 +72,10 @@
           "startDate": "2025-03-01",
           "endDate": "2025-04-30",
           "progress": 100,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "percent": 75 }
+          ]
         },
         {
           "id": 5004,
@@ -66,7 +83,10 @@
           "startDate": "2025-05-01",
           "endDate": "2025-07-31",
           "progress": 45,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "percent": 50 }
+          ]
         }
       ]
     },
@@ -85,7 +105,10 @@
           "startDate": "2025-01-01",
           "endDate": "2025-02-28",
           "progress": 100,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-li", "name": "方案设计师 李明", "percent": 100 }
+          ]
         },
         {
           "id": 5005,
@@ -93,7 +116,11 @@
           "startDate": "2025-07-01",
           "endDate": "2025-08-15",
           "progress": 30,
-          "type": "task"
+          "type": "task",
+          "barColor": "#7B3FF2",
+          "resources": [
+            { "id": "resource-li", "name": "方案设计师 李明", "percent": 75 }
+          ]
         }
       ]
     },
@@ -105,6 +132,7 @@
       "department": "数据管理与统计部",
       "skills": ["统计分析", "数据可视化", "报告撰写"],
       "utilization": 68,
+      "color": "#ff9800",
       "tasks": [
         {
           "id": 1103,
@@ -112,7 +140,10 @@
           "startDate": "2025-05-01",
           "endDate": "2025-08-15",
           "progress": 50,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhang", "name": "数据分析师 张伟", "percent": 100 }
+          ]
         },
         {
           "id": 5006,
@@ -120,7 +151,10 @@
           "startDate": "2025-06-15",
           "endDate": "2025-07-01",
           "progress": 70,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhang", "name": "数据分析师 张伟", "percent": 50 }
+          ]
         },
         {
           "id": 5007,
@@ -128,7 +162,10 @@
           "startDate": "2025-07-15",
           "endDate": "2025-08-10",
           "progress": 25,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhang", "name": "数据分析师 张伟", "percent": 75 }
+          ]
         }
       ]
     },
@@ -229,6 +266,7 @@
       "department": "III期临床研究组",
       "skills": ["大型试验管理", "多中心协调", "里程碑管理"],
       "utilization": 35,
+      "color": "#9c27b0",
       "tasks": [
         {
           "id": 1300,
@@ -237,6 +275,225 @@
           "endDate": "2027-12-31",
           "progress": 2,
           "type": "story"
+        }
+      ]
+    },
+    {
+      "id": "resource-sun",
+      "name": "生物统计师 孙丽",
+      "type": "生物统计师",
+      "avatar": "https://i.pravatar.cc/150?img=9",
+      "department": "数据管理与统计部",
+      "skills": ["统计建模", "样本量计算", "数据分析"],
+      "utilization": 95,
+      "color": "#ff5733",
+      "tasks": [
+        {
+          "id": 6001,
+          "name": "I期统计分析计划",
+          "startDate": "2025-04-01",
+          "endDate": "2025-04-30",
+          "progress": 100,
+          "type": "task",
+          "resources": [
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 100 }
+          ]
+        },
+        {
+          "id": 6002,
+          "name": "中期数据分析",
+          "startDate": "2025-05-15",
+          "endDate": "2025-06-15",
+          "progress": 75,
+          "type": "task",
+          "resources": [
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 75 }
+          ]
+        },
+        {
+          "id": 6003,
+          "name": "II期样本量计算",
+          "startDate": "2025-05-20",
+          "endDate": "2025-06-10",
+          "progress": 85,
+          "type": "task",
+          "resources": [
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 50 }
+          ]
+        },
+        {
+          "id": 6004,
+          "name": "最终报告统计",
+          "startDate": "2025-08-01",
+          "endDate": "2025-08-25",
+          "progress": 30,
+          "type": "task",
+          "resources": [
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 100 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "resource-zhou",
+      "name": "临床监查员 周杰",
+      "type": "临床监查员",
+      "avatar": "https://i.pravatar.cc/150?img=10",
+      "department": "临床监查部",
+      "skills": ["现场监查", "数据核查", "问题解决"],
+      "utilization": 110,
+      "color": "#3498db",
+      "tasks": [
+        {
+          "id": 6005,
+          "name": "中心A启动访视",
+          "startDate": "2025-03-10",
+          "endDate": "2025-03-15",
+          "progress": 100,
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 100 }
+          ]
+        },
+        {
+          "id": 6006,
+          "name": "中心B监查访视",
+          "startDate": "2025-03-12",
+          "endDate": "2025-03-18",
+          "progress": 100,
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 75 }
+          ]
+        },
+        {
+          "id": 6007,
+          "name": "中心C数据核查",
+          "startDate": "2025-04-01",
+          "endDate": "2025-04-10",
+          "progress": 90,
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 50 }
+          ]
+        },
+        {
+          "id": 6008,
+          "name": "中心D关闭访视",
+          "startDate": "2025-04-05",
+          "endDate": "2025-04-12",
+          "progress": 70,
+          "type": "task",
+          "resources": [
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 25 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "resource-xu",
+      "name": "医学撰写员 徐静",
+      "type": "医学撰写员",
+      "avatar": "https://i.pravatar.cc/150?img=11",
+      "department": "医学事务部",
+      "skills": ["研究报告撰写", "文献检索", "医学翻译"],
+      "utilization": 72,
+      "color": "#e74c3c",
+      "tasks": [
+        {
+          "id": 6009,
+          "name": "研究方案撰写",
+          "startDate": "2025-01-15",
+          "endDate": "2025-02-15",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 6010,
+          "name": "中期报告撰写",
+          "startDate": "2025-06-01",
+          "endDate": "2025-07-01",
+          "progress": 60,
+          "type": "task"
+        },
+        {
+          "id": 6011,
+          "name": "研究者手册更新",
+          "startDate": "2025-07-15",
+          "endDate": "2025-08-15",
+          "progress": 20,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-ma",
+      "name": "药物警戒专员 马云飞",
+      "type": "药物警戒",
+      "avatar": "https://i.pravatar.cc/150?img=12",
+      "department": "药物警戒部",
+      "skills": ["不良事件管理", "安全性报告", "信号检测"],
+      "utilization": 88,
+      "color": "#f39c12",
+      "tasks": [
+        {
+          "id": 6012,
+          "name": "SAE快速报告",
+          "startDate": "2025-03-01",
+          "endDate": "2025-03-31",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 6013,
+          "name": "安全性季度报告",
+          "startDate": "2025-03-15",
+          "endDate": "2025-04-01",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 6014,
+          "name": "DSUR年度报告",
+          "startDate": "2025-06-01",
+          "endDate": "2025-07-15",
+          "progress": 45,
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "resource-gao",
+      "name": "注册事务专员 高敏",
+      "type": "注册事务",
+      "avatar": "https://i.pravatar.cc/150?img=13",
+      "department": "注册事务部",
+      "skills": ["IND申报", "监管沟通", "文件管理"],
+      "utilization": 65,
+      "tasks": [
+        {
+          "id": 6015,
+          "name": "IND申报准备",
+          "startDate": "2024-12-01",
+          "endDate": "2025-01-15",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 6016,
+          "name": "与NMPA沟通会议",
+          "startDate": "2025-02-10",
+          "endDate": "2025-02-12",
+          "progress": 100,
+          "type": "task"
+        },
+        {
+          "id": 6017,
+          "name": "II期IND补充申请",
+          "startDate": "2025-08-01",
+          "endDate": "2025-08-31",
+          "progress": 15,
+          "type": "task"
         }
       ]
     }

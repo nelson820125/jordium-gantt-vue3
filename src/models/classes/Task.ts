@@ -1,3 +1,13 @@
+/**
+ * 资源分配信息 (Resource Allocation)
+ * @version 1.9.0
+ */
+export interface ResourceAllocation {
+  id: string | number // 资源ID
+  name: string // 资源名称
+  percent?: number // 投入精力占比 (20-100)，默认100
+}
+
 // Task 类型定义
 export interface Task {
   id: number
@@ -31,6 +41,8 @@ export interface Task {
   isEditable?: boolean // 是否可编辑（可拖拽、拉伸），默认为true
   // 自定义样式
   barColor?: string // 自定义TaskBar颜色，如 '#ff5733'，若不设置则使用默认颜色方案
+  // v1.9.0 资源占用比例
+  resources?: ResourceAllocation[] // 资源分配列表，包含占比信息
   // 支持自定义属性 - 使用 unknown 允许任意类型
   [key: string]: unknown
 }
