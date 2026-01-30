@@ -22,14 +22,24 @@ const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', comp
 const resourcePercent = computed(() => {
   // 如果直接传递了占比，使用传递的值
   if (props.resourceAllocationPercent !== undefined) {
-    return Math.max(20, Math.min(100, props.resourceAllocationPercent))
+    const val = Number(props.resourceAllocationPercent)
+    if (Number.isFinite(val) && val > 0) {
+      return Math.max(0, Math.min(100, val))
+    }
   }
 
   // 在资源视图中，尝试从task.resources中查找当前资源的占比
   if (viewMode.value === 'resource' && props.currentResourceId && props.task.resources) {
-    const allocation = props.task.resources.find((r: any) => r.id === props.currentResourceId)
+    const allocation = props.task.resources.find((r: any) => {
+      // 确保ID类型匹配（可能是字符串或数字）
+      return String(r.id) === String(props.currentResourceId)
+    })
+
     if (allocation && allocation.percent !== undefined) {
-      return Math.max(20, Math.min(100, allocation.percent))
+      const val = Number(allocation.percent)
+      if (Number.isFinite(val) && val >= 0) {
+        return Math.max(0, Math.min(100, val))
+      }
     }
   }
 
@@ -576,17 +586,15 @@ const taskBarStyle = computed(() => {
     }
   }
 
-  // v1.9.0 计算TaskBar高度：保持基础高度一致，资源视图中应用占比缩放
+  // v1.9.1 计算TaskBar高度：资源视图固定41px全高度，不再按占比缩放
   const baseTaskBarHeight = props.rowHeight - 10 // 基础高度（与任务视图一致）
   let taskBarHeight = baseTaskBarHeight
 
-  if (viewMode.value === 'resource') {
-    // 资源视图：在基础高度上应用占比缩放
-    const percentValue = resourcePercent.value / 100
-    taskBarHeight = baseTaskBarHeight * percentValue
-  }
+  // v1.9.1 资源视图：固定全高度，不缩放（占比通过CSS伪元素实现）
+  // 任务视图：保持原有高度
+  // （资源视图的占比视觉效果通过CSS的::before和::after伪元素实现）
 
-  // v1.9.0 计算垂直位置：资源视图中支持换行布局
+  // v1.9.1 计算垂直位置：资源视图中支持换行布局
   let topOffset = (props.rowHeight - taskBarHeight) / 2 // 默认：居中对齐
 
   if (viewMode.value === 'resource' && props.taskSubRow !== undefined && props.rowHeights && props.rowHeights.length > 0) {
@@ -601,15 +609,15 @@ const taskBarStyle = computed(() => {
       cumulativeOffset += rowHeights[i] || 51
     }
 
-    // 在当前子行内底边对齐
-    // 第一行：padding-top(5px) + 可用空间
-    // 后续行：可用空间（无padding-top）
+    // v1.9.1 在当前子行内居中对齐（因为TaskBar固定41px高度）
+    // 第一行：padding-top(5px) + 居中
+    // 后续行：居中（无padding-top）
     if (subRow === 0) {
-      // 第一行：顶部5px padding，底部对齐
-      topOffset = cumulativeOffset + (currentRowHeight - 5 - taskBarHeight)
+      // 第一行：顶部5px padding，居中对齐
+      topOffset = cumulativeOffset + 5 + (currentRowHeight - 5 - taskBarHeight) / 2
     } else {
-      // 后续行：底部对齐（底部5px padding）
-      topOffset = cumulativeOffset + (currentRowHeight - 5 - taskBarHeight)
+      // 后续行：居中对齐
+      topOffset = cumulativeOffset + (currentRowHeight - taskBarHeight) / 2
     }
   }
 
@@ -2415,6 +2423,14 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
   // 阻止事件冒泡
   event.stopPropagation()
 
+  // v1.9.1 隐藏TaskBar的hover tooltip，只显示bubble tooltip
+  showHoverTooltip.value = false
+  // 清除可能正在等待的tooltip定时器
+  if (hoverTooltipTimer) {
+    window.clearTimeout(hoverTooltipTimer)
+    hoverTooltipTimer = null
+  }
+
   showTooltip.value = true
 
   // 智能定位：右侧气泡在左侧显示tooltip，左侧气泡在右侧显示
@@ -3093,6 +3109,9 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
       '--handle-width': `${actualHandleWidth}px` /* 传递手柄宽度给CSS变量 */,
       '--parent-color': taskStatus.color, /* 传递父级TaskBar颜色给伪元素箭头使用 */
+      '--allocation-percent': (Number.isFinite(resourcePercent) ? resourcePercent / 100 : 1), /* v1.9.1 传递占比给CSS变量 */
+      '--task-bar-bg-color': taskStatus.bgColor, /* v1.9.1 传递背景色给伪元素 */
+      '--task-bar-border-color': taskStatus.borderColor, /* v1.9.1 传递边框色给伪元素 */
       boxShadow: isParent
         ? `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 父级任务也使用动态颜色阴影 */
         : `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26`, /* 使用TaskBar颜色的阴影 - 加强版 */
@@ -3110,6 +3129,8 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       dimmed: isDimmed,
       'has-actual': showActualTaskbar && hasActualProgress, /* 只有在showActualTaskbar=true时才标记有实际进度 */
       'resource-conflict': props.hasResourceConflict, /* v1.9.0 资源冲突样式 */
+      'resource-view': viewMode === 'resource', /* v1.9.1 资源视图专属样式 */
+      'has-bubble': bubbleIndicator.show, /* v1.9.1 有气泡时提升层级，确保气泡不被其他TaskBar遮挡 */
     }"
     @click="handleTaskBarClick"
     @contextmenu="handleContextMenu"
@@ -3210,8 +3231,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div
         v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
         ref="taskBarNameRef"
-        :style="viewMode === 'resource' ? {} : getNameStyles()"
-        :class="{ 'task-name-wrapper': viewMode === 'resource' }"
+        :style="getNameStyles()"
       >
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <div v-else class="task-name">
@@ -3227,7 +3247,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div
         v-if="barConfig.showProgress && shouldShowProgress && !(showActualTaskbar && hasActualProgress)"
         class="task-progress"
-        :style="viewMode === 'resource' ? {} : getProgressStyles()"
+        :style="getProgressStyles()"
       >
         {{ task.progress || 0 }}%
       </div>
@@ -3496,6 +3516,11 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   z-index: 160 !important;
 }
 
+/* v1.9.1 有气泡指示器时提升z-index，解决DOM渲染顺序导致的遮挡问题 */
+.task-bar.has-bubble {
+  z-index: 200 !important;
+}
+
 /* 有实际进度时，计划条使用虚线边框样式 */
 .task-bar.has-actual {
   /* 不再强制设置半透明背景，由内联样式的isTaskBarHovered控制 */
@@ -3538,28 +3563,141 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   cursor: pointer;
 }
 
-/* v1.9.0 资源冲突样式（根据UI规范）*/
-.task-bar.resource-conflict {
+/* v1.9.1 资源视图TaskBar全高度占比设计 */
+.task-bar.resource-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 上半部分：镂空区域（仅上、左、右三边虚线） */
+.task-bar.resource-view::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc((1 - var(--allocation-percent, 1)) * 100%);
+  border-top: 1.5px dashed currentColor;
+  border-left: 1.5px dashed currentColor;
+  border-right: 1.5px dashed currentColor;
+  border-bottom: none;
+  background: transparent;
+  box-sizing: border-box;
+  pointer-events: none;
+  border-radius: 4px 4px 0 0;
+  opacity: 0.6;
+  z-index: -1; /* v1.9.1 设置为负值，确保不遮挡 bubble-indicator */
+}
+
+/* 占比100%时，隐藏上半部分镂空区域 */
+.task-bar.resource-view[style*="--allocation-percent: 1"]::before {
+  display: none;
+}
+
+/* 下半部分：实心填充区域（四边实线边框 + 背景色） */
+.task-bar.resource-view::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--allocation-percent, 1) * 100%);
+  background: var(--task-bar-bg-color, #e3f2fd);
+  border: 1px solid var(--task-bar-border-color, #90caf9);
+  border-radius: 0 0 4px 4px;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+  z-index: -1; /* v1.9.1 设置为负值，确保不遮挡 bubble-indicator */
+}
+
+/* 占比100%时，整个TaskBar都是实心，四个角圆角 */
+.task-bar.resource-view[style*="--allocation-percent: 1"]::after {
+  border-radius: 4px;
+}
+
+/* 进度条限制在填充区内 */
+.task-bar.resource-view .progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  top: auto;
+  height: calc(var(--allocation-percent, 1) * 100%);
+  z-index: 1;
+  border-radius: 0 0 4px 4px;
+  pointer-events: none;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.8); /* 右侧黑色阴影，增强层次感 */
+}
+
+/* 占比100%时，进度条四个角圆角 */
+.task-bar.resource-view[style*="--allocation-percent: 1"] .progress-bar {
+  border-radius: 4px;
+}
+
+/* 已完成任务的进度条不显示阴影 */
+.task-bar.completed.resource-view .progress-bar {
+  box-shadow: none;
+}
+
+/* 文字层在最上层，覆盖整个41px高度 */
+.task-bar.resource-view .task-bar-content {
+  position: relative;
+  /*z-index: 2;*/
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 资源视图悬停效果 */
+.task-bar.resource-view:hover::after {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* v1.9.0 资源冲突样式（根据UI规范）- 调整到最顶层 */
+.task-bar.resource-conflict::before {
+  /* 覆盖伪元素样式，显示警告效果 */
+  border-color: var(--gantt-error-color, #f56c6c) !important;
+  opacity: 1 !important;
+  z-index: 10 !important;
+}
+
+.task-bar.resource-conflict::after {
   /* 左侧3px红色色带 */
   border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
   /* 浅红底色 */
-  background-color: rgba(245, 108, 108, 0.08) !important;
+  background-color: rgba(245, 108, 108, 0.12) !important;
   /* 斑马纹背景（叠加在底色上）*/
   background-image:
     repeating-linear-gradient(
       45deg,
       transparent,
       transparent 10px,
-      rgba(245, 108, 108, 0.12) 10px,
-      rgba(245, 108, 108, 0.12) 20px
+      rgba(245, 108, 108, 0.1) 10px,
+      rgba(245, 108, 108, 0.1) 20px
     ) !important;
+  z-index: 1 !important;
+}
+
+/* 已完成的任务冲突：不显示斜杠蒙版，仅保留左侧红色警示边 */
+.task-bar.completed.resource-conflict::after {
+  background-color: transparent !important;
+  background-image: none !important;
+  /* 保留左侧红色边框 */
+  border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
 }
 
 /* 冲突状态的文字保持清晰可读 */
 .task-bar.resource-conflict .task-name,
 .task-bar.resource-conflict .task-progress {
-  color: var(--gantt-text-primary);
+  /*color: var(--gantt-text-primary);*/
   font-weight: 600;
+  z-index: 11;
 }
 
 .task-bar.dragging {
@@ -3961,10 +4099,14 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   padding-left: 8px;
 }
 
-/* 资源视图中的标题包裹器，禁用绝对定位 */
+/* v1.9.1 资源视图中的标题包裹器，确保在41px全高度内居中 */
 .task-name-wrapper {
   position: relative;
   width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
@@ -4063,7 +4205,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   top: 50%;
   width: 8px; /* 半圆宽度 */
   height: 16px; /* 半圆高度 */
-  z-index: 15;
+  z-index: 9999 !important; /* v1.9.1 使用超高层级和 !important，确保不被任何元素遮挡 */
   cursor: pointer;
   border: 2px solid;
   transform: translateY(-50%);
@@ -4598,14 +4740,14 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   z-index: 16;
   pointer-events: none;
   padding: 1px 3px;
-  border-radius: 2px;
+  /*border-radius: 2px;*/
 }
 
 /* 周视图下的TaskBar基础样式调整 */
 .task-bar.week-view {
   min-width: 4px; /* 确保即使很短的任务也有最小可见宽度 */
   border-width: 1px;
-  border-radius: 2px;
+  /*border-radius: 2px;*/
 }
 
 /* 暗色主题下的短TaskBar溢出效果 */

@@ -106,24 +106,17 @@ export function assignTaskRows(
   }
 
   // 计算每行的高度
-  const baseTaskBarHeight = baseRowHeight - 10 // 基础TaskBar高度
+  // v1.9.1: TaskBar固定41px全高度，用伪元素实现镂空，所以行高不再按占比缩放
+  // v1.9.1: 每行底部都有5px padding-bottom，第一行顶部也有5px padding-top
+  const baseTaskBarHeight = baseRowHeight - 10 // 基础TaskBar高度 (51 - 10 = 41px)
+
   for (let i = 0; i < rowTasks.length; i++) {
-    const tasksInRow = rowTasks[i]
-
-    // 找到该行中最大的TaskBar高度
-    let maxTaskBarHeight = 0
-    for (const task of tasksInRow) {
-      const percent = getTaskResourcePercent(task, resourceId)
-      const taskBarHeight = baseTaskBarHeight * (percent / 100)
-      maxTaskBarHeight = Math.max(maxTaskBarHeight, taskBarHeight)
-    }
-
-    // 计算该行的容器高度
-    // 第一行：padding-top(5px) + maxTaskBarHeight + padding-bottom(5px)
-    // 后续行：maxTaskBarHeight + padding-bottom(5px)
+    // v1.9.1: 所有TaskBar都是固定41px高度，每行都有底部padding
+    // 第一行：padding-top(5px) + TaskBar高度(41px) + padding-bottom(5px) = 51px
+    // 后续行：TaskBar高度(41px) + padding-bottom(5px) = 46px
     const rowHeight = i === 0
-      ? 5 + maxTaskBarHeight + 5
-      : maxTaskBarHeight + 5
+      ? 5 + baseTaskBarHeight + 5  // 第一行：5 + 41 + 5 = 51px
+      : baseTaskBarHeight + 5       // 后续行：41 + 5 = 46px
 
     rowHeights.push(rowHeight)
   }

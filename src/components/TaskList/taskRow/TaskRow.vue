@@ -113,7 +113,7 @@ const rowHeight = computed(() => {
   if (isResourceRow.value) {
     const resourceId = String(props.task.id) // 转换为string
     const layout = resourceTaskLayouts.value.get(resourceId)
-    return layout?.totalHeight || 51
+    return layout?.totalHeight || 56 // v1.9.1 默认56px（51 + 5px底部padding）
   }
   return 51 // task视图下使用固定高度
 })
@@ -614,7 +614,7 @@ const assigneeDisplayData = computed(() => {
 .task-row {
   display: flex;
   border-bottom: 1px solid var(--gantt-border-light);
-  height: 51px; /* 修改为51px，与Timeline中的task-row高度保持一致，包含border-bottom 1px */
+  height: 51px; /* v1.9.1 任务视图51px（包含border-bottom 1px），资源视图动态高度（第一行56px，后续行46px） */
   box-sizing: border-box; /* 确保border包含在高度计算中 */
   background: var(--gantt-bg-primary);
   align-items: center;

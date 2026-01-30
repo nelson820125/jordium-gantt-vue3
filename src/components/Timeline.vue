@@ -4895,9 +4895,6 @@ const handleAddSuccessor = (task: Task) => {
                   :all-tasks="tasks"
                   :has-resource-conflict="resourceConflicts.get(String(resource.id))?.has(task.id) || false"
                   :current-resource-id="resource.id"
-                  :style="{
-                    zIndex: taskIndex,
-                  }"
                   @update:task="updateTask"
                   @bar-mounted="handleBarMounted"
                   @click="handleTaskBarClick(task, $event)"
@@ -5273,10 +5270,11 @@ const handleAddSuccessor = (task: Task) => {
   position: absolute;
   left: 0;
   width: 100%;
-  height: 51px; /** 为了对齐左侧的Task List Row高度，同时需要包含List Row的Bottom Border 1px */
+  min-height: 51px; /** 为了对齐左侧的Task List Row高度，同时需要包含List Row的Bottom Border 1px */
   pointer-events: auto;
   z-index: 11;
   transition: background-color 0.2s ease;
+  padding-bottom: 2px;
 }
 
 /* 资源视图行样式 */
