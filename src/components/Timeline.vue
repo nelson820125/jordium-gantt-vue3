@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef, inject } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef, inject, provide } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
 import GanttLinks from './GanttLinks.vue'
 import LinkDragGuide from './LinkDragGuide.vue'
+import GanttConflicts from './Timeline/GanttConflicts.vue'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
@@ -106,6 +107,56 @@ const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source',
 
 // v1.9.0 从 GanttChart 注入资源冲突信息（由 GanttChart 计算并响应 updateTaskTrigger）
 const resourceConflicts = inject<ComputedRef<Map<string, Set<number>>>>('resourceConflicts', computed(() => new Map()))
+
+// v1.9.2 计算资源视图中每个任务的冲突任务列表（用于显示详细冲突信息）
+const getConflictTasksForTask = (resourceId: string | number, taskId: string | number): Task[] => {
+  if (viewMode.value !== 'resource') return []
+
+  const conflictTaskIds = resourceConflicts.value.get(String(resourceId))
+  if (!conflictTaskIds || !conflictTaskIds.has(taskId)) return []
+
+  const resources = dataSource.value as Resource[]
+  const resource = resources.find(r => String(r.id) === String(resourceId))
+  if (!resource || !resource.tasks) return []
+
+  const currentTask = resource.tasks.find(t => t.id === taskId)
+  if (!currentTask || !currentTask.startDate || !currentTask.endDate) return []
+
+  const currentStart = new Date(currentTask.startDate).getTime()
+  const currentEnd = new Date(currentTask.endDate).getTime()
+
+  // 获取当前资源在当前任务中的占比
+  const getCurrentPercent = (task: Task): number => {
+    if (!task.resources || !Array.isArray(task.resources)) return 100
+    const allocation = task.resources.find((r: any) => String(r.id) === String(resourceId))
+    return allocation?.percent ?? 100
+  }
+
+  const currentPercent = getCurrentPercent(currentTask)
+
+  // 找出所有与当前任务时间重叠且导致超载的任务
+  const conflictTasks = resource.tasks.filter(task => {
+    if (task.id === taskId) return false
+    if (!task.startDate || !task.endDate) return false
+    if (!conflictTaskIds.has(task.id)) return false
+
+    const taskStart = new Date(task.startDate).getTime()
+    const taskEnd = new Date(task.endDate).getTime()
+
+    // 检查时间重叠
+    if (!(currentStart < taskEnd && taskStart < currentEnd)) return false
+
+    // 检查占比相加是否超过100%
+    const taskPercent = getCurrentPercent(task)
+    return currentPercent + taskPercent > 100
+  })
+
+  return conflictTasks
+}
+
+// v1.9.2 拖拽状态管理（用于冲突检测优化）
+const isDraggingTaskBar = ref(false)
+provide('isDraggingTaskBar', isDraggingTaskBar)
 
 // v1.9.0 计算资源视图的任务行布局（换行）
 const resourceTaskLayouts = computed(() => {
@@ -3014,6 +3065,7 @@ const handleScrollToPosition = (targetScrollLeft: number) => {
     }, 1000) // 给滚动动画留1秒时间
   }
 }
+
 // 向上传递 MilestonePoint 拖拽事件
 const handleMilestoneDragEnd = (updatedMilestone: Milestone) => {
   window.dispatchEvent(new CustomEvent('milestone-drag-end', { detail: updatedMilestone }))
@@ -4894,7 +4946,9 @@ const handleAddSuccessor = (task: Task) => {
                   "
                   :all-tasks="tasks"
                   :has-resource-conflict="resourceConflicts.get(String(resource.id))?.has(task.id) || false"
+                  :conflict-tasks="getConflictTasksForTask(resource.id, task.id)"
                   :current-resource-id="resource.id"
+                  :resources="dataSource"
                   @update:task="updateTask"
                   @bar-mounted="handleBarMounted"
                   @click="handleTaskBarClick(task, $event)"
@@ -4924,6 +4978,25 @@ const handleAddSuccessor = (task: Task) => {
                     <slot name="task-bar-context-menu" v-bind="contextMenuScope" />
                   </template>
                 </TaskBar>
+
+                <!-- v1.9.2 资源冲突可视化层 -->
+                <GanttConflicts
+                  :tasks="(resource as any).tasks"
+                  :resource-id="resource.id"
+                  :day-width="dayWidth"
+                  :start-date="
+                    currentTimeScale === TimelineScale.YEAR
+                      ? getYearTimelineRange().startDate
+                      : currentTimeScale === TimelineScale.MONTH
+                        ? getMonthTimelineRange().startDate
+                        : timelineConfig.startDate
+                  "
+                  :top-offset="7.5"
+                  :height="(resourceTaskLayouts.get(resource.id)?.totalHeight || 51) - 10"
+                  :width="totalTimelineWidth"
+                  :timeline-data="timelineData as any"
+                  :current-time-scale="currentTimeScale"
+                />
               </template>
             </div>
           </div>

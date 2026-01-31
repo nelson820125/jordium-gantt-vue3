@@ -5,6 +5,7 @@ import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
 import LinkAnchor from './LinkAnchor.vue'
+import TaskBarTab from './Timeline/TaskBarTab.vue'
 
 import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
@@ -45,6 +46,39 @@ const resourcePercent = computed(() => {
 
   // 默认100%（向后兼容）
   return 100
+})
+
+// v1.9.2 获取当前资源颜色
+const currentResourceColor = computed(() => {
+  if (viewMode.value === 'resource' && props.currentResourceId && props.resources) {
+    // 从外部传入的 resources 列表中查找资源颜色（与 TaskRow 逻辑一致）
+    console.log('🎨 TaskBar - 查找资源颜色:', {
+      currentResourceId: props.currentResourceId,
+      resources: props.resources,
+      taskId: props.task.id,
+      taskName: props.task.name
+    })
+    const resource = props.resources.find(r => String(r.id) === String(props.currentResourceId))
+    console.log('🎨 TaskBar - 找到的资源:', resource)
+    const finalColor = resource?.color || '#85ce61'
+    console.log('🎨 TaskBar - 最终颜色:', finalColor)
+    return finalColor
+  }
+  return '#85ce61'
+})
+
+// v1.9.2 当前资源总负载（用于超载警告）
+const currentResourceTotalLoad = computed(() => {
+  // 这个值应该从外部传入，这里暂时返回undefined
+  // 实际应该在Timeline层计算好并通过props传递
+  return undefined
+})
+
+// v1.9.2 当前资源名称
+const currentResourceName = computed(() => {
+  if (!props.currentResourceId) return ''
+  const resource = props.resources?.find(r => r.id === props.currentResourceId)
+  return resource?.name || ''
 })
 
 // v1.9.0 是否显示占比文字（占比<100%时显示）
@@ -100,6 +134,8 @@ interface Props {
   allTasks?: Task[]
   // v1.9.0 资源视图：是否存在资源冲突（时间重叠）
   hasResourceConflict?: boolean
+  // v1.9.2 资源视图：冲突任务列表（用于显示详细冲突信息）
+  conflictTasks?: Task[]
   // v1.9.0 资源视图：当前资源在任务中的投入占比 (20-100)
   resourceAllocationPercent?: number
   // v1.9.0 资源视图：当前资源ID（用于查找占比信息）
@@ -108,6 +144,8 @@ interface Props {
   taskSubRow?: number
   // v1.9.0 资源视图：每个子行的高度数组（换行布局）
   rowHeights?: number[]
+  // v1.9.2 资源列表（用于查找资源名称等信息）
+  resources?: Array<{ id: string | number; name: string; color?: string }>
 }
 
 interface TaskStatus {
@@ -321,6 +359,9 @@ const resizeStartX = ref(0)
 const resizeStartWidth = ref(0)
 const resizeStartLeft = ref(0)
 
+// v1.9.2 注入Timeline的拖拽状态（用于冲突检测优化）
+const timelineIsDraggingTaskBar = inject<Ref<boolean>>('isDraggingTaskBar', ref(false))
+
 // v1.9.0 拖拽预览效果（资源视图垂直拖拽）
 const dragPreviewVisible = ref(false)
 const dragPreviewPosition = ref({ x: 0, y: 0 })
@@ -335,6 +376,17 @@ const LONG_PRESS_DURATION = 1000 // 1秒（缩短了）
 
 // TaskBar 悬停状态（用于显示 LinkAnchor）
 const isTaskBarHovered = ref(false)
+
+// v1.9.2 Tab悬停状态（用于阻止tooltip）
+const isTabHovered = ref(false)
+
+// v1.9.2 动态边框颜色（tab悬停时使用资源颜色）
+const dynamicBorderColor = computed(() => {
+  if (isTabHovered.value && viewMode.value === 'resource') {
+    return currentResourceColor.value
+  }
+  return taskStatus.value.borderColor
+})
 
 // 防误触配置 - 使用配置项或默认值
 const dragThreshold = computed(() => barConfig.value.dragThreshold ?? 5)
@@ -654,6 +706,12 @@ const shouldRenderTaskBar = computed(() => {
 
   // 只要startDate或endDate有一个存在就渲染
   return !!(currentStartDate || currentEndDate)
+})
+
+// v1.9.2 TaskBar宽度（用于Tab组件判断是否紧凑模式）
+const taskBarWidth = computed(() => {
+  const width = parseFloat(taskBarStyle.value.width)
+  return isNaN(width) ? 0 : width
 })
 
 // 计算任务状态和颜色
@@ -2462,6 +2520,11 @@ const handleBubbleMouseDown = (event: MouseEvent) => {
 const handleTaskBarMouseEnter = (event: MouseEvent) => {
   isTaskBarHovered.value = true
 
+  // v1.9.2 如果 tab 正在悬停，不显示 TaskBar 的 tooltip
+  if (isTabHovered.value) {
+    return
+  }
+
   // 如果启用了TaskBar Tooltip（父级任务也显示tooltip）
   // 但在拖拽或拉伸时不显示tooltip
   if (props.enableTaskBarTooltip !== false && !isDragging.value && !isResizingLeft.value && !isResizingRight.value) {
@@ -2535,6 +2598,29 @@ watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resi
     if (hoverTooltipTimer) {
       clearTimeout(hoverTooltipTimer)
       hoverTooltipTimer = null
+    }
+  }
+
+  // v1.9.2 同步拖拽状态到Timeline（用于冲突检测优化）
+  const isDraggingOrResizing = dragging || resizingL || resizingR
+  if (timelineIsDraggingTaskBar.value !== isDraggingOrResizing) {
+    timelineIsDraggingTaskBar.value = isDraggingOrResizing
+  }
+})
+
+// v1.9.2 监听 Tab 悬停状态，当 Tab 悬停时立即隐藏 TaskBar 的 tooltip
+watch(isTabHovered, (tabHovered) => {
+  if (tabHovered) {
+    // Tab 悬停：隐藏 TaskBar 的 tooltip
+    showHoverTooltip.value = false
+    if (hoverTooltipTimer) {
+      clearTimeout(hoverTooltipTimer)
+      hoverTooltipTimer = null
+    }
+  } else {
+    // Tab 离开：如果鼠标还在 TaskBar 上，重新显示 tooltip
+    if (isTaskBarHovered.value && props.enableTaskBarTooltip !== false) {
+      showHoverTooltip.value = true
     }
   }
 })
@@ -3103,7 +3189,12 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     :style="{
       ...taskBarStyle,
       backgroundColor: (showActualTaskbar && hasActualProgress && isTaskBarHovered) ? 'transparent' : taskStatus.bgColor,
-      borderColor: taskStatus.borderColor,
+      borderColor: dynamicBorderColor,
+      ...(viewMode === 'resource' && currentResourceId ? {
+        borderTopWidth: '2px',
+        borderTopStyle: 'solid',
+        borderTopColor: currentResourceColor,
+      } : {}),
       color: taskStatus.color,
       cursor: isCompleted || isParent ? 'default' : 'move',
       '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
@@ -3111,7 +3202,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       '--parent-color': taskStatus.color, /* 传递父级TaskBar颜色给伪元素箭头使用 */
       '--allocation-percent': (Number.isFinite(resourcePercent) ? resourcePercent / 100 : 1), /* v1.9.1 传递占比给CSS变量 */
       '--task-bar-bg-color': taskStatus.bgColor, /* v1.9.1 传递背景色给伪元素 */
-      '--task-bar-border-color': taskStatus.borderColor, /* v1.9.1 传递边框色给伪元素 */
+      '--task-bar-border-color': dynamicBorderColor, /* v1.9.2 使用动态边框颜色 */
       boxShadow: isParent
         ? `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 父级任务也使用动态颜色阴影 */
         : `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26`, /* 使用TaskBar颜色的阴影 - 加强版 */
@@ -3153,6 +3244,22 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
         backgroundColor: taskStatus.color,
       }"
     ></div>
+
+    <!-- v1.9.2 资源视图Tab标签 -->
+    <TaskBarTab
+      v-if="viewMode === 'resource' && !isParent && currentResourceId"
+      :key="`tab-${task.id}-${currentResourceId}`"
+      :task="task"
+      :current-resource-id="currentResourceId"
+      :resource-color="currentResourceColor"
+      :resource-percent="resourcePercent"
+      :resource-name="currentResourceName"
+      :task-bar-width="taskBarWidth"
+      :has-conflict="hasResourceConflict"
+      :conflict-tasks="conflictTasks"
+      :resources="resources"
+      @hover-change="isTabHovered = $event"
+    />
 
     <!-- 左侧调整把手 -->
     <div
@@ -3355,10 +3462,10 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   </div>
   </div><!-- 关闭task-bar-wrapper -->
 
-  <!-- Tooltip 弹窗 -->
+  <!-- Tooltip 弹窗（tab悬停时不显示） -->
   <Teleport to="body">
     <div
-      v-if="showTooltip"
+      v-if="showTooltip && !isTabHovered"
       class="task-tooltip"
       :style="{
         left: `${tooltipPosition.x}px`,
@@ -3607,7 +3714,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   bottom: 0;
   height: calc(var(--allocation-percent, 1) * 100%);
   background: var(--task-bar-bg-color, #e3f2fd);
-  border: 1px solid var(--task-bar-border-color, #90caf9);
+  /*border: 1px solid var(--task-bar-border-color, #90caf9);*/
   border-radius: 0 0 4px 4px;
   box-sizing: border-box;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
@@ -3659,20 +3766,17 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* v1.9.0 资源冲突样式（根据UI规范）- 调整到最顶层 */
+/* v1.9.0 资源冲突样式 - 已移除，由GanttConflicts组件独立渲染 */
+/*
 .task-bar.resource-conflict::before {
-  /* 覆盖伪元素样式，显示警告效果 */
   border-color: var(--gantt-error-color, #f56c6c) !important;
   opacity: 1 !important;
   z-index: 10 !important;
 }
 
 .task-bar.resource-conflict::after {
-  /* 左侧3px红色色带 */
   border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
-  /* 浅红底色 */
   background-color: rgba(245, 108, 108, 0.12) !important;
-  /* 斑马纹背景（叠加在底色上）*/
   background-image:
     repeating-linear-gradient(
       45deg,
@@ -3684,21 +3788,19 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   z-index: 1 !important;
 }
 
-/* 已完成的任务冲突：不显示斜杠蒙版，仅保留左侧红色警示边 */
 .task-bar.completed.resource-conflict::after {
   background-color: transparent !important;
   background-image: none !important;
-  /* 保留左侧红色边框 */
   border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
 }
 
-/* 冲突状态的文字保持清晰可读 */
 .task-bar.resource-conflict .task-name,
 .task-bar.resource-conflict .task-progress {
-  /*color: var(--gantt-text-primary);*/
   font-weight: 600;
   z-index: 11;
 }
+*/
+
 
 .task-bar.dragging {
   opacity: 0.8;
