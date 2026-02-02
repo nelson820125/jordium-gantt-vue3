@@ -831,7 +831,7 @@ const handleTaskUpdateEvent = (e: { task: Task }) => {
 // 任务添加事件处理器
 const handleTaskAddEvent = (e: { task: Task }) => {
   // 打印全部的tasks
-  console.log('当前所有任务:', tasks.value)
+  //console.log('当前所有任务:', tasks.value)
   const newTask = e.task
   showMessage(`Demo 任务[${newTask.name}] 已创建`, 'success')
 

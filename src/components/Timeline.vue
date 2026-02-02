@@ -127,30 +127,20 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
   const currentStart = new Date(currentTask.startDate).getTime()
   const currentEnd = new Date(currentTask.endDate).getTime()
 
-  // 获取当前资源在当前任务中的占比
-  const getCurrentPercent = (task: Task): number => {
-    if (!task.resources || !Array.isArray(task.resources)) return 100
-    const allocation = task.resources.find((r: any) => String(r.id) === String(resourceId))
-    return allocation?.percent ?? 100
-  }
-
-  const currentPercent = getCurrentPercent(currentTask)
-
-  // 找出所有与当前任务时间重叠且导致超载的任务
+  // v1.9.7 修复：返回所有与当前任务时间重叠的冲突任务
+  // 不需要再次验证占比相加是否超过100%，因为resourceConflicts已经包含了所有冲突的任务ID
+  // 当多个任务同时重叠时（如3个任务各75%），应该全部返回，而不是只返回第一个两两超载的任务
   const conflictTasks = resource.tasks.filter(task => {
     if (task.id === taskId) return false
     if (!task.startDate || !task.endDate) return false
+    // 任务必须在冲突任务集合中
     if (!conflictTaskIds.has(task.id)) return false
 
     const taskStart = new Date(task.startDate).getTime()
     const taskEnd = new Date(task.endDate).getTime()
 
-    // 检查时间重叠
-    if (!(currentStart < taskEnd && taskStart < currentEnd)) return false
-
-    // 检查占比相加是否超过100%
-    const taskPercent = getCurrentPercent(task)
-    return currentPercent + taskPercent > 100
+    // 检查时间重叠：只要与当前任务有时间交集，就是冲突任务
+    return currentStart < taskEnd && taskStart < currentEnd
   })
 
   return conflictTasks
@@ -186,7 +176,6 @@ let resourceTaskLayoutsCallCount = 0
 const resourceTaskLayouts = computed(() => {
   resourceTaskLayoutsCallCount++
   const startTime = performance.now()
-  console.log(`[🔍 Performance] resourceTaskLayouts computed #${resourceTaskLayoutsCallCount} triggered`)
 
   const layoutMap = new Map<string | number, {
     taskRowMap: Map<string | number, number>,
@@ -195,7 +184,6 @@ const resourceTaskLayouts = computed(() => {
   }>()
 
   if (viewMode.value !== 'resource') {
-    console.log(`[🔍 Performance] resourceTaskLayouts: skipped (not resource view)`)
     return layoutMap
   }
 
@@ -233,7 +221,6 @@ const resourceTaskLayouts = computed(() => {
   // 输出性能日志
   if (resources.length > 0) {
     const hitRate = ((cacheHits / resources.length) * 100).toFixed(1)
-    console.log(`[Performance] resourceTaskLayouts: ${duration}ms | computed ${resources.length} resources, cache hit rate: ${hitRate}%`)
   }
 
   return layoutMap
@@ -244,7 +231,6 @@ watch(dataSource, () => {
   if (layoutCache.size > 100) {
     const keysToDelete = Array.from(layoutCache.keys()).slice(0, layoutCache.size - 100)
     keysToDelete.forEach(key => layoutCache.delete(key))
-    console.log(`[Performance] Layout cache cleaned: removed ${keysToDelete.length} entries`)
   }
 })
 
@@ -285,11 +271,9 @@ let resourceRowPositionsCallCount = 0
 const resourceRowPositions = computed(() => {
   resourceRowPositionsCallCount++
   const startTime = performance.now()
-  console.log(`[🔍 Performance] resourceRowPositions computed #${resourceRowPositionsCallCount} triggered`)
   const positions = new Map<string | number, number>()
 
   if (viewMode.value !== 'resource') {
-    console.log(`[🔍 Performance] resourceRowPositions: skipped (not resource view)`)
     return positions
   }
 
@@ -327,12 +311,6 @@ const resourceRowPositions = computed(() => {
 
   const endTime = performance.now()
   const duration = (endTime - startTime).toFixed(2)
-
-  if (processedCount < resources.length) {
-    console.log(`[Phase2] resourceRowPositions: ${duration}ms | lazy-computed ${processedCount}/${resources.length} resources`)
-  } else {
-    console.log(`[Performance] resourceRowPositions: ${duration}ms | processed ${resources.length} resources`)
-  }
 
   return positions
 })
@@ -1595,9 +1573,6 @@ watch([timelineScrollLeft, timelineContainerWidth], ([newScrollLeft, newWidth]) 
 // v1.9.5 P2-1优化 - 计算水平方向可见的时间范围（用于TaskBar过滤）
 const visibleTimeRange = computed(() => {
   visibleTimeRangeCallCount++
-  if (visibleTimeRangeCallCount % 10 === 0) {
-    console.log(`[Performance] visibleTimeRange called ${visibleTimeRangeCallCount} times`)
-  }
 
   const scrollLeft = debouncedScrollLeft.value
   const containerWidth = debouncedContainerWidth.value || timelineContainerWidth.value
@@ -1623,8 +1598,6 @@ const visibleTimeRange = computed(() => {
   if (visibleTimeRangeCallCount % 10 === 0) {
     const scale = currentTimeScale.value
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    console.log(`[Sprint2-Debug] visibleTimeRange: ${scale}, scrollLeft=${scrollLeft.toFixed(0)}, containerWidth=${containerWidth.toFixed(0)}, buffer=${bufferWidth.toFixed(0)}`)
-    console.log(`[Sprint2-Debug] Date range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]} (${daysDiff} days)`)
   }
 
   return { startDate, endDate }
@@ -1749,7 +1722,6 @@ const visibleTaskRange = computed(() => {
   const startTime = performance.now()
   const scrollTop = timelineBodyScrollTop.value
   const containerHeight = timelineBodyHeight.value || 600
-  console.log(`[🔍 Performance] visibleTaskRange computed #${visibleTaskRangeCallCount} triggered | scrollTop: ${scrollTop}`)
 
   if (viewMode.value === 'resource') {
     // 资源视图：基于资源行的实际高度计算可见范围
@@ -1787,7 +1759,6 @@ const visibleTaskRange = computed(() => {
 
     const endTime = performance.now()
     const duration = (endTime - startTime).toFixed(2)
-    console.log(`[Performance] visibleTaskRange: ${duration}ms | range: ${startIndex}-${endIndex} / ${resources.length}`)
 
     return {
       startIndex: Math.max(0, startIndex),
@@ -1977,7 +1948,6 @@ const rebuildResourceTaskQueues = () => {
   // v1.9.6 Sprint4 - 日志：记录实际处理的资源数量
   const totalResources = (dataSource.value as Resource[]).length
   const visibleResourcesCount = visibleResources.value.length
-  console.log(`[Sprint4] rebuildResourceTaskQueues: processing ${visibleResourcesCount}/${totalResources} visible resources`)
 
   // v1.9.6 Sprint2(P5) - 渲染缓存增量更新：保留已有记录
   const currentCache = new Map(taskBarRenderCache.value)
@@ -2055,13 +2025,9 @@ const rebuildResourceTaskQueues = () => {
   resourceRenderPhase.value = 'visible'
   taskBarRenderCache.value = newCache // 更新缓存
 
-  // v1.9.6 Sprint4 - 输出优化后的统计信息
-  console.log(`[Sprint4] Will render ${totalVisibleTaskBars} TaskBars (from ${visibleResourcesCount} visible resources)`)
-
   // v1.9.6 Sprint2(P5) - 输出缓存统计
   const totalTaskBars = newCache.size
   const cacheHitRate = totalTaskBars > 0 ? ((cachedCount / totalTaskBars) * 100).toFixed(1) : '0.0'
-  console.log(`[Sprint2-P5] TaskBar cache: ${cachedCount}/${totalTaskBars} already rendered (${cacheHitRate}% hit rate)`)
 
   scheduleResourceBatchRender()
 }
@@ -2102,7 +2068,6 @@ watch(
 
     if (updatedCount > 0) {
       taskBarRenderCache.value = cache
-      console.log(`[Sprint2-P5] Marked ${updatedCount} TaskBars as rendered (cache size: ${cache.size})`)
     }
   },
   { deep: false },
@@ -2123,7 +2088,6 @@ const visibleResourcesWithFilteredTasks = computed(() => {
   // v1.9.6 Sprint2(P1) - 临时调试：每次都输出时间范围
   if (filteredTasksCallCount <= 5 || filteredTasksCallCount % 10 === 0) {
     const daysDiff = Math.ceil((visibleEndDate.getTime() - visibleStartDate.getTime()) / (1000 * 60 * 60 * 24))
-    console.log(`[Sprint2-Debug] #${filteredTasksCallCount} visibleTimeRange: ${visibleStartDate.toISOString().split('T')[0]} to ${visibleEndDate.toISOString().split('T')[0]} (${daysDiff} days)`)
   }
 
   // 性能监控统计
@@ -2175,7 +2139,6 @@ const visibleResourcesWithFilteredTasks = computed(() => {
   // v1.9.6 Sprint2(P1) - 性能监控日志（每10次输出一次）
   if (filteredTasksCallCount % 5 === 0 && totalOriginalTasks > 0) {
     const filterRate = ((1 - totalFilteredTasks / totalOriginalTasks) * 100).toFixed(1)
-    console.log(`[Sprint2-P1] visibleResourcesWithFilteredTasks #${filteredTasksCallCount}: ${totalFilteredTasks}/${totalOriginalTasks} taskbars, filtered: ${filterRate}%`)
   }
 
   return result
@@ -2572,7 +2535,6 @@ const contentHeight = computed(() => {
 
     const endTime = performance.now()
     const duration = (endTime - startTime).toFixed(2)
-    console.log(`[Performance] contentHeight: ${duration}ms | processed ${resources.length} resources`)
 
     return Math.max(totalHeight, minHeight, timelineBodyHeight.value)
   }
@@ -2640,7 +2602,6 @@ const generateTimelineData = (): any => {
   // 使用缓存版本提升性能
   const result = getCachedTimelineData()
   const duration = (performance.now() - startTime).toFixed(2)
-  console.log(`[🔍 Performance] generateTimelineData: ${duration}ms | scale: ${currentTimeScale.value}`)
   return result
 }
 
@@ -2872,7 +2833,6 @@ const getGlobalWeekPosition = (monthIndex: number, weekIndex: number) => {
 // 更新时间刻度方法 - 供外部调用
 const updateTimeScale = (scale: TimelineScale) => {
   perfMonitor2.start(`updateTimeScale-${scale}`)
-  console.log(`[🔧 Action] updateTimeScale: ${currentTimeScale.value} → ${scale}`)
 
   currentTimeScale.value = scale
 
@@ -2958,7 +2918,6 @@ const updateTimeScale = (scale: TimelineScale) => {
   }
 
   // 重新生成时间线数据
-  console.log('[📊 Timeline Data] Regenerating timeline data for new scale...')
   timelineData.value = generateTimelineData()
 
   // 等待DOM更新后触发多个重新计算事件
@@ -3021,18 +2980,15 @@ watch(
   ([newData, newScale]) => {
     positionCacheWatchCount++
     const watchStartTime = performance.now()
-    console.log(`[🔍 Performance] positionCache watch triggered #${positionCacheWatchCount} | scale: ${newScale}`)
 
     if (newData && newScale) {
       // 调用缓存构建（内部会判断是否需要重建）
       const cacheStartTime = performance.now()
       positionCache.buildCache(newData as any[], newScale)
       const cacheDuration = (performance.now() - cacheStartTime).toFixed(2)
-      console.log(`[🔍 Performance] positionCache.buildCache: ${cacheDuration}ms`)
     }
 
     const totalDuration = (performance.now() - watchStartTime).toFixed(2)
-    console.log(`[🔍 Performance] positionCache watch completed: ${totalDuration}ms`)
   },
   { immediate: true } // 立即执行，确保初始化时也构建缓存
 )
@@ -3615,7 +3571,6 @@ const scrollToDate = (date: Date | string) => {
 // 更新任务
 const updateTask = (updatedTask: Task) => {
   perfMonitor2.start('updateTask')
-  console.log('[🔧 Task Update] Task updated:', updatedTask.id)
 
   // 不直接修改props数据，而是通过事件通知父组件
   // 触发全局事件，通知父组件更新数据
@@ -3785,11 +3740,8 @@ const handleTaskBarDragEnd = (updatedTask: Task) => {
 
       // 只有当行数发生变化时，才需要触发全量重绘
       if (newRowCount !== oldRowCount) {
-        console.log(`[Auto-Layout] Resource ${targetResourceId} layout changed: ${oldRowCount} -> ${newRowCount} rows after drag`)
         // 行数变化，需要触发重绘
         taskBarRenderKey.value++
-      } else {
-        console.log(`[Auto-Layout] Resource ${targetResourceId} layout unchanged (${newRowCount} rows), skip render key update`)
       }
     }
   }
@@ -3833,10 +3785,7 @@ const handleTaskBarResizeEnd = (updatedTask: Task) => {
 
       // 只有当行数发生变化时，才需要触发全量重绘
       if (newRowCount !== oldRowCount) {
-        console.log(`[Auto-Layout] Resource ${targetResourceId} layout changed: ${oldRowCount} -> ${newRowCount} rows after resize`)
         taskBarRenderKey.value++
-      } else {
-        console.log(`[Auto-Layout] Resource ${targetResourceId} layout unchanged (${newRowCount} rows), skip render key update`)
       }
     }
   }

@@ -197,6 +197,7 @@ const conflictInfoList = computed(() => {
   // 计算当前任务的资源占比
   const currentPercent = props.resourcePercent || 100
 
+  // v1.9.8 修改：只显示冲突任务自己的投入占比
   return props.conflictTasks.map(conflictTask => {
     if (!conflictTask.startDate || !conflictTask.endDate) return null
 
@@ -214,13 +215,9 @@ const conflictInfoList = computed(() => {
       }
     }
 
-    // 计算重叠时间段
+    // 计算当前任务与该冲突任务的重叠时间段
     const overlapStart = Math.max(currentStart, conflictStart)
     const overlapEnd = Math.min(currentEnd, conflictEnd)
-
-    // 计算超载百分比
-    const totalPercent = currentPercent + conflictPercent
-    const overloadPercent = totalPercent - 100
 
     const formatDate = (timestamp: number) => {
       const date = new Date(timestamp)
@@ -231,12 +228,74 @@ const conflictInfoList = computed(() => {
       taskName: conflictTask.name,
       overlapStart: formatDate(overlapStart),
       overlapEnd: formatDate(overlapEnd),
-      currentPercent,
-      conflictPercent,
-      totalPercent,
-      overloadPercent,
+      conflictPercent, // 该冲突任务自己的投入占比
     }
   }).filter(Boolean)
+})
+
+// v1.9.8 新增：计算总超载量（所有任务的总和 - 100%）
+const totalOverloadPercent = computed(() => {
+  if (!props.hasConflict || !props.conflictTasks || props.conflictTasks.length === 0) {
+    return 0
+  }
+
+  const currentTask = props.task
+  if (!currentTask.startDate || !currentTask.endDate) return 0
+
+  const currentStart = new Date(currentTask.startDate).getTime()
+  const currentEnd = new Date(currentTask.endDate).getTime()
+  const currentPercent = props.resourcePercent || 100
+
+  // 计算所有冲突任务在重叠时间段内的最大总占比
+  let maxTotalPercent = currentPercent
+
+  // 收集所有涉及的任务（当前任务 + 所有冲突任务）
+  const allTasks = [currentTask, ...props.conflictTasks]
+
+  // 找出所有任务的时间交集区域，计算最大总占比
+  allTasks.forEach((task1, i) => {
+    if (!task1.startDate || !task1.endDate) return
+    const start1 = new Date(task1.startDate).getTime()
+    const end1 = new Date(task1.endDate).getTime()
+
+    allTasks.forEach((task2, j) => {
+      if (i >= j || !task2.startDate || !task2.endDate) return
+      const start2 = new Date(task2.startDate).getTime()
+      const end2 = new Date(task2.endDate).getTime()
+
+      // 检查是否有时间重叠
+      if (start1 < end2 && start2 < end1) {
+        // 计算该重叠区间的所有任务总占比
+        const overlapStart = Math.max(start1, start2)
+        const overlapEnd = Math.min(end1, end2)
+
+        let intervalTotal = 0
+        allTasks.forEach(task => {
+          if (!task.startDate || !task.endDate) return
+          const tStart = new Date(task.startDate).getTime()
+          const tEnd = new Date(task.endDate).getTime()
+
+          // 检查任务是否在该重叠区间内
+          if (tStart < overlapEnd && tEnd > overlapStart) {
+            let taskPercent = 100
+            if (task.resources && Array.isArray(task.resources)) {
+              const allocation = task.resources.find(
+                (r: any) => String(r.id) === String(props.currentResourceId),
+              )
+              if (allocation && allocation.percent !== undefined) {
+                taskPercent = allocation.percent
+              }
+            }
+            intervalTotal += taskPercent
+          }
+        })
+
+        maxTotalPercent = Math.max(maxTotalPercent, intervalTotal)
+      }
+    })
+  })
+
+  return Math.max(0, maxTotalPercent - 100)
 })
 
 // v1.9.4 P1优化 - 带防抖的鼠标进入处理
@@ -375,25 +434,26 @@ onUnmounted(() => {
             </div>
             <!-- 冲突预警（有冲突时才显示） -->
             <div v-if="hasConflict && conflictInfoList.length > 0" class="conflict-section">
+              <!-- 固定标题 -->
               <div class="conflict-header">
                 <svg class="warning-icon" viewBox="0 0 24 24" width="14" height="14">
                   <path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                 </svg>
                 <span class="conflict-title">资源超载警告</span>
+                <span class="total-overload">+{{ totalOverloadPercent }}%</span>
               </div>
-              <div v-for="(info, index) in conflictInfoList" :key="index" class="conflict-item">
-                <div class="conflict-task-name">与《{{ info.taskName }}》冲突</div>
-                <div class="conflict-detail">
-                  <span class="conflict-label">冲突时段：</span>
-                  <span class="conflict-value">{{ info.overlapStart }} ~ {{ info.overlapEnd }}</span>
-                </div>
-                <div class="conflict-detail">
-                  <span class="conflict-label">资源占用：</span>
-                  <span class="conflict-value">{{ info.currentPercent }}% + {{ info.conflictPercent }}% = {{ info.totalPercent }}%</span>
-                </div>
-                <div class="conflict-detail overload-highlight">
-                  <span class="conflict-label">超载：</span>
-                  <span class="conflict-value">+{{ info.overloadPercent }}%</span>
+              <!-- 可滚动的冲突列表 -->
+              <div class="conflict-list-container">
+                <div v-for="(info, index) in conflictInfoList" :key="index" class="conflict-item">
+                  <div class="conflict-task-name">与《{{ info.taskName }}》冲突</div>
+                  <div class="conflict-detail">
+                    <span class="conflict-label">冲突时段：</span>
+                    <span class="conflict-value">{{ info.overlapStart }} ~ {{ info.overlapEnd }}</span>
+                  </div>
+                  <div class="conflict-detail">
+                    <span class="conflict-label">任务投入占比：</span>
+                    <span class="conflict-value">{{ info.conflictPercent }}%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -489,8 +549,14 @@ onUnmounted(() => {
 .conflict-section {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);  /* 添加滚动支持 */
-  max-height: 200px; /* 限制冲突区域最大高度 */
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 可滚动的冲突列表容器 - v1.9.8 */
+.conflict-list-container {
+  max-height: 200px; /* 限制冲突列表最大高度 */
   overflow-y: auto; /* 垂直滚动 */
   overflow-x: hidden;
   /* 细滚动条样式 */
@@ -499,21 +565,22 @@ onUnmounted(() => {
 }
 
 /* Webkit浏览器（Chrome、Safari、Edge）的细滚动条样式 */
-.conflict-section::-webkit-scrollbar {
+.conflict-list-container::-webkit-scrollbar {
   width: 4px; /* 细滚动条 */
 }
 
-.conflict-section::-webkit-scrollbar-track {
+.conflict-list-container::-webkit-scrollbar-track {
   background: transparent; /* 透明轨道 */
 }
 
-.conflict-section::-webkit-scrollbar-thumb {
+.conflict-list-container::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3); /* 半透明滑块 */
   border-radius: 2px;
 }
 
-.conflict-section::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5); /* 悬停时更明显 */}
+.conflict-list-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5); /* 悬停时更明显 */
+}
 
 .conflict-header {
   display: flex;
@@ -527,6 +594,14 @@ onUnmounted(() => {
 
 .conflict-title {
   font-size: 12px;
+  flex: 1;
+}
+
+.total-overload {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff5252;
+  margin-left: auto;
 }
 
 .conflict-item {

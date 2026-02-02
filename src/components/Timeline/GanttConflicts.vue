@@ -104,7 +104,6 @@ watch(isDraggingTaskBar, (dragging) => {
     nextTick(() => {
       // 检查是否可以使用增量更新（单个TaskBar变化且有ID记录）
       if (lastChangedTaskId.value !== null) {
-        console.log(`[GanttConflicts] Incremental update for task ${lastChangedTaskId.value}`)
         recalculateConflictsIncremental(lastChangedTaskId.value)
         lastChangedTaskId.value = null // 清除记录
       } else {
@@ -136,12 +135,10 @@ watch(isDraggingTimeline, (dragging) => {
   if (dragging) {
     // 拖拽开始时立即清除Canvas
     clearCanvas()
-    console.log('[GanttConflicts] Timeline drag started, canvas cleared')
   } else {
     // 拖拽结束后重新计算并绘制
     nextTick(() => {
       recalculateConflicts()
-      console.log('[GanttConflicts] Timeline drag ended, conflicts recalculated')
     })
   }
 })
@@ -194,7 +191,6 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
   // 找到变化的任务
   const changedTask = props.tasks.find(t => t.id === changedTaskId)
   if (!changedTask) {
-    console.log(`[GanttConflicts] Changed task ${changedTaskId} not found, fallback to full recalculation`)
     recalculateConflicts()
     return
   }
@@ -210,8 +206,6 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
     return !(taskEnd < changedStart || taskStart > changedEnd)
   })
 
-  console.log(`[GanttConflicts] Incremental: ${affectedTasks.length} affected tasks (out of ${props.tasks.length} total)`)
-
   // 只对受影响的任务进行冲突检测
   const newConflicts = detectConflicts(affectedTasks, props.resourceId)
 
@@ -221,8 +215,6 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
     // 如果冲突区域的所有任务都不在受影响列表中，则保留
     return !zone.tasks.some(task => affectedTaskIds.has(task.id))
   })
-
-  console.log(`[GanttConflicts] Incremental: kept ${unchangedConflicts.length} unchanged conflicts, adding ${newConflicts.length} new conflicts`)
 
   // 合并未变化的冲突和新计算的冲突
   const allConflicts = [...unchangedConflicts.map(z => ({
@@ -301,8 +293,6 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
   const endTime = performance.now()
   const elapsed = endTime - startTime
 
-  console.log(`[GanttConflicts] Incremental update completed in ${elapsed.toFixed(2)}ms, ${conflictZones.value.length} total conflict zones`)
-
   // 使用增量重绘
   renderConflictsIncremental()
 }
@@ -320,9 +310,6 @@ function recalculateConflicts() {
     const percent = resource?.percent || 0
     return `${t.name}(${percent}%)`
   }).join(', ')
-
-  console.log(`[GanttConflicts] Resource ${props.resourceId}: ${props.tasks.length} tasks [${tasksInfo}], detected ${conflicts.length} conflict zones`)
-  console.log(`[GanttConflicts] Props - scrollLeft: ${props.scrollLeft}, containerWidth: ${props.containerWidth}, width: ${props.width}`)
 
   // v1.9.4 P1优化 - 使用坐标缓存
   conflictZones.value = conflicts.map((zone) => {
@@ -432,8 +419,6 @@ function recalculateConflicts() {
   } else {
     renderConflictsIncremental()
   }
-
-  console.log(`[GanttConflicts] Resource ${props.resourceId}: Rendered ${conflictZones.value.length} conflict zones on canvas`)
 }
 
 // 计算冲突区域在Canvas上的位置（与TaskBar使用相同逻辑）
@@ -784,18 +769,14 @@ function detectChangedZones(
 function drawConflictZone(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
   // v1.9.6 修复：使用 === undefined 检查，避免 left=0 时被错误跳过
   if (zone.left === undefined || zone.width === undefined || zone.width <= 0) {
-    console.log(`[GanttConflicts] drawConflictZone skipped: left=${zone.left}, width=${zone.width}`)
     return
   }
 
   // 视口裁剪优化
   const canvas = canvasRef.value
   if (!canvas || zone.left + zone.width < 0 || zone.left > canvas.width) {
-    console.log(`[GanttConflicts] drawConflictZone out of viewport: left=${zone.left}, width=${zone.width}, canvas.width=${canvas?.width}`)
     return
   }
-
-  console.log(`[GanttConflicts] Drawing zone: left=${zone.left}, width=${zone.width}, top=${zone.top}, height=${zone.height}, level=${zone.level}`)
 
   // 绘制纹理背景
   drawTextureBackground(ctx, zone)
@@ -811,17 +792,13 @@ function drawConflictZone(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
 function renderConflicts() {
   const canvas = canvasRef.value
   if (!canvas) {
-    console.log('[GanttConflicts] renderConflicts: canvas not found')
     return
   }
 
   const ctx = canvas.getContext('2d')
   if (!ctx) {
-    console.log('[GanttConflicts] renderConflicts: context not found')
     return
   }
-
-  console.log(`[GanttConflicts] renderConflicts: canvas=${canvas.width}x${canvas.height}, zones=${conflictZones.value.length}`)
 
   // 清空Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -838,13 +815,11 @@ function renderConflicts() {
 function clearCanvas() {
   const canvas = canvasRef.value
   if (!canvas) {
-    console.log('[GanttConflicts] clearCanvas: canvas not found')
     return
   }
 
   const ctx = canvas.getContext('2d')
   if (!ctx) {
-    console.log('[GanttConflicts] clearCanvas: context not found')
     return
   }
 
@@ -853,8 +828,6 @@ function clearCanvas() {
 
   // 重置冲突区域列表，强制全量重绘（不清空纹理缓存，可以复用）
   previousConflictZones.value = []
-
-  console.log('[GanttConflicts] Canvas cleared, ready for redraw')
 }
 
 // 绘制纹理背景
@@ -987,7 +960,6 @@ function drawTopWarning(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
 onMounted(() => {
   // v1.9.6 修复：资源视图使用虚拟滚动，可见的资源行必然在视口内
   // 直接计算冲突，不需要IntersectionObserver延迟渲染
-  console.log(`[GanttConflicts] Resource ${props.resourceId}: mounted, will calculate conflicts immediately`)
   nextTick(() => {
     recalculateConflicts()
   })

@@ -13,6 +13,7 @@ interface AssigneeOption {
   key?: string | number
   value: string | number
   label: string
+  avatar?: string // v1.9.0 资源头像
 }
 
 interface Props {
@@ -367,6 +368,9 @@ watch(
         // 使用 nextTick 确保 resetForm 的响应式更新完成后再赋值
         nextTick(() => {
           Object.assign(formData, taskData)
+
+          // v1.9.0 从 assignee/avatar 映射到 resources
+          mapAssigneeToResources()
         })
       } else if (props.task && !props.isEdit) {
         // 新建模式，重置表单
@@ -489,6 +493,10 @@ const handleSubmit = async () => {
   }
   try {
     submitting.value = true
+
+    // v1.9.0 提交前从 resources 映射到 assignee/avatar
+    mapResourcesToAssignee()
+
     const taskData: Task = {
       ...formData,
       id: props.isEdit && props.task ? props.task.id : Date.now(),
@@ -667,18 +675,6 @@ function confirmTimer(desc: string) {
   handleStartTimer(desc)
 }
 
-// 处理负责人变更
-const handleAssigneeChanged = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  // 通过value过滤props.assigneeOptions获取对应的label
-  const selected = props.assigneeOptions?.find(option => option.value === value)
-  if (selected) {
-    // 这里可以根据需要处理选中的负责人信息
-    // 例如，可以将负责人名称存储在formData中
-    formData.assigneeName = selected.label
-  }
-}
-
 // v1.9.0 资源占比管理
 const addResource = () => {
   if (!formData.resources) {
@@ -713,6 +709,54 @@ const handleResourceChange = (index: number, field: 'id' | 'percent', value: str
     if (percent > 100) percent = 100
     formData.resources[index].percent = percent
   }
+}
+
+// v1.9.0 从 task.assignee/avatar 映射到 resources
+const mapAssigneeToResources = () => {
+  if (!formData.resources) {
+    formData.resources = []
+  }
+
+  // 如果已有resources数据，保持不变（优先使用resources）
+  if (formData.resources && formData.resources.length > 0) {
+    return
+  }
+
+  // 从 assignee/avatar 映射到 resources
+  const assignees = Array.isArray(formData.assignee) ? formData.assignee : (formData.assignee ? [formData.assignee] : [])
+
+  formData.resources = assignees.map((assigneeId) => {
+    // 查找对应的assigneeOption获取名称
+    const option = props.assigneeOptions?.find(opt => opt.value === assigneeId)
+    return {
+      id: assigneeId,
+      name: option?.label || String(assigneeId),
+      percent: 100, // 默认100%
+    }
+  })
+}
+
+// v1.9.0 从 resources 映射回 task.assignee/avatar 数组
+const mapResourcesToAssignee = () => {
+  if (!formData.resources || formData.resources.length === 0) {
+    formData.assignee = ''
+    formData.avatar = ''
+    return
+  }
+
+  // 映射 assignee 数组
+  const assignees = formData.resources.map(r => String(r.id)).filter(id => id)
+  formData.assignee = assignees.length > 1 ? assignees : (assignees[0] || '')
+
+  // 映射 avatar 数组（从assigneeOptions中查找对应的avatar）
+  const avatars = formData.resources
+    .map(r => {
+      const option = props.assigneeOptions?.find(opt => opt.value === r.id)
+      return option?.avatar || ''
+    })
+    .filter(avatar => avatar)
+
+  formData.avatar = avatars.length > 1 ? avatars : (avatars[0] || '')
 }
 
 // 计算任务状态
@@ -949,24 +993,17 @@ const taskStatus = computed(() => {
             <span v-if="errors.type" class="error-text">{{ errors.type }}</span>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="task-assignee">{{ t.assignee }}</label>
-            <select id="task-assignee" v-model="formData.assignee" class="form-select" @change="handleAssigneeChanged">
-              <option value="">{{ t.selectAssignee }}</option>
-              <option
-                v-for="assignee in props.assigneeOptions"
-                :key="assignee.key ?? assignee.value"
-                :value="assignee.value"
-              >
-                {{ assignee.label }}
-              </option>
-            </select>
-          </div>
-
           <!-- v1.9.0 资源分配（含占比配置） -->
           <div class="form-group">
             <label class="form-label">{{ t.resourceAllocation || '资源分配' }}</label>
             <div class="resource-list">
+              <!-- 资源分配标题行 -->
+              <div class="resource-header">
+                <span class="resource-header-label">资源名称</span>
+                <span class="resource-header-label">占用比例</span>
+                <span class="resource-header-action"></span>
+              </div>
+
               <div
                 v-for="(resource, index) in formData.resources"
                 :key="index"
@@ -982,32 +1019,22 @@ const taskStatus = computed(() => {
                     v-for="assignee in props.assigneeOptions"
                     :key="assignee.key ?? assignee.value"
                     :value="assignee.value"
+                    :data-avatar="assignee.avatar"
                   >
                     {{ assignee.label }}
                   </option>
                 </select>
 
-                <div class="percent-input-wrapper">
-                  <select
-                    v-model.number="resource.percent"
-                    class="form-select percent-select"
-                    @change="handleResourceChange(index, 'percent', ($event.target as HTMLSelectElement).value)"
-                  >
-                    <option :value="25">25%</option>
-                    <option :value="50">50%</option>
-                    <option :value="75">75%</option>
-                    <option :value="100">100%</option>
-                  </select>
-                  <input
-                    v-model.number="resource.percent"
-                    type="number"
-                    class="form-input percent-input"
-                    min="20"
-                    max="100"
-                    @input="handleResourceChange(index, 'percent', ($event.target as HTMLInputElement).value)"
-                  />
-                  <span class="percent-unit">%</span>
-                </div>
+                <select
+                  v-model.number="resource.percent"
+                  class="form-select percent-select"
+                  @change="handleResourceChange(index, 'percent', ($event.target as HTMLSelectElement).value)"
+                >
+                  <option :value="25">25%</option>
+                  <option :value="50">50%</option>
+                  <option :value="75">75%</option>
+                  <option :value="100">100%</option>
+                </select>
 
                 <button
                   type="button"
@@ -1015,7 +1042,12 @@ const taskStatus = computed(() => {
                   title="删除资源"
                   @click="removeResource(index)"
                 >
-                  ×
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
                 </button>
               </div>
               <button
@@ -1375,7 +1407,7 @@ const taskStatus = computed(() => {
 .form-input,
 .form-select,
 .form-textarea {
-  padding: 12px 16px;
+  padding: 8px;
   border: 1px solid var(--gantt-border-medium, #dcdfe6);
   border-radius: 4px;
   font-size: 14px;
@@ -1681,54 +1713,81 @@ const taskStatus = computed(() => {
   gap: 8px;
 }
 
+/* 资源分配标题行 */
+.resource-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--gantt-bg-toolbar, #fafafa);
+  border-radius: 4px;
+  border: 1px solid var(--gantt-border-light, #ebeef5);
+}
+
+.resource-header-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gantt-text-secondary, #606266);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.resource-header-label:first-child {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.resource-header-label:nth-child(2) {
+  width: 100px;
+  text-align: center;
+}
+
+.resource-header-action {
+  width: 48px;
+  flex-shrink: 0;
+}
+
 .resource-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px;
+  padding: 8px 12px;
   background: var(--gantt-bg-secondary, #f5f7fa);
   border-radius: 4px;
+  min-height: 48px;
 }
 
 .resource-select {
   flex: 1;
-  min-width: 140px;
+  min-width: 180px;
+  max-width: 280px;
+  height: 36px;
 }
 
-.percent-input-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.resource-select option {
+  padding: 8px 12px;
 }
 
 .percent-select {
-  width: 80px;
-}
-
-.percent-input {
-  width: 60px;
-  padding: 6px 8px;
-}
-
-.percent-unit {
-  font-size: 14px;
-  color: var(--gantt-text-secondary, #606266);
+  width: 110px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
 .btn-remove-resource {
-  width: 28px;
-  height: 28px;
-  display: flex;
+  width: 32px;
+  height: 32px;
+  display: grid;
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid var(--gantt-border-base, #dcdfe6);
+  border: none;
   border-radius: 4px;
-  color: var(--gantt-text-secondary, #606266);
+  color: var(--gantt-danger, #f56c6c);
   cursor: pointer;
-  font-size: 20px;
-  line-height: 1;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .btn-remove-resource:hover {
@@ -1739,7 +1798,7 @@ const taskStatus = computed(() => {
 
 .btn-add-resource {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   background: transparent;
   border: 1px dashed var(--gantt-border-base, #dcdfe6);
   border-radius: 4px;
@@ -1747,11 +1806,22 @@ const taskStatus = computed(() => {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+  min-height: 40px;
 }
 
 .btn-add-resource:hover {
   border-color: var(--gantt-primary, #409eff);
   background: var(--gantt-primary-light, #ecf5ff);
+}
+
+/* 暗黑模式 */
+:global(html[data-theme='dark']) .resource-header {
+  background: var(--gantt-bg-toolbar, rgba(255, 255, 255, 0.03)) !important;
+  border-color: var(--gantt-border-light, rgba(255, 255, 255, 0.1)) !important;
+}
+
+:global(html[data-theme='dark']) .resource-header-label {
+  color: var(--gantt-text-secondary, #a8a8a8) !important;
 }
 
 :global(html[data-theme='dark']) .resource-item {

@@ -4,7 +4,7 @@
       "id": "resource-001",
       "name": "资源1 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=1",
+      "avatar": "/50-11.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -470,7 +470,7 @@
       "id": "resource-002",
       "name": "资源2 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=2",
+      "avatar": "/50-12.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -921,7 +921,7 @@
       "id": "resource-003",
       "name": "资源3 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=3",
+      "avatar": "/50-13.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -1387,7 +1387,7 @@
       "id": "resource-004",
       "name": "资源4 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=4",
+      "avatar": "/50-14.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -1808,7 +1808,7 @@
       "id": "resource-005",
       "name": "资源5 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=5",
+      "avatar": "/50-15.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -2259,7 +2259,7 @@
       "id": "resource-006",
       "name": "资源6 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=6",
+      "avatar": "/50-16.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -2650,7 +2650,7 @@
       "id": "resource-007",
       "name": "资源7 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=7",
+      "avatar": "/50-17.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -2658,7 +2658,7 @@
         "技能C"
       ],
       "utilization": 93,
-      "color": "#ffc107",
+      "color": "#a8a8a8",
       "tasks": [
         {
           "id": 7000,
@@ -3101,7 +3101,7 @@
       "id": "resource-008",
       "name": "资源8 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=8",
+      "avatar": "/50-18.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -3447,7 +3447,7 @@
       "id": "resource-009",
       "name": "资源9 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=9",
+      "avatar": "/50-19.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -3913,7 +3913,7 @@
       "id": "resource-010",
       "name": "资源10 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=10",
+      "avatar": "/50-20.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -4244,7 +4244,7 @@
       "id": "resource-011",
       "name": "资源11 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=11",
+      "avatar": "/50-21.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -4665,7 +4665,7 @@
       "id": "resource-012",
       "name": "资源12 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=12",
+      "avatar": "/50-22.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -5011,7 +5011,7 @@
       "id": "resource-013",
       "name": "资源13 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=13",
+      "avatar": "/50-23.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -5387,7 +5387,7 @@
       "id": "resource-014",
       "name": "资源14 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=14",
+      "avatar": "/50-24.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -5778,7 +5778,7 @@
       "id": "resource-015",
       "name": "资源15 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=15",
+      "avatar": "/50-25.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -6214,7 +6214,7 @@
       "id": "resource-016",
       "name": "资源16 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=16",
+      "avatar": "/50-26.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -6530,7 +6530,7 @@
       "id": "resource-017",
       "name": "资源17 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=17",
+      "avatar": "/50-27.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -6981,7 +6981,7 @@
       "id": "resource-018",
       "name": "资源18 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=18",
+      "avatar": "/50-28.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -7357,7 +7357,7 @@
       "id": "resource-019",
       "name": "资源19 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=19",
+      "avatar": "/50-29.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -7718,7 +7718,7 @@
       "id": "resource-020",
       "name": "资源20 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=20",
+      "avatar": "/50-30.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -8154,7 +8154,7 @@
       "id": "resource-021",
       "name": "资源21 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=21",
+      "avatar": "/50-31.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -8515,7 +8515,7 @@
       "id": "resource-022",
       "name": "资源22 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=22",
+      "avatar": "/50-32.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -8921,7 +8921,7 @@
       "id": "resource-023",
       "name": "资源23 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=23",
+      "avatar": "/50-33.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -9297,7 +9297,7 @@
       "id": "resource-024",
       "name": "资源24 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=24",
+      "avatar": "/50-34.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -9718,7 +9718,7 @@
       "id": "resource-025",
       "name": "资源25 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=25",
+      "avatar": "/50-35.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -10064,7 +10064,7 @@
       "id": "resource-026",
       "name": "资源26 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=26",
+      "avatar": "/50-36.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -10455,7 +10455,7 @@
       "id": "resource-027",
       "name": "资源27 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=27",
+      "avatar": "/50-37.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -10771,7 +10771,7 @@
       "id": "resource-028",
       "name": "资源28 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=28",
+      "avatar": "/50-38.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -11192,7 +11192,7 @@
       "id": "resource-029",
       "name": "资源29 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=29",
+      "avatar": "/50-39.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -11598,7 +11598,7 @@
       "id": "resource-030",
       "name": "资源30 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=30",
+      "avatar": "/50-40.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -11944,7 +11944,7 @@
       "id": "resource-031",
       "name": "资源31 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=31",
+      "avatar": "/50-41.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -12410,7 +12410,7 @@
       "id": "resource-032",
       "name": "资源32 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=32",
+      "avatar": "/50-42.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -12816,7 +12816,7 @@
       "id": "resource-033",
       "name": "资源33 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=33",
+      "avatar": "/50-43.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -13222,7 +13222,7 @@
       "id": "resource-034",
       "name": "资源34 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=34",
+      "avatar": "/50-44.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -13688,7 +13688,7 @@
       "id": "resource-035",
       "name": "资源35 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=35",
+      "avatar": "/50-45.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -14139,7 +14139,7 @@
       "id": "resource-036",
       "name": "资源36 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=36",
+      "avatar": "/50-46.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -14590,7 +14590,7 @@
       "id": "resource-037",
       "name": "资源37 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=37",
+      "avatar": "/50-47.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -14951,7 +14951,7 @@
       "id": "resource-038",
       "name": "资源38 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=38",
+      "avatar": "/50-48.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -15357,7 +15357,7 @@
       "id": "resource-039",
       "name": "资源39 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=39",
+      "avatar": "/50-49.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -15673,7 +15673,7 @@
       "id": "resource-040",
       "name": "资源40 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=40",
+      "avatar": "/50-50.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -16109,7 +16109,7 @@
       "id": "resource-041",
       "name": "资源41 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=41",
+      "avatar": "/50-51.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -16485,7 +16485,7 @@
       "id": "resource-042",
       "name": "资源42 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=42",
+      "avatar": "/50-52.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -16906,7 +16906,7 @@
       "id": "resource-043",
       "name": "资源43 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=43",
+      "avatar": "/50-53.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -17252,7 +17252,7 @@
       "id": "resource-044",
       "name": "资源44 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=44",
+      "avatar": "/50-54.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -17583,7 +17583,7 @@
       "id": "resource-045",
       "name": "资源45 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=45",
+      "avatar": "/50-55.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -17944,7 +17944,7 @@
       "id": "resource-046",
       "name": "资源46 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=46",
+      "avatar": "/50-56.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -18380,7 +18380,7 @@
       "id": "resource-047",
       "name": "资源47 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=47",
+      "avatar": "/50-57.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -18726,7 +18726,7 @@
       "id": "resource-048",
       "name": "资源48 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=48",
+      "avatar": "/50-58.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -19147,7 +19147,7 @@
       "id": "resource-049",
       "name": "资源49 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=49",
+      "avatar": "/50-59.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -19493,7 +19493,7 @@
       "id": "resource-050",
       "name": "资源50 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=50",
+      "avatar": "/50-60.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -19914,7 +19914,7 @@
       "id": "resource-051",
       "name": "资源51 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=51",
+      "avatar": "/50-61.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -20320,7 +20320,7 @@
       "id": "resource-052",
       "name": "资源52 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=52",
+      "avatar": "/50-62.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -20651,7 +20651,7 @@
       "id": "resource-053",
       "name": "资源53 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=53",
+      "avatar": "/50-63.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -21027,7 +21027,7 @@
       "id": "resource-054",
       "name": "资源54 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=54",
+      "avatar": "/50-64.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -21343,7 +21343,7 @@
       "id": "resource-055",
       "name": "资源55 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=55",
+      "avatar": "/50-65.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -21779,7 +21779,7 @@
       "id": "resource-056",
       "name": "资源56 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=56",
+      "avatar": "/50-66.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -22245,7 +22245,7 @@
       "id": "resource-057",
       "name": "资源57 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=57",
+      "avatar": "/50-67.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -22561,7 +22561,7 @@
       "id": "resource-058",
       "name": "资源58 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=58",
+      "avatar": "/50-68.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -22937,7 +22937,7 @@
       "id": "resource-059",
       "name": "资源59 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=59",
+      "avatar": "/50-69.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -23373,7 +23373,7 @@
       "id": "resource-060",
       "name": "资源60 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=60",
+      "avatar": "/50-70.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -23794,7 +23794,7 @@
       "id": "resource-061",
       "name": "资源61 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=61",
+      "avatar": "/50-71.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -24110,7 +24110,7 @@
       "id": "resource-062",
       "name": "资源62 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=62",
+      "avatar": "/50-72.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -24531,7 +24531,7 @@
       "id": "resource-063",
       "name": "资源63 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=63",
+      "avatar": "/50-73.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -24982,7 +24982,7 @@
       "id": "resource-064",
       "name": "资源64 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=64",
+      "avatar": "/50-74.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -25313,7 +25313,7 @@
       "id": "resource-065",
       "name": "资源65 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=65",
+      "avatar": "/50-75.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -25719,7 +25719,7 @@
       "id": "resource-066",
       "name": "资源66 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=66",
+      "avatar": "/50-76.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -26125,7 +26125,7 @@
       "id": "resource-067",
       "name": "资源67 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=67",
+      "avatar": "/50-77.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -26531,7 +26531,7 @@
       "id": "resource-068",
       "name": "资源68 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=68",
+      "avatar": "/50-78.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -26937,7 +26937,7 @@
       "id": "resource-069",
       "name": "资源69 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=69",
+      "avatar": "/50-79.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -27403,7 +27403,7 @@
       "id": "resource-070",
       "name": "资源70 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=70",
+      "avatar": "/50-80.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -27794,7 +27794,7 @@
       "id": "resource-071",
       "name": "资源71 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=71",
+      "avatar": "/50-81.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -28140,7 +28140,7 @@
       "id": "resource-072",
       "name": "资源72 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=72",
+      "avatar": "/50-82.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -28561,7 +28561,7 @@
       "id": "resource-073",
       "name": "资源73 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=73",
+      "avatar": "/50-83.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -28982,7 +28982,7 @@
       "id": "resource-074",
       "name": "资源74 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=74",
+      "avatar": "/50-84.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -29298,7 +29298,7 @@
       "id": "resource-075",
       "name": "资源75 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=75",
+      "avatar": "/50-85.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -29689,7 +29689,7 @@
       "id": "resource-076",
       "name": "资源76 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=76",
+      "avatar": "/50-86.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -30110,7 +30110,7 @@
       "id": "resource-077",
       "name": "资源77 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=77",
+      "avatar": "/50-87.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -30546,7 +30546,7 @@
       "id": "resource-078",
       "name": "资源78 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=78",
+      "avatar": "/50-88.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -30967,7 +30967,7 @@
       "id": "resource-079",
       "name": "资源79 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=79",
+      "avatar": "/50-89.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -31328,7 +31328,7 @@
       "id": "resource-080",
       "name": "资源80 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=80",
+      "avatar": "/50-90.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -31704,7 +31704,7 @@
       "id": "resource-081",
       "name": "资源81 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=81",
+      "avatar": "/50-91.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -32020,7 +32020,7 @@
       "id": "resource-082",
       "name": "资源82 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=82",
+      "avatar": "/50-92.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -32366,7 +32366,7 @@
       "id": "resource-083",
       "name": "资源83 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=83",
+      "avatar": "/50-93.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -32712,7 +32712,7 @@
       "id": "resource-084",
       "name": "资源84 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=84",
+      "avatar": "/50-94.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -33058,7 +33058,7 @@
       "id": "resource-085",
       "name": "资源85 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=85",
+      "avatar": "/50-95.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -33374,7 +33374,7 @@
       "id": "resource-086",
       "name": "资源86 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=86",
+      "avatar": "/50-96.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -33825,7 +33825,7 @@
       "id": "resource-087",
       "name": "资源87 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=87",
+      "avatar": "/50-97.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -34186,7 +34186,7 @@
       "id": "resource-088",
       "name": "资源88 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=88",
+      "avatar": "/50-98.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -34517,7 +34517,7 @@
       "id": "resource-089",
       "name": "资源89 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=89",
+      "avatar": "/50-99.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -34953,7 +34953,7 @@
       "id": "resource-090",
       "name": "资源90 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=90",
+      "avatar": "/50-100.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -35404,7 +35404,7 @@
       "id": "resource-091",
       "name": "资源91 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=91",
+      "avatar": "/50-101.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -35795,7 +35795,7 @@
       "id": "resource-092",
       "name": "资源92 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=92",
+      "avatar": "/50-102.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
@@ -36186,7 +36186,7 @@
       "id": "resource-093",
       "name": "资源93 - 项目经理",
       "type": "项目经理",
-      "avatar": "https://i.pravatar.cc/150?img=93",
+      "avatar": "/50-103.jpg",
       "department": "市场部",
       "skills": [
         "技能A",
@@ -36517,7 +36517,7 @@
       "id": "resource-094",
       "name": "资源94 - 工程师",
       "type": "工程师",
-      "avatar": "https://i.pravatar.cc/150?img=94",
+      "avatar": "/50-104.jpg",
       "department": "工程部",
       "skills": [
         "技能A",
@@ -36863,7 +36863,7 @@
       "id": "resource-095",
       "name": "资源95 - 测试工程师",
       "type": "测试工程师",
-      "avatar": "https://i.pravatar.cc/150?img=95",
+      "avatar": "/50-105.jpg",
       "department": "测试部",
       "skills": [
         "技能A",
@@ -37194,7 +37194,7 @@
       "id": "resource-096",
       "name": "资源96 - 研究员",
       "type": "研究员",
-      "avatar": "https://i.pravatar.cc/150?img=96",
+      "avatar": "/50-106.jpg",
       "department": "研发部",
       "skills": [
         "技能A",
@@ -37615,7 +37615,7 @@
       "id": "resource-097",
       "name": "资源97 - 试验主任",
       "type": "试验主任",
-      "avatar": "https://i.pravatar.cc/150?img=97",
+      "avatar": "/50-107.jpg",
       "department": "临床部",
       "skills": [
         "技能A",
@@ -38066,7 +38066,7 @@
       "id": "resource-098",
       "name": "资源98 - 数据分析师",
       "type": "数据分析师",
-      "avatar": "https://i.pravatar.cc/150?img=98",
+      "avatar": "/50-108.jpg",
       "department": "质量部",
       "skills": [
         "技能A",
@@ -38517,7 +38517,7 @@
       "id": "resource-099",
       "name": "资源99 - 质量专员",
       "type": "质量专员",
-      "avatar": "https://i.pravatar.cc/150?img=99",
+      "avatar": "/50-109.jpg",
       "department": "注册部",
       "skills": [
         "技能A",
@@ -38863,7 +38863,7 @@
       "id": "resource-100",
       "name": "资源100 - 注册专员",
       "type": "注册专员",
-      "avatar": "https://i.pravatar.cc/150?img=100",
+      "avatar": "/50-110.jpg",
       "department": "生产部",
       "skills": [
         "技能A",
