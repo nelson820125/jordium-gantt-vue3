@@ -424,4 +424,23 @@ export const perfMonitor = {
           : 0,
     }
   },
+
+  // ==================== 资源冲突检测性能监控 ====================
+  /**
+   * 记录冲突检测性能
+   * @param taskCount 任务数量
+   * @param duration 检测耗时（毫秒）
+   */
+  recordConflictDetection(taskCount: number, duration: number) {
+    const now = performance.now()
+    // 每秒最多输出一次日志
+    if (now - lastLogTime > 1000) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[Conflict Detection] 任务数: ${taskCount}, 耗时: ${duration.toFixed(2)}ms, ` +
+          `算法: ${taskCount > 100 ? '区间树(O(n log n))' : '暴力遍历(O(n²))'}`,
+      )
+      lastLogTime = now
+    }
+  },
 }

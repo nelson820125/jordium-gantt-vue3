@@ -22,7 +22,19 @@ export function isTaskTimeOverlap(task1: Task, task2: Task): boolean {
 }
 
 /**
- * 检测资源的任务列表中是否存在时间冲突
+ * 获取任务在资源中的占比
+ */
+function getTaskResourcePercent(task: Task, resourceId: string | number): number {
+  if (!task.resources || !Array.isArray(task.resources)) {
+    return 100 // 默认100%
+  }
+  const allocation = task.resources.find((r: any) => String(r.id) === String(resourceId))
+  return allocation?.percent ?? 100
+}
+
+/**
+ * 检测资源的任务列表中是否存在资源超载冲突
+ * 逻辑：只要时间有交集的任务，资源占比总和超过100%，就认为是冲突
  * @param resource 资源对象
  * @returns 冲突的任务ID集合
  */
@@ -33,12 +45,24 @@ export function detectResourceConflicts(resource: Resource): Set<number> {
   // 过滤出有时间信息的任务
   const validTasks = tasks.filter(task => task.startDate && task.endDate)
 
-  // 两两比较检测冲突
+  // 两两比较检测资源超载
   for (let i = 0; i < validTasks.length; i++) {
     for (let j = i + 1; j < validTasks.length; j++) {
-      if (isTaskTimeOverlap(validTasks[i], validTasks[j])) {
-        conflictTaskIds.add(validTasks[i].id)
-        conflictTaskIds.add(validTasks[j].id)
+      const task1 = validTasks[i]
+      const task2 = validTasks[j]
+
+      // 首先检查是否有时间交集
+      if (isTaskTimeOverlap(task1, task2)) {
+        // 计算两个任务在该资源的占比总和
+        const percent1 = getTaskResourcePercent(task1, resource.id)
+        const percent2 = getTaskResourcePercent(task2, resource.id)
+        const totalPercent = percent1 + percent2
+
+        // 如果占比总和超过100%，标记为冲突
+        if (totalPercent > 100) {
+          conflictTaskIds.add(task1.id)
+          conflictTaskIds.add(task2.id)
+        }
       }
     }
   }

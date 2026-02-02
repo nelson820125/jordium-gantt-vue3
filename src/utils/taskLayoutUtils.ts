@@ -7,9 +7,11 @@ import type { Task } from '../models/classes/Task'
 
 /**
  * 检测两个任务是否存在时间交集
+ * 注意：endDate包含当天，所以 task1(2025-01-28~2025-01-29) 和 task2(2025-01-29~2025-01-30)
+ * 在 2025-01-29 这天是重叠的，应该换行显示
  */
 export function hasTimeOverlap(task1: Task, task2: Task): boolean {
-  // 获取任务的开始和结束日期
+  // 获取任务的开始和结束日期（时间戳）
   const start1 = task1.startDate ? new Date(task1.startDate).getTime() : null
   const end1 = task1.endDate ? new Date(task1.endDate).getTime() : null
   const start2 = task2.startDate ? new Date(task2.startDate).getTime() : null
@@ -20,8 +22,15 @@ export function hasTimeOverlap(task1: Task, task2: Task): boolean {
     return false
   }
 
-  // 检测时间交集：task1的结束时间 > task2的开始时间 && task1的开始时间 < task2的结束时间
-  return end1 > start2 && start1 < end2
+  // endDate包含当天，需要+1天来判断交集
+  // 例如：task1结束于2025-01-29，task2开始于2025-01-29
+  // end1Plus = 2025-01-30，start2 = 2025-01-29
+  // 判断：end1Plus(2025-01-30) > start2(2025-01-29) 为true，所以它们重叠
+  const end1Plus = end1 + 24 * 60 * 60 * 1000
+  const end2Plus = end2 + 24 * 60 * 60 * 1000
+
+  // 判断是否有交集
+  return end1Plus > start2 && end2Plus > start1
 }
 
 /**
@@ -49,7 +58,7 @@ function getTaskResourcePercent(task: Task, resourceId?: string | number): numbe
 export function assignTaskRows(
   tasks: Task[],
   resourceId?: string | number,
-  baseRowHeight: number = 51
+  baseRowHeight = 51,
 ): {
   taskRowMap: Map<string | number, number>
   rowHeights: number[]
@@ -145,7 +154,7 @@ export function calculateMaxRows(tasks: Task[], resourceId?: string | number): n
 export function calculateResourceTaskLayout(
   tasks: Task[],
   currentResourceId?: string | number,
-  baseRowHeight: number = 51
+  baseRowHeight = 51,
 ): Map<string | number, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }> {
   const resourceLayoutMap = new Map<string | number, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>()
 

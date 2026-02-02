@@ -9,6 +9,9 @@ interface Props {
   resourcePercent: number
   resourceName: string
   taskBarWidth?: number
+  taskBarLeft?: number
+  scrollLeft?: number
+  containerWidth?: number
   // 冲突相关 - v1.9.2 传递冲突任务列表以显示详细信息
   hasConflict?: boolean
   conflictTasks?: Task[]  // 与当前任务存在资源超载的任务列表
@@ -18,6 +21,9 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   taskBarWidth: undefined,
+  taskBarLeft: undefined,
+  scrollLeft: 0,
+  containerWidth: 0,
   hasConflict: false,
   conflictTasks: () => [],
 })
@@ -31,6 +37,10 @@ const emit = defineEmits<{
 const isExpanded = ref(false)
 const tabElement = ref<HTMLElement | null>(null)
 let hideTimer: number | null = null // 延迟隐藏定时器
+
+// v1.9.4 P1优化 - 防抖定时器
+let debounceTimer: number | null = null
+const DEBOUNCE_DELAY = 50 // 50ms 防抖延迟
 
 // 百分比文字
 const percentText = computed(() => `${Math.round(props.resourcePercent)}%`)
@@ -46,18 +56,41 @@ const tabWidth = computed(() => {
   return Math.min(props.taskBarWidth - margin, maxWidth)
 })
 
+// Tab左侧位置：磁铁停靠效果
+// 当TaskBar左侧超出可视区域时，Tab停靠在左边界
+const tabLeftOffset = computed(() => {
+  if (props.taskBarLeft === undefined || props.scrollLeft === undefined) {
+    return 0
+  }
+
+  const taskBarLeft = props.taskBarLeft
+  const taskBarRight = taskBarLeft + (props.taskBarWidth || 0)
+  const viewportLeft = props.scrollLeft
+
+  // TaskBar完全在可视区域右侧，不显示Tab
+  if (taskBarLeft > viewportLeft + (props.containerWidth || 0)) {
+    return 0
+  }
+
+  // TaskBar左侧超出可视区域，Tab停靠在左边界
+  if (taskBarLeft < viewportLeft) {
+    const stickyOffset = viewportLeft - taskBarLeft
+    // Tab不能超过TaskBar右侧边界
+    const maxOffset = Math.max(0, (props.taskBarWidth || 0) - tabWidth.value)
+    return Math.min(stickyOffset, maxOffset)
+  }
+
+  // TaskBar在可视区域内，Tab在默认位置（左侧）
+  return 0
+})
+
 // Tab样式（使用资源颜色）
 const tabStyle = computed(() => {
-  console.log('🏷️ TaskBarTab - 收到的颜色 props:', {
-    resourceColor: props.resourceColor,
-    taskId: props.task.id,
-    taskName: props.task.name,
-    resourceName: props.resourceName
-  })
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     backgroundColor: `${props.resourceColor} !important` as any,
     width: `${tabWidth.value}px`,
+    left: `${tabLeftOffset.value}px`,
   }
 })
 
@@ -174,7 +207,7 @@ const conflictInfoList = computed(() => {
     let conflictPercent = 100
     if (conflictTask.resources && Array.isArray(conflictTask.resources)) {
       const allocation = conflictTask.resources.find(
-        (r: any) => String(r.id) === String(props.currentResourceId)
+        (r: any) => String(r.id) === String(props.currentResourceId),
       )
       if (allocation && allocation.percent !== undefined) {
         conflictPercent = Math.max(20, Math.min(100, allocation.percent))
@@ -206,19 +239,35 @@ const conflictInfoList = computed(() => {
   }).filter(Boolean)
 })
 
-// 鼠标进入
+// v1.9.4 P1优化 - 带防抖的鼠标进入处理
 const handleMouseEnter = () => {
   // 清除之前的隐藏定时器
   if (hideTimer !== null) {
     clearTimeout(hideTimer)
     hideTimer = null
   }
-  isExpanded.value = true
-  emit('hover-change', true) // 通知父组件：禁止taskbar的tooltip，启用边框动画
+
+  // 清除防抖定时器
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer)
+  }
+
+  // 防抖：延迟展开，避免快速滑过时频繁触发
+  debounceTimer = window.setTimeout(() => {
+    isExpanded.value = true
+    emit('hover-change', true) // 通知父组件：禁止taskbar的tooltip，启用边框动画
+    debounceTimer = null
+  }, DEBOUNCE_DELAY)
 }
 
 // 鼠标离开
 const handleMouseLeave = () => {
+  // 清除防抖定时器
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+
   // 延迟隐藏，给用户时间移动到面板上
   hideTimer = window.setTimeout(() => {
     isExpanded.value = false
@@ -260,14 +309,23 @@ const getContrastColor = (bgColor: string): string => {
   return brightness > 128 ? '#333' : '#fff'
 }
 
+// v1.9.4 P1优化 - 组件卸载时清理所有定时器和资源
 onUnmounted(() => {
-  // 清理定时器
+  // 清理隐藏定时器
   if (hideTimer !== null) {
     clearTimeout(hideTimer)
     hideTimer = null
   }
+
+  // 清理防抖定时器
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+
   // 清理所有状态，避免内存泄漏
   isExpanded.value = false
+
   // 通知父组件
   emit('hover-change', false)
 })
@@ -385,8 +443,10 @@ onUnmounted(() => {
   pointer-events: auto;
   animation: expandFromTabUpRight 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: bottom left;
-  overflow-y: auto; /* 支持滚动，防止内容过多 */
-  overflow-x: hidden;
+  overflow: visible; /* 不滚动整个弹出层 */
+  max-height: 400px; /* 限制最大高度 */
+  display: flex;
+  flex-direction: column;
 }
 
 /* 向右+向上展开动画 */
@@ -429,8 +489,31 @@ onUnmounted(() => {
 .conflict-section {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);  /* 添加滚动支持 */
+  max-height: 200px; /* 限制冲突区域最大高度 */
+  overflow-y: auto; /* 垂直滚动 */
+  overflow-x: hidden;
+  /* 细滚动条样式 */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Firefox */
 }
+
+/* Webkit浏览器（Chrome、Safari、Edge）的细滚动条样式 */
+.conflict-section::-webkit-scrollbar {
+  width: 4px; /* 细滚动条 */
+}
+
+.conflict-section::-webkit-scrollbar-track {
+  background: transparent; /* 透明轨道 */
+}
+
+.conflict-section::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3); /* 半透明滑块 */
+  border-radius: 2px;
+}
+
+.conflict-section::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5); /* 悬停时更明显 */}
 
 .conflict-header {
   display: flex;

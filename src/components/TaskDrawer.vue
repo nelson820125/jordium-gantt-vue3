@@ -731,8 +731,8 @@ const taskStatus = computed(() => {
     const color = props.pendingTaskBackgroundColor
     return {
       text: t.value.statusPending,
-      color: color,
-      bgColor: color + '20', // 添加20%透明度
+      color,
+      bgColor: `${color}20`, // 添加20%透明度
       borderColor: color,
     }
   }
@@ -742,8 +742,8 @@ const taskStatus = computed(() => {
     const color = props.completeTaskBackgroundColor
     return {
       text: t.value.statusCompleted,
-      color: color,
-      bgColor: color + '20',
+      color,
+      bgColor: `${color}20`,
       borderColor: color,
     }
   }
@@ -753,8 +753,8 @@ const taskStatus = computed(() => {
     const color = props.delayTaskBackgroundColor
     return {
       text: t.value.statusDelayed,
-      color: color,
-      bgColor: color + '20',
+      color,
+      bgColor: `${color}20`,
       borderColor: color,
     }
   }
@@ -764,8 +764,8 @@ const taskStatus = computed(() => {
     const color = props.ongoingTaskBackgroundColor
     return {
       text: t.value.statusOngoing,
-      color: color,
-      bgColor: color + '20',
+      color,
+      bgColor: `${color}20`,
       borderColor: color,
     }
   }
@@ -774,8 +774,8 @@ const taskStatus = computed(() => {
   const color = props.pendingTaskBackgroundColor
   return {
     text: t.value.statusPending,
-    color: color,
-    bgColor: color + '20',
+    color,
+    bgColor: `${color}20`,
     borderColor: color,
   }
 })
@@ -999,8 +999,8 @@ const taskStatus = computed(() => {
                     <option :value="100">100%</option>
                   </select>
                   <input
-                    type="number"
                     v-model.number="resource.percent"
+                    type="number"
                     class="form-input percent-input"
                     min="20"
                     max="100"
@@ -1012,8 +1012,8 @@ const taskStatus = computed(() => {
                 <button
                   type="button"
                   class="btn-remove-resource"
-                  @click="removeResource(index)"
                   title="删除资源"
+                  @click="removeResource(index)"
                 >
                   ×
                 </button>

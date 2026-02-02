@@ -255,6 +255,68 @@ A: 运行 `npm run test:coverage`，打开 HTML 报告查看未覆盖代码。
 - [Vue Test Utils](https://test-utils.vuejs.org/)
 - [Happy DOM](https://github.com/capricorn86/happy-dom)
 
+## 🧪 性能与算法测试
+
+### test-interval-tree.html
+区间树算法可视化测试页面，用于验证 v1.9.3 中的性能优化：
+
+**测试内容**：
+- ✅ **测试1**: 算法切换验证（50/100/101/200任务）
+- ✅ **测试2**: 性能对比（O(n²) vs O(n log n)）
+- ✅ **测试3**: 结果正确性验证
+- ✅ **测试4**: 极限场景测试（500任务）
+
+**使用方法**：
+```bash
+# 直接在浏览器中打开
+open tests/test-interval-tree.html
+```
+
+**验证目标**：
+- 任务数 > 100 时自动切换到区间树算法
+- 500任务场景性能提升 2.8-3.5 倍（120ms → 42ms）
+- 算法优化不影响功能正确性
+
+### verify-interval-tree.js
+控制台验证脚本，提供4种验证方法：
+
+**使用方法**：
+```bash
+# 方法1: 在项目运行时，浏览器控制台执行
+node tests/verify-interval-tree.js
+
+# 方法2: 在 Demo 中查看实时监控日志
+# 1. npm run dev
+# 2. 切换到资源视图
+# 3. 拖拽任务条
+# 4. 查看控制台输出 [Conflict Detection] 日志
+```
+
+**验证检查清单**：
+- ☑️ src/utils/conflictUtils.ts 包含 IntervalTree 类
+- ☑️ src/utils/conflictUtils.ts 包含 detectConflictsWithIntervalTree 函数
+- ☑️ detectConflicts 函数有算法选择逻辑
+- ☑️ perfMonitor.ts 包含 recordConflictDetection 方法
+- ☑️ 性能目标: 500任务从120ms降至~40ms
+
+### demo/data-resources-large.json
+大数据集测试文件（由 `scripts/generate-large-data.js` 生成）：
+
+**数据规模**：
+- 100个资源
+- 约2500个任务
+- 任务分布：每个资源20-30个任务
+
+**用途**：
+- 测试资源视图垂直滚动性能
+- 验证区间树算法在大数据量下的表现
+- 测试冲突检测性能（多资源场景）
+
+**重新生成数据**：
+```bash
+node scripts/generate-large-data.js
+```
+
 ## 🎯 待扩展测试
 
 以下功能建议增加测试覆盖：
@@ -264,3 +326,5 @@ A: 运行 `npm run test:coverage`，打开 HTML 报告查看未覆盖代码。
 - [ ] TaskRowNameContent 组件（名称内容）
 - [ ] 集成测试（TaskList 整体交互）
 - [ ] 快照测试（组件输出稳定性）
+- [ ] GanttConflicts 组件测试（Canvas 渲染、冲突可视化）
+- [ ] 区间树算法单元测试（正确性、边界条件）

@@ -26,14 +26,14 @@ const props = withDefaults(defineProps<Props>(), {
   globalDragging: false,
 })
 
-// 注入视图模式，在资源视图下禁用LinkAnchor
-const viewMode = inject<any>('gantt-view-mode', { value: 'task' })
-
 const emit = defineEmits<{
   'drag-start': [{ taskId: number; type: 'predecessor' | 'successor'; x: number; y: number }]
   'drag-move': [{ x: number; y: number }]
   'drag-end': [{ taskId: number; type: 'predecessor' | 'successor' }]
 }>()
+
+// 注入视图模式，在资源视图下禁用LinkAnchor
+const viewMode = inject<any>('gantt-view-mode', { value: 'task' })
 
 // 触点自身悬停状态
 const isHoveredAnchor = ref(false)

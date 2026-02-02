@@ -1,13 +1,3 @@
-<template>
-  <canvas
-    ref="canvasRef"
-    class="gantt-conflicts-canvas"
-    :width="canvasWidth"
-    :height="canvasHeight"
-    :style="canvasStyle"
-  ></canvas>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject, type Ref } from 'vue'
 import { detectConflicts, type ConflictZone } from '../../utils/conflictUtils'
@@ -33,21 +23,49 @@ interface Props {
   timelineData?: Array<any>
   /** 当前时间刻度 */
   currentTimeScale?: TimelineScale
+  /** v1.9.5 任务ID到行号的映射 */
+  taskRowMap?: Map<string | number, number>
+  /** v1.9.5 每行的高度数组 */
+  rowHeights?: number[]
+  /** 可视区域滚动位置 */
+  scrollLeft?: number
+  /** 可视区域宽度 */
+  containerWidth?: number
 }
 
 const props = defineProps<Props>()
 
 // 注入拖拽状态
 const isDraggingTaskBar = inject<Ref<boolean>>('isDraggingTaskBar', ref(false))
+// v1.9.5 P2-4优化 - 注入Split Bar拖拽状态
+const isSplitBarDragging = inject<Ref<boolean>>('isSplitBarDragging', ref(false))
+// 注入Timeline拖拽状态
+const isDraggingTimeline = inject<Ref<boolean>>('isDraggingTimeline', ref(false))
+// 注入最近变化的TaskBar ID（用于增量更新）
+const lastChangedTaskId = inject<Ref<string | number | null>>('lastChangedTaskId', ref(null))
 
 // Canvas引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const canvasWidth = computed(() => props.width)
+// v1.9.6 使用可视区域宽度而非总宽度，避免Canvas尺寸过大
+// containerWidth优先（约1900px），如果为0则使用1920作为默认值，绝不使用props.width（可能30万px）
+const canvasWidth = computed(() => {
+  const width = props.containerWidth || 1920
+  if (import.meta.env.DEV) {
+    console.log(`[GanttConflicts] canvasWidth: ${width}px (containerWidth: ${props.containerWidth}, totalWidth: ${props.width})`)
+  }
+  return width
+})
 const canvasHeight = computed(() => props.height)
 
 // 冲突区域列表
 const conflictZones = ref<ConflictZone[]>([])
 const needsRecalculation = ref(false)
+
+// v1.9.4 P1优化 - 坐标缓存，避免重复计算
+const coordsCache = new Map<string, { left: number; width: number }>()
+
+// v1.9.4 P1优化 - 上一次的冲突区域列表，用于增量重绘
+const previousConflictZones = ref<ConflictZone[]>([])
 
 // 纹理预生成（性能优化）
 const texturePatterns = ref<{
@@ -60,17 +78,16 @@ const texturePatterns = ref<{
   severe: null,
 })
 
-// Canvas样式
+// Canvas样式（使用transform平移到可视区域）
 const canvasStyle = computed(() => ({
   position: 'absolute' as const,
   top: `${props.topOffset || 0}px`,
-  left: 0,
+  left: `${props.scrollLeft || 0}px`, // 平移到滚动位置
   pointerEvents: 'none' as const, // 始终穿透，让TaskBar可以响应鼠标事件
-  opacity: isDraggingTaskBar.value ? 0.3 : 1,
   transition: 'opacity 0.2s',
   zIndex: 250, // v1.9.2 高于TaskBar的最高z-index(200)，确保冲突层在最上层
+  backgroundColor: 'transparent', // 确保Canvas背景透明
 }))
-
 
 // 监听任务列表变化
 watch(() => props.tasks, () => {
@@ -85,14 +102,58 @@ watch(() => props.tasks, () => {
 watch(isDraggingTaskBar, (dragging) => {
   if (!dragging && needsRecalculation.value) {
     nextTick(() => {
+      // 检查是否可以使用增量更新（单个TaskBar变化且有ID记录）
+      if (lastChangedTaskId.value !== null) {
+        console.log(`[GanttConflicts] Incremental update for task ${lastChangedTaskId.value}`)
+        recalculateConflictsIncremental(lastChangedTaskId.value)
+        lastChangedTaskId.value = null // 清除记录
+      } else {
+        // 全量重新计算
+        texturePatterns.value = { light: null, medium: null, severe: null }
+        coordsCache.clear()
+        recalculateConflicts()
+      }
+      needsRecalculation.value = false
+    })
+  }
+})
+
+// v1.9.5 P2-4优化 - 监听Split Bar拖拽状态变化
+watch(isSplitBarDragging, (dragging) => {
+  if (!dragging && needsRecalculation.value) {
+    nextTick(() => {
+      // 拖拽结束后清空缓存并重新计算，清空纹理缓存避免颜色问题
+      texturePatterns.value = { light: null, medium: null, severe: null }
+      coordsCache.clear()
       recalculateConflicts()
       needsRecalculation.value = false
     })
   }
 })
 
+// 监听Timeline拖拽状态变化 - 拖拽开始时立即清除Canvas
+watch(isDraggingTimeline, (dragging) => {
+  if (dragging) {
+    // 拖拽开始时立即清除Canvas
+    clearCanvas()
+    console.log('[GanttConflicts] Timeline drag started, canvas cleared')
+  } else {
+    // 拖拽结束后重新计算并绘制
+    nextTick(() => {
+      recalculateConflicts()
+      console.log('[GanttConflicts] Timeline drag ended, conflicts recalculated')
+    })
+  }
+})
+
 // 监听Canvas尺寸变化
 watch([canvasWidth, canvasHeight], () => {
+  // v1.9.5 P2-4优化 - Split Bar拖拽时延迟重绘
+  if (isSplitBarDragging.value) {
+    needsRecalculation.value = true
+    return
+  }
+
   nextTick(() => {
     renderConflicts()
   })
@@ -101,8 +162,150 @@ watch([canvasWidth, canvasHeight], () => {
 // 监听timelineData和currentTimeScale变化
 watch([() => props.timelineData, () => props.currentTimeScale], () => {
   if (import.meta.env.DEV) {}
+  // v1.9.4 BUG修复 - 视图切换时清空坐标缓存
+  coordsCache.clear()
+
   recalculateConflicts()
 }, { deep: true })
+
+// v1.9.6 监听scrollLeft变化，滚动停止后重新计算可视区域的冲突
+let scrollTimer: ReturnType<typeof setTimeout> | null = null
+watch(() => props.scrollLeft, () => {
+  // 清除之前的定时器
+  if (scrollTimer) {
+    clearTimeout(scrollTimer)
+  }
+
+  // 滚动停止后100ms重新计算冲突区域（包含视口裁剪）
+  scrollTimer = setTimeout(() => {
+    nextTick(() => {
+      // 先清除Canvas上的旧内容
+      clearCanvas()
+      // 重新计算conflictZones（会根据新的scrollLeft裁剪可见区域）
+      recalculateConflicts()
+    })
+  }, 100)
+})
+
+// 增量重新计算冲突（仅计算与变化TaskBar相关的冲突）
+function recalculateConflictsIncremental(changedTaskId: string | number) {
+  const startTime = performance.now()
+
+  // 找到变化的任务
+  const changedTask = props.tasks.find(t => t.id === changedTaskId)
+  if (!changedTask) {
+    console.log(`[GanttConflicts] Changed task ${changedTaskId} not found, fallback to full recalculation`)
+    recalculateConflicts()
+    return
+  }
+
+  // 找出与变化任务时间重叠的所有任务（包括自己）
+  const affectedTasks = props.tasks.filter(task => {
+    // 检查时间是否重叠
+    const taskStart = new Date(task.startDate)
+    const taskEnd = new Date(task.endDate)
+    const changedStart = new Date(changedTask.startDate)
+    const changedEnd = new Date(changedTask.endDate)
+
+    return !(taskEnd < changedStart || taskStart > changedEnd)
+  })
+
+  console.log(`[GanttConflicts] Incremental: ${affectedTasks.length} affected tasks (out of ${props.tasks.length} total)`)
+
+  // 只对受影响的任务进行冲突检测
+  const newConflicts = detectConflicts(affectedTasks, props.resourceId)
+
+  // 找出哪些旧的冲突区域需要被移除（不再涉及受影响的任务）
+  const affectedTaskIds = new Set(affectedTasks.map(t => t.id))
+  const unchangedConflicts = previousConflictZones.value.filter(zone => {
+    // 如果冲突区域的所有任务都不在受影响列表中，则保留
+    return !zone.tasks.some(task => affectedTaskIds.has(task.id))
+  })
+
+  console.log(`[GanttConflicts] Incremental: kept ${unchangedConflicts.length} unchanged conflicts, adding ${newConflicts.length} new conflicts`)
+
+  // 合并未变化的冲突和新计算的冲突
+  const allConflicts = [...unchangedConflicts.map(z => ({
+    startDate: z.startDate,
+    endDate: z.endDate,
+    tasks: z.tasks,
+    totalPercent: z.totalPercent,
+    level: z.level,
+  })), ...newConflicts]
+
+  // 转换为Canvas坐标（与全量计算相同的逻辑）
+  conflictZones.value = allConflicts.map((zone) => {
+    const cacheKey = `${zone.startDate.getTime()}-${zone.endDate.getTime()}`
+    let left: number, width: number
+
+    if (coordsCache.has(cacheKey)) {
+      const cached = coordsCache.get(cacheKey)!
+      left = cached.left
+      width = cached.width
+    } else {
+      const coords = calculatePosition(zone.startDate, zone.endDate)
+      left = coords.left
+      width = coords.width
+      coordsCache.set(cacheKey, { left, width })
+    }
+
+    const scrollLeft = props.scrollLeft || 0
+    const viewportWidth = props.containerWidth || 1920
+    const viewportLeft = left - scrollLeft
+    const viewportRight = viewportLeft + width
+
+    if (viewportRight <= 0 || viewportLeft >= viewportWidth) {
+      return null
+    }
+
+    const canvasLeft = Math.max(0, viewportLeft)
+    const canvasRight = Math.min(viewportWidth, viewportRight)
+    const canvasWidth = canvasRight - canvasLeft
+
+    let top = 0
+    let height = props.height
+
+    if (props.taskRowMap && props.rowHeights && zone.tasks.length > 0) {
+      const rowNumbers: number[] = []
+      for (const task of zone.tasks) {
+        const rowNum = props.taskRowMap.get(task.id)
+        if (rowNum !== undefined) {
+          rowNumbers.push(rowNum)
+        }
+      }
+
+      if (rowNumbers.length > 0) {
+        const minRow = Math.min(...rowNumbers)
+        const maxRow = Math.max(...rowNumbers)
+        top = 0
+        for (let i = 0; i < minRow; i++) {
+          top += props.rowHeights[i] || 51
+        }
+        height = 0
+        for (let i = minRow; i <= maxRow; i++) {
+          height += props.rowHeights[i] || 51
+        }
+        height = Math.max(1, height - 10)
+      }
+    }
+
+    return {
+      ...zone,
+      left: canvasLeft,
+      width: canvasWidth,
+      top,
+      height,
+    }
+  }).filter(Boolean)
+
+  const endTime = performance.now()
+  const elapsed = endTime - startTime
+
+  console.log(`[GanttConflicts] Incremental update completed in ${elapsed.toFixed(2)}ms, ${conflictZones.value.length} total conflict zones`)
+
+  // 使用增量重绘
+  renderConflictsIncremental()
+}
 
 // 重新计算冲突
 function recalculateConflicts() {
@@ -111,36 +314,151 @@ function recalculateConflicts() {
   // 调用冲突检测算法
   const conflicts = detectConflicts(props.tasks, props.resourceId)
 
-  // 计算Canvas坐标
+  // 详细日志：显示每个任务的资源占比
+  const tasksInfo = props.tasks.map(t => {
+    const resource = (t as any).resources?.find((r: any) => String(r.id) === String(props.resourceId))
+    const percent = resource?.percent || 0
+    return `${t.name}(${percent}%)`
+  }).join(', ')
+
+  console.log(`[GanttConflicts] Resource ${props.resourceId}: ${props.tasks.length} tasks [${tasksInfo}], detected ${conflicts.length} conflict zones`)
+  console.log(`[GanttConflicts] Props - scrollLeft: ${props.scrollLeft}, containerWidth: ${props.containerWidth}, width: ${props.width}`)
+
+  // v1.9.4 P1优化 - 使用坐标缓存
   conflictZones.value = conflicts.map((zone) => {
-    const { left, width } = calculatePosition(zone.startDate, zone.endDate)
+    // 生成缓存key（基于时间戳避免日期对象比较）
+    const cacheKey = `${zone.startDate.getTime()}-${zone.endDate.getTime()}`
+
+    let left: number, width: number
+
+    // 尝试从缓存获取坐标
+    if (coordsCache.has(cacheKey)) {
+      const cached = coordsCache.get(cacheKey)!
+      left = cached.left
+      width = cached.width
+    } else {
+      // 缓存未命中，重新计算并缓存
+      const coords = calculatePosition(zone.startDate, zone.endDate)
+      left = coords.left
+      width = coords.width
+      coordsCache.set(cacheKey, { left, width })
+    }
+
+    // 转换为相对于可视区域的坐标
+    const scrollLeft = props.scrollLeft || 0
+    const viewportWidth = props.containerWidth || 1920
+
+    // 计算冲突区域在可视区域中的位置
+    const viewportLeft = left - scrollLeft
+    const viewportRight = viewportLeft + width
+
+    // 如果冲突区域完全在可视区域外，跳过
+    if (viewportRight <= 0 || viewportLeft >= viewportWidth) {
+      return null
+    }
+
+    // 计算在Canvas上的绘制坐标（相对于Canvas左边界）
+    // Canvas通过CSS定位在scrollLeft位置，所以绘制时使用viewport相对坐标
+    const canvasLeft = Math.max(0, viewportLeft)
+    const canvasRight = Math.min(viewportWidth, viewportRight)
+    const canvasWidth = canvasRight - canvasLeft
+
+    // v1.9.5 修复：根据冲突任务所在的行号计算正确的top和height
+    let top = 0
+    let height = props.height
+
+    if (props.taskRowMap && props.rowHeights && zone.tasks.length > 0) {
+      // 找到所有冲突任务的行号
+      const rowNumbers: number[] = []
+      for (const task of zone.tasks) {
+        const rowNum = props.taskRowMap.get(task.id)
+        if (rowNum !== undefined) {
+          rowNumbers.push(rowNum)
+        }
+      }
+
+      if (rowNumbers.length > 0) {
+        // 找到最小和最大行号
+        const minRow = Math.min(...rowNumbers)
+        const maxRow = Math.max(...rowNumbers)
+
+        // 计算top：从第一行的顶部开始（相对于Canvas内部坐标）
+        // Canvas本身已有topOffset，所以这里直接累加行高即可
+        top = 0
+        for (let i = 0; i < minRow; i++) {
+          top += props.rowHeights[i] || 51
+        }
+
+        // 计算height：从minRow到maxRow所有行的高度之和
+        height = 0
+        for (let i = minRow; i <= maxRow; i++) {
+          height += props.rowHeights[i] || 51
+        }
+        // 减去底部边距（约2.5px），让冲突区域不超出TaskBar底部边界
+        height = Math.max(1, height - 10)
+      }
+    }
 
     // 开发环境调试日志
     if (import.meta.env.DEV) {}
 
     return {
       ...zone,
-      left,
-      width,
-      top: 0,
-      height: props.height,
+      left: canvasLeft,
+      width: canvasWidth,
+      top,
+      height,
     }
-  })
+  }).filter(Boolean) // 过滤掉完全不可见的冲突区域
 
   const endTime = performance.now()
   const elapsed = endTime - startTime
 
+  // v1.9.6 调试日志：输出每个冲突区域的坐标
+  if (import.meta.env.DEV) {
+    console.log(`[GanttConflicts] ${conflictZones.value.length} conflict zones after viewport clipping:`)
+    conflictZones.value.forEach((zone, index) => {
+      console.log(`  Zone ${index}: left=${zone.left}, width=${zone.width}, top=${zone.top}, height=${zone.height}, level=${zone.level}`)
+    })
+  }
+
   // 开发环境性能监控
   if (import.meta.env.DEV && elapsed > 50) {}
 
-  // 重新渲染
-  renderConflicts()
+  // v1.9.4 P1优化 - 增量重绘
+  // v1.9.5 修复：如果纹理缓存被清空，使用全量重绘避免颜色变淡
+  if (!texturePatterns.value.light && !texturePatterns.value.medium && !texturePatterns.value.severe) {
+    renderConflicts()
+  } else {
+    renderConflictsIncremental()
+  }
+
+  console.log(`[GanttConflicts] Resource ${props.resourceId}: Rendered ${conflictZones.value.length} conflict zones on canvas`)
 }
 
 // 计算冲突区域在Canvas上的位置（与TaskBar使用相同逻辑）
 function calculatePosition(startDate: Date, endDate: Date): { left: number; width: number } {
   let left = 0
   let width = 0
+
+  // 小时视图：使用分钟精度计算
+  if (props.currentTimeScale === TimelineScale.HOUR) {
+    // 计算时间线开始日期的00:00:00作为全局基准
+    const timelineStartOfDay = new Date(props.startDate)
+    timelineStartOfDay.setHours(0, 0, 0, 0)
+
+    // 计算开始和结束时间相对于时间线开始的总分钟数
+    const startMinutesTotal = Math.floor((startDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60))
+    const endMinutesTotal = Math.floor((endDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60))
+
+    // 每小时40px，每分钟40/60 = 2/3 px
+    const pixelPerMinute = 40 / 60
+
+    left = Math.max(0, startMinutesTotal * pixelPerMinute)
+    width = Math.max(4, (endMinutesTotal - startMinutesTotal) * pixelPerMinute)
+
+    return { left, width }
+  }
 
   // 创建只包含日期的Date对象（忽略时分秒）
   const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
@@ -368,58 +686,198 @@ function calculatePositionFromTimelineData(
   return cumulativePosition
 }
 
-// 渲染冲突纹理
-function renderConflicts() {
+// v1.9.4 P1优化 - 增量重绘：只重绘发生变化的冲突区域
+function renderConflictsIncremental() {
   const canvas = canvasRef.value
   if (!canvas) return
 
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  // 检测变化的区域
+  const { added, removed, changed } = detectChangedZones(
+    previousConflictZones.value,
+    conflictZones.value,
+  )
+
+  // 如果变化区域很多（> 50%），直接全量重绘更高效
+  const totalZones = conflictZones.value.length
+  const changedCount = added.length + removed.length + changed.length
+
+  if (totalZones === 0 || changedCount > totalZones * 0.5) {
+    renderConflicts()
+    previousConflictZones.value = [...conflictZones.value]
+    return
+  }
+
+  // 增量重绘：只处理变化的区域
+
+  // 1. 清除被移除的区域
+  for (const zone of removed) {
+    if (zone.left !== undefined && zone.width !== undefined) {
+      ctx.clearRect(zone.left - 2, 0, zone.width + 4, canvas.height)
+    }
+  }
+
+  // 2. 重绘新增的区域
+  for (const zone of added) {
+    drawConflictZone(ctx, zone)
+  }
+
+  // 3. 重绘变化的区域（先清除再绘制）
+  for (const zone of changed) {
+    if (zone.left !== undefined && zone.width !== undefined) {
+      ctx.clearRect(zone.left - 2, 0, zone.width + 4, canvas.height)
+      drawConflictZone(ctx, zone)
+    }
+  }
+
+  previousConflictZones.value = [...conflictZones.value]
+}
+
+// v1.9.4 检测发生变化的冲突区域
+function detectChangedZones(
+  oldZones: ConflictZone[],
+  newZones: ConflictZone[],
+): {
+  added: ConflictZone[]
+  removed: ConflictZone[]
+  changed: ConflictZone[]
+} {
+  const added: ConflictZone[] = []
+  const removed: ConflictZone[] = []
+  const changed: ConflictZone[] = []
+
+  // 为快速查找创建 Map
+  const oldZonesMap = new Map(
+    oldZones.map(z => [`${z.startDate.getTime()}-${z.endDate.getTime()}`, z]),
+  )
+  const newZonesMap = new Map(
+    newZones.map(z => [`${z.startDate.getTime()}-${z.endDate.getTime()}`, z]),
+  )
+
+  // 查找新增和变化的区域
+  for (const [key, newZone] of newZonesMap) {
+    const oldZone = oldZonesMap.get(key)
+    if (!oldZone) {
+      added.push(newZone)
+    } else if (
+      oldZone.totalPercent !== newZone.totalPercent ||
+      oldZone.level !== newZone.level ||
+      oldZone.tasks.length !== newZone.tasks.length
+    ) {
+      changed.push(newZone)
+    }
+  }
+
+  // 查找被移除的区域
+  for (const [key, oldZone] of oldZonesMap) {
+    if (!newZonesMap.has(key)) {
+      removed.push(oldZone)
+    }
+  }
+
+  return { added, removed, changed }
+}
+
+// v1.9.4 绘制单个冲突区域（从 renderConflicts 提取）
+function drawConflictZone(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
+  // v1.9.6 修复：使用 === undefined 检查，避免 left=0 时被错误跳过
+  if (zone.left === undefined || zone.width === undefined || zone.width <= 0) {
+    console.log(`[GanttConflicts] drawConflictZone skipped: left=${zone.left}, width=${zone.width}`)
+    return
+  }
+
+  // 视口裁剪优化
+  const canvas = canvasRef.value
+  if (!canvas || zone.left + zone.width < 0 || zone.left > canvas.width) {
+    console.log(`[GanttConflicts] drawConflictZone out of viewport: left=${zone.left}, width=${zone.width}, canvas.width=${canvas?.width}`)
+    return
+  }
+
+  console.log(`[GanttConflicts] Drawing zone: left=${zone.left}, width=${zone.width}, top=${zone.top}, height=${zone.height}, level=${zone.level}`)
+
+  // 绘制纹理背景
+  drawTextureBackground(ctx, zone)
+
+  // 绘制左右边界线
+  drawBorders(ctx, zone)
+
+  // 绘制顶部警告标识
+  drawTopWarning(ctx, zone)
+}
+
+// 渲染冲突纹理（全量重绘）
+function renderConflicts() {
+  const canvas = canvasRef.value
+  if (!canvas) {
+    console.log('[GanttConflicts] renderConflicts: canvas not found')
+    return
+  }
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    console.log('[GanttConflicts] renderConflicts: context not found')
+    return
+  }
+
+  console.log(`[GanttConflicts] renderConflicts: canvas=${canvas.width}x${canvas.height}, zones=${conflictZones.value.length}`)
+
   // 清空Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   // 绘制所有冲突区域
   for (const zone of conflictZones.value) {
-    if (!zone.left || !zone.width) continue
-
-    // 视口裁剪优化（仅绘制可见区域）
-    if (zone.left + zone.width < 0 || zone.left > canvas.width) {
-      continue
-    }
-
-    // 绘制纹理背景
-    drawTextureBackground(ctx, zone)
-
-    // 绘制左右边界线
-    drawBorders(ctx, zone)
-
-    // 绘制顶部警告标识
-    drawTopWarning(ctx, zone)
+    drawConflictZone(ctx, zone)
   }
+
+  previousConflictZones.value = [...conflictZones.value]
+}
+
+// 清除Canvas内容（用于滚动时清除旧的冲突区域）
+function clearCanvas() {
+  const canvas = canvasRef.value
+  if (!canvas) {
+    console.log('[GanttConflicts] clearCanvas: canvas not found')
+    return
+  }
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    console.log('[GanttConflicts] clearCanvas: context not found')
+    return
+  }
+
+  // 清空整个Canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  // 重置冲突区域列表，强制全量重绘（不清空纹理缓存，可以复用）
+  previousConflictZones.value = []
+
+  console.log('[GanttConflicts] Canvas cleared, ready for redraw')
 }
 
 // 绘制纹理背景
 function drawTextureBackground(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
   const { left = 0, width = 0, top = 0, height = props.height } = zone
 
-  // 根据冲突等级选择颜色
+  // 根据冲突等级选择颜色（降低透明度使其更淡）
   let color: string
   let alpha: number
 
   switch (zone.level) {
-    case 'light':
-      color = 'rgba(255,220,0,' // 浅黄
-      alpha = 0.15
-      break
-    case 'medium':
-      color = 'rgba(255,165,0,' // 橙色
-      alpha = 0.15
-      break
-    case 'severe':
-      color = 'rgba(255,69,0,' // 红色
-      alpha = 0.2
-      break
+  case 'light':
+    color = 'rgba(255,220,0,' // 浅黄
+    alpha = 0.12  // 降低透明度
+    break
+  case 'medium':
+    color = 'rgba(255,165,0,' // 橙色
+    alpha = 0.15  // 降低透明度
+    break
+  case 'severe':
+    color = 'rgba(255,69,0,' // 红色
+    alpha = 0.18  // 降低透明度
+    break
   }
 
   // 绘制斜线纹理
@@ -443,23 +901,23 @@ function getTexturePattern(ctx: CanvasRenderingContext2D, level: 'light' | 'medi
   const patternCtx = patternCanvas.getContext('2d')
   if (!patternCtx) return null
 
-  // 根据等级选择颜色
+  // 根据等级选择颜色（降低透明度使斜线更淡）
   let color: string
   switch (level) {
-    case 'light':
-      color = 'rgba(255,220,0,0.3)'
-      break
-    case 'medium':
-      color = 'rgba(255,165,0,0.3)'
-      break
-    case 'severe':
-      color = 'rgba(255,69,0,0.4)'
-      break
+  case 'light':
+    color = 'rgba(255,220,0,0.25)'  // 降低透明度
+    break
+  case 'medium':
+    color = 'rgba(255,165,0,0.3)'   // 降低透明度
+    break
+  case 'severe':
+    color = 'rgba(255,69,0,0.35)'   // 降低透明度
+    break
   }
 
   // 绘制45度斜线
   patternCtx.strokeStyle = color
-  patternCtx.lineWidth = 1
+  patternCtx.lineWidth = 1  // 使用细线条
   patternCtx.beginPath()
   patternCtx.moveTo(0, 10)
   patternCtx.lineTo(10, 0)
@@ -527,6 +985,9 @@ function drawTopWarning(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
 
 // 组件挂载
 onMounted(() => {
+  // v1.9.6 修复：资源视图使用虚拟滚动，可见的资源行必然在视口内
+  // 直接计算冲突，不需要IntersectionObserver延迟渲染
+  console.log(`[GanttConflicts] Resource ${props.resourceId}: mounted, will calculate conflicts immediately`)
   nextTick(() => {
     recalculateConflicts()
   })
@@ -534,6 +995,13 @@ onMounted(() => {
 
 // 组件卸载
 onUnmounted(() => {
+  if (scrollTimer) {
+    clearTimeout(scrollTimer)
+  }
+
+  // v1.9.4 清理坐标缓存
+  coordsCache.clear()
+
   // 清理资源
   texturePatterns.value = {
     light: null,
@@ -543,8 +1011,19 @@ onUnmounted(() => {
 })
 </script>
 
+<template>
+  <canvas
+    ref="canvasRef"
+    class="gantt-conflicts-canvas"
+    :width="canvasWidth"
+    :height="canvasHeight"
+    :style="canvasStyle"
+  ></canvas>
+</template>
+
 <style scoped>
 .gantt-conflicts-canvas {
   display: block;
+  background-color: transparent;
 }
 </style>

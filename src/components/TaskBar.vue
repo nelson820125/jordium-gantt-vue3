@@ -10,11 +10,39 @@ import TaskBarTab from './Timeline/TaskBarTab.vue'
 import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { DEFAULT_TASK_BAR_CONFIG } from '../models/configs/TaskBarConfig'
+import type { PositionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 
 // 禁用自动继承attributes，手动应用到wrapper
 defineOptions({
-  inheritAttrs: false
+  inheritAttrs: false,
 })
+
+const props = defineProps<Props>()
+
+const emit = defineEmits([
+  'update:task',
+  'bar-mounted',
+  'click',
+  'dblclick',
+  'drag-end',
+  'resize-end',
+  'scroll-to-position',
+  'start-timer',
+  'stop-timer',
+  'add-predecessor',
+  'add-successor',
+  'delete',
+  'delete-link',
+  'context-menu',
+  'long-press',
+  'link-drag-start',
+  'link-drag-move',
+  'link-drag-end',
+])
+
+defineSlots<{
+  'custom-task-content'(props: TaskBarSlotProps): unknown
+}>()
 
 // 从 GanttChart 注入 enableLinkAnchor 配置
 const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', computed(() => true))
@@ -52,16 +80,8 @@ const resourcePercent = computed(() => {
 const currentResourceColor = computed(() => {
   if (viewMode.value === 'resource' && props.currentResourceId && props.resources) {
     // 从外部传入的 resources 列表中查找资源颜色（与 TaskRow 逻辑一致）
-    console.log('🎨 TaskBar - 查找资源颜色:', {
-      currentResourceId: props.currentResourceId,
-      resources: props.resources,
-      taskId: props.task.id,
-      taskName: props.task.name
-    })
     const resource = props.resources.find(r => String(r.id) === String(props.currentResourceId))
-    console.log('🎨 TaskBar - 找到的资源:', resource)
     const finalColor = resource?.color || '#85ce61'
-    console.log('🎨 TaskBar - 最终颜色:', finalColor)
     return finalColor
   }
   return '#85ce61'
@@ -167,41 +187,23 @@ interface TaskBarSlotProps {
   dayWidth: number
 }
 
-const props = defineProps<Props>()
-
-const emit = defineEmits([
-  'update:task',
-  'bar-mounted',
-  'click',
-  'dblclick',
-  'drag-end',
-  'resize-end',
-  'scroll-to-position',
-  'start-timer',
-  'stop-timer',
-  'add-predecessor',
-  'add-successor',
-  'delete',
-  'delete-link',
-  'context-menu',
-  'long-press',
-  'link-drag-start',
-  'link-drag-move',
-  'link-drag-end',
-])
-
-defineSlots<{
-  'custom-task-content'(props: TaskBarSlotProps): unknown
-}>()
-
 const slots = useSlots()
 
 // 注入视图模式
 const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
 
+// v1.9.5 注入showTaskbarTab配置
+const showTaskbarTab = inject<ComputedRef<boolean>>('gantt-show-taskbar-tab', computed(() => true))
+
 // 注入资源布局信息（用于判断跨行拖拽边界）
 const resourceRowPositions = inject<ComputedRef<Map<string, number>>>('resourceRowPositions', computed(() => new Map()))
 const resourceTaskLayouts = inject<ComputedRef<Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>>>('resourceTaskLayouts', computed(() => new Map()))
+
+// v1.9.6 Phase1 - 注入位置计算缓存实例（由Timeline提供）
+const positionCache = inject<PositionCache | null>('positionCache', null)
+
+// 注入 TaskList 宽度（用于 tooltip 定位边界检测）
+const taskListWidth = inject<Ref<number>>('gantt-task-list-width', ref(0))
 
 // 注入右键菜单配置
 const enableTaskBarContextMenu = inject<ComputedRef<boolean>>('enable-task-bar-context-menu', computed(() => true))
@@ -488,9 +490,9 @@ const taskBarStyle = computed(() => {
     }
   } else if (props.currentTimeScale === TimelineScale.HOUR) {
     // 小时视图：按分钟精确计算位置（需要考虑时间部分）
-    // 确保 baseStart 是当天的 00:00:00
-    const baseStartOfDay = new Date(renderBaseStart)
-    baseStartOfDay.setHours(0, 0, 0, 0)
+    // 计算时间线开始日期的00:00:00作为全局基准
+    const timelineStartOfDay = new Date(renderBaseStart)
+    timelineStartOfDay.setHours(0, 0, 0, 0)
 
     // 处理没有时间部分的日期字符串
     let adjustedStartDate = renderStartDate
@@ -516,15 +518,16 @@ const taskBarStyle = computed(() => {
       adjustedEndDate.setHours(0, 0, 0, 0)
     }
 
-    // 计算从当天00:00到任务开始和结束的分钟数
-    const startMinutes = getMinutesDiff(baseStartOfDay, adjustedStartDate)
-    const endMinutes = getMinutesDiff(baseStartOfDay, adjustedEndDate)
+    // 计算任务开始和结束相对于时间线开始的总分钟数
+    const startMinutesTotal = getMinutesDiff(timelineStartOfDay, adjustedStartDate)
+    const endMinutesTotal = getMinutesDiff(timelineStartOfDay, adjustedEndDate)
 
     // 每小时40px，每分钟40/60 = 2/3 px
     const pixelPerMinute = 40 / 60
 
-    left = Math.max(0, startMinutes * pixelPerMinute)
-    width = Math.max(4, (endMinutes - startMinutes) * pixelPerMinute) // 确保最小4px宽度
+    // 位置和宽度计算
+    left = Math.max(0, startMinutesTotal * pixelPerMinute)
+    width = Math.max(4, (endMinutesTotal - startMinutesTotal) * pixelPerMinute) // 确保最小4px宽度
   } else {
     // 日视图、周视图、月视图、年视图：只考虑日期部分，忽略时间部分
 
@@ -553,21 +556,54 @@ const taskBarStyle = computed(() => {
         props.currentTimeScale === TimelineScale.QUARTER ||
         props.currentTimeScale === TimelineScale.YEAR)
     ) {
-      // 优先使用基于timelineData的精确定位（适用于周视图、月视图、季度视图和年度视图）
-      // 计算开始位置
-      const startPosition = calculatePositionFromTimelineData(
-        startDateOnly,
-        props.timelineData,
-        props.currentTimeScale,
-      )
-      // 计算结束位置：为结束日期添加一天来获取正确的结束位置
-      const nextDay = new Date(endDateOnly)
-      nextDay.setDate(nextDay.getDate() + 1)
-      let endPosition = calculatePositionFromTimelineData(
-        nextDay,
-        props.timelineData,
-        props.currentTimeScale,
-      )
+      // v1.9.6 Phase1 - 优先使用缓存查询（O(1)），提升性能
+      // 周/月/季/年视图：从O(n)遍历优化为O(1)查表
+      let startPosition: number
+      let endPosition: number
+
+      if (positionCache) {
+        // 尝试从缓存获取位置
+        const cachedStartPos = positionCache.getPosition(startDateOnly, props.currentTimeScale)
+        if (cachedStartPos !== null) {
+          startPosition = cachedStartPos
+        } else {
+          // 缓存未命中，使用原算法作为fallback
+          startPosition = calculatePositionFromTimelineData(
+            startDateOnly,
+            props.timelineData,
+            props.currentTimeScale,
+          )
+        }
+
+        // 计算结束位置：为结束日期添加一天来获取正确的结束位置
+        const nextDay = new Date(endDateOnly)
+        nextDay.setDate(nextDay.getDate() + 1)
+        const cachedEndPos = positionCache.getPosition(nextDay, props.currentTimeScale)
+        if (cachedEndPos !== null) {
+          endPosition = cachedEndPos
+        } else {
+          // 缓存未命中，使用原算法作为fallback
+          endPosition = calculatePositionFromTimelineData(
+            nextDay,
+            props.timelineData,
+            props.currentTimeScale,
+          )
+        }
+      } else {
+        // 没有缓存，使用原算法（向后兼容）
+        startPosition = calculatePositionFromTimelineData(
+          startDateOnly,
+          props.timelineData,
+          props.currentTimeScale,
+        )
+        const nextDay = new Date(endDateOnly)
+        nextDay.setDate(nextDay.getDate() + 1)
+        endPosition = calculatePositionFromTimelineData(
+          nextDay,
+          props.timelineData,
+          props.currentTimeScale,
+        )
+      }
 
       // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
       if (endPosition === startPosition) {
@@ -593,21 +629,52 @@ const taskBarStyle = computed(() => {
       props.timelineData &&
       props.currentTimeScale === TimelineScale.DAY
     ) {
-      // 日视图：使用 timelineData 精确定位
-      const startPosition = calculatePositionFromTimelineData(
-        startDateOnly,
-        props.timelineData,
-        props.currentTimeScale,
-      )
+      // v1.9.6 Phase1 - 日视图也使用缓存优化
+      let startPosition: number
+      let endPosition: number
 
-      // 计算结束位置：为结束日期添加一天来获取正确的结束位置
-      const nextDay = new Date(endDateOnly)
-      nextDay.setDate(nextDay.getDate() + 1)
-      let endPosition = calculatePositionFromTimelineData(
-        nextDay,
-        props.timelineData,
-        props.currentTimeScale,
-      )
+      if (positionCache) {
+        // 尝试从缓存获取位置
+        const cachedStartPos = positionCache.getPosition(startDateOnly, props.currentTimeScale)
+        if (cachedStartPos !== null) {
+          startPosition = cachedStartPos
+        } else {
+          // 缓存未命中，使用原算法
+          startPosition = calculatePositionFromTimelineData(
+            startDateOnly,
+            props.timelineData,
+            props.currentTimeScale,
+          )
+        }
+
+        // 计算结束位置：为结束日期添加一天
+        const nextDay = new Date(endDateOnly)
+        nextDay.setDate(nextDay.getDate() + 1)
+        const cachedEndPos = positionCache.getPosition(nextDay, props.currentTimeScale)
+        if (cachedEndPos !== null) {
+          endPosition = cachedEndPos
+        } else {
+          endPosition = calculatePositionFromTimelineData(
+            nextDay,
+            props.timelineData,
+            props.currentTimeScale,
+          )
+        }
+      } else {
+        // 没有缓存，使用原算法
+        startPosition = calculatePositionFromTimelineData(
+          startDateOnly,
+          props.timelineData,
+          props.currentTimeScale,
+        )
+        const nextDay = new Date(endDateOnly)
+        nextDay.setDate(nextDay.getDate() + 1)
+        endPosition = calculatePositionFromTimelineData(
+          nextDay,
+          props.timelineData,
+          props.currentTimeScale,
+        )
+      }
 
       // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
       if (endPosition === startPosition) {
@@ -640,7 +707,7 @@ const taskBarStyle = computed(() => {
 
   // v1.9.1 计算TaskBar高度：资源视图固定41px全高度，不再按占比缩放
   const baseTaskBarHeight = props.rowHeight - 10 // 基础高度（与任务视图一致）
-  let taskBarHeight = baseTaskBarHeight
+  const taskBarHeight = baseTaskBarHeight
 
   // v1.9.1 资源视图：固定全高度，不缩放（占比通过CSS伪元素实现）
   // 任务视图：保持原有高度
@@ -679,6 +746,12 @@ const taskBarStyle = computed(() => {
     height: `${taskBarHeight}px`,
     top: `${topOffset}px`,
   }
+})
+
+// TaskBar的left位置数值（用于TaskBarTab磁吸计算）
+const taskBarLeft = computed(() => {
+  const leftStr = taskBarStyle.value.left
+  return parseFloat(leftStr) || 0
 })
 
 // 缓存 TaskBar 的位置信息，减少 DOM 读取频率
@@ -724,7 +797,7 @@ const taskStatus = computed(() => {
       return result ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
+        b: parseInt(result[3], 16),
       } : { r: 64, g: 158, b: 255 } // 默认蓝色
     }
 
@@ -750,8 +823,8 @@ const taskStatus = computed(() => {
     return {
       type: 'custom',
       color: props.task.barColor,
-      bgColor: bgColor,
-      borderColor: borderColor,
+      bgColor,
+      borderColor,
     }
   }
 
@@ -772,7 +845,7 @@ const taskStatus = computed(() => {
       return result ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
+        b: parseInt(result[3], 16),
       } : { r: 64, g: 158, b: 255 }
     }
     const rgb = hexToRgb(mainColor)
@@ -1227,7 +1300,7 @@ const handleMouseMove = (e: MouseEvent) => {
         // 虚拟预览应该显示在鼠标位置
         dragPreviewPosition.value = {
           x: e.clientX - dragPreviewOffsetX.value,
-          y: e.clientY - (props.rowHeight / 2)
+          y: e.clientY - (props.rowHeight / 2),
         }
       } else {
         dragPreviewVisible.value = false
@@ -2491,14 +2564,59 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
 
   showTooltip.value = true
 
-  // 智能定位：右侧气泡在左侧显示tooltip，左侧气泡在右侧显示
+  // v1.9.6 智能定位：强制tooltip显示在.gantt-panel-right容器内
   const isRightBubble = bubbleIndicator.value.side === 'right'
-  const offsetX = isRightBubble ? -180 : 15 // 右侧气泡向左偏移距离调整，与左侧距离一致
+  const tooltipWidth = 250 // tooltip预估宽度
+  const tooltipHeight = 200 // tooltip预估高度
+  const padding = 10 // 与边界的安全距离
 
-  tooltipPosition.value = {
-    x: event.clientX + offsetX,
-    y: event.clientY - 10,
+  // 获取.gantt-panel-right容器的边界
+  const timelineContainer = document.querySelector('.gantt-panel-right')
+  const containerRect = timelineContainer?.getBoundingClientRect()
+
+  let x = event.clientX
+  let y = event.clientY - 10
+
+  if (containerRect) {
+    // 计算默认偏移后的x坐标
+    const defaultOffsetX = isRightBubble ? -180 : 15
+    let tentativeX = x + defaultOffsetX
+
+    // 强制约束：确保tooltip左边界不超出容器左边界
+    const minX = containerRect.left + padding
+    const maxX = containerRect.right - tooltipWidth - padding
+
+    if (tentativeX < minX) {
+      // 如果超出左边界，贴左边界显示
+      tentativeX = minX
+    } else if (tentativeX > maxX) {
+      // 如果超出右边界，贴右边界显示
+      tentativeX = maxX
+    }
+
+    // 如果容器宽度不够，优先保证左边界
+    if (tentativeX < minX) {
+      tentativeX = minX
+    }
+
+    x = tentativeX
+
+    // 垂直方向边界检测
+    const minY = containerRect.top + padding
+    const maxY = containerRect.bottom - tooltipHeight - padding
+
+    if (y < minY) {
+      y = minY
+    } else if (y > maxY) {
+      y = maxY
+    }
+  } else {
+    // 如果找不到容器，使用默认偏移
+    const offsetX = isRightBubble ? -180 : 15
+    x = x + offsetX
   }
+
+  tooltipPosition.value = { x, y }
 }
 
 const handleBubbleMouseLeave = (event: MouseEvent) => {
@@ -2543,12 +2661,10 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
 
       // 计算tooltip的预估宽高（根据实际CSS设置）
       const tooltipWidth = 250 // 预估宽度
-      const tooltipHeight = 120 // 预估高度（考虑实际内容高度）
       const margin = 10 // 边距
 
       // 视口尺寸
       const viewportWidth = window.innerWidth
-      // @ts-expect-error - 预留变量，未来可能使用
       const viewportHeight = window.innerHeight
 
       // v1.9.0 改为基于TaskBar边界定位
@@ -2557,21 +2673,45 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
       // 默认显示在TaskBar上方边缘外（CSS transform: translateY(-100%)会向上偏移tooltip高度）
       let y = rect.top - 10
 
-      // 水平边界检测：左侧超出
-      if (x - tooltipWidth / 2 < margin) {
-        x = margin + tooltipWidth / 2
+      // 获取TaskList的右边界（用于防止tooltip进入TaskList区域）
+      const taskListRightBoundary = taskListWidth.value + margin
+
+      // 水平边界检测：左侧超出或进入TaskList区域
+      if (x - tooltipWidth / 2 < taskListRightBoundary) {
+        x = taskListRightBoundary + tooltipWidth / 2
       }
       // 水平边界检测：右侧超出
       if (x + tooltipWidth / 2 > viewportWidth - margin) {
         x = viewportWidth - margin - tooltipWidth / 2
       }
 
-      // 垂直边界检测：如果上方空间不足，显示在下方
-      if (rect.top - 10 - tooltipHeight < margin) {
+      // 垂直边界检测：计算上下方可用空间，选择空间更大的方向
+      const spaceAbove = rect.top - margin
+      const spaceBelow = viewportHeight - rect.bottom - margin
+
+      // 动态计算tooltip高度（基础高度 + 每行内容）
+      const baseHeight = 80 // 基础高度（标题 + padding）
+      const rowHeight = 24 // 每行内容高度
+      let contentRows = 4 // 默认4行（开始日期、结束日期、预估工时、实际工时、进度）
+
+      // 资源视图且投入占比<100%时，多1行
+      if (viewMode.value === 'resource' && resourcePercent.value < 100) {
+        contentRows += 1
+      }
+      // 有资源冲突警告时，多1行
+      if (props.hasResourceConflict) {
+        contentRows += 1
+      }
+
+      const estimatedTooltipHeight = baseHeight + (contentRows * rowHeight)
+
+      // 如果上方空间不足，显示在下方
+      if (spaceAbove < estimatedTooltipHeight && spaceBelow > spaceAbove) {
         // 显示在TaskBar下方
         y = rect.bottom + 10
         isTooltipBelow.value = true
       } else {
+        // 显示在TaskBar上方
         isTooltipBelow.value = false
       }
 
@@ -2864,13 +3004,30 @@ const calculatePositionFromTimelineData = (
     }
   }
 
-  // 周视图没找到目标日期时返回-1
-  if (timeScale === TimelineScale.WEEK) {
-    // eslint-disable-next-line no-console
-    console.warn('[Gantt Debug] 周视图定位失败，任务日期未找到 week 匹配，返回 -1', { targetDate })
-    return -1
+  // 如果在timelineData中没找到，使用数学计算作为后备方案
+  // 这对于VirtualTimelineManager场景特别重要，当任务日期在未加载的chunk中时
+  if (timelineData.length > 0) {
+    const firstPeriod = timelineData[0]
+    const lastPeriod = timelineData[timelineData.length - 1]
+    const timelineStart = new Date(firstPeriod.startDate)
+    const timelineEnd = new Date(lastPeriod.endDate)
+
+    // 如果目标日期在时间轴之前
+    if (targetDate < timelineStart) {
+      const daysBefore = Math.ceil((timelineStart.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24))
+      const dayWidth = timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
+      return -daysBefore * dayWidth
+    }
+
+    // 如果目标日期在时间轴之后，基于最后可用的位置计算
+    if (targetDate > timelineEnd) {
+      const daysAfter = Math.ceil((targetDate.getTime() - timelineEnd.getTime()) / (1000 * 60 * 60 * 24))
+      const dayWidth = timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
+      return cumulativePosition + daysAfter * dayWidth
+    }
   }
-  return cumulativePosition // 其他视图保持原逻辑
+
+  return cumulativePosition
 }
 
 // 反向函数：从像素位置计算日期（基于 timelineData）
@@ -3246,8 +3403,9 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     ></div>
 
     <!-- v1.9.2 资源视图Tab标签 -->
+    <!-- v1.9.5 可通过 show-taskbar-tab prop 控制是否显示 -->
     <TaskBarTab
-      v-if="viewMode === 'resource' && !isParent && currentResourceId"
+      v-if="showTaskbarTab && viewMode === 'resource' && !isParent && currentResourceId"
       :key="`tab-${task.id}-${currentResourceId}`"
       :task="task"
       :current-resource-id="currentResourceId"
@@ -3255,6 +3413,9 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       :resource-percent="resourcePercent"
       :resource-name="currentResourceName"
       :task-bar-width="taskBarWidth"
+      :task-bar-left="taskBarLeft"
+      :scroll-left="scrollLeft || 0"
+      :container-width="containerWidth || 0"
       :has-conflict="hasResourceConflict"
       :conflict-tasks="conflictTasks"
       :resources="resources"
@@ -3561,7 +3722,8 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
         backgroundColor: taskStatus.color,
       }"
     >
-      <div class="hover-tooltip-arrow" :style="{
+      <div
+class="hover-tooltip-arrow" :style="{
         borderTopColor: isTooltipBelow ? 'transparent' : taskStatus.color,
         borderBottomColor: isTooltipBelow ? taskStatus.color : 'transparent'
       }"></div>
@@ -3801,7 +3963,6 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 }
 */
 
-
 .task-bar.dragging {
   opacity: 0.8;
   z-index: 1000;
@@ -3921,10 +4082,6 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   justify-content: center;
   height: 100%;
 }
-
-
-
-
 
 .progress-bar {
   position: absolute;
@@ -4652,6 +4809,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   pointer-events: none;
   transform: translate(-50%, -100%); /* 默认显示在上方 */
   margin-top: -8px;
+  min-width: 150px;
 }
 
 /* 显示在下方时的样式 */

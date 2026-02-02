@@ -11,12 +11,14 @@ import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 import { perfMonitor } from '../utils/perfMonitor'
+import { perfMonitor2 } from '../utils/perfMonitor2' // v1.9.6 性能诊断工具
 import type { Task } from '../models/classes/Task'
 import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import { assignTaskRows } from '../utils/taskLayoutUtils' // v1.9.0 换行布局算法
+import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 
 // 定义Props接口
 interface Props {
@@ -158,8 +160,34 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
 const isDraggingTaskBar = ref(false)
 provide('isDraggingTaskBar', isDraggingTaskBar)
 
-// v1.9.0 计算资源视图的任务行布局（换行）
+// 记录最近变化的TaskBar ID（用于增量冲突更新）
+const lastChangedTaskId = ref<string | number | null>(null)
+provide('lastChangedTaskId', lastChangedTaskId)
+
+// v1.9.6 Phase1 - 提供位置计算缓存实例给所有TaskBar
+provide('positionCache', positionCache)
+
+// v1.9.5 P2-4优化 - 注入Split Bar拖拽状态
+const isSplitBarDragging = inject<Ref<boolean>>('isSplitBarDragging', ref(false))
+
+// v1.9.5 注入showConflicts配置
+const showConflicts = inject<ComputedRef<boolean>>('gantt-show-conflicts', computed(() => true))
+
+// v1.9.6 Sprint1(P0) - 布局缓存（用于resourceTaskLayouts按需计算）
+const layoutCache = new Map<string, {
+  taskRowMap: Map<string | number, number>,
+  rowHeights: number[],
+  totalHeight: number
+}>()
+
+// v1.9.6 Phase2 - 计算资源视图的任务行布局（按需计算+缓存优化）
+// 策略：只计算可见资源的布局，通过缓存避免重复计算
+let resourceTaskLayoutsCallCount = 0
 const resourceTaskLayouts = computed(() => {
+  resourceTaskLayoutsCallCount++
+  const startTime = performance.now()
+  console.log(`[🔍 Performance] resourceTaskLayouts computed #${resourceTaskLayoutsCallCount} triggered`)
+
   const layoutMap = new Map<string | number, {
     taskRowMap: Map<string | number, number>,
     rowHeights: number[],
@@ -167,46 +195,144 @@ const resourceTaskLayouts = computed(() => {
   }>()
 
   if (viewMode.value !== 'resource') {
+    console.log(`[🔍 Performance] resourceTaskLayouts: skipped (not resource view)`)
     return layoutMap
   }
 
   const resources = dataSource.value as Resource[]
 
+  // ⚠️ 重要：必须计算所有资源的布局，不能只计算可见资源
+  // 因为 visibleTaskRange 的计算依赖于 resourceRowPositions，而 resourceRowPositions 依赖于这里的布局数据
+  // 如果只计算可见资源，会导致循环依赖和布局错误
+
+  // 性能监控
+  let cacheHits = 0
+  let cacheMisses = 0
+
+  // 为所有资源计算布局（使用缓存优化性能）
   resources.forEach(resource => {
-    const resourceTasks = (resource as any).tasks || []
-    if (resourceTasks.length > 0) {
-      const result = assignTaskRows(resourceTasks, resource.id, 51)
-      layoutMap.set(resource.id, result)
+    // 先检查缓存命中情况
+    const cacheKey = `${resource.id}-${((resource as any).tasks || []).length}`
+    const isCacheHit = layoutCache.has(cacheKey)
+
+    // 获取布局（如果缓存未命中会自动计算并缓存）
+    const layout = getResourceLayout(resource)
+    layoutMap.set(resource.id, layout)
+
+    // 统计缓存命中率
+    if (isCacheHit) {
+      cacheHits++
     } else {
-      // 没有任务的资源，使用默认高度
-      layoutMap.set(resource.id, {
-        taskRowMap: new Map(),
-        rowHeights: [51],
-        totalHeight: 51
-      })
+      cacheMisses++
     }
   })
+
+  const endTime = performance.now()
+  const duration = (endTime - startTime).toFixed(2)
+
+  // 输出性能日志
+  if (resources.length > 0) {
+    const hitRate = ((cacheHits / resources.length) * 100).toFixed(1)
+    console.log(`[Performance] resourceTaskLayouts: ${duration}ms | computed ${resources.length} resources, cache hit rate: ${hitRate}%`)
+  }
 
   return layoutMap
 })
 
-// v1.9.0 计算资源行的累积位置（用于资源视图）
+// v1.9.6 Sprint1(P0) - 缓存清理策略（保留最近100个条目，防止内存泄漏）
+watch(dataSource, () => {
+  if (layoutCache.size > 100) {
+    const keysToDelete = Array.from(layoutCache.keys()).slice(0, layoutCache.size - 100)
+    keysToDelete.forEach(key => layoutCache.delete(key))
+    console.log(`[Performance] Layout cache cleaned: removed ${keysToDelete.length} entries`)
+  }
+})
+
+// v1.9.6 Sprint1(P0) - 获取单个资源的布局（按需计算+缓存）
+const getResourceLayout = (resource: Resource) => {
+  const resourceTasks = (resource as any).tasks || []
+
+  // 🎯 修复：缓存key需要包含任务的时间信息，因为时间交汇会影响换行布局
+  // 生成任务时间范围的简单哈希（拼接所有任务的id-start-end）
+  const timeHash = resourceTasks
+    .map((t: Task) => `${t.id}-${t.startDate || ''}-${t.endDate || ''}`)
+    .join('|')
+  const cacheKey = `${resource.id}-${resourceTasks.length}-${timeHash}`
+
+  // 检查缓存
+  if (layoutCache.has(cacheKey)) {
+    return layoutCache.get(cacheKey)!
+  }
+
+  // 未命中缓存，重新计算
+  let result
+  if (resourceTasks.length > 0) {
+    result = assignTaskRows(resourceTasks, resource.id, 51)
+  } else {
+    result = {
+      taskRowMap: new Map(),
+      rowHeights: [51],
+      totalHeight: 51,
+    }
+  }
+
+  layoutCache.set(cacheKey, result)
+  return result
+}
+
+// v1.9.6 Phase2 - 计算资源行的累积位置（懒加载优化：只计算到需要的位置）
+let resourceRowPositionsCallCount = 0
 const resourceRowPositions = computed(() => {
+  resourceRowPositionsCallCount++
+  const startTime = performance.now()
+  console.log(`[🔍 Performance] resourceRowPositions computed #${resourceRowPositionsCallCount} triggered`)
   const positions = new Map<string | number, number>()
 
   if (viewMode.value !== 'resource') {
+    console.log(`[🔍 Performance] resourceRowPositions: skipped (not resource view)`)
     return positions
   }
 
   const resources = dataSource.value as Resource[]
-  let cumulativeTop = 0
+  const scrollTop = timelineBodyScrollTop.value
+  const containerHeight = timelineBodyHeight.value || 600
+  const scrollBottom = scrollTop + containerHeight + ROW_HEIGHT * VERTICAL_BUFFER * 2
 
-  resources.forEach(resource => {
+  let cumulativeTop = 0
+  let processedCount = 0
+
+  // 🎯 Phase2优化：懒加载计算，只计算到scrollBottom以下一定范围
+  // 而不是一次性计算所有100个资源
+  for (const resource of resources) {
     positions.set(resource.id, cumulativeTop)
-    const layout = resourceTaskLayouts.value.get(resource.id)
-    const resourceHeight = layout?.totalHeight || 51
+
+    // 使用辅助函数获取布局（自动缓存）
+    const layout = getResourceLayout(resource)
+    const resourceHeight = layout.totalHeight || 51
     cumulativeTop += resourceHeight
-  })
+    processedCount++
+
+    // 优化：如果已经计算到scrollBottom之下足够远，停止计算
+    // 保留一定余量，避免滚动时需要重新计算
+    if (cumulativeTop > scrollBottom + ROW_HEIGHT * 20) {
+      // 仍需继续计算剩余资源的近似位置（假设都是51px高度）
+      const remainingResources = resources.length - processedCount
+      for (let i = processedCount; i < resources.length; i++) {
+        positions.set(resources[i].id, cumulativeTop) // 设置当前资源的位置
+        cumulativeTop += 51 // 累加位置，为下一个资源准备
+      }
+      break
+    }
+  }
+
+  const endTime = performance.now()
+  const duration = (endTime - startTime).toFixed(2)
+
+  if (processedCount < resources.length) {
+    console.log(`[Phase2] resourceRowPositions: ${duration}ms | lazy-computed ${processedCount}/${resources.length} resources`)
+  } else {
+    console.log(`[Performance] resourceRowPositions: ${duration}ms | processed ${resources.length} resources`)
+  }
 
   return positions
 })
@@ -1360,8 +1486,9 @@ const getLinkDragStartY = (): number => {
   return position.top + position.height / 2
 }
 
-// 拖拽状态管理
-const isSplitterDragging = ref(false)
+// v1.9.5 P2-4优化 - 使用从GanttChart注入的Split Bar拖拽状态
+// 替换本地的isSplitterDragging，使用统一的状态管理
+const isSplitterDragging = isSplitBarDragging
 
 // 滚动状态管理
 const isScrolledLeft = ref(false)
@@ -1387,9 +1514,18 @@ const VIRTUAL_BUFFER = 10 // 减少缓冲区以提升滑动性能
 const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
 const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
 const timelineBodyScrollTop = ref(0) // 纵向滚动位置
+const timelineBodyHeight = ref(0) // 容器高度状态管理
 
-// 数据缓存
-const timelineDataCache = new Map<string, unknown>()
+// v1.9.5 P2-3优化 - 智能缓存数据结构
+interface TimelineCacheEntry {
+  data: unknown
+  timestamp: number
+  scale: TimelineScale
+}
+
+const timelineDataCache = new Map<string, TimelineCacheEntry>()
+const CACHE_TTL = 60000 // 缓存有效期：1分钟
+const MAX_CACHE_SIZE = 4 // 最多缓存4个刻度（日/周/月/年）
 
 // 初始化状态
 const isInitialLoad = ref(true)
@@ -1432,10 +1568,188 @@ const visibleHourRange = computed(() => {
   }
 })
 
+// v1.9.6 Sprint2(P1) - 防抖的滚动位置（减少visibleTimeRange的触发频率）
+const debouncedScrollLeft = ref(0)
+const debouncedContainerWidth = ref(0)
+let scrollDebounceTimer: number | null = null
+let visibleTimeRangeCallCount = 0
+
+watch([timelineScrollLeft, timelineContainerWidth], ([newScrollLeft, newWidth]) => {
+  if (scrollDebounceTimer) {
+    clearTimeout(scrollDebounceTimer)
+  }
+
+  scrollDebounceTimer = window.setTimeout(() => {
+    debouncedScrollLeft.value = newScrollLeft
+    debouncedContainerWidth.value = newWidth
+    scrollDebounceTimer = null
+  }, 100) // 增加到100ms，减少触发频率
+
+  // 首次立即更新
+  if (debouncedScrollLeft.value === 0 && debouncedContainerWidth.value === 0) {
+    debouncedScrollLeft.value = newScrollLeft
+    debouncedContainerWidth.value = newWidth
+  }
+}, { immediate: true })
+
+// v1.9.5 P2-1优化 - 计算水平方向可见的时间范围（用于TaskBar过滤）
+const visibleTimeRange = computed(() => {
+  visibleTimeRangeCallCount++
+  if (visibleTimeRangeCallCount % 10 === 0) {
+    console.log(`[Performance] visibleTimeRange called ${visibleTimeRangeCallCount} times`)
+  }
+
+  const scrollLeft = debouncedScrollLeft.value
+  const containerWidth = debouncedContainerWidth.value || timelineContainerWidth.value
+  // v1.9.6 Sprint2(P1) - 根据时间刻度动态调整缓冲区，避免月/季/年视图可见范围过大
+  let bufferRatio = 0.3
+  if (currentTimeScale.value === TimelineScale.WEEK) {
+    bufferRatio = 0.15
+  } else if (
+    currentTimeScale.value === TimelineScale.MONTH ||
+    currentTimeScale.value === TimelineScale.QUARTER ||
+    currentTimeScale.value === TimelineScale.YEAR
+  ) {
+    bufferRatio = 0.05
+  }
+  const bufferWidth = containerWidth * bufferRatio
+
+  // 根据当前时间刻度和scrollLeft计算可见的开始日期
+  const startDate = getDateByScrollPosition(Math.max(0, scrollLeft - bufferWidth))
+  // 计算可见的结束日期
+  const endDate = getDateByScrollPosition(scrollLeft + containerWidth + bufferWidth)
+
+  // v1.9.6 Sprint2(P1) - 调试日志：输出计算结果
+  if (visibleTimeRangeCallCount % 10 === 0) {
+    const scale = currentTimeScale.value
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    console.log(`[Sprint2-Debug] visibleTimeRange: ${scale}, scrollLeft=${scrollLeft.toFixed(0)}, containerWidth=${containerWidth.toFixed(0)}, buffer=${bufferWidth.toFixed(0)}`)
+    console.log(`[Sprint2-Debug] Date range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]} (${daysDiff} days)`)
+  }
+
+  return { startDate, endDate }
+})
+
+// v1.9.5 P2-1优化 - 根据滚动位置计算日期（v1.9.6 Sprint2 优化 - 使用timelineData精确计算）
+const getDateByScrollPosition = (scrollPosition: number): Date => {
+  const timelineStart = timelineConfig.value.startDate
+  const timelineEnd = timelineConfig.value.endDate
+  const scale = currentTimeScale.value
+
+  // v1.9.6 Sprint2 修复：边界处理
+  if (scrollPosition <= 0) {
+    return timelineStart
+  }
+
+  if (scale === TimelineScale.HOUR) {
+    // 小时视图：每小时40px
+    const hours = scrollPosition / 40
+    return new Date(timelineStart.getTime() + hours * 60 * 60 * 1000)
+  } else if (scale === TimelineScale.DAY) {
+    // 日视图：每天30px
+    const days = scrollPosition / 30
+    return new Date(timelineStart.getTime() + days * 24 * 60 * 60 * 1000)
+  } else if (scale === TimelineScale.WEEK || scale === TimelineScale.MONTH || scale === TimelineScale.QUARTER || scale === TimelineScale.YEAR) {
+    // v1.9.6 Sprint2(P1) - 周/月/季/年视图：使用timelineData精确计算（避免累积误差）
+    const data = timelineData.value as any
+    if (!data || data.length === 0) {
+      console.warn(`[Sprint2-Debug] timelineData is empty for scale=${scale}, falling back to timelineStart`)
+      return timelineStart
+    }
+
+    let cumulativePosition = 0
+
+    if (scale === TimelineScale.WEEK) {
+      // 周视图：遍历weeks找到对应位置
+      for (const periodData of data) {
+        const weeks = periodData.weeks || []
+        for (const week of weeks) {
+          const weekWidth = 60
+          if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + weekWidth) {
+            // 找到目标周，计算周内具体日期
+            const offsetInWeek = scrollPosition - cumulativePosition
+            const dayWidth = weekWidth / 7
+            const dayIndex = Math.floor(offsetInWeek / dayWidth)
+            const subDays = week.subDays || []
+            if (dayIndex < subDays.length) {
+              return new Date(subDays[dayIndex].date)
+            }
+            return new Date(week.weekStart)
+          }
+          cumulativePosition += weekWidth
+        }
+      }
+    } else if (scale === TimelineScale.MONTH) {
+      // 月视图：遍历每个月找到对应位置
+      for (const periodData of data) {
+        const monthWidth = 60
+        if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + monthWidth) {
+          // 找到目标月，计算月内具体日期
+          const offsetInMonth = scrollPosition - cumulativePosition
+          const daysInMonth = periodData.monthData?.dayCount || 30
+          const dayWidth = monthWidth / daysInMonth
+          const dayIndex = Math.floor(offsetInMonth / dayWidth)
+          return new Date(periodData.year, periodData.month - 1, dayIndex + 1)
+        }
+        cumulativePosition += monthWidth
+      }
+    } else if (scale === TimelineScale.QUARTER) {
+      // 季度视图：遍历quarters找到对应位置
+      for (const periodData of data) {
+        const quarters = (periodData as any).quarters || []
+        for (const quarter of quarters) {
+          const quarterWidth = 60
+          if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + quarterWidth) {
+            // 找到目标季度，计算季度内具体日期
+            const offsetInQuarter = scrollPosition - cumulativePosition
+            const quarterStart = new Date(quarter.startDate)
+            const quarterEnd = new Date(quarter.endDate)
+            const daysInQuarter = Math.ceil((quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24))
+            const dayWidth = quarterWidth / daysInQuarter
+            const dayOffset = Math.floor(offsetInQuarter / dayWidth)
+            return new Date(quarterStart.getTime() + dayOffset * 24 * 60 * 60 * 1000)
+          }
+          cumulativePosition += quarterWidth
+        }
+      }
+    } else if (scale === TimelineScale.YEAR) {
+      // 年视图：遍历halfYears找到对应位置
+      for (const periodData of data) {
+        const halfYears = (periodData as any).halfYears || []
+        for (const halfYear of halfYears) {
+          const halfYearWidth = 180
+          if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + halfYearWidth) {
+            // 找到目标半年，计算半年内具体日期
+            const offsetInHalfYear = scrollPosition - cumulativePosition
+            const halfYearStart = new Date(halfYear.startDate)
+            const halfYearEnd = new Date(halfYear.endDate)
+            const daysInHalfYear = Math.ceil((halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24))
+            const dayWidth = halfYearWidth / daysInHalfYear
+            const dayOffset = Math.floor(offsetInHalfYear / dayWidth)
+            return new Date(halfYearStart.getTime() + dayOffset * 24 * 60 * 60 * 1000)
+          }
+          cumulativePosition += halfYearWidth
+        }
+      }
+    }
+
+    // 如果没找到匹配位置，返回最后一个日期
+    console.warn(`[Sprint2-Debug] scrollPosition=${scrollPosition} exceeds timelineData range (cumulative=${cumulativePosition}), returning end date`)
+    return timelineEnd
+  }
+
+  // 默认返回开始日期
+  return timelineStart
+}
+
 // 计算纵向可视区域的任务范围（支持动态行高）
+let visibleTaskRangeCallCount = 0
 const visibleTaskRange = computed(() => {
+  visibleTaskRangeCallCount++
+  const startTime = performance.now()
   const scrollTop = timelineBodyScrollTop.value
   const containerHeight = timelineBodyHeight.value || 600
+  console.log(`[🔍 Performance] visibleTaskRange computed #${visibleTaskRangeCallCount} triggered | scrollTop: ${scrollTop}`)
 
   if (viewMode.value === 'resource') {
     // 资源视图：基于资源行的实际高度计算可见范围
@@ -1447,8 +1761,9 @@ const visibleTaskRange = computed(() => {
     // 找到第一个可见的资源行
     for (let i = 0; i < resources.length; i++) {
       const resourceId = resources[i].id
-      const rowTop = resourceRowPositions.value.get(resourceId) || 0
-      const layout = resourceTaskLayouts.value.get(resourceId)
+      const rowTop = resourceRowPositions.value?.get(resourceId) || 0
+      // 🎯 使用辅助函数获取布局，避免循环依赖
+      const layout = getResourceLayout(resources[i])
       const rowHeight = layout?.totalHeight || ROW_HEIGHT
       const rowBottom = rowTop + rowHeight
 
@@ -1462,13 +1777,17 @@ const visibleTaskRange = computed(() => {
     const scrollBottom = scrollTop + containerHeight
     for (let i = startIndex; i < resources.length; i++) {
       const resourceId = resources[i].id
-      const rowTop = resourceRowPositions.value.get(resourceId) || 0
+      const rowTop = resourceRowPositions.value?.get(resourceId) || 0
 
       if (rowTop > scrollBottom + ROW_HEIGHT * VERTICAL_BUFFER) {
         endIndex = i
         break
       }
     }
+
+    const endTime = performance.now()
+    const duration = (endTime - startTime).toFixed(2)
+    console.log(`[Performance] visibleTaskRange: ${duration}ms | range: ${startIndex}-${endIndex} / ${resources.length}`)
 
     return {
       startIndex: Math.max(0, startIndex),
@@ -1491,10 +1810,13 @@ const visibleTasks = computed(() => {
   const { startIndex, endIndex } = visibleTaskRange.value
 
   // 任务视图：返回可见的任务列表
-  return tasks.value.slice(startIndex, endIndex).map((task, index) => ({
+  const verticallyVisibleTasks = tasks.value.slice(startIndex, endIndex).map((task, index) => ({
     task,
     originalIndex: startIndex + index,
   }))
+
+  // v1.9.6 Sprint2 修复：任务视图需要保留边界磁吸气泡，因此不做水平过滤
+  return verticallyVisibleTasks
 })
 
 // v1.9.0 资源视图的可见资源列表
@@ -1510,6 +1832,353 @@ const visibleResources = computed(() => {
     resource,
     originalIndex: startIndex + index,
   }))
+})
+
+// v1.9.6 Sprint2(P1+P4) - 资源视图TaskBar分批渲染队列（优化：批次从20改为5）
+const RESOURCE_BATCH_SIZE = 5 // 方案4: 更小批次，从20改为5
+const FRAME_TIME_BUDGET = 8 // 每帧最多8ms用于TaskBar渲染
+
+// v1.9.6 Sprint2(P5) - TaskBar渲染缓存机制：避免重复渲染已有TaskBar
+type TaskBarRenderCache = {
+  taskId: string | number
+  resourceId: string | number
+  rendered: boolean // 是否已经渲染过DOM
+  timestamp: number // 最后渲染时间
+}
+
+const taskBarRenderCache = shallowRef(new Map<string, TaskBarRenderCache>()) // key: resourceId-taskId
+
+type ResourceTaskQueue = {
+  tasks: Task[]
+  visibleCount: number
+  totalCount: number
+  originalTasks: Task[]
+}
+
+const resourceTaskQueues = shallowRef(new Map<string | number, ResourceTaskQueue>())
+const resourceTaskRenderLimits = shallowRef(new Map<string | number, number>())
+const resourceRenderPhase = ref<'visible' | 'background'>('visible')
+let resourceBatchRafId: number | null = null
+
+const stopResourceBatchRender = () => {
+  if (resourceBatchRafId !== null) {
+    cancelAnimationFrame(resourceBatchRafId)
+    resourceBatchRafId = null
+  }
+}
+
+const scheduleResourceBatchRender = () => {
+  stopResourceBatchRender()
+
+  const step = () => {
+    if (viewMode.value !== 'resource') {
+      resourceBatchRafId = null
+      return
+    }
+
+    // 方案4: 帧时间预算控制
+    const frameStartTime = performance.now()
+    const limits = new Map(resourceTaskRenderLimits.value)
+    let hasMore = false
+    let hasBackground = false
+    let processedInFrame = 0
+
+    resourceTaskQueues.value.forEach((queue, resourceId) => {
+      // 检查是否超出帧时间预算
+      if (performance.now() - frameStartTime > FRAME_TIME_BUDGET) {
+        hasMore = true // 下一帧继续处理
+        return
+      }
+
+      const current = limits.get(resourceId) || 0
+      // v1.9.6 Sprint4 - 优化：只使用 visibleCount，忽略 background 阶段
+      // 因为 queue.totalCount 已经等于 queue.visibleCount（在 rebuildResourceTaskQueues 中已移除 backgroundTasks）
+      const phaseTarget = queue.visibleCount
+
+      // v1.9.6 Sprint4 - 移除 hasBackground 检测，因为不再有 background 任务
+      // if (queue.totalCount > queue.visibleCount) {
+      //   hasBackground = true
+      // }
+
+      if (current < phaseTarget) {
+        const next = Math.min(phaseTarget, current + RESOURCE_BATCH_SIZE)
+        limits.set(resourceId, next)
+        hasMore = true
+        processedInFrame++
+      }
+    })
+
+    // v1.9.6 Sprint4 - 禁用 background 渲染阶段
+    // 因为队列中已经没有 background 任务了（totalCount === visibleCount）
+    // if (!hasMore && resourceRenderPhase.value === 'visible' && hasBackground) {
+    //   resourceRenderPhase.value = 'background'
+    //   hasMore = true
+    // }
+
+    if (hasMore) {
+      resourceTaskRenderLimits.value = limits
+      resourceBatchRafId = requestAnimationFrame(step)
+    } else {
+      resourceBatchRafId = null
+    }
+  }
+
+  resourceBatchRafId = requestAnimationFrame(step)
+}
+
+const rebuildResourceTaskQueues = () => {
+  if (viewMode.value !== 'resource') {
+    resourceTaskQueues.value = new Map()
+    resourceTaskRenderLimits.value = new Map()
+    resourceRenderPhase.value = 'visible'
+    taskBarRenderCache.value = new Map() // 清空缓存
+    stopResourceBatchRender()
+    return
+  }
+
+  const { startDate: visibleStartDate, endDate: visibleEndDate } = visibleTimeRange.value
+  const skipHorizontalFilter = currentTimeScale.value === TimelineScale.HOUR
+
+  // 方案1: 超激进虚拟化 - 计算精确的屏幕可见区域（像素级别）
+  const scrollLeft = timelineScrollLeft.value
+  const containerWidth = timelineContainerWidth.value
+  const scale = currentTimeScale.value
+  const timelineStart = timelineConfig.value.startDate.getTime()
+
+  // 根据时间刻度计算每单位的像素宽度
+  let pixelPerMs = 0
+  if (scale === TimelineScale.HOUR) {
+    pixelPerMs = 40 / (60 * 60 * 1000) // 40px per hour
+  } else if (scale === TimelineScale.DAY) {
+    pixelPerMs = 30 / (24 * 60 * 60 * 1000) // 30px per day (修复：之前是50，应该是30)
+  } else if (scale === TimelineScale.WEEK) {
+    pixelPerMs = 60 / (7 * 24 * 60 * 60 * 1000) // 60px per week
+  } else if (scale === TimelineScale.MONTH) {
+    pixelPerMs = 60 / (30 * 24 * 60 * 60 * 1000) // 60px per month (approximate)
+  } else if (scale === TimelineScale.QUARTER) {
+    pixelPerMs = 90 / (90 * 24 * 60 * 60 * 1000) // 90px per quarter
+  } else if (scale === TimelineScale.YEAR) {
+    pixelPerMs = 120 / (365 * 24 * 60 * 60 * 1000) // 120px per year
+  }
+
+  // 超精确计算：只保留10%缓冲区（方案1核心）
+  const ULTRA_TIGHT_BUFFER = 0.1 // 只保留10%缓冲区
+  const bufferPixels = containerWidth * ULTRA_TIGHT_BUFFER
+  const viewportStartPixel = Math.max(0, scrollLeft - bufferPixels)
+  const viewportEndPixel = scrollLeft + containerWidth + bufferPixels
+
+  // 转换为时间戳进行超精确过滤
+  const viewportStartTime = timelineStart + viewportStartPixel / pixelPerMs
+  const viewportEndTime = timelineStart + viewportEndPixel / pixelPerMs
+
+  const queues = new Map<string | number, ResourceTaskQueue>()
+  const limits = new Map<string | number, number>()
+
+  // v1.9.6 Sprint4 - 日志：记录实际处理的资源数量
+  const totalResources = (dataSource.value as Resource[]).length
+  const visibleResourcesCount = visibleResources.value.length
+  console.log(`[Sprint4] rebuildResourceTaskQueues: processing ${visibleResourcesCount}/${totalResources} visible resources`)
+
+  // v1.9.6 Sprint2(P5) - 渲染缓存增量更新：保留已有记录
+  const currentCache = new Map(taskBarRenderCache.value)
+  const newCache = new Map<string, TaskBarRenderCache>()
+  const currentTimestamp = Date.now()
+  let cachedCount = 0 // 统计已渲染的TaskBar数量
+  let totalVisibleTaskBars = 0 // v1.9.6 Sprint4 - 统计可见任务数量
+
+  visibleResources.value.forEach(({ resource }) => {
+    const resourceId = resource.id as string | number
+    const originalTasks = ((resource as any).tasks || []) as Task[]
+
+    // 方案1: 使用超精确的像素级别过滤
+    const visibleTasks = skipHorizontalFilter
+      ? originalTasks
+      : originalTasks.filter(task => {
+        if (!task.startDate || !task.endDate) {
+          return false
+        }
+        const taskStartTime = new Date(task.startDate).getTime()
+        const taskEndTime = new Date(task.endDate).getTime()
+
+        // 超精确过滤：TaskBar必须在像素级别的可见范围内
+        return taskEndTime >= viewportStartTime && taskStartTime <= viewportEndTime
+      })
+
+    // v1.9.6 Sprint2(P5) - 更新渲染缓存：记录所有TaskBar的状态
+    originalTasks.forEach((task, idx) => {
+      const taskId = task.id ?? `idx-${idx}`
+      const cacheKey = `${resourceId}-${taskId}`
+      const existingCache = currentCache.get(cacheKey)
+
+      // 如果已经渲染过，保留rendered=true状态
+      const isRendered = existingCache?.rendered || false
+      if (isRendered) {
+        cachedCount++
+      }
+
+      newCache.set(cacheKey, {
+        taskId,
+        resourceId,
+        rendered: isRendered,
+        timestamp: isRendered ? existingCache.timestamp : currentTimestamp,
+      })
+    })
+
+    // v1.9.6 Sprint4 - 优化：移除 backgroundTasks，只保留 visibleTasks
+    // 这样可以避免后续的 background 渲染阶段渲染不可见的 TaskBar
+    queues.set(resourceId, {
+      tasks: visibleTasks,  // 只保留可见任务，不包含 backgroundTasks
+      visibleCount: visibleTasks.length,
+      totalCount: visibleTasks.length,  // totalCount = visibleCount，禁用 background 阶段
+      originalTasks,
+    })
+
+    totalVisibleTaskBars += visibleTasks.length  // v1.9.6 Sprint4 - 累计可见任务数
+
+    // v1.9.6 Sprint2(P5) - 智能初始渲染限制：优先渲染未缓存的TaskBar
+    const previousLimit = resourceTaskRenderLimits.value.get(resourceId)
+    let initialLimit: number
+
+    if (previousLimit !== undefined && previousLimit >= visibleTasks.length) {
+      // 如果之前已经渲染超过当前可见数量，直接继承
+      initialLimit = Math.min(previousLimit, visibleTasks.length)  // v1.9.6 Sprint4 - 修复：使用 visibleTasks.length
+    } else {
+      // 否则按批次大小逐步渲染
+      initialLimit = Math.min(RESOURCE_BATCH_SIZE, visibleTasks.length)
+    }
+
+    limits.set(resourceId, initialLimit)
+  })
+
+  resourceTaskQueues.value = queues
+  resourceTaskRenderLimits.value = limits
+  resourceRenderPhase.value = 'visible'
+  taskBarRenderCache.value = newCache // 更新缓存
+
+  // v1.9.6 Sprint4 - 输出优化后的统计信息
+  console.log(`[Sprint4] Will render ${totalVisibleTaskBars} TaskBars (from ${visibleResourcesCount} visible resources)`)
+
+  // v1.9.6 Sprint2(P5) - 输出缓存统计
+  const totalTaskBars = newCache.size
+  const cacheHitRate = totalTaskBars > 0 ? ((cachedCount / totalTaskBars) * 100).toFixed(1) : '0.0'
+  console.log(`[Sprint2-P5] TaskBar cache: ${cachedCount}/${totalTaskBars} already rendered (${cacheHitRate}% hit rate)`)
+
+  scheduleResourceBatchRender()
+}
+
+watch(
+  () => [viewMode.value, currentTimeScale.value, visibleTimeRange.value, visibleResources.value],
+  () => rebuildResourceTaskQueues(),
+  { immediate: true },
+)
+
+// v1.9.6 Sprint2(P5) - 监控渲染限制变化，标记已渲染的TaskBar
+watch(
+  () => resourceTaskRenderLimits.value,
+  (newLimits) => {
+    if (viewMode.value !== 'resource') return
+
+    const cache = new Map(taskBarRenderCache.value)
+    const currentTimestamp = Date.now()
+    let updatedCount = 0
+
+    resourceTaskQueues.value.forEach((queue, resourceId) => {
+      const renderLimit = newLimits.get(resourceId) || 0
+      const renderedTasks = queue.tasks.slice(0, renderLimit)
+
+      renderedTasks.forEach((task, idx) => {
+        const taskId = task.id ?? `idx-${idx}`
+        const cacheKey = `${resourceId}-${taskId}`
+        const existing = cache.get(cacheKey)
+
+        // 标记为已渲染
+        if (existing && !existing.rendered) {
+          existing.rendered = true
+          existing.timestamp = currentTimestamp
+          updatedCount++
+        }
+      })
+    })
+
+    if (updatedCount > 0) {
+      taskBarRenderCache.value = cache
+      console.log(`[Sprint2-P5] Marked ${updatedCount} TaskBars as rendered (cache size: ${cache.size})`)
+    }
+  },
+  { deep: false },
+)
+
+// v1.9.5 P2-1优化 - 资源视图的可见资源及其水平过滤后的任务
+let filteredTasksCallCount = 0
+const visibleResourcesWithFilteredTasks = computed(() => {
+  filteredTasksCallCount++
+
+  if (viewMode.value !== 'resource') {
+    return []
+  }
+
+  const { startDate: visibleStartDate, endDate: visibleEndDate } = visibleTimeRange.value
+  const skipHorizontalFilter = currentTimeScale.value === TimelineScale.HOUR
+
+  // v1.9.6 Sprint2(P1) - 临时调试：每次都输出时间范围
+  if (filteredTasksCallCount <= 5 || filteredTasksCallCount % 10 === 0) {
+    const daysDiff = Math.ceil((visibleEndDate.getTime() - visibleStartDate.getTime()) / (1000 * 60 * 60 * 24))
+    console.log(`[Sprint2-Debug] #${filteredTasksCallCount} visibleTimeRange: ${visibleStartDate.toISOString().split('T')[0]} to ${visibleEndDate.toISOString().split('T')[0]} (${daysDiff} days)`)
+  }
+
+  // 性能监控统计
+  let totalOriginalTasks = 0
+  let totalFilteredTasks = 0
+
+  const result = visibleResources.value.map(({ resource, originalIndex }) => {
+    const originalTasks = (resource as any).tasks || []
+    totalOriginalTasks += originalTasks.length
+
+    const queue = resourceTaskQueues.value.get(resource.id as string | number)
+    const limit = resourceTaskRenderLimits.value.get(resource.id as string | number)
+
+    let renderTasks: Task[]
+    if (queue) {
+      const renderCount = limit ?? queue.visibleCount
+      renderTasks = queue.tasks.slice(0, renderCount)
+    } else {
+      // 过滤出在可见时间范围内的任务（用于TaskBar渲染）
+      renderTasks = skipHorizontalFilter
+        ? originalTasks
+        : originalTasks.filter((task: Task) => {
+          // 跳过没有时间信息的任务
+          if (!task.startDate || !task.endDate) {
+            return false
+          }
+
+          const taskStart = new Date(task.startDate)
+          const taskEnd = new Date(task.endDate)
+
+          // 任务结束日期 >= 可见开始日期 && 任务开始日期 <= 可见结束日期
+          return taskEnd >= visibleStartDate && taskStart <= visibleEndDate
+        })
+    }
+
+    totalFilteredTasks += renderTasks.length
+
+    return {
+      resource: {
+        ...resource,
+        tasks: renderTasks,
+        // 保留原始完整的任务列表（用于GanttConflicts冲突检测）
+        allTasks: originalTasks,
+      } as Resource,
+      originalIndex,
+    }
+  })
+
+  // v1.9.6 Sprint2(P1) - 性能监控日志（每10次输出一次）
+  if (filteredTasksCallCount % 5 === 0 && totalOriginalTasks > 0) {
+    const filterRate = ((1 - totalFilteredTasks / totalOriginalTasks) * 100).toFixed(1)
+    console.log(`[Sprint2-P1] visibleResourcesWithFilteredTasks #${filteredTasksCallCount}: ${totalFilteredTasks}/${totalOriginalTasks} taskbars, filtered: ${filterRate}%`)
+  }
+
+  return result
 })
 
 // 防抖处理滚动事件（优化：增加防抖时间）
@@ -1535,32 +2204,63 @@ const debouncedUpdateCanvasPosition = debounce(() => {
   updateSvgSize() // 重新计算 Canvas 位置和尺寸
 }, 200)
 
-// 缓存时间轴数据的函数
+// v1.9.5 P2-3优化 - 智能缓存时间轴数据的函数
 const getCachedTimelineData = (): unknown => {
   const scale = currentTimeScale.value
   const startTime = timelineConfig.value.startDate.getTime()
   const endTime = timelineConfig.value.endDate.getTime()
   const key = `${scale}-${startTime}-${endTime}`
 
-  if (!timelineDataCache.has(key)) {
-    let data: unknown
-    if (scale === TimelineScale.HOUR) {
-      data = generateHourTimelineData()
-    } else if (scale === TimelineScale.WEEK) {
-      data = generateWeekTimelineData()
-    } else if (scale === TimelineScale.MONTH) {
-      data = generateMonthTimelineData()
-    } else if (scale === TimelineScale.QUARTER) {
-      data = generateQuarterTimelineData()
-    } else if (scale === TimelineScale.YEAR) {
-      data = generateYearTimelineData()
-    } else {
-      data = generateDayTimelineData()
-    }
-    timelineDataCache.set(key, data)
+  // 检查缓存是否存在且未过期
+  const cached = timelineDataCache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    // 缓存命中且未过期
+    return cached.data
   }
 
-  return timelineDataCache.get(key) as unknown
+  // 缓存未命中或已过期，重新生成数据
+  let data: unknown
+  if (scale === TimelineScale.HOUR) {
+    data = generateHourTimelineData()
+  } else if (scale === TimelineScale.WEEK) {
+    data = generateWeekTimelineData()
+  } else if (scale === TimelineScale.MONTH) {
+    data = generateMonthTimelineData()
+  } else if (scale === TimelineScale.QUARTER) {
+    data = generateQuarterTimelineData()
+  } else if (scale === TimelineScale.YEAR) {
+    data = generateYearTimelineData()
+  } else {
+    data = generateDayTimelineData()
+  }
+
+  // 保存到缓存
+  timelineDataCache.set(key, {
+    data,
+    timestamp: Date.now(),
+    scale,
+  })
+
+  // 缓存大小控制：如果超过最大缓存数，删除最旧的条目
+  if (timelineDataCache.size > MAX_CACHE_SIZE) {
+    let oldestKey: string | null = null
+    let oldestTime = Date.now()
+
+    // 找到最旧的缓存条目
+    timelineDataCache.forEach((entry, entryKey) => {
+      if (entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp
+        oldestKey = entryKey
+      }
+    })
+
+    // 删除最旧的条目
+    if (oldestKey) {
+      timelineDataCache.delete(oldestKey)
+    }
+  }
+
+  return data
 }
 
 // 获取虚拟滚动优化后的时间轴数据
@@ -1663,8 +2363,6 @@ const totalTimelineWidth = computed(() => {
   return totalDays * 30
 })
 
-// 容器高度状态管理
-const timelineBodyHeight = ref(0)
 let resizeObserver: ResizeObserver | null = null
 
 // 里程碑位置信息管理（用于推挤效果）
@@ -1783,29 +2481,36 @@ const getOtherMilestonesInfo = (currentId: number) => {
   return result
 }
 
-// 处理拖拽开始事件
+// v1.9.5 P2-4优化 - 监听Split Bar拖拽结束，执行清理工作
+watch(isSplitBarDragging, (dragging) => {
+  if (!dragging) {
+    // 拖拽结束后，手动触发一次容器宽度更新
+    if (timelineContainerElement.value) {
+      const newWidth = timelineContainerElement.value.clientWidth
+      if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
+        timelineContainerWidth.value = newWidth
+      }
+    }
+
+    // Splitter拖拽结束后，强制重新计算半圆显示状态
+    // 因为Timeline容器宽度可能发生了变化
+    hideBubbles.value = true
+    setTimeout(() => {
+      hideBubbles.value = false
+    }, 300) // 300ms后恢复半圆显示
+  }
+})
+
+// 处理拖拽开始事件（保留用于兼容性，但不再更新状态）
 const handleSplitterDragStart = () => {
-  isSplitterDragging.value = true
+  // v1.9.5 P2-4优化 - 状态已由GanttChart统一管理
+  // isSplitterDragging 现在是注入的响应式引用
 }
 
-// 处理拖拽结束事件
+// 处理拖拽结束事件（保留用于兼容性，但不再更新状态）
 const handleSplitterDragEnd = () => {
-  isSplitterDragging.value = false
-
-  // 拖拽结束后，手动触发一次容器宽度更新
-  if (timelineContainerElement.value) {
-    const newWidth = timelineContainerElement.value.clientWidth
-    if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
-      timelineContainerWidth.value = newWidth
-    }
-  }
-
-  // Splitter拖拽结束后，强制重新计算半圆显示状态
-  // 因为Timeline容器宽度可能发生了变化
-  hideBubbles.value = true
-  setTimeout(() => {
-    hideBubbles.value = false
-  }, 300) // 300ms后恢复半圆显示
+  // v1.9.5 P2-4优化 - 状态已由GanttChart统一管理
+  // 清理工作已移至watch(isSplitBarDragging)
 }
 
 // 处理Timeline容器resize事件（如TaskList切换等）
@@ -1851,6 +2556,7 @@ const handleTaskRowHover = (taskId: number | string | null) => {
 
 // 计算Timeline内容的总高度
 const contentHeight = computed(() => {
+  const startTime = performance.now()
   const minHeight = 400 // 最小高度确保有足够的空间
 
   // v1.9.0 资源视图：使用实际的累计高度
@@ -1859,9 +2565,14 @@ const contentHeight = computed(() => {
     let totalHeight = 0
 
     resources.forEach(resource => {
-      const layout = resourceTaskLayouts.value.get(resource.id)
+      // 🎯 使用辅助函数获取布局，确保所有资源高度都被计算
+      const layout = getResourceLayout(resource)
       totalHeight += layout?.totalHeight || 51
     })
+
+    const endTime = performance.now()
+    const duration = (endTime - startTime).toFixed(2)
+    console.log(`[Performance] contentHeight: ${duration}ms | processed ${resources.length} resources`)
 
     return Math.max(totalHeight, minHeight, timelineBodyHeight.value)
   }
@@ -1925,8 +2636,12 @@ const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
 
 // 生成时间轴数据
 const generateTimelineData = (): any => {
+  const startTime = performance.now()
   // 使用缓存版本提升性能
-  return getCachedTimelineData()
+  const result = getCachedTimelineData()
+  const duration = (performance.now() - startTime).toFixed(2)
+  console.log(`[🔍 Performance] generateTimelineData: ${duration}ms | scale: ${currentTimeScale.value}`)
+  return result
 }
 
 // 清除缓存的函数
@@ -2156,6 +2871,9 @@ const getGlobalWeekPosition = (monthIndex: number, weekIndex: number) => {
 
 // 更新时间刻度方法 - 供外部调用
 const updateTimeScale = (scale: TimelineScale) => {
+  perfMonitor2.start(`updateTimeScale-${scale}`)
+  console.log(`[🔧 Action] updateTimeScale: ${currentTimeScale.value} → ${scale}`)
+
   currentTimeScale.value = scale
 
   // 重置初始化状态
@@ -2240,6 +2958,7 @@ const updateTimeScale = (scale: TimelineScale) => {
   }
 
   // 重新生成时间线数据
+  console.log('[📊 Timeline Data] Regenerating timeline data for new scale...')
   timelineData.value = generateTimelineData()
 
   // 等待DOM更新后触发多个重新计算事件
@@ -2257,6 +2976,9 @@ const updateTimeScale = (scale: TimelineScale) => {
       // 4. 视图切换完成后，定位到今日
       setTimeout(() => {
         scrollToTodayCenter()
+
+        perfMonitor2.end(`updateTimeScale-${scale}`)
+        perfMonitor2.report()
       }, 100)
     }, 50)
   })
@@ -2289,6 +3011,30 @@ watch(
       timelineData.value = generateTimelineData()
     }
   },
+)
+
+// v1.9.6 Phase1 - 监听timelineData和时间刻度变化，自动重建位置缓存
+// 优化：只在Timeline层执行一次，所有TaskBar共享缓存（250个TaskBar × 3ms → 预计算80ms + 250个TaskBar × 0.2ms）
+let positionCacheWatchCount = 0
+watch(
+  [timelineData, currentTimeScale],
+  ([newData, newScale]) => {
+    positionCacheWatchCount++
+    const watchStartTime = performance.now()
+    console.log(`[🔍 Performance] positionCache watch triggered #${positionCacheWatchCount} | scale: ${newScale}`)
+
+    if (newData && newScale) {
+      // 调用缓存构建（内部会判断是否需要重建）
+      const cacheStartTime = performance.now()
+      positionCache.buildCache(newData as any[], newScale)
+      const cacheDuration = (performance.now() - cacheStartTime).toFixed(2)
+      console.log(`[🔍 Performance] positionCache.buildCache: ${cacheDuration}ms`)
+    }
+
+    const totalDuration = (performance.now() - watchStartTime).toFixed(2)
+    console.log(`[🔍 Performance] positionCache watch completed: ${totalDuration}ms`)
+  },
+  { immediate: true } // 立即执行，确保初始化时也构建缓存
 )
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
@@ -2868,6 +3614,9 @@ const scrollToDate = (date: Date | string) => {
 
 // 更新任务
 const updateTask = (updatedTask: Task) => {
+  perfMonitor2.start('updateTask')
+  console.log('[🔧 Task Update] Task updated:', updatedTask.id)
+
   // 不直接修改props数据，而是通过事件通知父组件
   // 触发全局事件，通知父组件更新数据
   window.dispatchEvent(
@@ -2875,6 +3624,8 @@ const updateTask = (updatedTask: Task) => {
       detail: updatedTask,
     }),
   )
+
+  perfMonitor2.end('updateTask')
 }
 
 // 处理TaskBar双击事件 - 只emit事件
@@ -3002,34 +3753,95 @@ function handleBarMounted(payload: {
 const handleTaskBarDragEnd = (updatedTask: Task) => {
   // 如果是资源视图，需要更新dataSource中的资源数据
   if (viewMode.value === 'resource' && dataSource.value) {
+    let targetResourceId: string | number | null = null
+    let targetResource: any = null
+
     for (const resource of dataSource.value as any[]) {
       if (resource.tasks) {
         const taskIndex = resource.tasks.findIndex((t: Task) => t.id === updatedTask.id)
         if (taskIndex !== -1) {
           // 更新资源中的任务数据
           resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
+          targetResourceId = resource.id
+          targetResource = resource
           break
         }
       }
     }
+
+    // 🎯 关键修复：清除该资源的布局缓存，触发自动换行重新计算
+    if (targetResourceId !== null && targetResource) {
+      // 清除所有该资源的缓存（通配符删除，因为时间可能变化了）
+      const keysToDelete = Array.from(layoutCache.keys()).filter(key => key.startsWith(`${targetResourceId}-`))
+      keysToDelete.forEach(key => layoutCache.delete(key))
+
+      // 获取旧布局信息
+      const oldLayout = resourceTaskLayouts.value.get(targetResourceId)
+      const oldRowCount = oldLayout?.rowHeights.length || 1
+
+      // 重新计算布局
+      const newLayout = getResourceLayout(targetResource)
+      const newRowCount = newLayout.rowHeights.length
+
+      // 只有当行数发生变化时，才需要触发全量重绘
+      if (newRowCount !== oldRowCount) {
+        console.log(`[Auto-Layout] Resource ${targetResourceId} layout changed: ${oldRowCount} -> ${newRowCount} rows after drag`)
+        // 行数变化，需要触发重绘
+        taskBarRenderKey.value++
+      } else {
+        console.log(`[Auto-Layout] Resource ${targetResourceId} layout unchanged (${newRowCount} rows), skip render key update`)
+      }
+    }
   }
+  // 记录变化的TaskBar ID（用于增量冲突更新）
+  lastChangedTaskId.value = updatedTask.id
   // 通过全局事件或 emit/props 回调传递给 GanttChart
   window.dispatchEvent(new CustomEvent('taskbar-drag-end', { detail: updatedTask }))
 }
 const handleTaskBarResizeEnd = (updatedTask: Task) => {
   // 如果是资源视图，需要更新dataSource中的资源数据
   if (viewMode.value === 'resource' && dataSource.value) {
+    let targetResourceId: string | number | null = null
+    let targetResource: any = null
+
     for (const resource of dataSource.value as any[]) {
       if (resource.tasks) {
         const taskIndex = resource.tasks.findIndex((t: Task) => t.id === updatedTask.id)
         if (taskIndex !== -1) {
           // 更新资源中的任务数据
           resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
+          targetResourceId = resource.id
+          targetResource = resource
           break
         }
       }
     }
+
+    // 🎯 关键修复：清除该资源的布局缓存，触发自动换行重新计算
+    if (targetResourceId !== null && targetResource) {
+      // 清除所有该资源的缓存（通配符删除，因为时间可能变化了）
+      const keysToDelete = Array.from(layoutCache.keys()).filter(key => key.startsWith(`${targetResourceId}-`))
+      keysToDelete.forEach(key => layoutCache.delete(key))
+
+      // 获取旧布局信息
+      const oldLayout = resourceTaskLayouts.value.get(targetResourceId)
+      const oldRowCount = oldLayout?.rowHeights.length || 1
+
+      // 重新计算布局
+      const newLayout = getResourceLayout(targetResource)
+      const newRowCount = newLayout.rowHeights.length
+
+      // 只有当行数发生变化时，才需要触发全量重绘
+      if (newRowCount !== oldRowCount) {
+        console.log(`[Auto-Layout] Resource ${targetResourceId} layout changed: ${oldRowCount} -> ${newRowCount} rows after resize`)
+        taskBarRenderKey.value++
+      } else {
+        console.log(`[Auto-Layout] Resource ${targetResourceId} layout unchanged (${newRowCount} rows), skip render key update`)
+      }
+    }
   }
+  // 记录变化的TaskBar ID（用于增量冲突更新）
+  lastChangedTaskId.value = updatedTask.id
   window.dispatchEvent(new CustomEvent('taskbar-resize-end', { detail: updatedTask }))
 }
 
@@ -3255,6 +4067,7 @@ watch(
 
 // 拖拽滑动相关状态
 const isDragging = ref(false)
+provide('isDraggingTimeline', isDragging) // 提供给GanttConflicts使用
 const startX = ref(0)
 const startY = ref(0)
 const startScrollLeft = ref(0)
@@ -3328,7 +4141,8 @@ const handleResourceTaskBarDrop = (event: Event) => {
     const resource = resources[i]
     const resourceId = String(resource.id)
     const rowTop = resourceRowPositions.value.get(resourceId) || 0
-    const layout = resourceTaskLayouts.value.get(resourceId)
+    // v1.9.6 Phase2: 使用getResourceLayout确保获取到布局（自动缓存）
+    const layout = resourceTaskLayouts.value.get(resourceId) || getResourceLayout(resource)
     const rowHeight = layout?.totalHeight || 51
     const rowCenter = rowTop + rowHeight / 2
     const distance = Math.abs(relativeY - rowCenter)
@@ -3643,7 +4457,8 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
       const resource = resources[i]
       const resourceId = String(resource.id)
       const rowTop = resourceRowPositions.value.get(resourceId) || 0
-      const layout = resourceTaskLayouts.value.get(resourceId)
+      // v1.9.6 Phase2: 使用getResourceLayout确保获取到布局（自动缓存）
+      const layout = resourceTaskLayouts.value.get(resourceId) || getResourceLayout(resource)
       const rowHeight = layout?.totalHeight || 51
       const rowCenter = rowTop + rowHeight / 2
       const distance = Math.abs(relativeY - rowCenter)
@@ -4531,8 +5346,9 @@ const handleAddSuccessor = (task: Task) => {
     <!-- Timeline Body (Task Bar Area) -->
     <div class="timeline-body" @scroll="handleTimelineBodyScroll">
       <div ref="bodyContentRef" class="timeline-body-content">
-        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染） -->
+        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染）- 仅在任务视图渲染 -->
         <GanttLinks
+          v-if="viewMode === 'task'"
           :tasks="tasks"
           :task-bar-positions="taskBarPositions"
           :width="canvasWidth"
@@ -4734,8 +5550,8 @@ const handleAddSuccessor = (task: Task) => {
           <div class="task-rows" :style="{ height: `${contentHeight}px` }">
             <!-- 任务视图：使用虚拟滚动渲染可见任务 -->
             <div
-              v-if="viewMode === 'task'"
               v-for="{ task, originalIndex } in visibleTasks"
+              v-if="viewMode === 'task'"
               :key="task.id"
               class="task-row"
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
@@ -4888,14 +5704,14 @@ const handleAddSuccessor = (task: Task) => {
 
             <!-- 资源视图：一行渲染多个 TaskBar -->
             <div
+              v-for="{ resource, originalIndex } in visibleResourcesWithFilteredTasks"
               v-else-if="viewMode === 'resource'"
-              v-for="{ resource, originalIndex } in visibleResources"
               :key="resource.id"
               class="task-row resource-row"
               :class="{ 'task-row-hovered': hoveredTaskId === resource.id }"
               :style="{
-                top: `${resourceRowPositions.get(resource.id) || 0}px`,
-                height: `${resourceTaskLayouts.get(resource.id)?.totalHeight || 51}px`
+                top: `${resourceRowPositions?.get(resource.id) || 0}px`,
+                height: `${resourceTaskLayouts?.get(resource.id)?.totalHeight || 51}px`
               }"
               @mouseenter="handleTaskRowHover(resource.id)"
               @mouseleave="handleTaskRowHover(null)"
@@ -4908,8 +5724,8 @@ const handleAddSuccessor = (task: Task) => {
                   :task="task"
                   :row-index="originalIndex"
                   :row-height="51"
-                  :task-sub-row="resourceTaskLayouts.get(resource.id)?.taskRowMap.get(task.id) || 0"
-                  :row-heights="resourceTaskLayouts.get(resource.id)?.rowHeights || [51]"
+                  :task-sub-row="resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0"
+                  :row-heights="resourceTaskLayouts?.get(resource.id)?.rowHeights || [51]"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -4980,8 +5796,13 @@ const handleAddSuccessor = (task: Task) => {
                 </TaskBar>
 
                 <!-- v1.9.2 资源冲突可视化层 -->
+                <!-- v1.9.5 P2-1修复：使用原始完整的任务列表进行冲突检测 -->
+                <!-- v1.9.5 修复：传递任务行号信息，正确计算冲突区域高度 -->
+                <!-- v1.9.5 可通过 show-conflicts prop 控制是否显示 -->
+                <!-- v1.9.6 修复：width使用totalTimelineWidth（用于坐标计算），containerWidth用于Canvas宽度 -->
                 <GanttConflicts
-                  :tasks="(resource as any).tasks"
+                  v-if="showConflicts"
+                  :tasks="(resource as any).allTasks || (resource as any).tasks"
                   :resource-id="resource.id"
                   :day-width="dayWidth"
                   :start-date="
@@ -4996,6 +5817,10 @@ const handleAddSuccessor = (task: Task) => {
                   :width="totalTimelineWidth"
                   :timeline-data="timelineData as any"
                   :current-time-scale="currentTimeScale"
+                  :task-row-map="resourceTaskLayouts.get(resource.id)?.taskRowMap"
+                  :row-heights="resourceTaskLayouts.get(resource.id)?.rowHeights"
+                  :scroll-left="timelineScrollLeft"
+                  :container-width="timelineContainerWidth"
                 />
               </template>
             </div>

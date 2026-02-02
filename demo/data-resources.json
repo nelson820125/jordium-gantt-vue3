@@ -406,7 +406,10 @@
           "startDate": "2025-01-15",
           "endDate": "2025-02-15",
           "progress": 100,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-xu", "name": "医学撰写员 徐静", "percent": 80 }
+          ]
         },
         {
           "id": 6010,
@@ -414,7 +417,10 @@
           "startDate": "2025-06-01",
           "endDate": "2025-07-01",
           "progress": 60,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-xu", "name": "医学撰写员 徐静", "percent": 70 }
+          ]
         },
         {
           "id": 6011,
@@ -422,7 +428,10 @@
           "startDate": "2025-07-15",
           "endDate": "2025-08-15",
           "progress": 20,
-          "type": "task"
+          "type": "task",
+          "resources": [
+            { "id": "resource-xu", "name": "医学撰写员 徐静", "percent": 60 }
+          ]
         }
       ]
     },

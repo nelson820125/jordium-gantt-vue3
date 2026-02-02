@@ -321,7 +321,7 @@ const assigneeDisplayData = computed(() => {
   return {
     avatars: displayAvatars,
     nameText,
-    hasMultiple: displayAvatars.length > 1
+    hasMultiple: displayAvatars.length > 1,
   }
 })
 </script>

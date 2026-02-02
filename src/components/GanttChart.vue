@@ -67,6 +67,8 @@ const props = withDefaults(defineProps<Props>(), {
   enableLinkAnchor: true,
   showActualTaskbar: false,
   enableTaskBarTooltip: true,
+  showConflicts: true,
+  showTaskbarTab: true,
   fullscreen: false,
   expandAll: true,
   locale: 'zh-CN',
@@ -130,6 +132,12 @@ provide('gantt-view-mode', currentViewMode)
 provide('gantt-data-source', currentDataSource)
 provide('gantt-list-config', currentListConfig)
 
+// v1.9.5 提供showConflicts配置给Timeline组件
+provide('gantt-show-conflicts', computed(() => props.showConflicts))
+
+// v1.9.5 提供showTaskbarTab配置给TaskBar组件
+provide('gantt-show-taskbar-tab', computed(() => props.showTaskbarTab))
+
 // 计算资源视图下的任务布局信息
 const resourceTaskLayouts = computed(() => {
   const layouts = new Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>()
@@ -150,7 +158,7 @@ const resourceTaskLayouts = computed(() => {
           layouts.set(resourceId, {
             taskRowMap: new Map(),
             rowHeights: [baseRowHeight],
-            totalHeight: baseRowHeight
+            totalHeight: baseRowHeight,
           })
         }
       })
@@ -367,6 +375,12 @@ interface Props {
   // 是否显示实际任务条（默认为 false）
   // 当设置为 true 且任务存在 actualStartDate 时，会在计划任务条下方显示实际任务条
   showActualTaskbar?: boolean
+  // v1.9.5 是否显示资源冲突可视化层（默认为 true）
+  // 当设置为 false 时，资源视图下不显示冲突区域（斜纹背景）
+  showConflicts?: boolean
+  // v1.9.5 是否显示TaskBar上的资源Tab标签（默认为 true）
+  // 当设置为 false 时，资源视图下TaskBar不显示资源分配Tab标签
+  showTaskbarTab?: boolean
   // 自定义任务状态背景色（优先级高于默认配色，低于Task.barColor）
   // 待处理任务背景色：任务未开始且未逾期时使用
   pendingTaskBackgroundColor?: string
@@ -496,6 +510,9 @@ const taskListBodyWidthLimit = ref(getTaskListMaxWidth())
 // 使用taskListConfig中的默认宽度，如果未配置则使用320px
 const leftPanelWidth = ref(getTaskListDefaultWidth())
 
+// 提供 TaskList 宽度给子组件（用于 tooltip 定位）
+provide('gantt-task-list-width', leftPanelWidth)
+
 // 简化的限制检查函数：直接基于面板实际宽度判断
 const checkWidthLimits = (proposedLeftWidth: number): number => {
   if (proposedLeftWidth < ganttPanelLeftMinWidth.value) {
@@ -590,6 +607,9 @@ watch(
 )
 
 const dragging = ref(false)
+
+// v1.9.5 P2-4优化 - 提供Split Bar拖拽状态给子组件
+provide('isSplitBarDragging', dragging)
 
 function onMouseDown(e: MouseEvent) {
   // 检查事件目标是否是task-list-toggle按钮或其子元素

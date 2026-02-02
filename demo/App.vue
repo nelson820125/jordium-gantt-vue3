@@ -6,6 +6,7 @@ import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import normalData from './data.json'
 import largeData from './data-large-1m.json'
 import resourcesData from './data-resources.json'
+import largeResourcesData from './data-resources-large.json'
 import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
@@ -87,7 +88,8 @@ const applyDataSource = (source: RawDataSource) => {
   milestones.value = cloneData(payload.milestones ?? [])
 
   // v1.9.0 从资源数据文件加载
-  const resourcePayload = resourcesData as { resources?: any[] }
+  // v1.9.3 根据数据源选择对应的资源数据集
+  const resourcePayload = (source.key === 'large' ? largeResourcesData : resourcesData) as { resources?: any[] }
   if (resourcePayload.resources) {
     resources.value = resourcePayload.resources.map(resData => {
       // 使用Resource类创建资源实例
