@@ -34,20 +34,6 @@ export function hasTimeOverlap(task1: Task, task2: Task): boolean {
 }
 
 /**
- * 获取任务的资源占比（用于高度计算）
- */
-function getTaskResourcePercent(task: Task, resourceId?: string | number): number {
-  if (!resourceId || !task.resources || task.resources.length === 0) {
-    return 100
-  }
-  const allocation = task.resources.find((r: any) => r.id === resourceId)
-  if (allocation && allocation.percent !== undefined) {
-    return Math.max(20, Math.min(100, allocation.percent))
-  }
-  return 100
-}
-
-/**
  * 为任务列表分配行索引，并计算每行高度
  * 使用贪心算法：尽可能将任务放在第一个不冲突的行
  * @param tasks 任务列表
@@ -57,7 +43,6 @@ function getTaskResourcePercent(task: Task, resourceId?: string | number): numbe
  */
 export function assignTaskRows(
   tasks: Task[],
-  resourceId?: string | number,
   baseRowHeight = 51,
 ): {
   taskRowMap: Map<string | number, number>
@@ -139,8 +124,8 @@ export function assignTaskRows(
 /**
  * 计算任务列表需要的最大行数
  */
-export function calculateMaxRows(tasks: Task[], resourceId?: string | number): number {
-  const result = assignTaskRows(tasks, resourceId)
+export function calculateMaxRows(tasks: Task[]): number {
+  const result = assignTaskRows(tasks)
   if (result.taskRowMap.size === 0) {
     return 1
   }
@@ -171,7 +156,7 @@ export function calculateResourceTaskLayout(
   })
 
   // 为当前资源的任务分配行
-  const result = assignTaskRows(resourceTasks, currentResourceId, baseRowHeight)
+  const result = assignTaskRows(resourceTasks, baseRowHeight)
   resourceLayoutMap.set(currentResourceId, result)
 
   return resourceLayoutMap

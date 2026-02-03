@@ -7,6 +7,7 @@ import GanttConfirmDialog from './GanttConfirmDialog.vue'
 import MultiSelectPredecessor from './MultiSelectPredecessor.vue'
 import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
 import type { Task } from '../models/classes/Task'
+import { Resource } from '../models/classes/Resource'
 import '../styles/app.css'
 
 interface AssigneeOption {
@@ -197,7 +198,7 @@ const getTaskTypeDisplay = (type: string): string => {
 const progressSliderStyle = computed(() => {
   const progressPercent = formData.progress || 0
   return {
-    '--progress-percent': `${progressPercent}%`,
+    '--progress-capacity': `${progressPercent}%`,
   }
 })
 
@@ -500,6 +501,7 @@ const handleSubmit = async () => {
     const taskData: Task = {
       ...formData,
       id: props.isEdit && props.task ? props.task.id : Date.now(),
+      resources: formData.resources, // 确保提交 resources 字段
     }
     emit('submit', taskData)
     handleClose()
@@ -680,11 +682,12 @@ const addResource = () => {
   if (!formData.resources) {
     formData.resources = []
   }
-  formData.resources.push({
+  formData.resources.push(new Resource({
     id: '',
     name: '',
-    percent: 100,
-  })
+    capacity: 100,
+    tasks: [],
+  }))
 }
 
 const removeResource = (index: number) => {
@@ -693,7 +696,7 @@ const removeResource = (index: number) => {
   }
 }
 
-const handleResourceChange = (index: number, field: 'id' | 'percent', value: string | number) => {
+const handleResourceChange = (index: number, field: 'id' | 'capacity', value: string | number) => {
   if (!formData.resources || !formData.resources[index]) return
 
   if (field === 'id') {
@@ -702,12 +705,12 @@ const handleResourceChange = (index: number, field: 'id' | 'percent', value: str
       formData.resources[index].id = selected.value
       formData.resources[index].name = selected.label
     }
-  } else if (field === 'percent') {
-    let percent = typeof value === 'string' ? parseInt(value) : value
+  } else if (field === 'capacity') {
+    let capacity = typeof value === 'string' ? parseInt(value) : value
     // 校验范围 20-100
-    if (percent < 20) percent = 20
-    if (percent > 100) percent = 100
-    formData.resources[index].percent = percent
+    if (capacity < 20) capacity = 20
+    if (capacity > 100) capacity = 100
+    formData.resources[index].capacity = capacity
   }
 }
 
@@ -728,11 +731,12 @@ const mapAssigneeToResources = () => {
   formData.resources = assignees.map((assigneeId) => {
     // 查找对应的assigneeOption获取名称
     const option = props.assigneeOptions?.find(opt => opt.value === assigneeId)
-    return {
+    return new Resource({
       id: assigneeId,
       name: option?.label || String(assigneeId),
-      percent: 100, // 默认100%
-    }
+      capacity: 100, // 默认100%
+      tasks: [],
+    })
   })
 }
 
@@ -1026,9 +1030,9 @@ const taskStatus = computed(() => {
                 </select>
 
                 <select
-                  v-model.number="resource.percent"
-                  class="form-select percent-select"
-                  @change="handleResourceChange(index, 'percent', ($event.target as HTMLSelectElement).value)"
+                  v-model.number="resource.capacity"
+                  class="form-select capacity-select"
+                  @change="handleResourceChange(index, 'capacity', ($event.target as HTMLSelectElement).value)"
                 >
                   <option :value="25">25%</option>
                   <option :value="50">50%</option>
@@ -1474,8 +1478,8 @@ const taskStatus = computed(() => {
   background: linear-gradient(
     to right,
     var(--gantt-primary, #409eff) 0%,
-    var(--gantt-primary, #409eff) var(--progress-percent, 0%),
-    var(--gantt-border-light, #e4e7ed) var(--progress-percent, 0%),
+    var(--gantt-primary, #409eff) var(--progress-capacity, 0%),
+    var(--gantt-border-light, #e4e7ed) var(--progress-capacity, 0%),
     var(--gantt-border-light, #e4e7ed) 100%
   );
 }
@@ -1487,8 +1491,8 @@ const taskStatus = computed(() => {
   background: linear-gradient(
     to right,
     var(--gantt-primary, #409eff) 0%,
-    var(--gantt-primary, #409eff) var(--progress-percent, 0%),
-    var(--gantt-border-light, #e4e7ed) var(--progress-percent, 0%),
+    var(--gantt-primary, #409eff) var(--progress-capacity, 0%),
+    var(--gantt-border-light, #e4e7ed) var(--progress-capacity, 0%),
     var(--gantt-border-light, #e4e7ed) 100%
   );
   border: none;
@@ -1508,7 +1512,7 @@ const taskStatus = computed(() => {
   top: 0;
   left: 0;
   height: 6px;
-  width: var(--progress-percent, 0%);
+  width: var(--progress-capacity, 0%);
   background: var(--gantt-primary, #409eff);
   border-radius: 3px;
   pointer-events: none;
@@ -1769,7 +1773,7 @@ const taskStatus = computed(() => {
   padding: 8px 12px;
 }
 
-.percent-select {
+.capacity-select {
   width: 110px;
   height: 36px;
   flex-shrink: 0;

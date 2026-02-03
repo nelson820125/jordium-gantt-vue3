@@ -8,7 +8,6 @@
  */
 
 import type { Task } from '../models/classes/Task'
-import { perfMonitor } from './perfMonitor'
 
 /**
  * 冲突区域数据结构
@@ -26,7 +25,7 @@ export interface ConflictZone {
   tasks: Array<{
     id: number | string
     name: string
-    percent: number
+    capacity: number
   }>
   /** Canvas渲染坐标（由GanttConflicts组件计算填充） */
   left?: number
@@ -57,8 +56,6 @@ export function detectConflicts(
   tasks: Task[],
   resourceId: string | number,
 ): ConflictZone[] {
-  const startTime = performance.now()
-
   // 过滤出包含指定资源的任务（没有resources字段时视为100%分配给该资源）
   const resourceTasks = tasks.filter((task) => {
     // 如果没有resources字段或为空，视为100%分配
@@ -81,9 +78,6 @@ export function detectConflicts(
     // 使用暴力遍历（O(n²)）
     result = detectConflictsBruteForce(resourceTasks, resourceId)
   }
-
-  const duration = performance.now() - startTime
-  perfMonitor.recordConflictDetection(resourceTasks.length, duration)
 
   return result
 }
@@ -108,18 +102,6 @@ function detectConflictsBruteForce(
       const intersection = getTimeIntersection(task1, task2)
       if (!intersection) continue
 
-      // 🔍 调试日志：输出检测到的时间交集（使用本地日期格式）
-      if (import.meta.env.DEV) {
-        const formatLocalDate = (date: Date): string => {
-          const year = date.getFullYear()
-          const month = String(date.getMonth() + 1).padStart(2, '0')
-          const day = String(date.getDate()).padStart(2, '0')
-          return `${year}-${month}-${day}`
-        }
-        console.log(`[ConflictDetect] Tasks ${task1.name} & ${task2.name} overlap:`,
-          formatLocalDate(intersection.start), '~', formatLocalDate(intersection.end))
-      }
-
       // 收集该时间段内的所有任务
       // 🔧 修复：使用本地日期格式，避免toISOString的UTC时区问题
       const formatLocalDate = (date: Date): string => {
@@ -140,41 +122,24 @@ function detectConflictsBruteForce(
         return taskIntersection !== null
       })
 
-      // 🔍 调试日志：输出收集到的重叠任务
-      if (import.meta.env.DEV) {
-        console.log(`[ConflictDetect]   Found ${overlappingTasks.length} overlapping tasks:`,
-          overlappingTasks.map(t => `${t.name}[${t.startDate}~${t.endDate}]`).join(', '))
-      }
-
       // 计算总投入比例
       let totalPercent = 0
       const taskDetails = overlappingTasks.map((task) => {
         // 如果没有resources字段，默认100%；否则查找对应资源的percent
         const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
-        const percent =
-          !task.resources || task.resources.length === 0 ? 100 : (resource?.percent || 0)
-        totalPercent += percent
+        const capacity =
+          !task.resources || task.resources.length === 0 ? 100 : (resource?.capacity || 0)
+        totalPercent += capacity
         return {
           id: task.id!,
           name: task.name || '未命名任务',
-          percent,
+          capacity,
         }
       })
 
       // 只有超载（>100%）才算冲突
       if (totalPercent <= 100) {
-        // 🔍 调试：输出未超载的情况
-        if (import.meta.env.DEV && totalPercent > 0) {
-          console.log(`[ConflictDetect] No conflict: totalPercent=${totalPercent}% <= 100%`,
-            `Tasks: ${taskDetails.map(t => `${t.name}(${t.percent}%)`).join(' + ')}`)
-        }
         continue
-      }
-
-      // 🔍 调试：输出检测到的冲突
-      if (import.meta.env.DEV) {
-        console.log(`[ConflictDetect] ✓ Conflict detected: totalPercent=${totalPercent}% > 100%`,
-          `Tasks: ${taskDetails.map(t => `${t.name}(${t.percent}%)`).join(' + ')}`)
       }
 
       // 计算冲突范围：所有参与冲突的任务在intersection范围内的并集
@@ -182,7 +147,7 @@ function detectConflictsBruteForce(
       const tasksWithResource = overlappingTasks.filter((task) => {
         if (!task.resources || task.resources.length === 0) return true
         const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
-        return resource && resource.percent > 0
+        return resource && resource.capacity && resource.capacity > 0
       })
 
       // v1.9.6 修复：精确计算真正超载的时间段
@@ -221,9 +186,9 @@ function detectConflictsBruteForce(
           const taskEndInclusive = taskEnd.getTime() + 24 * 60 * 60 * 1000
           if (taskStart.getTime() <= segmentStart && taskEndInclusive > segmentStart) {
             const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
-            const percent =
-              !task.resources || task.resources.length === 0 ? 100 : (resource?.percent || 0)
-            segmentPercent += percent
+            const capacity =
+              !task.resources || task.resources.length === 0 ? 100 : (resource?.capacity || 0)
+            segmentPercent += capacity
           }
         }
 
@@ -327,7 +292,7 @@ function mergeTasks(
     } else {
       // 已存在，更新为更高的投入比例
       const existing = taskMap.get(task.id)!
-      if (task.percent > existing.percent) {
+      if (task.capacity > existing.capacity) {
         taskMap.set(task.id, task)
       }
     }
@@ -594,12 +559,12 @@ function detectConflictsWithIntervalTree(
     const taskDetails = overlappingTasks.map((t) => {
       // 如果没有resources字段，默认100%；否则查找对应资源的percent
       const resource = t.resources?.find((r) => String(r.id) === String(resourceId))
-      const percent = !t.resources || t.resources.length === 0 ? 100 : (resource?.percent || 0)
-      totalPercent += percent
+      const capacity = !t.resources || t.resources.length === 0 ? 100 : (resource?.capacity || 0)
+      totalPercent += capacity
       return {
         id: t.id!,
         name: t.name || '未命名任务',
-        percent,
+        capacity,
       }
     })
 
@@ -611,7 +576,7 @@ function detectConflictsWithIntervalTree(
     const tasksWithResource = overlappingTasks.filter((t) => {
       if (!t.resources || t.resources.length === 0) return true
       const resource = t.resources?.find((r) => String(r.id) === String(resourceId))
-      return resource && resource.percent > 0
+      return resource && resource.capacity && resource.capacity > 0
     })
 
     // 收集所有任务的时间边界点
@@ -648,8 +613,8 @@ function detectConflictsWithIntervalTree(
         const tEndInclusive = tEnd.getTime() + 24 * 60 * 60 * 1000
         if (tStart.getTime() <= segmentStart && tEndInclusive > segmentStart) {
           const resource = t.resources?.find((r) => String(r.id) === String(resourceId))
-          const percent = !t.resources || t.resources.length === 0 ? 100 : (resource?.percent || 0)
-          segmentPercent += percent
+          const capacity = !t.resources || t.resources.length === 0 ? 100 : (resource?.capacity || 0)
+          segmentPercent += capacity
         }
       }
 

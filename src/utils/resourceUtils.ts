@@ -29,7 +29,7 @@ function getTaskResourcePercent(task: Task, resourceId: string | number): number
     return 100 // 默认100%
   }
   const allocation = task.resources.find((r: any) => String(r.id) === String(resourceId))
-  return allocation?.percent ?? 100
+  return allocation?.capacity ?? 100
 }
 
 /**

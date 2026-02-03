@@ -18,7 +18,7 @@
           "progress": 15,
           "type": "story",
           "resources": [
-            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "percent": 100 }
+            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "capacity": 100 }
           ]
         },
         {
@@ -29,7 +29,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "percent": 75 }
+            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "capacity": 75 }
           ]
         },
         {
@@ -40,7 +40,7 @@
           "progress": 80,
           "type": "task",
           "resources": [
-            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "percent": 50 }
+            { "id": "resource-chen", "name": "首席研究员 Dr. Chen", "capacity": 50 }
           ]
         }
       ]
@@ -63,7 +63,7 @@
           "progress": 65,
           "type": "story",
           "resources": [
-            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "percent": 100 }
+            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "capacity": 100 }
           ]
         },
         {
@@ -74,7 +74,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "percent": 75 }
+            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "capacity": 75 }
           ]
         },
         {
@@ -85,7 +85,7 @@
           "progress": 45,
           "type": "task",
           "resources": [
-            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "percent": 50 }
+            { "id": "resource-wang", "name": "I期试验主任 Dr. Wang", "capacity": 50 }
           ]
         }
       ]
@@ -107,7 +107,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-li", "name": "方案设计师 李明", "percent": 100 }
+            { "id": "resource-li", "name": "方案设计师 李明", "capacity": 100 }
           ]
         },
         {
@@ -119,7 +119,7 @@
           "type": "task",
           "barColor": "#7B3FF2",
           "resources": [
-            { "id": "resource-li", "name": "方案设计师 李明", "percent": 75 }
+            { "id": "resource-li", "name": "方案设计师 李明", "capacity": 75 }
           ]
         }
       ]
@@ -142,7 +142,7 @@
           "progress": 50,
           "type": "task",
           "resources": [
-            { "id": "resource-zhang", "name": "数据分析师 张伟", "percent": 100 }
+            { "id": "resource-zhang", "name": "数据分析师 张伟", "capacity": 100 }
           ]
         },
         {
@@ -153,7 +153,7 @@
           "progress": 70,
           "type": "task",
           "resources": [
-            { "id": "resource-zhang", "name": "数据分析师 张伟", "percent": 50 }
+            { "id": "resource-zhang", "name": "数据分析师 张伟", "capacity": 50 }
           ]
         },
         {
@@ -164,7 +164,7 @@
           "progress": 25,
           "type": "task",
           "resources": [
-            { "id": "resource-zhang", "name": "数据分析师 张伟", "percent": 75 }
+            { "id": "resource-zhang", "name": "数据分析师 张伟", "capacity": 75 }
           ]
         }
       ]
@@ -296,7 +296,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 100 }
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "capacity": 100 }
           ]
         },
         {
@@ -307,7 +307,7 @@
           "progress": 75,
           "type": "task",
           "resources": [
-            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 75 }
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "capacity": 75 }
           ]
         },
         {
@@ -318,7 +318,7 @@
           "progress": 85,
           "type": "task",
           "resources": [
-            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 50 }
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "capacity": 50 }
           ]
         },
         {
@@ -329,7 +329,7 @@
           "progress": 30,
           "type": "task",
           "resources": [
-            { "id": "resource-sun", "name": "生物统计师 孙丽", "percent": 100 }
+            { "id": "resource-sun", "name": "生物统计师 孙丽", "capacity": 100 }
           ]
         }
       ]
@@ -352,7 +352,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 100 }
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "capacity": 100 }
           ]
         },
         {
@@ -363,7 +363,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 75 }
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "capacity": 75 }
           ]
         },
         {
@@ -374,7 +374,7 @@
           "progress": 90,
           "type": "task",
           "resources": [
-            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 50 }
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "capacity": 50 }
           ]
         },
         {
@@ -385,7 +385,7 @@
           "progress": 70,
           "type": "task",
           "resources": [
-            { "id": "resource-zhou", "name": "临床监查员 周杰", "percent": 25 }
+            { "id": "resource-zhou", "name": "临床监查员 周杰", "capacity": 25 }
           ]
         }
       ]
@@ -408,7 +408,7 @@
           "progress": 100,
           "type": "task",
           "resources": [
-            { "id": "resource-xu", "name": "医学撰写员 徐静", "percent": 80 }
+            { "id": "resource-xu", "name": "医学撰写员 徐静", "capacity": 80 }
           ]
         },
         {
@@ -419,7 +419,7 @@
           "progress": 60,
           "type": "task",
           "resources": [
-            { "id": "resource-xu", "name": "医学撰写员 徐静", "percent": 70 }
+            { "id": "resource-xu", "name": "医学撰写员 徐静", "capacity": 70 }
           ]
         },
         {
@@ -430,7 +430,7 @@
           "progress": 20,
           "type": "task",
           "resources": [
-            { "id": "resource-xu", "name": "医学撰写员 徐静", "percent": 60 }
+            { "id": "resource-xu", "name": "医学撰写员 徐静", "capacity": 60 }
           ]
         }
       ]

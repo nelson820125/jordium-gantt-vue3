@@ -74,7 +74,7 @@ console.log(`function generateTestTasks(count, resourceId) {
       resources: [{
         id: resourceId,
         name: '资源1',
-        percent: 60 // 60%投入
+        capacity: 60 // 60%投入
       }]
     })
   }

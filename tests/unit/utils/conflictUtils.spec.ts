@@ -146,14 +146,14 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-20',
           endDate: '2026-01-25',
-          resources: [{ id: 'r1', percent: 60 }],
+          resources: [{ id: 'r1', capacity: 60 }],
         } as Task,
       ]
 
@@ -169,14 +169,14 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 60 }],
+          resources: [{ id: 'r1', capacity: 60 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
       ]
 
@@ -195,14 +195,14 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 70 }],
+          resources: [{ id: 'r1', capacity: 70 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 65 }],
+          resources: [{ id: 'r1', capacity: 65 }],
         } as Task,
       ]
 
@@ -220,14 +220,14 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 80 }],
+          resources: [{ id: 'r1', capacity: 80 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 90 }],
+          resources: [{ id: 'r1', capacity: 90 }],
         } as Task,
       ]
 
@@ -245,21 +245,21 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 40 }],
+          resources: [{ id: 'r1', capacity: 40 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-18',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
         {
           id: 3,
           name: '任务3',
           startDate: '2026-01-15',
           endDate: '2026-01-25',
-          resources: [{ id: 'r1', percent: 30 }],
+          resources: [{ id: 'r1', capacity: 30 }],
         } as Task,
       ]
 
@@ -277,21 +277,21 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 60 }],
+          resources: [{ id: 'r1', capacity: 60 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r2', percent: 80 }], // 不同资源
+          resources: [{ id: 'r2', capacity: 80 }], // 不同资源
         } as Task,
         {
           id: 3,
           name: '任务3',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
       ]
 
@@ -317,7 +317,7 @@ describe('conflictUtils', () => {
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
       ]
 
@@ -333,14 +333,14 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 40 }],
+          resources: [{ id: 'r1', capacity: 40 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
       ]
 
@@ -357,7 +357,7 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-15',
-          resources: [{ id: 'r1', percent: 120 }], // 单个任务占比>100%也不算冲突
+          resources: [{ id: 'r1', capacity: 120 }], // 单个任务占比>100%也不算冲突
         } as Task,
       ]
 
@@ -373,21 +373,21 @@ describe('conflictUtils', () => {
           name: '任务1',
           startDate: '2026-01-10',
           endDate: '2026-01-20',
-          resources: [{ id: 'r1', percent: 60 }],
+          resources: [{ id: 'r1', capacity: 60 }],
         } as Task,
         {
           id: 2,
           name: '任务2',
           startDate: '2026-01-12',
           endDate: '2026-01-18',
-          resources: [{ id: 'r1', percent: 50 }],
+          resources: [{ id: 'r1', capacity: 50 }],
         } as Task,
         {
           id: 3,
           name: '任务3',
           startDate: '2026-01-15',
           endDate: '2026-01-25',
-          resources: [{ id: 'r1', percent: 55 }],
+          resources: [{ id: 'r1', capacity: 55 }],
         } as Task,
       ]
 

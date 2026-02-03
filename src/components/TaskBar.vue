@@ -64,8 +64,8 @@ const resourcePercent = computed(() => {
       return String(r.id) === String(props.currentResourceId)
     })
 
-    if (allocation && allocation.percent !== undefined) {
-      const val = Number(allocation.percent)
+    if (allocation && allocation.capacity !== undefined) {
+      const val = Number(allocation.capacity)
       if (Number.isFinite(val) && val >= 0) {
         return Math.max(0, Math.min(100, val))
       }
@@ -85,13 +85,6 @@ const currentResourceColor = computed(() => {
     return finalColor
   }
   return '#85ce61'
-})
-
-// v1.9.2 当前资源总负载（用于超载警告）
-const currentResourceTotalLoad = computed(() => {
-  // 这个值应该从外部传入，这里暂时返回undefined
-  // 实际应该在Timeline层计算好并通过props传递
-  return undefined
 })
 
 // v1.9.2 当前资源名称
@@ -3357,7 +3350,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
       '--handle-width': `${actualHandleWidth}px` /* 传递手柄宽度给CSS变量 */,
       '--parent-color': taskStatus.color, /* 传递父级TaskBar颜色给伪元素箭头使用 */
-      '--allocation-percent': (Number.isFinite(resourcePercent) ? resourcePercent / 100 : 1), /* v1.9.1 传递占比给CSS变量 */
+      '--allocation-capacity': (Number.isFinite(resourcePercent) ? resourcePercent / 100 : 1), /* v1.9.1 传递占比给CSS变量 */
       '--task-bar-bg-color': taskStatus.bgColor, /* v1.9.1 传递背景色给伪元素 */
       '--task-bar-border-color': dynamicBorderColor, /* v1.9.2 使用动态边框颜色 */
       boxShadow: isParent
@@ -3410,7 +3403,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       :task="task"
       :current-resource-id="currentResourceId"
       :resource-color="currentResourceColor"
-      :resource-percent="resourcePercent"
+      :resource-capacity="resourcePercent"
       :resource-name="currentResourceName"
       :task-bar-width="taskBarWidth"
       :task-bar-left="taskBarLeft"
@@ -3505,7 +3498,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
         <div v-else class="task-name">
           {{ task.name }}
           <!-- v1.9.0 资源视图：显示占比文字 -->
-          <span v-if="shouldShowPercentText" class="resource-percent-text">
+          <span v-if="shouldShowPercentText" class="resource-capacity-text">
             {{ resourcePercent }}%
           </span>
         </div>
@@ -3638,7 +3631,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div class="tooltip-content">
         <!-- v1.9.0 资源视图：显示利用率 -->
         <div v-if="viewMode === 'resource' && resourcePercent < 100" class="tooltip-row">
-          <span class="tooltip-label">{{ t('investment') || '投入' }}:</span>
+          <span class="tooltip-label">{{ t('resourceView.capacity') || '利用率' }}:</span>
           <span class="tooltip-value">{{ resourcePercent }}%</span>
         </div>
         <div class="tooltip-row">
@@ -3663,7 +3656,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
         </div>
         <!-- v1.9.0 资源冲突警告 -->
         <div v-if="props.hasResourceConflict" class="tooltip-row tooltip-warning">
-          <span class="tooltip-label">⚠️ {{ t('resourceOverloaded') || '资源超负荷' }}</span>
+          <span class="tooltip-label">⚠️ {{ t('resourceView.overloaded') || '资源超负荷' }}</span>
         </div>
       </div>
     </div>
@@ -3849,7 +3842,7 @@ class="hover-tooltip-arrow" :style="{
   top: 0;
   left: 0;
   right: 0;
-  height: calc((1 - var(--allocation-percent, 1)) * 100%);
+  height: calc((1 - var(--allocation-capacity, 1)) * 100%);
   border-top: 1.5px dashed currentColor;
   border-left: 1.5px dashed currentColor;
   border-right: 1.5px dashed currentColor;
@@ -3863,7 +3856,7 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* 占比100%时，隐藏上半部分镂空区域 */
-.task-bar.resource-view[style*="--allocation-percent: 1"]::before {
+.task-bar.resource-view[style*="--allocation-capacity: 1"]::before {
   display: none;
 }
 
@@ -3874,7 +3867,7 @@ class="hover-tooltip-arrow" :style="{
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(var(--allocation-percent, 1) * 100%);
+  height: calc(var(--allocation-capacity, 1) * 100%);
   background: var(--task-bar-bg-color, #e3f2fd);
   /*border: 1px solid var(--task-bar-border-color, #90caf9);*/
   border-radius: 0 0 4px 4px;
@@ -3885,7 +3878,7 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* 占比100%时，整个TaskBar都是实心，四个角圆角 */
-.task-bar.resource-view[style*="--allocation-percent: 1"]::after {
+.task-bar.resource-view[style*="--allocation-capacity: 1"]::after {
   border-radius: 4px;
 }
 
@@ -3895,7 +3888,7 @@ class="hover-tooltip-arrow" :style="{
   bottom: 0;
   left: 0;
   top: auto;
-  height: calc(var(--allocation-percent, 1) * 100%);
+  height: calc(var(--allocation-capacity, 1) * 100%);
   z-index: 1;
   border-radius: 0 0 4px 4px;
   pointer-events: none;
@@ -3903,7 +3896,7 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* 占比100%时，进度条四个角圆角 */
-.task-bar.resource-view[style*="--allocation-percent: 1"] .progress-bar {
+.task-bar.resource-view[style*="--allocation-capacity: 1"] .progress-bar {
   border-radius: 4px;
 }
 
@@ -4380,7 +4373,7 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* v1.9.0 资源占比文字样式 */
-.resource-percent-text {
+.resource-capacity-text {
   display: inline-block;
   margin-left: 6px;
   font-size: 12px;
@@ -4399,7 +4392,7 @@ class="hover-tooltip-arrow" :style="{
 .task-bar[style*="width: 28px"],
 .task-bar[style*="width: 32px"],
 .task-bar[style*="width: 36px"] {
-  .resource-percent-text {
+  .resource-capacity-text {
     display: none;
   }
 }

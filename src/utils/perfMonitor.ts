@@ -69,31 +69,24 @@ export const perfMonitor = {
   /**
    * 记录性能日志（自动节流）
    */
-  log(tag: string, data: unknown) {
+  log() {
     const now = Date.now()
     if (now - lastLogTime < LOG_THROTTLE) {
       return
     }
     lastLogTime = now
-
-    // eslint-disable-next-line no-console
-    console.log(`[Perf] ${tag}:`, data)
   },
 
   /**
    * 测量函数执行时间
    */
-  measure<T>(tag: string, fn: () => T): T {
+  measure<T>(fn: () => T): T {
     const start = performance.now()
     const result = fn()
     const end = performance.now()
     const duration = end - start
 
-    if (duration > 5) {
-      // 只记录耗时超过 5ms 的操作
-      // eslint-disable-next-line no-console
-      console.log(`[Perf] ${tag}: ${duration.toFixed(2)}ms`)
-    }
+    if (duration > 5) { }
 
     return result
   },
@@ -115,7 +108,7 @@ export const perfMonitor = {
     fpsValues = []
 
     // eslint-disable-next-line no-console
-    console.log('[Perf] FPS 监控已启动')
+    // console.log('[Perf] FPS 监控已启动')
 
     const updateFps = () => {
       if (!fpsMonitorEnabled) return
@@ -132,19 +125,6 @@ export const perfMonitor = {
         if (fpsValues.length > 60) {
           fpsValues.shift()
         }
-
-        const avgFps = Math.round(fpsValues.reduce((a, b) => a + b, 0) / fpsValues.length)
-        const minFps = Math.min(...fpsValues)
-        const maxFps = Math.max(...fpsValues)
-
-        // 根据 FPS 设置不同颜色
-        const color = fps >= 55 ? '#67c23a' : fps >= 30 ? '#e6a23c' : '#f56c6c'
-
-        // eslint-disable-next-line no-console
-        console.log(
-          `%c[Perf] FPS: ${fps} | 平均: ${avgFps} | 最小: ${minFps} | 最大: ${maxFps}`,
-          `color: ${color}; font-weight: bold;`,
-        )
 
         fpsFrameCount = 0
         fpsLastTime = currentTime
@@ -170,19 +150,6 @@ export const perfMonitor = {
     if (fpsRafId !== null) {
       cancelAnimationFrame(fpsRafId)
       fpsRafId = null
-    }
-
-    // 输出最终统计
-    if (fpsValues.length > 0) {
-      const avgFps = Math.round(fpsValues.reduce((a, b) => a + b, 0) / fpsValues.length)
-      const minFps = Math.min(...fpsValues)
-      const maxFps = Math.max(...fpsValues)
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `%c[Perf] FPS 监控已停止 | 总采样: ${fpsValues.length} | 平均: ${avgFps} | 最小: ${minFps} | 最大: ${maxFps}`,
-        'color: #909399; font-weight: bold;',
-      )
     }
 
     fpsValues = []
@@ -229,7 +196,7 @@ export const perfMonitor = {
   printDrawStats() {
     if (drawStats.totalDraws === 0) {
       // eslint-disable-next-line no-console
-      console.log('[Perf] 暂无绘制数据')
+      // console.log('[Perf] 暂无绘制数据')
       return
     }
 
@@ -238,10 +205,10 @@ export const perfMonitor = {
       recent10.reduce((sum, item) => sum + item.duration, 0) / recent10.length
 
     // eslint-disable-next-line no-console
-    console.log(
-      '%c[Perf] Canvas 绘制统计',
-      'color: #409eff; font-weight: bold; font-size: 14px;',
-    )
+    // console.log(
+    //   '%c[Perf] Canvas 绘制统计',
+    //   'color: #409eff; font-weight: bold; font-size: 14px;',
+    // )
     // eslint-disable-next-line no-console
     console.table({
       总绘制次数: drawStats.totalDraws,
@@ -264,7 +231,7 @@ export const perfMonitor = {
     drawStats.recentDraws = []
 
     // eslint-disable-next-line no-console
-    console.log('[Perf] 绘制统计已重置')
+    // console.log('[Perf] 绘制统计已重置')
   },
 
   /**
@@ -273,10 +240,10 @@ export const perfMonitor = {
    */
   startPerformanceTest(durationMs = 10000) {
     // eslint-disable-next-line no-console
-    console.log(
-      `%c[Perf] 性能测试开始（持续 ${durationMs / 1000} 秒）`,
-      'color: #409eff; font-weight: bold; font-size: 16px;',
-    )
+    // console.log(
+    //   `%c[Perf] 性能测试开始（持续 ${durationMs / 1000} 秒）`,
+    //   'color: #409eff; font-weight: bold; font-size: 16px;',
+    // )
 
     this.resetDrawStats()
     this.startFpsMonitor()
@@ -286,10 +253,10 @@ export const perfMonitor = {
       this.printDrawStats()
 
       // eslint-disable-next-line no-console
-      console.log(
-        '%c[Perf] 性能测试完成',
-        'color: #67c23a; font-weight: bold; font-size: 16px;',
-      )
+      // console.log(
+      //   '%c[Perf] 性能测试完成',
+      //   'color: #67c23a; font-weight: bold; font-size: 16px;',
+      // )
     }, durationMs)
   },
 
@@ -306,21 +273,6 @@ export const perfMonitor = {
 
     const now = Date.now()
     if (now - linkDragStats.lastReportTime > 1000) {
-      const avgCoordTime =
-        linkDragStats.coordUpdateCount > 0
-          ? (linkDragStats.coordUpdateTotalTime / linkDragStats.coordUpdateCount).toFixed(3)
-          : 0
-      const avgTargetTime =
-        linkDragStats.targetDetectCount > 0
-          ? (linkDragStats.targetDetectTotalTime / linkDragStats.targetDetectCount).toFixed(3)
-          : 0
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `[LinkDrag Perf] 坐标更新: ${linkDragStats.coordUpdateCount}次, 平均${avgCoordTime}ms | ` +
-          `目标检测: ${linkDragStats.targetDetectCount}次, 平均${avgTargetTime}ms`,
-      )
-
       this.resetLinkDragStats()
       linkDragStats.lastReportTime = now
       return true
@@ -380,7 +332,7 @@ export const perfMonitor = {
       if (frameTime > longFrameThreshold) {
         frameMonitorStats.longFrameCount++
         // eslint-disable-next-line no-console
-        console.warn(`[Frame Monitor] 长帧检测: ${frameTime.toFixed(1)}ms`)
+        // console.warn(`[Frame Monitor] 长帧检测: ${frameTime.toFixed(1)}ms`)
       }
 
       frameMonitorStats.lastFrameTime = now
@@ -397,17 +349,6 @@ export const perfMonitor = {
     if (frameMonitorStats.frameMonitorId !== null) {
       cancelAnimationFrame(frameMonitorStats.frameMonitorId)
       frameMonitorStats.frameMonitorId = null
-
-      const percentage =
-        frameMonitorStats.frameCount > 0
-          ? (frameMonitorStats.longFrameCount / frameMonitorStats.frameCount * 100).toFixed(1)
-          : 0
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `[Frame Monitor] 统计: ${frameMonitorStats.frameCount}帧, ` +
-          `长帧数: ${frameMonitorStats.longFrameCount} (${percentage}%)`,
-      )
     }
   },
 
@@ -431,15 +372,10 @@ export const perfMonitor = {
    * @param taskCount 任务数量
    * @param duration 检测耗时（毫秒）
    */
-  recordConflictDetection(taskCount: number, duration: number) {
+  recordConflictDetection() {
     const now = performance.now()
     // 每秒最多输出一次日志
     if (now - lastLogTime > 1000) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[Conflict Detection] 任务数: ${taskCount}, 耗时: ${duration.toFixed(2)}ms, ` +
-          `算法: ${taskCount > 100 ? '区间树(O(n log n))' : '暴力遍历(O(n²))'}`,
-      )
       lastLogTime = now
     }
   },

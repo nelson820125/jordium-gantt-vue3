@@ -39,6 +39,7 @@ const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
 const resources = ref<Resource[]>([])
 const viewMode = ref<'task' | 'resource'>('task')
+const useDefaultDrawer = ref(true)
 
 const rawDataSources = [
   {
@@ -201,6 +202,16 @@ const isMilestoneEditMode = ref(false)
 
 // 版本历史Drawer状态
 const showVersionDrawer = ref(false)
+
+// v1.9.7 资源编辑提示dialog状态
+const resourceEditHintVisible = ref(false)
+const clickedResource = ref<Resource | null>(null)
+
+// v1.9.7 监听viewMode变化，自动同步useDefaultDrawer
+// 资源视图下关闭默认TaskDrawer，任务视图下开启
+watch(viewMode, (newMode) => {
+  useDefaultDrawer.value = newMode !== 'resource'
+})
 
 const toolbarConfig = {
   showAddTask: true,
@@ -615,6 +626,28 @@ const handleTaskClick = (task: Task) => {
   showTaskClickDialog.value = true
 }
 
+// v1.9.7 处理任务双击事件（资源视图下显示资源编辑提示）
+const handleTaskDoubleClick = (taskOrResource: Task | Resource) => {  
+  // 在资源视图下，检查是否为资源对象（Resource类型有tasks属性）
+  if (viewMode.value === 'resource' && taskOrResource && typeof taskOrResource === 'object' && 'tasks' in taskOrResource) {
+    clickedResource.value = taskOrResource as Resource
+    resourceEditHintVisible.value = true
+  }
+  // 注意：useDefaultDrawer由watch(viewMode)自动管理，无需在此处手动设置
+}
+
+// 关闭资源编辑提示dialog
+const closeResourceEditHint = () => {
+  resourceEditHintVisible.value = false
+  clickedResource.value = null
+}
+
+// v1.9.7 处理视图模式变化事件，同步GanttChart内部状态
+const handleViewModeChanged = (newMode: 'task' | 'resource') => {
+  viewMode.value = newMode
+  // useDefaultDrawer会由watch(viewMode)自动更新
+}
+
 // 关闭 Task Click Dialog
 const closeTaskClickDialog = () => {
   showTaskClickDialog.value = false
@@ -911,6 +944,9 @@ onMounted(() => {
   nextTick(() => {
     updateStatus()
   })
+
+  // v1.9.7 监听资源双击事件
+  //window.addEventListener('task-row-double-click', handleResourceDoubleClick as EventListener)
 })
 
 // 清理被删除任务的predecessor依赖关系
@@ -1107,6 +1143,23 @@ const confirmResourceDrag = () => {
     destResource.tasks.push(task)
   }
 
+  // v1.9.7 Bug修复：同步更新task.resources数组，确保资源分配信息正确显示
+  if (task.resources) {
+    // 移除旧的资源分配
+    const oldResourceIndex = task.resources.findIndex((r: any) => String(r.id) === String(sourceResource.id))
+    if (oldResourceIndex !== -1) {
+      const oldCapacity = task.resources[oldResourceIndex].capacity || 100
+      task.resources.splice(oldResourceIndex, 1)
+
+      // 添加新的资源分配（保持原有的capacity）
+      task.resources.push({
+        id: targetResource.id,
+        name: targetResource.name,
+        capacity: oldCapacity
+      })
+    }
+  }
+
   // 显示资源分配和日期更新信息
   const dateInfo = newStartDate && newEndDate ? `，日期已调整为 ${newStartDate} ~ ${newEndDate}` : ''
   showMessage(`任务 "${task.name}" 已分配给资源 "${targetResource.name}"${dateInfo}`, 'success')
@@ -1147,6 +1200,58 @@ const cancelResourceDrag = () => {
   }
 }
 
+// v1.9.7 处理资源双击事件（仅在资源视图下触发）
+// const handleResourceDoubleClick = (event: CustomEvent) => {
+//   // 只在资源视图下处理
+//   if (viewMode.value !== 'resource') {
+//     return
+//   }
+
+//   const item = event.detail
+//   // 检查是否为资源（Resource类型）
+//   if (item && typeof item === 'object' && 'tasks' in item) {
+//     clickedResource.value = item as Resource
+//     resourceEditHintVisible.value = true
+//   }
+// }
+
+// 关闭资源编辑提示dialog
+// const closeResourceEditHint = () => {
+//   resourceEditHintVisible.value = false
+//   clickedResource.value = null
+
+//   // 重置拖拽数据
+//   resourceDragData.value = {
+//     task: null,
+//     sourceResourceIndex: -1,
+//     targetResourceIndex: -1,
+//     targetResource: null,
+//     newStartDate: undefined,
+//     newEndDate: undefined
+//   }
+// }
+
+// v1.9.7 处理资源双击事件（仅在资源视图下触发）
+// const handleResourceDoubleClick = (event: CustomEvent) => {
+//   // 只在资源视图下处理
+//   if (viewMode.value !== 'resource') {
+//     return
+//   }
+
+//   const item = event.detail
+//   // 检查是否为资源（Resource类型）
+//   if (item && typeof item === 'object' && 'tasks' in item) {
+//     clickedResource.value = item as Resource
+//     resourceEditHintVisible.value = true
+//   }
+// }
+
+// // 关闭资源编辑提示dialog
+// const closeResourceEditHint = () => {
+//   resourceEditHintVisible.value = false
+//   clickedResource.value = null
+// }
+
 // 自定义右键菜单操作处理
 const handleCustomMenuAction = (action: string, task: Task) => {
   showMessage(`自定义操作: ${action} - 任务: ${task.name}`, 'info', { closable: true })
@@ -1175,7 +1280,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
           packageInfo.version
         }}</span>
       </div>
-      <div class="title-center">
+      <!-- <div class="title-center">
         <a
           :href="demoMessages.giteeBadge?.url || 'https://gitee.com/activity/2025opensource?ident=IOUNZP'"
           target="_blank"
@@ -1184,7 +1289,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         >
           {{ demoMessages.giteeBadge?.text || '🥇 Gitee 2025 Open Source Awards 👉 Thanks for Your Vote' }}
         </a>
-      </div>
+      </div> -->
       <div class="title-right docs-links">
         <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
           <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
@@ -2114,6 +2219,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :delay-task-background-color="delayTaskBackgroundColor"
         :complete-task-background-color="completeTaskBackgroundColor"
         :ongoing-task-background-color="ongoingTaskBackgroundColor"
+        :use-default-drawer="useDefaultDrawer"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
@@ -2122,6 +2228,8 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         @taskbar-resize-end="handleTaskbarDragOrResizeEnd"
         @milestone-drag-end="handleMilestoneDragEnd"
         @task-click="handleTaskClick"
+        @task-double-click="handleTaskDoubleClick"
+        @view-mode-changed="handleViewModeChanged"
         @edit-task="task => showMessage(`进入任务编辑：${task.name}`)"
         @close="() => showMessage('已关闭任务编辑', 'info')"
         @timer-started="onTimerStarted"
@@ -2138,8 +2246,6 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         @task-added="handleTaskAddEvent"
         @task-updated="handleTaskUpdateEvent"
         @task-row-moved="handleTaskRowMoved"
-        @view-mode-change="mode => viewMode = mode"
-        @resource-click="resource => showMessage(`资源点击: ${resource.name}`, 'info')"
         @resource-drag-end="handleResourceDragEnd"
       >
         <!-- 自定义任务名称内容 (TaskRow 和 TaskBar) -->
@@ -2335,6 +2441,25 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </div>
         <div class="task-click-dialog-footer">
           <button class="confirm-button" @click="closeTaskClickDialog">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- v1.9.7 资源编辑提示对话框 -->
+    <div v-if="resourceEditHintVisible" class="modal-overlay" @click.self="closeResourceEditHint">
+      <div class="resource-drag-dialog">
+        <div class="resource-drag-dialog-header">
+          <h3>{{ demoMessages.resourceEditHint?.title || '资源编辑提示' }}</h3>
+        </div>
+        <div class="resource-drag-dialog-body">
+          <p style="white-space: pre-line; line-height: 1.6;">
+            {{ (demoMessages.resourceEditHint?.message || '').replace('{resourceName}', clickedResource?.name || '') }}
+          </p>
+        </div>
+        <div class="resource-drag-dialog-footer">
+          <button class="confirm-button" @click="closeResourceEditHint">
+            {{ demoMessages.resourceEditHint?.confirmText || '知道了' }}
+          </button>
         </div>
       </div>
     </div>

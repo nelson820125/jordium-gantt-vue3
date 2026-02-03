@@ -29,11 +29,11 @@
 
 <p align="center">现代化的 Vue 3 甘特图组件库，为项目管理和任务调度提供完整解决方案</p>
 
-<p align="center">
+<!-- <p align="center">
   <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
     <img src="https://img.shields.io/badge/🥇_Gitee_2025年度开源项目评选-👉_感谢您的参与投票-gold?style=for-the-badge&labelColor=C71D23&logoColor=white" alt="Gitee 2025年度开源项目评选" height="40">
   </a>
-</p>
+</p> -->
 
 <p align="center">
   <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
@@ -74,9 +74,13 @@ jordium-gantt-vue3 是一个基于 Vue 3 和 TypeScript 开发的现代化甘特
 
 <img src="design/screenshots/light-theme.png" alt="亮色主题" width="100%">
 
+<img src="design/screenshots/light-theme1.png" alt="亮色主题" width="100%">
+
 #### 暗色主题
 
 <img src="design/screenshots/dark-theme.png" alt="暗色主题" width="100%">
+
+<img src="design/screenshots/dark-theme1.png" alt="暗色主题" width="100%">
 
 ---
 
@@ -193,6 +197,8 @@ npm run dev
 | --------------------------- | ----------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------- |
 | `tasks`                     | `Task[]`                                                                                  | `[]`    | 任务数据数组                                                   |
 | `milestones`                | `Task[]`                                                                                  | `[]`    | 里程碑数据数组（注意：类型为 Task[]，需设置 type='milestone'） |
+| `resources` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Resource[]`                                                                              | `[]`    | 资源数据数组（资源计划视图使用）                               |
+| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource'`                                                                    | `'task'` | 视图模式：'task' 任务计划视图 \| 'resource' 资源计划视图      |
 | `showToolbar`               | `boolean`                                                                                 | `true`  | 是否显示工具栏                                                 |
 | `useDefaultDrawer`          | `boolean`                                                                                 | `true`  | 是否使用内置任务编辑抽屉（TaskDrawer）                         |
 | `useDefaultMilestoneDialog` | `boolean`                                                                                 | `true`  | 是否使用内置里程碑编辑对话框（MilestoneDialog）                |
@@ -213,7 +219,9 @@ npm run dev
 | `completeTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#909399'` | 已完成任务的TaskBar背景色。支持十六进制颜色值（如 `'#909399'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
 | `ongoingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#e6a23c'` | 进行中任务的TaskBar背景色。支持十六进制颜色值（如 `'#e6a23c'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 是否显示实际TaskBar（在计划TaskBar下方显示实际执行进度）  |
-| `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用TaskBar悬停提示框（鼠标悬停显示任务详情）  | 
+| `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用TaskBar悬停提示框（鼠标悬停显示任务详情）  |
+| `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域） |
+| `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar的资源分配标签） | 
 
 #### TaskListColumn 属性
 
@@ -360,6 +368,7 @@ npm run dev
 | ---------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------- |
 | `toolbarConfig`  | `ToolbarConfig`              | `{}`                                                                    | 工具栏配置       |
 | `taskListConfig` | `TaskListConfig`             | `undefined`                                                             | 任务列表配置     |
+| `resourceListConfig` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceListConfig`         | `undefined`                                                             | 资源列表配置     |
 | `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | 任务条样式配置   |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | 自定义多语言配置 |
 | `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | 工作时间配置     |
@@ -406,6 +415,7 @@ npm run dev
 | `milestone-icon-changed` | `{ milestoneId, icon }`           | 里程碑图标变更             |
 | `milestone-drag-end`     | `(milestone: Task)`               | 拖拽里程碑结束             |
 | `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） |
+| `taskbar-resource-change` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | 任务跨资源移动事件（资源视图下拖拽任务到另一资源行） |
 
 #### 示例1：最简单的甘特图
 
@@ -1097,6 +1107,208 @@ const handleTaskRowMoved = async (payload: {
   - 不能拖拽到自己身上
   - 不能拖拽到自己的子任务上（避免循环引用）
   - 里程碑和里程碑分组不能被拖拽
+
+### 资源管理 ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+资源管理用于管理项目中的人力或设备资源，支持资源视图下的任务分配、资源负载分析、冲突检测等功能。通过 `viewMode="resource"` 属性切换到资源计划视图。
+
+> **核心特性**：
+> - 📊 **资源视图**：按资源维度展示任务分配情况
+> - 🎯 **负载分析**：实时显示资源占用率和超载状态
+> - ⚠️ **冲突检测**：自动检测资源时间冲突（如 A任务:40% + B任务:40% + C任务:30% = 110%超载）
+> - 🎨 **可视化**：斜纹背景标识冲突区域，资源Tab显示占用比例
+> - 🔄 **跨资源移动**：支持拖拽任务到不同资源行进行重新分配
+>
+> **视图限制**：
+> - ❌ **任务关系线禁用**：资源视图下不显示任务之间的前后置关系线，因为资源视图关注资源分配而非任务依赖关系
+> - ❌ **不支持实际TaskBar**：`showActualTaskbar` 属性在资源视图下无效，不会显示实际执行进度条
+
+#### Resource 数据结构
+
+| 字段名          | 类型                | 必填 | 默认值 | 说明                                                                                            |
+| --------------- | ------------------- | ---- | ------ | ----------------------------------------------------------------------------------------------- |
+| `id`            | `string \| number`  | ✅   | -      | 资源唯一标识符                                                                                  |
+| `name`          | `string`            | ✅   | -      | 资源名称（如人名、设备名）                                                                      |
+| `type`          | `string`            | -    | -      | 资源类型（如 'developer', 'designer', 'device' 等）                                              |
+| `avatar`        | `string`            | -    | -      | 资源头像 URL                                                                                    |
+| `description`   | `string`            | -    | -      | 资源描述                                                                                        |
+| `department`    | `string`            | -    | -      | 所属部门                                                                                        |
+| `skills`        | `string[]`          | -    | -      | 技能标签数组（如 `['Vue', 'React', 'TypeScript']`）                                             |
+| `capacity`      | `number`            | -    | -      | 资源容量/利用率（0-100），可用于表示资源的整体负载水平                                           |
+| `color`         | `string`            | -    | -      | 自定义资源行左边框颜色（如 `'#ff5733'`），若不设置则使用默认颜色方案                             |
+| `tasks`         | `Task[]`            | -    | `[]`   | 分配给该资源的任务数组，**每个任务需包含 `resources` 字段标注资源占用比例**                      |
+| `[key: string]` | `unknown`           | -    | -      | 支持自定义属性扩展，可添加任意额外字段                                                           |
+
+> **自定义属性扩展**：Resource 接口支持添加任意自定义字段，例如：`email`、`phone`、`location`、`workHours` 等业务相关字段。
+>
+> **任务资源关联说明**：
+>
+> - 每个 Resource 包含一个 `tasks` 数组，存储分配给该资源的任务
+> - 每个 Task 应包含 `resources` 字段，标注该任务使用了哪些资源及占用比例
+> - 资源占用比例格式：`task.resources = [{ id: 'resource1', capacity: 60 }, { id: 'resource2', capacity: 40 }]`
+> - `capacity` 范围：20-100，表示该任务占用该资源的百分比
+> - 冲突检测：当同一资源在同一时间段的多个任务 `capacity` 总和 > 100% 时，会显示冲突警告
+
+**Resource 数据示例**：
+
+```typescript
+import type { Resource, Task } from 'jordium-gantt-vue3'
+
+const resources: Resource[] = [
+  {
+    id: 'dev-001',
+    name: '张三',
+    type: 'developer',
+    avatar: '/avatars/zhangsan.jpg',
+    department: '研发部',
+    skills: ['Vue', 'TypeScript', 'Node.js'],
+    capacity: 85, // 整体负载水平
+    color: '#409eff',
+    tasks: [
+      {
+        id: 1,
+        name: '前端开发',
+        startDate: '2026-02-01',
+        endDate: '2026-02-10',
+        progress: 50,
+        resources: [
+          { id: 'dev-001', capacity: 60 }, // 该任务占用张三60%的时间
+          { id: 'dev-002', capacity: 40 }  // 同时占用李四40%的时间
+        ]
+      },
+      {
+        id: 2,
+        name: '代码审查',
+        startDate: '2026-02-05',
+        endDate: '2026-02-08',
+        progress: 0,
+        resources: [
+          { id: 'dev-001', capacity: 40 } // 该任务占用张三40%的时间
+        ]
+      }
+      // 注意：如果两个任务时间重叠，张三在2月5-8日的总占用率为100%（60%+40%），临界值
+    ]
+  },
+  {
+    id: 'dev-002',
+    name: '李四',
+    type: 'developer',
+    avatar: '/avatars/lisi.jpg',
+    department: '研发部',
+    skills: ['React', 'TypeScript'],
+    tasks: []
+  }
+]
+```
+
+**资源冲突检测示例**：
+
+```typescript
+// 场景：张三在同一时间段被分配了3个任务
+const resource = {
+  id: 'dev-001',
+  name: '张三',
+  tasks: [
+    {
+      id: 1,
+      name: '任务A',
+      startDate: '2026-02-10',
+      endDate: '2026-02-15',
+      resources: [{ id: 'dev-001', capacity: 40 }] // 占用40%
+    },
+    {
+      id: 2,
+      name: '任务B',
+      startDate: '2026-02-10',
+      endDate: '2026-02-20',
+      resources: [{ id: 'dev-001', capacity: 40 }] // 占用40%
+    },
+    {
+      id: 3,
+      name: '任务C',
+      startDate: '2026-02-12',
+      endDate: '2026-02-18',
+      resources: [{ id: 'dev-001', capacity: 30 }] // 占用30%
+    }
+  ]
+}
+
+// 冲突分析：
+// - 2月10-11日：A(40%) + B(40%) = 80%，未超载
+// - 2月12-15日：A(40%) + B(40%) + C(30%) = 110%，超载！显示冲突警告
+// - 2月16-18日：B(40%) + C(30%) = 70%，未超载
+// - 2月19-20日：B(40%)，未超载
+```
+
+#### 资源相关属性
+
+| 属性名                | 类型                  | 默认值       | 说明                                                                        |
+| --------------------- | --------------------- | ------------ | --------------------------------------------------------------------------- |
+| `resources`           | `Resource[]`          | `[]`         | 资源数据数组                                                                |
+| `viewMode`            | `'task' \| 'resource'` | `'task'`     | 视图模式：'task' 任务计划视图，'resource' 资源计划视图                      |
+| `resourceListConfig`  | `ResourceListConfig`  | `undefined`  | 资源列表配置，类似 TaskListConfig，用于配置资源列表的列定义、宽度等         |
+| `showConflicts`       | `boolean`             | `true`       | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域）              |
+| `showTaskbarTab`      | `boolean`             | `true`       | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar上的资源占用比例标签）     |
+
+#### 资源事件
+
+| 事件名                     | 参数                                                                                     | 触发时机                     | 说明                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------- |
+| `taskbar-resource-change`  | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | 任务跨资源拖拽结束时         | 资源视图下拖拽任务到另一资源行时触发，组件已自动更新任务的 `resources` 字段 |
+
+**数据同步说明**：
+
+- ✅ **组件内部自动更新**：资源相关操作（如任务跨资源移动）组件会自动更新 `props.resources` 和任务的 `resources` 字段
+- ✅ **事件仅做通知**：外部监听事件主要用于：显示提示消息、调用后端 API、更新其他相关数据等
+- ❌ **避免重复操作**：不要在事件处理器中再次修改数据，否则会导致重复更新
+
+#### 示例：资源视图基础用法
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :resources="resources"
+      view-mode="resource"
+      :show-conflicts="true"
+      :show-taskbar-tab="true"
+      @taskbar-resource-change="handleTaskbarResourceChange"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { Resource } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const resources = ref<Resource[]>([
+  {
+    id: 'dev-001',
+    name: '张三',
+    type: 'developer',
+    department: '研发部',
+    tasks: [
+      {
+        id: 1,
+        name: '前端开发',
+        startDate: '2026-02-01',
+        endDate: '2026-02-10',
+        progress: 50,
+        resources: [{ id: 'dev-001', capacity: 60 }]
+      }
+    ]
+  }
+])
+
+const handleTaskbarResourceChange = (payload: any) => {
+  console.log('任务资源变更:', payload)
+  // 调用后端API保存资源分配变更
+  // api.updateTaskResource(payload.task.id, payload.newResourceId)
+}
+</script>
+```
 
 ### 里程碑管理
 

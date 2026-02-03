@@ -97,7 +97,6 @@ const messages = {
     collapseAll: '全部折叠',
     // v1.9.0 视图模式
     taskView: '任务视图',
-    resourceView: '资源视图',
     language: '中文',
     languageTooltip: '选择语言',
     lightMode: '明亮模式',
@@ -297,6 +296,16 @@ const messages = {
         },
       },
     },
+    resourceView: {
+      desc: '资源视图',
+      capacity: '利用率',
+      overloaded: '超负荷',
+      duration: '时间周期',
+      overloadWarning: '资源超负荷警告',
+      conflictDuration: '冲突时段',
+      conflictWith: '与',
+      conflictSuffix: '冲突',
+    },
   },
   'en-US': {
     dateNotSet: 'Not set',
@@ -389,7 +398,6 @@ const messages = {
     collapseAll: 'Collapse All',
     // v1.9.0 视图模式
     taskView: 'Task View',
-    resourceView: 'Resource View',
     language: 'English',
     languageTooltip: 'Select language',
     lightMode: 'Light Mode',
@@ -591,6 +599,16 @@ const messages = {
           badge: 'data-large-1m.json',
         },
       },
+    },
+    resourceView: {
+      desc: 'Resource View',
+      capacity: 'capacity',
+      overloaded: 'overLoaded',
+      duration: 'duration',
+      overloadWarning: 'Overload Warning',
+      conflictDuration: 'conflict duration',
+      conflictWith: 'conflict with',
+      conflictSuffix: '',
     },
   },
 }

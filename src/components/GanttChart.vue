@@ -93,6 +93,7 @@ const emit = defineEmits([
   'task-updated',
   'task-collapse-change', // 任务折叠状态变化事件
   'link-deleted', // 链接删除事件
+  'view-mode-changed', // 视图模式变化事件
   // 工具栏事件
   'add-task',
   'add-milestone',
@@ -106,8 +107,6 @@ const emit = defineEmits([
   // TaskRow拖拽事件
   'task-row-moved',
   // v1.9.0 资源视图事件
-  'view-mode-change', // 视图模式切换事件
-  'resource-click', // 资源行点击事件
   'taskbar-resource-change', // 任务跨资源移动事件
   'resource-drag-end', // v1.9.0 资源视图垂直拖拽结束事件
 ])
@@ -152,7 +151,7 @@ const resourceTaskLayouts = computed(() => {
       resources.forEach(resource => {
         const resourceId = String(resource.id)
         if (resource.tasks && resource.tasks.length > 0) {
-          const layout = assignTaskRows(resource.tasks, resourceId, baseRowHeight)
+          const layout = assignTaskRows(resource.tasks, baseRowHeight)
           layouts.set(resourceId, layout)
         } else {
           // 没有任务的资源使用默认高度
@@ -195,7 +194,7 @@ const resourceConflicts = computed(() => {
   if (currentViewMode.value !== 'resource') return new Map()
 
   const resources = currentDataSource.value as Resource[]
-  const conflictsMap = new Map<string, Set<number>>()
+  const conflictsMap = new Map<string, Set<number | string>>()
 
   // 依赖 updateTaskTrigger 以便在任务更新时重新计算冲突
   if (updateTaskTrigger.value >= 0) {
@@ -208,7 +207,7 @@ const resourceConflicts = computed(() => {
       const conflictZones = detectConflicts(tasks, resource.id)
 
       if (conflictZones.length > 0) {
-        const conflicts = new Set<number>()
+        const conflicts = new Set<number | string>()
 
         // 收集所有冲突区域中涉及的任务ID
         conflictZones.forEach(zone => {
@@ -548,7 +547,8 @@ const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 const handleViewModeChange = (newMode: 'task' | 'resource') => {
   if (currentViewMode.value !== newMode) {
     currentViewMode.value = newMode
-    emit('view-mode-change', newMode)
+    // v1.9.7 emit视图模式变化事件，让应用层能够同步状态
+    emit('view-mode-changed', newMode)
   }
 }
 
@@ -558,6 +558,8 @@ watch(
   newMode => {
     if (newMode && currentViewMode.value !== newMode) {
       currentViewMode.value = newMode
+      // v1.9.7 emit视图模式变化事件
+      emit('view-mode-changed', newMode)
     }
   },
 )
@@ -2525,6 +2527,7 @@ function handleToolbarAddTask() {
       description: '',
       parentId: undefined,
       children: [],
+      resources: [],
     }
     taskDrawerTask.value = newTask
     taskDrawerEditMode.value = false
@@ -2581,7 +2584,8 @@ function handleTimelineEditTask(task: Task) {
   emit('task-double-click', task)
 
   // 根据 useDefaultDrawer 决定是否打开内置 TaskDrawer
-  if (props.useDefaultDrawer) {
+  // v1.9.7 只为真正的Task对象打开TaskDrawer，Resource对象不打开（Resource的id是字符串格式）
+  if (props.useDefaultDrawer && typeof task.id === 'number') {
     taskDrawerTask.value = task
     taskDrawerEditMode.value = true
     taskDrawerVisible.value = true
@@ -2614,6 +2618,7 @@ function handleAddPredecessor(targetTask: Task) {
     description: '',
     parentId: targetTask.parentId,
     children: [],
+    resources: [],
     isTimerRunning: false,
     timerStartTime: undefined,
     timerEndTime: undefined,
@@ -2648,6 +2653,7 @@ function handleAddSuccessor(targetTask: Task) {
     description: '',
     parentId: targetTask.parentId,
     children: [],
+    resources: [],
     isTimerRunning: false,
     timerStartTime: undefined,
     timerEndTime: undefined,
@@ -2739,6 +2745,40 @@ const updateTaskAndSyncToResources = (updatedTask: Task) => {
   }
 }
 
+// v1.9.0 新增任务时同步到资源视图
+const addTaskToResource = (newTask: Task) => {
+  // 只在资源视图模式下处理
+  if (currentViewMode.value !== 'resource' || !props.resources) {
+    return
+  }
+
+  // 1. 优先处理 resources 字段（支持多资源分配）
+  if (newTask.resources && newTask.resources.length > 0) {
+    newTask.resources.forEach(resourceAlloc => {
+      const resource = props.resources.find(r => r.id === resourceAlloc.id)
+      if (resource) {
+        // 避免重复添加
+        const exists = resource.tasks.find(t => t.id === newTask.id)
+        if (!exists) {
+          resource.tasks.push({ ...newTask })
+        }
+      }
+    })
+  }
+  // 2. 兼容 assignee 字段（单资源分配）
+  else if (newTask.assignee) {
+    const assigneeId = Array.isArray(newTask.assignee) ? newTask.assignee[0] : newTask.assignee
+    const resource = props.resources.find(r => r.id === assigneeId)
+    if (resource) {
+      // 避免重复添加
+      const exists = resource.tasks.find(t => t.id === newTask.id)
+      if (!exists) {
+        resource.tasks.push({ ...newTask })
+      }
+    }
+  }
+}
+
 // v1.9.0 在任务树中更新任务状态（用于timer等部分更新）
 const updateTaskStateInTree = (taskId: number, updateFn: (task: Task) => void): boolean => {
   const updateInList = (tasks: Task[]): boolean => {
@@ -2779,6 +2819,9 @@ function handleTaskDrawerSubmit(task: Task) {
     if (props.tasks) {
       insertTask(props.tasks, task)
     }
+    // v1.9.0 新增任务时同步到资源视图
+    addTaskToResource(task)
+
     // emit 新增任务事件
     emit('task-added', { task })
     if (taskToAddPredecessorTo.value) {
@@ -2984,7 +3027,6 @@ defineExpose({
       @add-milestone="milestoneAddHandler"
       @expand-all="handleExpandAll"
       @collapse-all="handleCollapseAll"
-      @view-mode-change="handleViewModeChange"
     />
 
     <!-- 甘特图主体 -->

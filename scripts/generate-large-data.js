@@ -30,7 +30,7 @@ function generateLargeResourceData() {
       const endDate = new Date(startDate)
       endDate.setDate(endDate.getDate() + duration)
 
-      const percent = [25, 50, 75, 100][Math.floor(Math.random() * 4)]
+      const capacity = [25, 50, 75, 100][Math.floor(Math.random() * 4)]
 
       tasks.push({
         id: taskId,
@@ -43,7 +43,7 @@ function generateLargeResourceData() {
           {
             id: resourceId,
             name: `资源${i}`,
-            percent,
+            capacity,
           },
         ],
       })

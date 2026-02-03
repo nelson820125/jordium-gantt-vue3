@@ -50,9 +50,6 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 // containerWidth优先（约1900px），如果为0则使用1920作为默认值，绝不使用props.width（可能30万px）
 const canvasWidth = computed(() => {
   const width = props.containerWidth || 1920
-  if (import.meta.env.DEV) {
-    console.log(`[GanttConflicts] canvasWidth: ${width}px (containerWidth: ${props.containerWidth}, totalWidth: ${props.width})`)
-  }
   return width
 })
 const canvasHeight = computed(() => props.height)
@@ -161,8 +158,11 @@ watch([() => props.timelineData, () => props.currentTimeScale], () => {
   if (import.meta.env.DEV) {}
   // v1.9.4 BUG修复 - 视图切换时清空坐标缓存
   coordsCache.clear()
-
-  recalculateConflicts()
+  // v1.9.7 Bug修复 - 视图切换时清空纹理缓存并使用nextTick确保立即刷新
+  texturePatterns.value = { light: null, medium: null, severe: null }
+  nextTick(() => {
+    recalculateConflicts()
+  })
 }, { deep: true })
 
 // v1.9.6 监听scrollLeft变化，滚动停止后重新计算可视区域的冲突
@@ -186,8 +186,6 @@ watch(() => props.scrollLeft, () => {
 
 // 增量重新计算冲突（仅计算与变化TaskBar相关的冲突）
 function recalculateConflictsIncremental(changedTaskId: string | number) {
-  const startTime = performance.now()
-
   // 找到变化的任务
   const changedTask = props.tasks.find(t => t.id === changedTaskId)
   if (!changedTask) {
@@ -198,10 +196,14 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
   // 找出与变化任务时间重叠的所有任务（包括自己）
   const affectedTasks = props.tasks.filter(task => {
     // 检查时间是否重叠
-    const taskStart = new Date(task.startDate)
-    const taskEnd = new Date(task.endDate)
-    const changedStart = new Date(changedTask.startDate)
-    const changedEnd = new Date(changedTask.endDate)
+    const taskStart = task.startDate ? new Date(task.startDate) : null
+    if (!taskStart) return false
+    const taskEnd = task.endDate ? new Date(task.endDate) : null
+    if (!taskEnd) return false
+    const changedStart = changedTask.startDate ? new Date(changedTask.startDate) : null
+    if (!changedStart) return false
+    const changedEnd = changedTask.endDate ? new Date(changedTask.endDate) : null
+    if (!changedEnd) return false
 
     return !(taskEnd < changedStart || taskStart > changedEnd)
   })
@@ -213,7 +215,7 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
   const affectedTaskIds = new Set(affectedTasks.map(t => t.id))
   const unchangedConflicts = previousConflictZones.value.filter(zone => {
     // 如果冲突区域的所有任务都不在受影响列表中，则保留
-    return !zone.tasks.some(task => affectedTaskIds.has(task.id))
+    return !zone.tasks.some(task => affectedTaskIds.has(Number(task.id)))
   })
 
   // 合并未变化的冲突和新计算的冲突
@@ -288,10 +290,7 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
       top,
       height,
     }
-  }).filter(Boolean)
-
-  const endTime = performance.now()
-  const elapsed = endTime - startTime
+  }).filter(z => z !== null) as ConflictZone[]
 
   // 使用增量重绘
   renderConflictsIncremental()
@@ -303,13 +302,6 @@ function recalculateConflicts() {
 
   // 调用冲突检测算法
   const conflicts = detectConflicts(props.tasks, props.resourceId)
-
-  // 详细日志：显示每个任务的资源占比
-  const tasksInfo = props.tasks.map(t => {
-    const resource = (t as any).resources?.find((r: any) => String(r.id) === String(props.resourceId))
-    const percent = resource?.percent || 0
-    return `${t.name}(${percent}%)`
-  }).join(', ')
 
   // v1.9.4 P1优化 - 使用坐标缓存
   conflictZones.value = conflicts.map((zone) => {
@@ -386,9 +378,6 @@ function recalculateConflicts() {
       }
     }
 
-    // 开发环境调试日志
-    if (import.meta.env.DEV) {}
-
     return {
       ...zone,
       left: canvasLeft,
@@ -396,18 +385,10 @@ function recalculateConflicts() {
       top,
       height,
     }
-  }).filter(Boolean) // 过滤掉完全不可见的冲突区域
+  }).filter(z => z !== null) as ConflictZone[]
 
   const endTime = performance.now()
   const elapsed = endTime - startTime
-
-  // v1.9.6 调试日志：输出每个冲突区域的坐标
-  if (import.meta.env.DEV) {
-    console.log(`[GanttConflicts] ${conflictZones.value.length} conflict zones after viewport clipping:`)
-    conflictZones.value.forEach((zone, index) => {
-      console.log(`  Zone ${index}: left=${zone.left}, width=${zone.width}, top=${zone.top}, height=${zone.height}, level=${zone.level}`)
-    })
-  }
 
   // 开发环境性能监控
   if (import.meta.env.DEV && elapsed > 50) {}

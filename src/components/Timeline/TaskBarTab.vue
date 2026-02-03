@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import type { Task } from '../../models/classes/Task'
+import { useI18n } from '../../composables/useI18n'
 
 interface Props {
   task: Task
   currentResourceId: string | number
   resourceColor: string
-  resourcePercent: number
+  resourceCapacity: number
   resourceName: string
   taskBarWidth?: number
   taskBarLeft?: number
@@ -33,6 +34,8 @@ const emit = defineEmits<{
   'hover-change': [isHovered: boolean]
 }>()
 
+const { t } = useI18n()
+
 // 状态管理
 const isExpanded = ref(false)
 const tabElement = ref<HTMLElement | null>(null)
@@ -43,7 +46,7 @@ let debounceTimer: number | null = null
 const DEBOUNCE_DELAY = 50 // 50ms 防抖延迟
 
 // 百分比文字
-const percentText = computed(() => `${Math.round(props.resourcePercent)}%`)
+const percentText = computed(() => `${Math.round(props.resourceCapacity)}%`)
 
 // Tab 宽度：基于 taskBarWidth，严格不超过taskbar宽度
 // 参考截图，对于窄taskbar需要严格保证tab不超出
@@ -64,7 +67,6 @@ const tabLeftOffset = computed(() => {
   }
 
   const taskBarLeft = props.taskBarLeft
-  const taskBarRight = taskBarLeft + (props.taskBarWidth || 0)
   const viewportLeft = props.scrollLeft
 
   // TaskBar完全在可视区域右侧，不显示Tab
@@ -146,7 +148,7 @@ const expandedStyle = computed(() => {
   if (shouldExpandUpward) {
     // 向上展开（默认行为）
     return {
-      position: 'fixed',
+      position: 'fixed' as const,
       bottom: `${viewportHeight - rect.top + 2}px`,
       left: `${rect.left}px`,
       maxHeight: `${Math.min(spaceAbove - 10, 400)}px`, // 限制最大高度，留10px边距
@@ -156,7 +158,7 @@ const expandedStyle = computed(() => {
   } else {
     // 向下展开（当顶部空间不足时）
     return {
-      position: 'fixed',
+      position: 'fixed' as const,
       top: `${rect.bottom + 2}px`,
       left: `${rect.left}px`,
       maxHeight: `${Math.min(spaceBelow - 10, 400)}px`, // 限制最大高度，留10px边距
@@ -174,9 +176,10 @@ const formattedDateRange = computed(() => {
   const end = new Date(props.task.endDate)
 
   const formatDate = (date: Date) => {
+    const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
-    return `${month}-${day}`
+    return `${year}/${month}/${day}`
   }
 
   return `${formatDate(start)} ~ ${formatDate(end)}`
@@ -194,9 +197,6 @@ const conflictInfoList = computed(() => {
   const currentStart = new Date(currentTask.startDate).getTime()
   const currentEnd = new Date(currentTask.endDate).getTime()
 
-  // 计算当前任务的资源占比
-  const currentPercent = props.resourcePercent || 100
-
   // v1.9.8 修改：只显示冲突任务自己的利用率
   return props.conflictTasks.map(conflictTask => {
     if (!conflictTask.startDate || !conflictTask.endDate) return null
@@ -210,8 +210,8 @@ const conflictInfoList = computed(() => {
       const allocation = conflictTask.resources.find(
         (r: any) => String(r.id) === String(props.currentResourceId),
       )
-      if (allocation && allocation.percent !== undefined) {
-        conflictPercent = Math.max(20, Math.min(100, allocation.percent))
+      if (allocation && allocation.capacity !== undefined) {
+        conflictPercent = Math.max(20, Math.min(100, allocation.capacity))
       }
     }
 
@@ -221,7 +221,7 @@ const conflictInfoList = computed(() => {
 
     const formatDate = (timestamp: number) => {
       const date = new Date(timestamp)
-      return `${date.getMonth() + 1}/${date.getDate()}`
+      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
     }
 
     return {
@@ -241,10 +241,7 @@ const totalOverloadPercent = computed(() => {
 
   const currentTask = props.task
   if (!currentTask.startDate || !currentTask.endDate) return 0
-
-  const currentStart = new Date(currentTask.startDate).getTime()
-  const currentEnd = new Date(currentTask.endDate).getTime()
-  const currentPercent = props.resourcePercent || 100
+  const currentPercent = props.resourceCapacity || 100
 
   // v1.9.9 修复：endDate 包含当天，需要 +1 天来判断交集
   const DAY_MS = 24 * 60 * 60 * 1000
@@ -290,8 +287,8 @@ const totalOverloadPercent = computed(() => {
               const allocation = task.resources.find(
                 (r: any) => String(r.id) === String(props.currentResourceId),
               )
-              if (allocation && allocation.percent !== undefined) {
-                taskPercent = allocation.percent
+              if (allocation && allocation.capacity !== undefined) {
+                taskPercent = allocation.capacity
               }
             }
             intervalTotal += taskPercent
@@ -432,12 +429,12 @@ onUnmounted(() => {
           <div class="expanded-body">
             <!-- 利用率 -->
             <div class="expanded-row">
-              <span class="info-label">利用率</span>
+              <span class="info-label">{{ t.resourceView.capacity }}</span>
               <span class="info-value">{{ percentText }}</span>
             </div>
             <!-- 日期范围 -->
             <div class="expanded-row">
-              <span class="info-label">时间范围</span>
+              <span class="info-label">{{ t.resourceView.duration }}</span>
               <span class="info-value">{{ formattedDateRange }}</span>
             </div>
             <!-- 冲突预警（有冲突时才显示） -->
@@ -447,20 +444,20 @@ onUnmounted(() => {
                 <svg class="warning-icon" viewBox="0 0 24 24" width="14" height="14">
                   <path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                 </svg>
-                <span class="conflict-title">资源超载警告</span>
+                <span class="conflict-title">{{ t.resourceView.overloadWarning }}</span>
                 <span class="total-overload">▲ {{ totalOverloadPercent }}%</span>
               </div>
               <!-- 可滚动的冲突列表 -->
               <div class="conflict-list-container">
                 <div v-for="(info, index) in conflictInfoList" :key="index" class="conflict-item">
-                  <div class="conflict-task-name">与《{{ info.taskName }}》冲突</div>
+                  <div class="conflict-task-name">{{ t.resourceView.conflictWith }}《{{ info ? info.taskName : '' }}》{{ t.resourceView.conflictSuffix }}</div>
                   <div class="conflict-detail">
-                    <span class="conflict-label">冲突时段：</span>
-                    <span class="conflict-value">{{ info.overlapStart }} ~ {{ info.overlapEnd }}</span>
+                    <span class="conflict-label">{{ t.resourceView.conflictDuration }}：</span>
+                    <span class="conflict-value">{{ info ? info.overlapStart : '' }} ~ {{ info ? info.overlapEnd : '' }}</span>
                   </div>
                   <div class="conflict-detail">
-                    <span class="conflict-label">任务利用率：</span>
-                    <span class="conflict-value">{{ info.conflictPercent }}%</span>
+                    <span class="conflict-label">{{ t.resourceView.capacity }}: </span>
+                    <span class="conflict-value">{{ info ? info.conflictPercent : '' }}%</span>
                   </div>
                 </div>
               </div>

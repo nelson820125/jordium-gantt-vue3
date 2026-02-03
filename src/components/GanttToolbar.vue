@@ -227,14 +227,13 @@ const handleCollapseAll = () => {
   }
 }
 
-// v1.9.0 视图模式切换处理
+// v1.9.0 视图模式切换处理 - 通过回调直接更新父组件状态
 const handleViewModeChange = (mode: 'task' | 'resource') => {
   if (currentViewMode.value !== mode) {
     currentViewMode.value = mode
+    // 通过回调通知 GanttChart 更新内部状态
     if (props.onViewModeChange && typeof props.onViewModeChange === 'function') {
       props.onViewModeChange(mode)
-    } else {
-      emit('view-mode-change', mode)
     }
   }
 }
@@ -608,7 +607,7 @@ onUnmounted(() => {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
-          {{ t('resourceView') || '资源视图' }}
+          {{ t('resourceView.desc') || '资源视图' }}
         </button>
       </div>
 

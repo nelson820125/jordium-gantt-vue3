@@ -3,6 +3,11 @@
     "text": "🥇 Gitee 2025 Open Source Awards 👉 Thanks for Your Vote",
     "url": "https://gitee.com/activity/2025opensource?ident=IOUNZP"
   },
+  "resourceEditHint": {
+    "title": "Resource Edit Hint",
+    "message": "The resource row has been double-clicked. This event can be customized to implement resource editing functionality.\n\nCurrent resource: {resourceName}\n\nYou can implement resource property editing here, such as modifying resource name, capacity, cost, and other information.",
+    "confirmText": "Got it"
+  },
   "taskMoveConfirm": {
     "title": "Confirm Task Move",
     "confirmText": "Confirm",

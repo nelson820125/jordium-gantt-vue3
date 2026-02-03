@@ -3,6 +3,11 @@
     "text": "🥇 Gitee 2025年度开源项目评选 👉 感谢您的参与投票",
     "url": "https://gitee.com/activity/2025opensource?ident=IOUNZP"
   },
+  "resourceEditHint": {
+    "title": "资源编辑提示",
+    "message": "资源条目被双击，此事件可以自定义完成资源的编辑需求。\n\n当前资源：{resourceName}\n\n您可以在此处实现资源属性编辑功能，例如修改资源名称、容量、成本等信息。",
+    "confirmText": "知道了"
+  },
   "taskMoveConfirm": {
     "title": "确认移动任务",
     "confirmText": "确认",

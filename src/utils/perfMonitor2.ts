@@ -14,7 +14,7 @@ class PerformanceMonitor {
    */
   start(name: string): void {
     this.marks.set(name, performance.now())
-    console.log(`[⏱️ START] ${name}`)
+    // console.log(`[⏱️ START] ${name}`)
   }
 
   /**
@@ -23,7 +23,7 @@ class PerformanceMonitor {
   end(name: string): number {
     const startTime = this.marks.get(name)
     if (!startTime) {
-      console.warn(`[⏱️ WARN] No start mark found for: ${name}`)
+      // console.warn(`[⏱️ WARN] No start mark found for: ${name}`)
       return 0
     }
 
@@ -33,14 +33,6 @@ class PerformanceMonitor {
       duration,
       timestamp: Date.now(),
     })
-
-    // 根据耗时使用不同颜色
-    let icon = '✅'
-    if (duration > 1000) icon = '🔴'
-    else if (duration > 500) icon = '🟠'
-    else if (duration > 100) icon = '🟡'
-
-    console.log(`[⏱️ END] ${icon} ${name}: ${duration.toFixed(2)}ms`)
     this.marks.delete(name)
     return duration
   }
@@ -48,15 +40,11 @@ class PerformanceMonitor {
   /**
    * 记录中间点
    */
-  checkpoint(name: string, message: string): void {
+  checkpoint(name: string): void {
     const startTime = this.marks.get(name)
     if (!startTime) {
-      console.warn(`[⏱️ WARN] No start mark found for checkpoint: ${name}`)
       return
     }
-
-    const elapsed = performance.now() - startTime
-    console.log(`[⏱️ CHECKPOINT] ${name} - ${message}: ${elapsed.toFixed(2)}ms`)
   }
 
   /**
@@ -111,7 +99,7 @@ class PerformanceMonitor {
         'Avg (ms)': stat.avg.toFixed(2),
         'Max (ms)': stat.max.toFixed(2),
         'Total (ms)': stat.total.toFixed(2),
-      }))
+      })),
     )
 
     console.groupEnd()

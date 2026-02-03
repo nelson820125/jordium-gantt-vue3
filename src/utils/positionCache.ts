@@ -92,7 +92,6 @@ export class PositionCache {
     this.timelineDataHash = newHash
 
     let cumulativePosition = 0
-    const startTime = performance.now()
 
     // ⚠️ 关键优化：一次性遍历timelineData，构建完整的日期→位置映射表
     for (const periodData of timelineData) {
@@ -102,7 +101,7 @@ export class PositionCache {
 
         for (let i = 0; i < hours.length; i++) {
           const hourData = hours[i]
-          const date = new Date(hourData.date)
+          const date = hourData.date ? new Date(hourData.date) : new Date()
           const key = this.getCacheKey(date, timeScale)
           const position = cumulativePosition + i * 30 // 小时视图每小时30px
           this.cache.set(key, position)
@@ -143,8 +142,8 @@ export class PositionCache {
         }
       } else if (timeScale === TimelineScale.MONTH) {
         // 月视图：为每个月的每一天建立映射
-        const startDate = new Date(periodData.startDate)
-        const endDate = new Date(periodData.endDate)
+        const startDate = new Date((periodData as TimelineMonth).startDate)
+        const endDate = new Date((periodData as TimelineMonth).endDate)
         const daysInMonth = (periodData as TimelineMonth).monthData?.dayCount || 30
         const monthWidth = 60
         const dayWidth = monthWidth / daysInMonth
@@ -221,14 +220,6 @@ export class PositionCache {
           cumulativePosition += 180
         }
       }
-    }
-
-    const endTime = performance.now()
-    // Performance log for debugging
-    if (this.cache.size > 0) {
-      const duration = (endTime - startTime).toFixed(2)
-      // eslint-disable-next-line no-console
-      console.log(`[PositionCache] Built cache: ${this.cache.size} entries, took ${duration}ms`)
     }
   }
 

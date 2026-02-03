@@ -29,11 +29,11 @@
 
 <p align="center">A modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling</p>
 
-<p align="center">
+<!-- <p align="center">
   <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
     <img src="https://img.shields.io/badge/🥇_Gitee_2025_Open_Source_Awards-👉_Thanks_for_Your_Vote-gold?style=for-the-badge&labelColor=C71D23&logoColor=white" alt="Gitee 2025 Open Source Project Awards" height="40">
   </a>
-</p>
+</p> -->
 
 <p align="center">
   <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
@@ -72,11 +72,15 @@ jordium-gantt-vue3 is a modern Gantt chart component built with Vue 3 and TypeSc
 
 #### Light Theme
 
-<img src="design/screenshots/light-theme.png" alt="Light Theme" width="100%">
+<img src="design/screenshots/light-theme-en.png" alt="Light Theme" width="100%">
+
+<img src="design/screenshots/light-theme-en1.png" alt="Light Theme" width="100%">
 
 #### Dark Theme
 
-<img src="design/screenshots/dark-theme.png" alt="Dark Theme" width="100%">
+<img src="design/screenshots/dark-theme-en.png" alt="Dark Theme" width="100%">
+
+<img src="design/screenshots/dark-theme-en1.png" alt="Dark Theme" width="100%">
 
 ---
 
@@ -195,6 +199,8 @@ npm run dev
 | --------------------------- | --------- | ------- | ------------------------------------------------------------------------- |
 | `tasks`                     | `Task[]`  | `[]`    | Array of task data                                                        |
 | `milestones`                | `Task[]`  | `[]`    | Array of milestone data (Note: Type is Task[], must set type='milestone') |
+| `resources` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Resource[]` | `[]` | Array of resource data (used in resource planning view) |
+| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource'` | `'task'` | View mode: 'task' for task planning view \| 'resource' for resource planning view |
 | `showToolbar`               | `boolean` | `true`  | Whether to show the toolbar                                               |
 | `useDefaultDrawer`          | `boolean` | `true`  | Whether to use the built-in task edit drawer (TaskDrawer)                 |
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
@@ -215,7 +221,9 @@ npm run dev
 | `completeTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#909399'` | Background color for completed tasks' TaskBar. Supports hex color values (e.g., `'#909399'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
 | `ongoingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#e6a23c'` | Background color for ongoing tasks' TaskBar. Supports hex color values (e.g., `'#e6a23c'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Whether to display actual TaskBar (shows actual execution progress below planned TaskBar)  |
-| `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable TaskBar hover tooltip (shows task details on mouse hover)  | 
+| `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable TaskBar hover tooltip (shows task details on mouse hover)  |
+| `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource conflict visualization layer (shows diagonal stripe background for overload zones in resource view) |
+| `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) | 
 
 #### TaskListColumn Component Props
 
@@ -362,6 +370,7 @@ For complete configuration object documentation, see [⚙️ Configuration & Cus
 | ---------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------------------- |
 | `toolbarConfig`  | `ToolbarConfig`              | `{}`                                                                    | Toolbar configuration        |
 | `taskListConfig` | `TaskListConfig`             | `undefined`                                                             | Task list configuration      |
+| `resourceListConfig` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceListConfig`         | `undefined`                                                             | Resource list configuration  |
 | `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | Task bar style configuration |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | Custom localization messages |
 | `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | Working hours configuration  |
@@ -408,6 +417,7 @@ For complete event documentation, see:
 | `milestone-icon-changed` | `{ milestoneId, icon }`           | Milestone icon changed                 |
 | `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
 | `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) |
+| `taskbar-resource-change` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | Task moved across resources (dragging task to another resource row in resource view) |
 
 #### Example 1: Simplest Gantt Chart
 
@@ -1100,7 +1110,207 @@ const handleTaskRowMoved = async (payload: {
   - Cannot drag onto its own child tasks (avoid circular reference)
   - Milestones and milestone groups cannot be dragged
 
-### Milestone Management
+### Resource Management ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Resource management is used to manage human resources or equipment in a project, supporting task allocation, resource load analysis, and conflict detection in resource view. Switch to resource planning view using the `viewMode="resource"` prop.
+
+> **Core Features**:
+> - 📊 **Resource View**: Display task allocation by resource dimension
+> - 🎯 **Load Analysis**: Real-time display of resource utilization and overload status
+> - ⚠️ **Conflict Detection**: Automatically detect resource time conflicts (e.g., Task A:40% + Task B:40% + Task C:30% = 110% overload)
+> - 🎨 **Visualization**: Diagonal stripe background marks conflict zones, resource tabs show utilization percentage
+> - 🔄 **Cross-Resource Move**: Support dragging tasks to different resource rows for reallocation
+>
+> **View Limitations**:
+> - ❌ **Task Links Disabled**: Resource view does not display predecessor/successor relationship lines between tasks, as resource view focuses on resource allocation rather than task dependencies
+> - ❌ **No Actual TaskBar**: `showActualTaskbar` prop has no effect in resource view, actual execution progress bar will not be displayed
+
+#### Resource Data Structure
+
+| Field           | Type                | Required | Default | Description                                                                                                 |
+| --------------- | ------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `id`            | `string \| number`  | ✅       | -       | Unique resource identifier                                                                                  |
+| `name`          | `string`            | ✅       | -       | Resource name (e.g., person name, device name)                                                              |
+| `type`          | `string`            | -        | -       | Resource type (e.g., 'developer', 'designer', 'device')                                                     |
+| `avatar`        | `string`            | -        | -       | Resource avatar URL                                                                                         |
+| `description`   | `string`            | -        | -       | Resource description                                                                                        |
+| `department`    | `string`            | -        | -       | Department                                                                                                  |
+| `skills`        | `string[]`          | -        | -       | Skill tags array (e.g., `['Vue', 'React', 'TypeScript']`)                                                  |
+| `capacity`      | `number`            | -        | -       | Resource capacity/utilization (0-100), can represent overall load level                                     |
+| `color`         | `string`            | -        | -       | Custom resource row left border color (e.g., `'#ff5733'`), uses default color scheme if not set            |
+| `tasks`         | `Task[]`            | -        | `[]`    | Array of tasks assigned to this resource, **each task needs `resources` field to mark resource utilization** |
+| `[key: string]` | `unknown`           | -        | -       | Support custom property extension, can add any additional fields                                            |
+
+> **Custom Property Extension**: Resource interface supports adding any custom fields, e.g., `email`, `phone`, `location`, `workHours`, etc.
+>
+> **Task-Resource Association**:
+>
+> - Each Resource contains a `tasks` array storing tasks assigned to that resource
+> - Each Task should include a `resources` field marking which resources are used and their utilization percentage
+> - Resource utilization format: `task.resources = [{ id: 'resource1', capacity: 60 }, { id: 'resource2', capacity: 40 }]`
+> - `capacity` range: 20-100, representing the percentage of resource used by that task
+> - Conflict detection: When multiple tasks' `capacity` sum > 100% for the same resource in the same time period, a conflict warning is displayed
+
+**Resource Data Example**:
+
+```typescript
+import type { Resource, Task } from 'jordium-gantt-vue3'
+
+const resources: Resource[] = [
+  {
+    id: 'dev-001',
+    name: 'Zhang San',
+    type: 'developer',
+    avatar: '/avatars/zhangsan.jpg',
+    department: 'R&D',
+    skills: ['Vue', 'TypeScript', 'Node.js'],
+    capacity: 85, // Overall load level
+    color: '#409eff',
+    tasks: [
+      {
+        id: 1,
+        name: 'Frontend Development',
+        startDate: '2026-02-01',
+        endDate: '2026-02-10',
+        progress: 50,
+        resources: [
+          { id: 'dev-001', capacity: 60 }, // This task uses 60% of Zhang San's time
+          { id: 'dev-002', capacity: 40 }  // Also uses 40% of Li Si's time
+        ]
+      },
+      {
+        id: 2,
+        name: 'Code Review',
+        startDate: '2026-02-05',
+        endDate: '2026-02-08',
+        progress: 0,
+        resources: [
+          { id: 'dev-001', capacity: 40 } // This task uses 40% of Zhang San's time
+        ]
+      }
+      // Note: If two tasks overlap, Zhang San's total utilization on Feb 5-8 is 100% (60%+40%), at threshold
+    ]
+  },
+  {
+    id: 'dev-002',
+    name: 'Li Si',
+    type: 'developer',
+    avatar: '/avatars/lisi.jpg',
+    department: 'R&D',
+    skills: ['React', 'TypeScript'],
+    tasks: []
+  }
+]
+```
+
+**Resource Conflict Detection Example**:
+
+```typescript
+// Scenario: Zhang San is assigned 3 tasks in the same time period
+const resource = {
+  id: 'dev-001',
+  name: 'Zhang San',
+  tasks: [
+    {
+      id: 1,
+      name: 'Task A',
+      startDate: '2026-02-10',
+      endDate: '2026-02-15',
+      resources: [{ id: 'dev-001', capacity: 40 }] // Uses 40%
+    },
+    {
+      id: 2,
+      name: 'Task B',
+      startDate: '2026-02-10',
+      endDate: '2026-02-20',
+      resources: [{ id: 'dev-001', capacity: 40 }] // Uses 40%
+    },
+    {
+      id: 3,
+      name: 'Task C',
+      startDate: '2026-02-12',
+      endDate: '2026-02-18',
+      resources: [{ id: 'dev-001', capacity: 30 }] // Uses 30%
+    }
+  ]
+}
+
+// Conflict Analysis:
+// - Feb 10-11: A(40%) + B(40%) = 80%, not overloaded
+// - Feb 12-15: A(40%) + B(40%) + C(30%) = 110%, overloaded! Shows conflict warning
+// - Feb 16-18: B(40%) + C(30%) = 70%, not overloaded
+// - Feb 19-20: B(40%), not overloaded
+```
+
+#### Resource-Related Props
+
+| Prop                  | Type                   | Default      | Description                                                                                              |
+| --------------------- | ---------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
+| `resources`           | `Resource[]`           | `[]`         | Array of resource data                                                                                   |
+| `viewMode`            | `'task' \| 'resource'` | `'task'`     | View mode: 'task' for task planning view, 'resource' for resource planning view                         |
+| `resourceListConfig`  | `ResourceListConfig`   | `undefined`  | Resource list configuration, similar to TaskListConfig, for configuring resource list columns, width etc |
+| `showConflicts`       | `boolean`              | `true`       | Whether to display resource conflict visualization layer (diagonal stripe background in resource view)   |
+| `showTaskbarTab`      | `boolean`              | `true`       | Whether to display resource tab on TaskBar (resource utilization label on TaskBar in resource view)     |
+
+#### Resource Events
+
+| Event Name                 | Parameters                                                                                   | Trigger Timing                 | Description                                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `taskbar-resource-change`  | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | When task drag across resources | Triggered when dragging task to another resource row in resource view, component auto-updates task's `resources` field |
+
+**Data Sync Notes**:
+
+- ✅ **Auto Update**: Resource-related operations (like task cross-resource move) are automatically updated by the component in `props.resources` and task's `resources` field
+- ✅ **Events for Notification**: External event listeners are mainly used for: showing messages, calling backend APIs, updating other related data, etc.
+- ❌ **Avoid Duplicate Operations**: Do not modify data again in event handlers, as this causes duplicate updates
+
+#### Example: Basic Resource View Usage
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :resources="resources"
+      view-mode="resource"
+      :show-conflicts="true"
+      :show-taskbar-tab="true"
+      @taskbar-resource-change="handleTaskbarResourceChange"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { GanttChart } from 'jordium-gantt-vue3'
+import type { Resource } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const resources = ref<Resource[]>([
+  {
+    id: 'dev-001',
+    name: 'Zhang San',
+    type: 'developer',
+    department: 'R&D',
+    tasks: [
+      {
+        id: 1,
+        name: 'Frontend Development',
+        startDate: '2026-02-01',
+        endDate: '2026-02-10',
+        progress: 50,
+        resources: [{ id: 'dev-001', capacity: 60 }]
+      }
+    ]
+  }
+])
+
+const handleTaskbarResourceChange = (payload: any) => {
+  console.log('Task resource changed:', payload)
+  // Call backend API to save resource allocation change
+  // api.updateTaskResource(payload.task.id, payload.newResourceId)
+}
+</script>
+```
 
 ### Milestone Management
 

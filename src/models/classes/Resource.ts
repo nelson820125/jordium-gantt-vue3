@@ -149,7 +149,7 @@ export class Resource {
    * @param task 任务对象
    * @returns 占比百分比 (20-100)，默认100
    */
-  private getTaskAllocationPercent(task: any): number {
+  getTaskAllocationPercent(task: any): number {
     if (!task.resources || !Array.isArray(task.resources)) {
       return 100 // 未配置resources时，默认100%
     }
@@ -159,7 +159,7 @@ export class Resource {
       return 100 // 未找到当前资源的分配信息，默认100%
     }
 
-    const percent = allocation.percent ?? 100
-    return Math.max(20, Math.min(100, percent)) // 限制范围 20-100
+    const capacity = allocation.capacity ?? 100
+    return Math.max(20, Math.min(100, capacity)) // 限制范围 20-100
   }
 }
