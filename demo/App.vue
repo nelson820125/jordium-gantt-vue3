@@ -101,7 +101,7 @@ const applyDataSource = (source: RawDataSource) => {
         description: resData.description,
         department: resData.department,
         skills: resData.skills,
-        utilization: resData.utilization,
+        capacity: resData.capacity,
         color: resData.color,
         tasks: resData.tasks || []
       })
@@ -293,13 +293,13 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
       formatter: (resource: Resource) => resource.name || '-',
     },
     {
-      key: 'utilization',
+      key: 'capacity',
       label: '利用率',
       visible: true,
       width: 100,
       formatter: (resource: Resource) => {
-        if (resource.utilization != null) {
-          return `${resource.utilization}%`
+        if (resource.capacity != null) {
+          return `${resource.capacity}%`
         }
         // 简单计算：基于任务数量的利用率
         const taskCount = resource.tasks?.length || 0

@@ -130,6 +130,9 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
   // v1.9.7 修复：返回所有与当前任务时间重叠的冲突任务
   // 不需要再次验证占比相加是否超过100%，因为resourceConflicts已经包含了所有冲突的任务ID
   // 当多个任务同时重叠时（如3个任务各75%），应该全部返回，而不是只返回第一个两两超载的任务
+  // v1.9.9 修复：endDate 包含当天，需要 +1 天来判断交集（与 conflictUtils 保持一致）
+  const currentEndPlus = currentEnd + 24 * 60 * 60 * 1000
+
   const conflictTasks = resource.tasks.filter(task => {
     if (task.id === taskId) return false
     if (!task.startDate || !task.endDate) return false
@@ -138,9 +141,11 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
 
     const taskStart = new Date(task.startDate).getTime()
     const taskEnd = new Date(task.endDate).getTime()
+    const taskEndPlus = taskEnd + 24 * 60 * 60 * 1000
 
-    // 检查时间重叠：只要与当前任务有时间交集，就是冲突任务
-    return currentStart < taskEnd && taskStart < currentEnd
+    // 检查时间重叠：endDate 包含当天，所以需要 +1 天来判断
+    // 例如：任务A endDate=12-24, 任务B startDate=12-24，应判断为重叠（都占用12-24这一天）
+    return currentStart < taskEndPlus && taskStart < currentEndPlus
   })
 
   return conflictTasks

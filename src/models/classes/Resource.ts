@@ -1,4 +1,5 @@
 import type { Task } from './Task'
+import { detectConflicts } from '../../utils/conflictUtils'
 
 /**
  * 资源类 (Resource Class)
@@ -15,7 +16,7 @@ export class Resource {
   description?: string
   department?: string
   skills?: string[]
-  utilization?: number
+  capacity?: number
   color?: string // 自定义资源行左边框颜色，如 '#ff5733'，若不设置则使用默认颜色方案
   tasks: Task[]
   [key: string]: unknown
@@ -28,7 +29,7 @@ export class Resource {
     description?: string
     department?: string
     skills?: string[]
-    utilization?: number
+    capacity?: number
     color?: string
     tasks?: Task[]
     [key: string]: unknown
@@ -40,7 +41,7 @@ export class Resource {
     this.description = data.description
     this.department = data.department
     this.skills = data.skills
-    this.utilization = data.utilization
+    this.capacity = data.capacity
     this.color = data.color
     this.tasks = data.tasks || []
 
@@ -89,7 +90,7 @@ export class Resource {
    * 更新利用率
    */
   updateUtilization(): void {
-    this.utilization = this.calculateUtilization()
+    this.capacity = this.calculateUtilization()
   }
 
   /**
@@ -130,45 +131,21 @@ export class Resource {
   /**
    * v1.9.0 检测资源是否超载（基于占用比例）
    * 超载定义：同一时间段内，资源总占用比例 > 100%
+   * v1.9.9 修复：使用 detectConflicts 函数来正确检测多任务叠加的超载
    * @returns 是否资源超载
    */
   isOverloaded(): boolean {
     if (this.tasks.length < 2) return false
 
-    // 过滤掉没有开始日期和结束日期的任务
-    const validTasks = this.tasks.filter(task => task.startDate && task.endDate)
-    if (validTasks.length < 2) return false
+    // 使用 conflictUtils 的 detectConflicts 函数来检测冲突
+    // 这个函数能正确处理多任务叠加的超载情况（如 A:40% + B:40% + C:30% = 110%）
+    const conflictZones = detectConflicts(this.tasks, this.id)
 
-    // 检测任意时间点的总占比是否超过100%
-    for (let i = 0; i < validTasks.length; i++) {
-      for (let j = i + 1; j < validTasks.length; j++) {
-        const task1 = validTasks[i]
-        const task2 = validTasks[j]
-
-        // 检查两个任务是否有时间交集
-        const start1 = new Date(task1.startDate!).getTime()
-        const end1 = new Date(task1.endDate!).getTime()
-        const start2 = new Date(task2.startDate!).getTime()
-        const end2 = new Date(task2.endDate!).getTime()
-
-        // 判断时间是否重叠
-        if (start1 < end2 && start2 < end1) {
-          // 有重叠，计算总占比
-          const percent1 = this.getTaskAllocationPercent(task1)
-          const percent2 = this.getTaskAllocationPercent(task2)
-
-          if (percent1 + percent2 > 100) {
-            return true // 超负荷
-          }
-        }
-      }
-    }
-
-    return false
+    return conflictZones.length > 0
   }
 
   /**
-   * v1.9.0 获取任务中当前资源的投入占比
+   * v1.9.0 获取任务中当前资源的利用率
    * @param task 任务对象
    * @returns 占比百分比 (20-100)，默认100
    */

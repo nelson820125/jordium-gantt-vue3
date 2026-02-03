@@ -7,7 +7,7 @@
       "avatar": "/50-11.jpg",
       "department": "临床研究部",
       "skills": ["临床试验管理", "项目规划", "团队领导"],
-      "utilization": 85,
+      "capacity": 85,
       "color": "#2196f3",
       "tasks": [
         {
@@ -52,7 +52,7 @@
       "avatar": "/50-12.jpg",
       "department": "I期临床研究组",
       "skills": ["I期试验设计", "药代动力学", "安全性评估"],
-      "utilization": 92,
+      "capacity": 92,
       "color": "#4caf50",
       "tasks": [
         {
@@ -97,7 +97,7 @@
       "avatar": "/50-13.jpg",
       "department": "临床研究部",
       "skills": ["方案设计", "伦理审查", "监管申报"],
-      "utilization": 75,
+      "capacity": 75,
       "tasks": [
         {
           "id": 1101,
@@ -131,7 +131,7 @@
       "avatar": "/50-14.jpg",
       "department": "数据管理与统计部",
       "skills": ["统计分析", "数据可视化", "报告撰写"],
-      "utilization": 68,
+      "capacity": 68,
       "color": "#ff9800",
       "tasks": [
         {
@@ -176,7 +176,7 @@
       "avatar": "/50-15.jpg",
       "department": "质量保证部",
       "skills": ["GCP审计", "质量控制", "SOP管理"],
-      "utilization": 88,
+      "capacity": 88,
       "tasks": [
         {
           "id": 1104,
@@ -211,7 +211,7 @@
       "avatar": "/50-16.jpg",
       "department": "II期临床研究组",
       "skills": ["试验协调", "中心管理", "受试者跟踪"],
-      "utilization": 55,
+      "capacity": 55,
       "tasks": [
         {
           "id": 1200,
@@ -238,7 +238,7 @@
       "avatar": "/50-17.jpg",
       "department": "设备与后勤部",
       "skills": ["设备维护", "库存管理", "供应链协调"],
-      "utilization": 42,
+      "capacity": 42,
       "tasks": [
         {
           "id": 5011,
@@ -265,7 +265,7 @@
       "avatar": "/50-18.jpg",
       "department": "III期临床研究组",
       "skills": ["大型试验管理", "多中心协调", "里程碑管理"],
-      "utilization": 35,
+      "capacity": 35,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -285,7 +285,7 @@
       "avatar": "/50-19.jpg",
       "department": "数据管理与统计部",
       "skills": ["统计建模", "样本量计算", "数据分析"],
-      "utilization": 95,
+      "capacity": 95,
       "color": "#ff5733",
       "tasks": [
         {
@@ -341,7 +341,7 @@
       "avatar": "/50-20.jpg",
       "department": "临床监查部",
       "skills": ["现场监查", "数据核查", "问题解决"],
-      "utilization": 110,
+      "capacity": 110,
       "color": "#3498db",
       "tasks": [
         {
@@ -397,7 +397,7 @@
       "avatar": "/50-21.jpg",
       "department": "医学事务部",
       "skills": ["研究报告撰写", "文献检索", "医学翻译"],
-      "utilization": 72,
+      "capacity": 72,
       "color": "#e74c3c",
       "tasks": [
         {
@@ -442,7 +442,7 @@
       "avatar": "/50-22.jpg",
       "department": "药物警戒部",
       "skills": ["不良事件管理", "安全性报告", "信号检测"],
-      "utilization": 88,
+      "capacity": 88,
       "color": "#f39c12",
       "tasks": [
         {
@@ -478,7 +478,7 @@
       "avatar": "/50-23.jpg",
       "department": "注册事务部",
       "skills": ["IND申报", "监管沟通", "文件管理"],
-      "utilization": 65,
+      "capacity": 65,
       "tasks": [
         {
           "id": 6015,

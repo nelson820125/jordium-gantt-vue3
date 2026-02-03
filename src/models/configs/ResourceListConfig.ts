@@ -7,7 +7,7 @@ export type ResourceListColumnType =
   | 'name'
   | 'type'
   | 'department'
-  | 'utilization'
+  | 'capacity'
   | 'taskCount'
 
 /**
@@ -71,10 +71,10 @@ export const DEFAULT_RESOURCE_LIST_COLUMNS: ResourceListColumnConfig[] = [
     visible: true,
   },
   {
-    type: 'utilization',
-    key: 'utilization',
+    type: 'capacity',
+    key: 'capacity',
     label: '利用率',
-    cssClass: 'col-utilization',
+    cssClass: 'col-capacity',
     visible: true,
   },
 ]

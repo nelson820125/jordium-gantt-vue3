@@ -47,7 +47,7 @@ defineSlots<{
 // 从 GanttChart 注入 enableLinkAnchor 配置
 const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', computed(() => true))
 
-// v1.9.0 计算当前资源的投入占比
+// v1.9.0 计算当前资源的利用率
 const resourcePercent = computed(() => {
   // 如果直接传递了占比，使用传递的值
   if (props.resourceAllocationPercent !== undefined) {
@@ -156,7 +156,7 @@ interface Props {
   hasResourceConflict?: boolean
   // v1.9.2 资源视图：冲突任务列表（用于显示详细冲突信息）
   conflictTasks?: Task[]
-  // v1.9.0 资源视图：当前资源在任务中的投入占比 (20-100)
+  // v1.9.0 资源视图：当前资源在任务中的利用率 (20-100)
   resourceAllocationPercent?: number
   // v1.9.0 资源视图：当前资源ID（用于查找占比信息）
   currentResourceId?: string | number
@@ -2694,7 +2694,7 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
       const rowHeight = 24 // 每行内容高度
       let contentRows = 4 // 默认4行（开始日期、结束日期、预估工时、实际工时、进度）
 
-      // 资源视图且投入占比<100%时，多1行
+      // 资源视图且利用率<100%时，多1行
       if (viewMode.value === 'resource' && resourcePercent.value < 100) {
         contentRows += 1
       }
@@ -3636,7 +3636,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       <div class="tooltip-arrow"></div>
       <div class="tooltip-title">{{ task.name }}</div>
       <div class="tooltip-content">
-        <!-- v1.9.0 资源视图：显示投入占比 -->
+        <!-- v1.9.0 资源视图：显示利用率 -->
         <div v-if="viewMode === 'resource' && resourcePercent < 100" class="tooltip-row">
           <span class="tooltip-label">{{ t('investment') || '投入' }}:</span>
           <span class="tooltip-value">{{ resourcePercent }}%</span>

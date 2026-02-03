@@ -28,6 +28,7 @@ import {
 } from '../models/configs/TaskListConfig'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
+import { detectConflicts } from '../utils/conflictUtils'
 import { useMessage } from '../composables/useMessage'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -189,6 +190,7 @@ const resourceRowPositions = computed(() => {
 })
 
 // 计算资源冲突状态（依赖updateTaskTrigger以便实时更新）
+// v1.9.9 修复：使用 detectConflicts 函数来正确检测多任务叠加的超载情况
 const resourceConflicts = computed(() => {
   if (currentViewMode.value !== 'resource') return new Map()
 
@@ -198,38 +200,22 @@ const resourceConflicts = computed(() => {
   // 依赖 updateTaskTrigger 以便在任务更新时重新计算冲突
   if (updateTaskTrigger.value >= 0) {
     resources.forEach(resource => {
-      // v1.9.2 使用 Resource.isOverloaded() 方法检测真正的资源超载
-      // 超载定义：同一时间段内，资源总占用比例 > 100%
-      if (typeof resource.isOverloaded === 'function' && resource.isOverloaded()) {
+      const tasks = resource.tasks || []
+      if (tasks.length < 2) return
+
+      // 使用 conflictUtils 的 detectConflicts 函数来检测冲突
+      // 这个函数能正确处理多任务叠加的超载情况（如 A:40% + B:40% + C:30% = 110%）
+      const conflictZones = detectConflicts(tasks, resource.id)
+
+      if (conflictZones.length > 0) {
         const conflicts = new Set<number>()
-        const tasks = resource.tasks || []
-        const validTasks = tasks.filter(task => task.startDate && task.endDate)
 
-        // 找出所有导致超载的任务对
-        for (let i = 0; i < validTasks.length; i++) {
-          for (let j = i + 1; j < validTasks.length; j++) {
-            const task1 = validTasks[i]
-            const task2 = validTasks[j]
-
-            // 检查时间重叠
-            const start1 = new Date(task1.startDate!).getTime()
-            const end1 = new Date(task1.endDate!).getTime()
-            const start2 = new Date(task2.startDate!).getTime()
-            const end2 = new Date(task2.endDate!).getTime()
-
-            if (start1 < end2 && start2 < end1) {
-              // 有时间重叠，检查总占比是否超过100%
-              const percent1 = getTaskAllocationPercent(resource, task1)
-              const percent2 = getTaskAllocationPercent(resource, task2)
-
-              if (percent1 + percent2 > 100) {
-                // 超载，标记这两个任务
-                conflicts.add(task1.id)
-                conflicts.add(task2.id)
-              }
-            }
-          }
-        }
+        // 收集所有冲突区域中涉及的任务ID
+        conflictZones.forEach(zone => {
+          zone.tasks.forEach(taskInfo => {
+            conflicts.add(taskInfo.id)
+          })
+        })
 
         if (conflicts.size > 0) {
           conflictsMap.set(String(resource.id), conflicts)
@@ -240,21 +226,6 @@ const resourceConflicts = computed(() => {
 
   return conflictsMap
 })
-
-// 辅助函数：获取任务中当前资源的投入占比
-function getTaskAllocationPercent(resource: Resource, task: Task): number {
-  if (!task.resources || !Array.isArray(task.resources)) {
-    return 100 // 未配置resources时，默认100%
-  }
-
-  const allocation = task.resources.find((r: any) => String(r.id) === String(resource.id))
-  if (!allocation) {
-    return 100 // 未找到当前资源的分配信息，默认100%
-  }
-
-  const percent = allocation.percent ?? 100
-  return Math.max(20, Math.min(100, percent)) // 限制范围 20-100
-}
 
 // 提供资源布局信息给子组件
 provide('resourceTaskLayouts', resourceTaskLayouts)

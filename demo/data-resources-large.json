@@ -11,7 +11,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 66,
+      "capacity": 66,
       "color": "#4caf50",
       "tasks": [
         {
@@ -477,7 +477,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 73,
+      "capacity": 73,
       "color": "#ff9800",
       "tasks": [
         {
@@ -928,7 +928,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 79,
+      "capacity": 79,
       "color": "#f44336",
       "tasks": [
         {
@@ -1394,7 +1394,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 64,
+      "capacity": 64,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -1815,7 +1815,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 82,
+      "capacity": 82,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -2266,7 +2266,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 75,
+      "capacity": 75,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -2657,7 +2657,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 93,
+      "capacity": 93,
       "color": "#a8a8a8",
       "tasks": [
         {
@@ -3108,7 +3108,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 73,
+      "capacity": 73,
       "color": "#e91e63",
       "tasks": [
         {
@@ -3454,7 +3454,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 80,
+      "capacity": 80,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -3920,7 +3920,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 63,
+      "capacity": 63,
       "color": "#2196f3",
       "tasks": [
         {
@@ -4251,7 +4251,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 86,
+      "capacity": 86,
       "color": "#4caf50",
       "tasks": [
         {
@@ -4672,7 +4672,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 62,
+      "capacity": 62,
       "color": "#ff9800",
       "tasks": [
         {
@@ -5018,7 +5018,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 95,
+      "capacity": 95,
       "color": "#f44336",
       "tasks": [
         {
@@ -5394,7 +5394,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 87,
+      "capacity": 87,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -5785,7 +5785,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 73,
+      "capacity": 73,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -6221,7 +6221,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 67,
+      "capacity": 67,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -6537,7 +6537,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 95,
+      "capacity": 95,
       "color": "#ffc107",
       "tasks": [
         {
@@ -6988,7 +6988,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 77,
+      "capacity": 77,
       "color": "#e91e63",
       "tasks": [
         {
@@ -7364,7 +7364,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 63,
+      "capacity": 63,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -7725,7 +7725,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 61,
+      "capacity": 61,
       "color": "#2196f3",
       "tasks": [
         {
@@ -8161,7 +8161,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 69,
+      "capacity": 69,
       "color": "#4caf50",
       "tasks": [
         {
@@ -8522,7 +8522,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 83,
+      "capacity": 83,
       "color": "#ff9800",
       "tasks": [
         {
@@ -8928,7 +8928,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 99,
+      "capacity": 99,
       "color": "#f44336",
       "tasks": [
         {
@@ -9304,7 +9304,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 66,
+      "capacity": 66,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -9725,7 +9725,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 97,
+      "capacity": 97,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -10071,7 +10071,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 95,
+      "capacity": 95,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -10462,7 +10462,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 80,
+      "capacity": 80,
       "color": "#ffc107",
       "tasks": [
         {
@@ -10778,7 +10778,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 82,
+      "capacity": 82,
       "color": "#e91e63",
       "tasks": [
         {
@@ -11199,7 +11199,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 86,
+      "capacity": 86,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -11605,7 +11605,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 74,
+      "capacity": 74,
       "color": "#2196f3",
       "tasks": [
         {
@@ -11951,7 +11951,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 73,
+      "capacity": 73,
       "color": "#4caf50",
       "tasks": [
         {
@@ -12417,7 +12417,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 64,
+      "capacity": 64,
       "color": "#ff9800",
       "tasks": [
         {
@@ -12823,7 +12823,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 93,
+      "capacity": 93,
       "color": "#f44336",
       "tasks": [
         {
@@ -13229,7 +13229,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 62,
+      "capacity": 62,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -13695,7 +13695,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 93,
+      "capacity": 93,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -14146,7 +14146,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 69,
+      "capacity": 69,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -14597,7 +14597,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 88,
+      "capacity": 88,
       "color": "#ffc107",
       "tasks": [
         {
@@ -14958,7 +14958,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 84,
+      "capacity": 84,
       "color": "#e91e63",
       "tasks": [
         {
@@ -15364,7 +15364,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 60,
+      "capacity": 60,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -15680,7 +15680,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 81,
+      "capacity": 81,
       "color": "#2196f3",
       "tasks": [
         {
@@ -16116,7 +16116,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 97,
+      "capacity": 97,
       "color": "#4caf50",
       "tasks": [
         {
@@ -16492,7 +16492,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 88,
+      "capacity": 88,
       "color": "#ff9800",
       "tasks": [
         {
@@ -16913,7 +16913,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 90,
+      "capacity": 90,
       "color": "#f44336",
       "tasks": [
         {
@@ -17259,7 +17259,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 63,
+      "capacity": 63,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -17590,7 +17590,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 69,
+      "capacity": 69,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -17951,7 +17951,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 85,
+      "capacity": 85,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -18387,7 +18387,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 67,
+      "capacity": 67,
       "color": "#ffc107",
       "tasks": [
         {
@@ -18733,7 +18733,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 63,
+      "capacity": 63,
       "color": "#e91e63",
       "tasks": [
         {
@@ -19154,7 +19154,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 78,
+      "capacity": 78,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -19500,7 +19500,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 87,
+      "capacity": 87,
       "color": "#2196f3",
       "tasks": [
         {
@@ -19921,7 +19921,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 91,
+      "capacity": 91,
       "color": "#4caf50",
       "tasks": [
         {
@@ -20327,7 +20327,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 65,
+      "capacity": 65,
       "color": "#ff9800",
       "tasks": [
         {
@@ -20658,7 +20658,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 68,
+      "capacity": 68,
       "color": "#f44336",
       "tasks": [
         {
@@ -21034,7 +21034,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 67,
+      "capacity": 67,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -21350,7 +21350,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 72,
+      "capacity": 72,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -21786,7 +21786,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 97,
+      "capacity": 97,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -22252,7 +22252,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 60,
+      "capacity": 60,
       "color": "#ffc107",
       "tasks": [
         {
@@ -22568,7 +22568,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 96,
+      "capacity": 96,
       "color": "#e91e63",
       "tasks": [
         {
@@ -22944,7 +22944,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 87,
+      "capacity": 87,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -23380,7 +23380,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 82,
+      "capacity": 82,
       "color": "#2196f3",
       "tasks": [
         {
@@ -23801,7 +23801,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 74,
+      "capacity": 74,
       "color": "#4caf50",
       "tasks": [
         {
@@ -24117,7 +24117,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 99,
+      "capacity": 99,
       "color": "#ff9800",
       "tasks": [
         {
@@ -24538,7 +24538,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 70,
+      "capacity": 70,
       "color": "#f44336",
       "tasks": [
         {
@@ -24989,7 +24989,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 91,
+      "capacity": 91,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -25320,7 +25320,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 93,
+      "capacity": 93,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -25726,7 +25726,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 99,
+      "capacity": 99,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -26132,7 +26132,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 68,
+      "capacity": 68,
       "color": "#ffc107",
       "tasks": [
         {
@@ -26538,7 +26538,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 99,
+      "capacity": 99,
       "color": "#e91e63",
       "tasks": [
         {
@@ -26944,7 +26944,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 81,
+      "capacity": 81,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -27410,7 +27410,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 95,
+      "capacity": 95,
       "color": "#2196f3",
       "tasks": [
         {
@@ -27801,7 +27801,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 98,
+      "capacity": 98,
       "color": "#4caf50",
       "tasks": [
         {
@@ -28147,7 +28147,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 86,
+      "capacity": 86,
       "color": "#ff9800",
       "tasks": [
         {
@@ -28568,7 +28568,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 61,
+      "capacity": 61,
       "color": "#f44336",
       "tasks": [
         {
@@ -28989,7 +28989,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 86,
+      "capacity": 86,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -29305,7 +29305,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 97,
+      "capacity": 97,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -29696,7 +29696,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 97,
+      "capacity": 97,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -30117,7 +30117,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 78,
+      "capacity": 78,
       "color": "#ffc107",
       "tasks": [
         {
@@ -30553,7 +30553,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 66,
+      "capacity": 66,
       "color": "#e91e63",
       "tasks": [
         {
@@ -30974,7 +30974,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 63,
+      "capacity": 63,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -31335,7 +31335,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 79,
+      "capacity": 79,
       "color": "#2196f3",
       "tasks": [
         {
@@ -31711,7 +31711,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 72,
+      "capacity": 72,
       "color": "#4caf50",
       "tasks": [
         {
@@ -32027,7 +32027,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 82,
+      "capacity": 82,
       "color": "#ff9800",
       "tasks": [
         {
@@ -32373,7 +32373,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 61,
+      "capacity": 61,
       "color": "#f44336",
       "tasks": [
         {
@@ -32719,7 +32719,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 89,
+      "capacity": 89,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -33065,7 +33065,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 78,
+      "capacity": 78,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -33381,7 +33381,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 64,
+      "capacity": 64,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -33832,7 +33832,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 68,
+      "capacity": 68,
       "color": "#ffc107",
       "tasks": [
         {
@@ -34193,7 +34193,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 73,
+      "capacity": 73,
       "color": "#e91e63",
       "tasks": [
         {
@@ -34524,7 +34524,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 91,
+      "capacity": 91,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -34960,7 +34960,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 96,
+      "capacity": 96,
       "color": "#2196f3",
       "tasks": [
         {
@@ -35411,7 +35411,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 96,
+      "capacity": 96,
       "color": "#4caf50",
       "tasks": [
         {
@@ -35802,7 +35802,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 77,
+      "capacity": 77,
       "color": "#ff9800",
       "tasks": [
         {
@@ -36193,7 +36193,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 85,
+      "capacity": 85,
       "color": "#f44336",
       "tasks": [
         {
@@ -36524,7 +36524,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 89,
+      "capacity": 89,
       "color": "#9c27b0",
       "tasks": [
         {
@@ -36870,7 +36870,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 79,
+      "capacity": 79,
       "color": "#00bcd4",
       "tasks": [
         {
@@ -37201,7 +37201,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 91,
+      "capacity": 91,
       "color": "#8bc34a",
       "tasks": [
         {
@@ -37622,7 +37622,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 91,
+      "capacity": 91,
       "color": "#ffc107",
       "tasks": [
         {
@@ -38073,7 +38073,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 67,
+      "capacity": 67,
       "color": "#e91e63",
       "tasks": [
         {
@@ -38524,7 +38524,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 77,
+      "capacity": 77,
       "color": "#3f51b5",
       "tasks": [
         {
@@ -38870,7 +38870,7 @@
         "技能B",
         "技能C"
       ],
-      "utilization": 65,
+      "capacity": 65,
       "color": "#2196f3",
       "tasks": [
         {

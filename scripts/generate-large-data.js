@@ -56,7 +56,7 @@ function generateLargeResourceData() {
       avatar: `https://i.pravatar.cc/150?img=${i}`,
       department: departments[i % departments.length],
       skills: ['技能A', '技能B', '技能C'],
-      utilization: 60 + Math.floor(Math.random() * 40),
+      capacity: 60 + Math.floor(Math.random() * 40),
       color: colors[i % colors.length],
       tasks,
     })

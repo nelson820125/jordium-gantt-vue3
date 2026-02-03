@@ -197,7 +197,7 @@ const conflictInfoList = computed(() => {
   // 计算当前任务的资源占比
   const currentPercent = props.resourcePercent || 100
 
-  // v1.9.8 修改：只显示冲突任务自己的投入占比
+  // v1.9.8 修改：只显示冲突任务自己的利用率
   return props.conflictTasks.map(conflictTask => {
     if (!conflictTask.startDate || !conflictTask.endDate) return null
 
@@ -228,7 +228,7 @@ const conflictInfoList = computed(() => {
       taskName: conflictTask.name,
       overlapStart: formatDate(overlapStart),
       overlapEnd: formatDate(overlapEnd),
-      conflictPercent, // 该冲突任务自己的投入占比
+      conflictPercent, // 该冲突任务自己的利用率
     }
   }).filter(Boolean)
 })
@@ -246,6 +246,9 @@ const totalOverloadPercent = computed(() => {
   const currentEnd = new Date(currentTask.endDate).getTime()
   const currentPercent = props.resourcePercent || 100
 
+  // v1.9.9 修复：endDate 包含当天，需要 +1 天来判断交集
+  const DAY_MS = 24 * 60 * 60 * 1000
+
   // 计算所有冲突任务在重叠时间段内的最大总占比
   let maxTotalPercent = currentPercent
 
@@ -257,26 +260,31 @@ const totalOverloadPercent = computed(() => {
     if (!task1.startDate || !task1.endDate) return
     const start1 = new Date(task1.startDate).getTime()
     const end1 = new Date(task1.endDate).getTime()
+    const end1Plus = end1 + DAY_MS // endDate 包含当天，需要 +1 天
 
     allTasks.forEach((task2, j) => {
       if (i >= j || !task2.startDate || !task2.endDate) return
       const start2 = new Date(task2.startDate).getTime()
       const end2 = new Date(task2.endDate).getTime()
+      const end2Plus = end2 + DAY_MS // endDate 包含当天，需要 +1 天
 
-      // 检查是否有时间重叠
-      if (start1 < end2 && start2 < end1) {
+      // 检查是否有时间重叠（使用 +1 天后的 endDate）
+      // 例如：任务A endDate=12-24, 任务B startDate=12-24，应判断为重叠
+      if (start1 < end2Plus && start2 < end1Plus) {
         // 计算该重叠区间的所有任务总占比
         const overlapStart = Math.max(start1, start2)
         const overlapEnd = Math.min(end1, end2)
+        const overlapEndPlus = overlapEnd + DAY_MS
 
         let intervalTotal = 0
         allTasks.forEach(task => {
           if (!task.startDate || !task.endDate) return
           const tStart = new Date(task.startDate).getTime()
           const tEnd = new Date(task.endDate).getTime()
+          const tEndPlus = tEnd + DAY_MS
 
-          // 检查任务是否在该重叠区间内
-          if (tStart < overlapEnd && tEnd > overlapStart) {
+          // 检查任务是否在该重叠区间内（使用 +1 天后的 endDate）
+          if (tStart < overlapEndPlus && tEndPlus > overlapStart) {
             let taskPercent = 100
             if (task.resources && Array.isArray(task.resources)) {
               const allocation = task.resources.find(
@@ -422,9 +430,9 @@ onUnmounted(() => {
 
           <!-- 内容区域 -->
           <div class="expanded-body">
-            <!-- 投入占比 -->
+            <!-- 利用率 -->
             <div class="expanded-row">
-              <span class="info-label">投入占比</span>
+              <span class="info-label">利用率</span>
               <span class="info-value">{{ percentText }}</span>
             </div>
             <!-- 日期范围 -->
@@ -440,7 +448,7 @@ onUnmounted(() => {
                   <path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                 </svg>
                 <span class="conflict-title">资源超载警告</span>
-                <span class="total-overload">+{{ totalOverloadPercent }}%</span>
+                <span class="total-overload">▲ {{ totalOverloadPercent }}%</span>
               </div>
               <!-- 可滚动的冲突列表 -->
               <div class="conflict-list-container">
@@ -451,7 +459,7 @@ onUnmounted(() => {
                     <span class="conflict-value">{{ info.overlapStart }} ~ {{ info.overlapEnd }}</span>
                   </div>
                   <div class="conflict-detail">
-                    <span class="conflict-label">任务投入占比：</span>
+                    <span class="conflict-label">任务利用率：</span>
                     <span class="conflict-value">{{ info.conflictPercent }}%</span>
                   </div>
                 </div>
@@ -598,10 +606,13 @@ onUnmounted(() => {
 }
 
 .total-overload {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #ff5252;
   margin-left: auto;
+  background: #FFC107;
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 .conflict-item {
