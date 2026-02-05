@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-02-05
+
+### Enhancement
+- 🎉 优化：重构组件，Theme作用域从全局调整至局部.gantt-root
+- 🎉 优化：重构组件，Theme自动跟随系统设置
+- 🎉 优化：重构组件，完美支持Nuxt3、TailwindCSS等框架
+- 🎉 Optimized: Refactored components, Theme scope adjusted from global to local .gantt-root
+- 🎉 Optimized: Refactored components, Theme automatically follows system settings
+- 🎉 Optimized: Refactored components, Perfectly supports Nuxt3, TailwindCSS and other frameworks
+
 ## [1.8.0] - 2026-01-17
 
 ### Added
