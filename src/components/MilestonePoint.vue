@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
@@ -1067,23 +1067,23 @@ const calculateMilestonePositionFromTimelineData = (
 }
 
 /* 暗黑模式下的适配 */
-:global(html[data-theme='dark']) .milestone-label {
+:global(.gantt-root[data-theme='dark']) .milestone-label {
   color: var(--gantt-text-white, #ffffff) !important;
 }
 
 /* 暗黑模式下的粘性标签样式 */
-:global(html[data-theme='dark']) .milestone-label[style*='position: absolute'] {
+:global(.gantt-root[data-theme='dark']) .milestone-label[style*='position: absolute'] {
   background: rgba(30, 30, 30, 0.9) !important;
   border-color: rgba(246, 124, 124, 0.3) !important;
   color: #ffffff !important;
 }
 
-:global(html[data-theme='dark']) .milestone svg {
+:global(.gantt-root[data-theme='dark']) .milestone svg {
   filter: drop-shadow(0 0 8px var(--gantt-danger, #f67c7c));
   animation: milestone-glow-dark 2s ease-in-out infinite alternate;
 }
 
-:global(html[data-theme='dark']) .milestone:hover svg {
+:global(.gantt-root[data-theme='dark']) .milestone:hover svg {
   filter: drop-shadow(0 0 16px var(--gantt-danger, #f67c7c))
     drop-shadow(0 0 24px rgba(246, 124, 124, 0.4));
   animation: milestone-glow-intense-dark 1.5s ease-in-out infinite alternate;
@@ -1125,7 +1125,7 @@ const calculateMilestonePositionFromTimelineData = (
   animation: none;
 }
 
-:global(html[data-theme='dark']) .milestone.dragging svg {
+:global(.gantt-root[data-theme='dark']) .milestone.dragging svg {
   filter: drop-shadow(0 0 20px var(--gantt-danger, #f67c7c))
     drop-shadow(0 0 32px rgba(246, 124, 124, 0.6));
 }
@@ -1164,14 +1164,14 @@ const calculateMilestonePositionFromTimelineData = (
 }
 
 /* 暗黑模式下的停靠状态样式 */
-:global(html[data-theme='dark']) .milestone-sticky-left svg,
-:global(html[data-theme='dark']) .milestone-sticky-right svg {
+:global(.gantt-root[data-theme='dark']) .milestone-sticky-left svg,
+:global(.gantt-root[data-theme='dark']) .milestone-sticky-right svg {
   animation: milestone-glow-sticky-dark 3s ease-in-out infinite alternate;
 }
 
 /* 暗黑模式下半图标显示时取消发光效果 */
-:global(html[data-theme='dark']) .milestone-sticky-left svg[style*='clip-path'],
-:global(html[data-theme='dark']) .milestone-sticky-right svg[style*='clip-path'] {
+:global(.gantt-root[data-theme='dark']) .milestone-sticky-left svg[style*='clip-path'],
+:global(.gantt-root[data-theme='dark']) .milestone-sticky-right svg[style*='clip-path'] {
   animation: none;
   filter: none;
 }
@@ -1259,7 +1259,7 @@ const calculateMilestonePositionFromTimelineData = (
 }
 
 /* 暗黑模式下的Tooltip样式 */
-:global(html[data-theme='dark']) .milestone-tooltip {
+:global(.gantt-root[data-theme='dark']) .milestone-tooltip {
   background: rgba(30, 30, 30, 0.95) !important;
   color: #ffffff !important;
 }

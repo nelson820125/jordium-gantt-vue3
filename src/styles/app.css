@@ -36,13 +36,13 @@
 }
 
 /* 暗黑主题下 .gantt-btn-default 全局样式 */
-:global(html[data-theme='dark']) .gantt-btn-default {
+:global(.gantt-root[data-theme='dark']) .gantt-btn-default {
   background: var(--gantt-bg-tertiary, #454545) !important;
   border-color: var(--gantt-border-color, #dcdfe6) !important;
   color: var(--gantt-text-white, #ffffff) !important;
 }
 
-:global(html[data-theme='dark']) .gantt-btn-default:hover:not(:disabled) {
+:global(.gantt-root[data-theme='dark']) .gantt-btn-default:hover:not(:disabled) {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.1)) !important;
   border-color: var(--gantt-primary, #409eff) !important;
   color: var(--gantt-primary, #409eff) !important;
@@ -82,23 +82,17 @@
 }
 
 /* 黑暗模式全局样式 */
-html[data-theme='dark'] {
-  background: #1e1e1e !important;
-  color-scheme: dark !important;
+.gantt-root[data-theme='dark'] {
+  background: #1e1e1e;
+  color-scheme: dark;
 }
 
-html[data-theme='dark'] body {
-  background: #1e1e1e !important;
-  color: #e5e5e5 !important;
-}
+/* 移除body样式，因为不再全局污染 */
 
 /* 明亮模式全局样式 */
-html[data-theme='light'] {
-  background: #ffffff !important;
-  color-scheme: light !important;
+.gantt-root[data-theme='light'] {
+  background: #ffffff;
+  color-scheme: light;
 }
 
-html[data-theme='light'] body {
-  background: #ffffff !important;
-  color: #333333 !important;
-}
+/* 移除body样式，因为不再全局污染 */

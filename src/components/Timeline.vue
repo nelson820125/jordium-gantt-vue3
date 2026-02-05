@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
@@ -4784,11 +4784,11 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 /* 暗色主题下的旗帜样式 */
-:global(html[data-theme='dark']) .flag-pole {
+:global(.gantt-root[data-theme='dark']) .flag-pole {
   background-color: var(--gantt-primary-light, #66b1ff);
 }
 
-:global(html[data-theme='dark']) .flag-content {
+:global(.gantt-root[data-theme='dark']) .flag-content {
   background-color: var(--gantt-primary-light, #66b1ff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
@@ -5024,72 +5024,72 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 /* 暗色主题支持 */
-:global(html[data-theme='dark']) .timeline {
+:global(.gantt-root[data-theme='dark']) .timeline {
   background: var(--gantt-bg-primary, #3a3a3a) !important;
   color: var(--gantt-text-primary, #e5e5e5) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-header {
+:global(.gantt-root[data-theme='dark']) .timeline-header {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-header-row {
+:global(.gantt-root[data-theme='dark']) .timeline-header-row {
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-month {
+:global(.gantt-root[data-theme='dark']) .timeline-month {
   border-right-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .year-month-label {
+:global(.gantt-root[data-theme='dark']) .year-month-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-day {
+:global(.gantt-root[data-theme='dark']) .timeline-day {
   border-right-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-day.today {
+:global(.gantt-root[data-theme='dark']) .timeline-day.today {
   background: #1a365d !important;
   color: #e3f2fd !important;
 }
 
-:global(html[data-theme='dark']) .timeline-day.weekend {
+:global(.gantt-root[data-theme='dark']) .timeline-day.weekend {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   color: var(--gantt-text-muted, #b0b0b0) !important;
 }
 
-:global(html[data-theme='dark']) .day-label {
+:global(.gantt-root[data-theme='dark']) .day-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-body {
+:global(.gantt-root[data-theme='dark']) .timeline-body {
   background: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-body-content {
+:global(.gantt-root[data-theme='dark']) .timeline-body-content {
   background: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
-:global(html[data-theme='dark']) .day-columns {
+:global(.gantt-root[data-theme='dark']) .day-columns {
   border-right-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .month-day-columns {
+:global(.gantt-root[data-theme='dark']) .month-day-columns {
   border-right-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .day-column {
+:global(.gantt-root[data-theme='dark']) .day-column {
   border-right-color: var(--gantt-border-light, #555555) !important;
   /* 非周末列：透明背景，继承timeline-body的背景色 */
 }
 
-:global(html[data-theme='dark']) .day-column.today {
+:global(.gantt-root[data-theme='dark']) .day-column.today {
   border-left-color: var(--gantt-primary, #409eff) !important;
   background-color: var(--gantt-primary, #409eff) !important;
 }
 
-:global(html[data-theme='dark']) .day-column.today::before {
+:global(.gantt-root[data-theme='dark']) .day-column.today::before {
   background: linear-gradient(
     to bottom,
     rgba(64, 158, 255, 0.15) 0%,
@@ -5098,17 +5098,17 @@ const handleAddSuccessor = (task: Task) => {
   ) !important;
 }
 
-:global(html[data-theme='dark']) .day-column.today.weekend {
+:global(.gantt-root[data-theme='dark']) .day-column.today.weekend {
   background-color: var(--gantt-primary-color, #409eff) !important;
 }
 
 /* 暗色主题下的今日定位高亮效果 */
-:global(html[data-theme='dark']) .day-column.today-highlight {
+:global(.gantt-root[data-theme='dark']) .day-column.today-highlight {
   background-color: var(--gantt-primary-color, #409eff) !important;
   box-shadow: 0 0 8px rgba(64, 158, 255, 0.6) !important;
 }
 
-:global(html[data-theme='dark']) .day-column.today-highlight::before {
+:global(.gantt-root[data-theme='dark']) .day-column.today-highlight::before {
   background: linear-gradient(
     to bottom,
     rgba(64, 158, 255, 0.4) 0%,
@@ -5118,23 +5118,23 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 /* 暗黑模式下的任务行悬停效果 */
-:global(html[data-theme='dark']) .timeline-body .task-row-hovered {
+:global(.gantt-root[data-theme='dark']) .timeline-body .task-row-hovered {
   background-color: var(--gantt-bg-hover) !important; /* 与TaskList保持一致，使用透明背景 */
   /* 降低层级，避免覆盖任务条等元素 */
   z-index: 11 !important;
 }
 
 /* 确保暗黑模式下子元素能继续响应事件 */
-:global(html[data-theme='dark']) .timeline-body .task-row-hovered > * {
+:global(.gantt-root[data-theme='dark']) .timeline-body .task-row-hovered > * {
   pointer-events: auto !important;
 }
 
 /* 暗黑模式下的非工作时间样式 */
-:global(html[data-theme='dark']) .timeline-hour-item.non-working-hour {
+:global(.gantt-root[data-theme='dark']) .timeline-hour-item.non-working-hour {
   background-color: var(--gantt-bg-secondary, #1a1a1a) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-hour-item.non-working-hour .hour-label {
+:global(.gantt-root[data-theme='dark']) .timeline-hour-item.non-working-hour .hour-label {
   color: var(--gantt-text-muted, #b0b0b0) !important;
 }
 
@@ -5300,98 +5300,98 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 /* 月度视图暗色主题样式 */
-:global(html[data-theme='dark']) .year-row {
+:global(.gantt-root[data-theme='dark']) .year-row {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-year {
+:global(.gantt-root[data-theme='dark']) .timeline-year {
   border-right-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .year-label {
+:global(.gantt-root[data-theme='dark']) .year-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
-:global(html[data-theme='dark']) .months-row {
+:global(.gantt-root[data-theme='dark']) .months-row {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-month-item {
+:global(.gantt-root[data-theme='dark']) .timeline-month-item {
   border-right-color: var(--gantt-border-light, #555555) !important;
   border-bottom-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-month-item.today {
+:global(.gantt-root[data-theme='dark']) .timeline-month-item.today {
   background-color: var(--gantt-primary);
   border-left-color: var(--gantt-primary, #409eff) !important;
 }
 
-:global(html[data-theme='dark']) .month-label {
+:global(.gantt-root[data-theme='dark']) .month-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
 /* 季度视图暗色主题样式 */
-:global(html[data-theme='dark']) .quarters-row {
+:global(.gantt-root[data-theme='dark']) .quarters-row {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-quarter-item {
+:global(.gantt-root[data-theme='dark']) .timeline-quarter-item {
   border-right-color: var(--gantt-border-light, #555555) !important;
   border-bottom-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-quarter-item.today {
+:global(.gantt-root[data-theme='dark']) .timeline-quarter-item.today {
   background-color: var(--gantt-primary);
   border-left-color: var(--gantt-primary, #409eff) !important;
 }
 
-:global(html[data-theme='dark']) .quarter-label {
+:global(.gantt-root[data-theme='dark']) .quarter-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
-:global(html[data-theme='dark']) .quarter-column {
+:global(.gantt-root[data-theme='dark']) .quarter-column {
   border-right-color: var(--gantt-border-light, #555555) !important;
   background-color: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
-:global(html[data-theme='dark']) .quarter-column.today {
+:global(.gantt-root[data-theme='dark']) .quarter-column.today {
   background-color: var(--gantt-primary, #409eff) !important;
 }
 
-:global(html[data-theme='dark']) .month-column {
+:global(.gantt-root[data-theme='dark']) .month-column {
   border-right-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .month-column.today {
+:global(.gantt-root[data-theme='dark']) .month-column.today {
   background-color: var(--gantt-primary-color, #409eff);
   border-left-color: var(--gantt-primary-color, #409eff) !important;
 }
 
 /* 年度视图暗色主题样式 */
-:global(html[data-theme='dark']) .half-years-row {
+:global(.gantt-root[data-theme='dark']) .half-years-row {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-half-year-item {
+:global(.gantt-root[data-theme='dark']) .timeline-half-year-item {
   border-right-color: var(--gantt-border-light, #555555) !important;
   border-bottom-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .half-year-label {
+:global(.gantt-root[data-theme='dark']) .half-year-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
 /* 年度视图背景列暗色主题样式 */
-:global(html[data-theme='dark']) .half-year-column {
+:global(.gantt-root[data-theme='dark']) .half-year-column {
   border-right-color: var(--gantt-border-light, #555555) !important;
   background-color: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
-:global(html[data-theme='dark']) .half-year-column:hover {
+:global(.gantt-root[data-theme='dark']) .half-year-column:hover {
   background-color: var(--gantt-bg-hover, rgba(64, 158, 255, 0.1)) !important;
 }
 
@@ -5407,7 +5407,7 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 /* 暗黑模式下的年度视图今日标记线 */
-:global(html[data-theme='dark']) .today-line-year-view {
+:global(.gantt-root[data-theme='dark']) .today-line-year-view {
   background-color: var(--gantt-primary, #66b1ff);
   box-shadow: 0 0 4px rgba(102, 177, 255, 0.4);
 }
@@ -5569,65 +5569,65 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 /* 小时视图暗色主题样式 */
-:global(html[data-theme='dark']) .date-row {
+:global(.gantt-root[data-theme='dark']) .date-row {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-day-item {
+:global(.gantt-root[data-theme='dark']) .timeline-day-item {
   border-right-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .date-label {
+:global(.gantt-root[data-theme='dark']) .date-label {
   color: var(--gantt-text-header, #ffffff) !important;
 }
 
-:global(html[data-theme='dark']) .hours-row {
+:global(.gantt-root[data-theme='dark']) .hours-row {
   background: var(--gantt-bg-secondary, #1a1a1a) !important;
   border-bottom-color: var(--gantt-border-medium, #333333) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-hour-item {
+:global(.gantt-root[data-theme='dark']) .timeline-hour-item {
   border-right-color: var(--gantt-border-light, #555555) !important;
   border-bottom-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-hour-item.today {
+:global(.gantt-root[data-theme='dark']) .timeline-hour-item.today {
   background-color: var(--gantt-primary, #1a365d) !important;
   color: var(--gantt-text-white, #e3f2fd) !important;
 }
 
-:global(html[data-theme='dark']) .hour-label {
+:global(.gantt-root[data-theme='dark']) .hour-label {
   color: var(--gantt-text-primary, #e5e5e5) !important;
 }
 
-:global(html[data-theme='dark']) .timeline-hour-item.today .hour-label {
+:global(.gantt-root[data-theme='dark']) .timeline-hour-item.today .hour-label {
   color: var(--gantt-text-white, #e3f2fd) !important;
 }
 
-:global(html[data-theme='dark']) .hour-column {
+:global(.gantt-root[data-theme='dark']) .hour-column {
   border-right-color: var(--gantt-border-light, #555555) !important;
 }
 
-:global(html[data-theme='dark']) .hour-column.weekend {
+:global(.gantt-root[data-theme='dark']) .hour-column.weekend {
   background-color: var(--gantt-bg-secondary, #1a1a1a) !important;
 }
 
-:global(html[data-theme='dark']) .hour-column.rest-hour {
+:global(.gantt-root[data-theme='dark']) .hour-column.rest-hour {
   background-color: var(--gantt-bg-secondary, #1a1a1a) !important;
 }
 
-:global(html[data-theme='dark']) .hour-column.working-hour {
+:global(.gantt-root[data-theme='dark']) .hour-column.working-hour {
   background-color: var(--gantt-bg-primary, #6b6b6b) !important;
 }
 
-:global(html[data-theme='dark']) .hour-column.today {
+:global(.gantt-root[data-theme='dark']) .hour-column.today {
   background-color: var(--gantt-primary-color, #409eff) !important;
   border-left-color: var(--gantt-primary-color, #409eff) !important;
 }
 
 /* 暗色主题：15分钟刻度线样式 */
-:global(html[data-theme='dark']) .quarter-line {
+:global(.gantt-root[data-theme='dark']) .quarter-line {
   background-color: var(--gantt-border-light, #555555) !important;
 }
 </style>

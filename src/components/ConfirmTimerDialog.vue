@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
 const props = defineProps({
@@ -78,7 +78,7 @@ const messageTaskName = computed(() => {
   gap: 16px;
 }
 
-:global(html[data-theme='dark']) .confirm-timer-dialog {
+:global(.gantt-root[data-theme='dark']) .confirm-timer-dialog {
   background: var(--gantt-bg-primary, #6b6b6b);
 }
 .dialog-message {
