@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, useSlots, toRef, inject, type ComputedRef } from 'vue'
 import type { StyleValue } from 'vue'
 import { useI18n } from '../../../composables/useI18n'
@@ -636,20 +636,20 @@ const assigneeDisplayData = computed(() => {
   border-left: 5px solid var(--gantt-danger, #f56c6c) !important;
 }
 
-:global(html[data-theme='dark']) .milestone-group-row {
+:global(.gantt-root[data-theme='dark']) .milestone-group-row {
   border-left-color: var(--gantt-danger, #f67c7c);
 }
 
 /* 暗黑模式下的任务类型左边框颜色 */
-:global(html[data-theme='dark']) .task-type-story {
+:global(.gantt-root[data-theme='dark']) .task-type-story {
   border-left-color: var(--gantt-primary, #7db4f0);
 }
 
-:global(html[data-theme='dark']) .task-type-task {
+:global(.gantt-root[data-theme='dark']) .task-type-task {
   border-left-color: var(--gantt-warning, #f0b83c);
 }
 
-:global(html[data-theme='dark']) .task-type-milestone {
+:global(.gantt-root[data-theme='dark']) .task-type-milestone {
   border-left-color: var(--gantt-danger, #f67c7c);
 }
 
@@ -775,44 +775,44 @@ const assigneeDisplayData = computed(() => {
 }
 
 /* 暗黑模式适配 */
-:global(html[data-theme='dark']) .milestone-row-icon {
+:global(.gantt-root[data-theme='dark']) .milestone-row-icon {
   color: var(--gantt-danger, #f67c7c);
 }
 
-:global(html[data-theme='dark']) .milestone-empty-col {
+:global(.gantt-root[data-theme='dark']) .milestone-empty-col {
   color: var(--gantt-text-disabled, #606266);
   /* 确保暗黑模式下边框颜色与普通数据行一致 */
   border-right-color: var(--gantt-border-light) !important;
 }
 
 /* 暗黑模式的悬停效果 */
-:global(html[data-theme='dark']) .task-row:hover {
+:global(.gantt-root[data-theme='dark']) .task-row:hover {
   box-shadow:
     0 4px 12px rgba(255, 255, 255, 0.1),
     0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-:global(html[data-theme='dark']) .task-row.task-row-hovered {
+:global(.gantt-root[data-theme='dark']) .task-row.task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
   box-shadow:
     0 4px 12px rgba(255, 255, 255, 0.1),
     0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
-:global(html[data-theme='dark']) .task-row.parent-task:hover {
+:global(.gantt-root[data-theme='dark']) .task-row.parent-task:hover {
   box-shadow:
     0 6px 16px rgba(255, 255, 255, 0.15),
     0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-:global(html[data-theme='dark']) .task-row.parent-task.task-row-hovered {
+:global(.gantt-root[data-theme='dark']) .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent) !important;
   box-shadow:
     0 6px 16px rgba(255, 255, 255, 0.15),
     0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
-:global(html[data-theme='dark']) .milestone-group-row:hover {
+:global(.gantt-root[data-theme='dark']) .milestone-group-row:hover {
   box-shadow:
     0 6px 16px rgba(246, 124, 124, 0.4),
     0 2px 8px rgba(255, 255, 255, 0.1);
@@ -835,11 +835,11 @@ const assigneeDisplayData = computed(() => {
   background-color: rgba(64, 158, 255, 0.05) !important;
 }
 
-:global(html[data-theme='dark']) .task-row-drop-target.drop-after {
+:global(.gantt-root[data-theme='dark']) .task-row-drop-target.drop-after {
   background-color: rgba(125, 180, 240, 0.1) !important;
 }
 
-:global(html[data-theme='dark']) .task-row-drop-target.drop-child {
+:global(.gantt-root[data-theme='dark']) .task-row-drop-target.drop-child {
   background-color: rgba(125, 180, 240, 0.1) !important;
 }
 

@@ -38,7 +38,7 @@
 }
 
 /* 暗黑主题 */
-html[data-theme='dark'] {
+.gantt-root[data-theme='dark'] {
   /* 背景色 - 大幅提升亮度，接近中性灰 */
   --gantt-bg-primary: #6b6b6b; /* Body主体 - 明显更亮，接近中性灰 */
   --gantt-bg-secondary: #4b4b4b; /* Header背景 - 中等亮度，保持层次 */

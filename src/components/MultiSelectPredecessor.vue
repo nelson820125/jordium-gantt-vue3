@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Task } from '../models/classes/Task'
 
@@ -184,17 +184,17 @@ watch(
 }
 
 /* 暗黑模式 */
-:global(html[data-theme='dark']) .predecessor-tag {
+:global(.gantt-root[data-theme='dark']) .predecessor-tag {
   background: var(--gantt-primary-dark, #337ecc);
 }
 
-:global(html[data-theme='dark']) .form-select {
+:global(.gantt-root[data-theme='dark']) .form-select {
   background: var(--gantt-bg-primary, #2b2b2b);
   border-color: var(--gantt-border-medium, #4c4d4f);
   color: var(--gantt-text-primary, #e5eaf3);
 }
 
-:global(html[data-theme='dark']) .form-select:focus {
+:global(.gantt-root[data-theme='dark']) .form-select:focus {
   border-color: var(--gantt-primary, #409eff);
 }
 </style>

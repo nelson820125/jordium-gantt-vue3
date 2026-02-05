@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 
 interface Props {
@@ -245,16 +245,16 @@ onUnmounted(() => {
 }
 
 /* 暗色主题支持 */
-:global(html[data-theme='dark']) .link-anchor {
+:global(.gantt-root[data-theme='dark']) .link-anchor {
   border-color: #1a1a1a;
 }
 
-:global(html[data-theme='dark']) .link-anchor.valid-target,
-:global(html[data-theme='dark']) .link-anchor.invalid-target {
+:global(.gantt-root[data-theme='dark']) .link-anchor.valid-target,
+:global(.gantt-root[data-theme='dark']) .link-anchor.invalid-target {
   border-color: #1a1a1a;
 }
 
-:global(html[data-theme='dark']) .anchor-tooltip {
+:global(.gantt-root[data-theme='dark']) .anchor-tooltip {
   background: rgba(255, 255, 255, 0.9);
   color: #1a1a1a;
 }

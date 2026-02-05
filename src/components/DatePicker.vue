@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
 
@@ -1519,48 +1519,48 @@ const timePickerStyle = computed(() => {
 }
 
 /* 暗黑模式适配 */
-:global(html[data-theme='dark']) .el-input__wrapper {
+:global(.gantt-root[data-theme='dark']) .el-input__wrapper {
   background-color: var(--gantt-bg-secondary, #2c2c2c);
   box-shadow: 0 0 0 1px var(--gantt-border-dark, #414243) inset;
 }
 
-:global(html[data-theme='dark']) .el-input__inner,
-:global(html[data-theme='dark']) .el-range-input__start,
-:global(html[data-theme='dark']) .el-range-input__end,
-:global(html[data-theme='dark']) .el-range-separator {
+:global(.gantt-root[data-theme='dark']) .el-input__inner,
+:global(.gantt-root[data-theme='dark']) .el-range-input__start,
+:global(.gantt-root[data-theme='dark']) .el-range-input__end,
+:global(.gantt-root[data-theme='dark']) .el-range-separator {
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-input__inner-input::placeholder,
-:global(html[data-theme='dark']) .el-range-input__start::placeholder,
-:global(html[data-theme='dark']) .el-range-input__end::placeholder {
+:global(.gantt-root[data-theme='dark']) .el-input__inner-input::placeholder,
+:global(.gantt-root[data-theme='dark']) .el-range-input__start::placeholder,
+:global(.gantt-root[data-theme='dark']) .el-range-input__end::placeholder {
   color: var(--gantt-text-muted, #9e9e9e);
 }
 
-:global(html[data-theme='dark']) .el-date-picker.is-focused .el-input__wrapper {
+:global(.gantt-root[data-theme='dark']) .el-date-picker.is-focused .el-input__wrapper {
   box-shadow: 0 0 0 1px var(--gantt-primary, #409eff) inset;
 }
 
-:global(html[data-theme='dark']) .el-date-picker:hover .el-input__wrapper {
+:global(.gantt-root[data-theme='dark']) .el-date-picker:hover .el-input__wrapper {
   box-shadow: 0 0 0 1px var(--gantt-border-hover, #606266) inset;
 }
 
-:global(html[data-theme='dark']) .el-date-picker.is-focused:hover .el-input__wrapper {
+:global(.gantt-root[data-theme='dark']) .el-date-picker.is-focused:hover .el-input__wrapper {
   box-shadow: 0 0 0 1px var(--gantt-primary, #409eff) inset;
 }
 
-:global(html[data-theme='dark']) .el-date-picker.is-disabled .el-input__wrapper {
+:global(.gantt-root[data-theme='dark']) .el-date-picker.is-disabled .el-input__wrapper {
   background-color: var(--gantt-bg-disabled, #3c3e40);
   box-shadow: 0 0 0 1px var(--gantt-border-disabled, #4c4d4f) inset;
 }
 
-:global(html[data-theme='dark']) .el-date-picker.is-disabled .el-input__inner,
-:global(html[data-theme='dark']) .el-date-picker.is-disabled .el-range-input__start,
-:global(html[data-theme='dark']) .el-date-picker.is-disabled .el-range-input__end {
+:global(.gantt-root[data-theme='dark']) .el-date-picker.is-disabled .el-input__inner,
+:global(.gantt-root[data-theme='dark']) .el-date-picker.is-disabled .el-range-input__start,
+:global(.gantt-root[data-theme='dark']) .el-date-picker.is-disabled .el-range-input__end {
   color: var(--gantt-text-disabled, #73767a);
 }
 
-:global(html[data-theme='dark']) .el-input__clear:hover {
+:global(.gantt-root[data-theme='dark']) .el-input__clear:hover {
   color: var(--gantt-text-secondary, #909399);
 }
 
@@ -1894,51 +1894,51 @@ const timePickerStyle = computed(() => {
 }
 
 /* 暗黑模式下的日期选择器面板 */
-:global(html[data-theme='dark']) .el-picker-panel {
+:global(.gantt-root[data-theme='dark']) .el-picker-panel {
   background: var(--gantt-bg-secondary, #2c2c2c);
   border-color: var(--gantt-border-dark, #414243);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-:global(html[data-theme='dark']) .el-date-picker__header {
+:global(.gantt-root[data-theme='dark']) .el-date-picker__header {
   border-bottom-color: var(--gantt-border-dark, #414243);
 }
 
-:global(html[data-theme='dark']) .el-date-picker__header-label {
+:global(.gantt-root[data-theme='dark']) .el-date-picker__header-label {
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-picker-panel__icon-btn {
+:global(.gantt-root[data-theme='dark']) .el-picker-panel__icon-btn {
   color: var(--gantt-text-secondary, #909399);
 }
 
-:global(html[data-theme='dark']) .el-picker-panel__icon-btn:hover {
+:global(.gantt-root[data-theme='dark']) .el-picker-panel__icon-btn:hover {
   background: var(--gantt-bg-hover-dark, #3c3e40);
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-date-table__header-cell {
+:global(.gantt-root[data-theme='dark']) .el-date-table__header-cell {
   color: var(--gantt-text-secondary, #909399);
 }
 
-:global(html[data-theme='dark']) .el-date-table__cell:hover {
+:global(.gantt-root[data-theme='dark']) .el-date-table__cell:hover {
   background: var(--gantt-bg-hover-dark, #3c3e40);
 }
 
-:global(html[data-theme='dark']) .el-date-table__cell-inner {
+:global(.gantt-root[data-theme='dark']) .el-date-table__cell-inner {
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-date-table__cell.is-other-month .el-date-table__cell-inner {
+:global(.gantt-root[data-theme='dark']) .el-date-table__cell.is-other-month .el-date-table__cell-inner {
   color: var(--gantt-text-muted, #73767a);
 }
 
-:global(html[data-theme='dark']) .el-date-table__cell.is-in-range {
+:global(.gantt-root[data-theme='dark']) .el-date-table__cell.is-in-range {
   background: rgba(64, 158, 255, 0.2);
 }
 
 /* 暗黑模式下的日期选择器确认按钮 */
-:global(html[data-theme='dark']) .el-date-picker-footer {
+:global(.gantt-root[data-theme='dark']) .el-date-picker-footer {
   border-top-color: var(--gantt-border-dark, #414243);
 }
 
@@ -2182,69 +2182,69 @@ const timePickerStyle = computed(() => {
 }
 
 /* 暗黑模式下的时间选择器 */
-:global(html[data-theme='dark']) .el-time-picker-input {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-input {
   border-top-color: var(--gantt-border-dark, #414243);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-label {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-label {
   color: var(--gantt-text-secondary, #909399);
 }
 
-:global(html[data-theme='dark']) .el-time-input {
+:global(.gantt-root[data-theme='dark']) .el-time-input {
   background: var(--gantt-bg-secondary, #2c2c2c);
   border-color: var(--gantt-border-dark, #414243);
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-time-input:hover {
+:global(.gantt-root[data-theme='dark']) .el-time-input:hover {
   border-color: var(--gantt-border-hover, #606266);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-panel {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-panel {
   background: var(--gantt-bg-secondary, #2c2c2c);
   border-color: var(--gantt-border-dark, #414243);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-header {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-header {
   border-bottom-color: var(--gantt-border-dark, #414243);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-title {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-title {
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-time-column-header {
+:global(.gantt-root[data-theme='dark']) .el-time-column-header {
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-time-column-list {
+:global(.gantt-root[data-theme='dark']) .el-time-column-list {
   border-color: var(--gantt-border-dark, #414243);
 }
 
-:global(html[data-theme='dark']) .el-time-column-list:hover::-webkit-scrollbar-thumb {
+:global(.gantt-root[data-theme='dark']) .el-time-column-list:hover::-webkit-scrollbar-thumb {
   background: var(--gantt-border-hover, #606266);
 }
 
-:global(html[data-theme='dark']) .el-time-item {
+:global(.gantt-root[data-theme='dark']) .el-time-item {
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-time-item:hover {
+:global(.gantt-root[data-theme='dark']) .el-time-item:hover {
   background: var(--gantt-bg-hover-dark, #3c3e40);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-footer {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-footer {
   border-top-color: var(--gantt-border-dark, #414243);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-btn--cancel {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-btn--cancel {
   background: var(--gantt-bg-secondary, #2c2c2c);
   border-color: var(--gantt-border-dark, #414243);
   color: var(--gantt-text-white, #ffffff);
 }
 
-:global(html[data-theme='dark']) .el-time-picker-btn--cancel:hover {
+:global(.gantt-root[data-theme='dark']) .el-time-picker-btn--cancel:hover {
   background: var(--gantt-bg-hover-dark, #3c3e40);
   border-color: var(--gantt-border-hover, #606266);
 }

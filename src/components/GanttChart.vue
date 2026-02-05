@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onUnmounted, onMounted, computed, watch, nextTick, useSlots, provide } from 'vue'
 import type { StyleValue } from 'vue'
 import TaskList from './TaskList/TaskList.vue'
@@ -26,6 +26,9 @@ import {
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
 import { useMessage } from '../composables/useMessage'
+
+// 根元素引用
+const ganttRootRef = ref<HTMLElement>()
 
 const props = withDefaults(defineProps<Props>(), {
   tasks: () => [],
@@ -65,7 +68,7 @@ const props = withDefaults(defineProps<Props>(), {
   expandAll: true,
   locale: 'zh-CN',
   timeScale: 'week',
-  theme: 'light',
+  theme: undefined, // 不设置默认值，允许自动检测系统主题
 })
 
 const emit = defineEmits([
@@ -110,6 +113,20 @@ provide('enable-task-bar-context-menu', computed(() => props.enableTaskBarContex
 
 // 提供 LinkAnchor 配置给子组件
 provide('enable-link-anchor', computed(() => props.enableLinkAnchor))
+
+// 检测系统主题偏好
+const detectSystemTheme = (): 'light' | 'dark' => {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    return isDark ? 'dark' : 'light'
+  }
+  return 'light'
+}
+
+// 提供当前主题给子组件（用于GanttLinks等组件）
+// 初始值：先设置为'light'，在onMounted中根据props或系统主题设置
+const currentThemeMode = ref<'light' | 'dark'>('light')
+provide('gantt-theme', currentThemeMode)
 
 // 使用声明式右键菜单 composables
 const { hasDeclarativeContextMenu: hasDeclarativeTaskListContextMenu, declarativeContextMenu: declarativeTaskListContextMenu } =
@@ -238,7 +255,6 @@ interface Props {
 // 总计: 1160px (已在 TaskListConfig 中定义)
 
 // 甘特图容器宽度
-const ganttRootRef = ref<HTMLElement | null>(null)
 const ganttContainerWidth = ref(1920) // 默认使用常见的屏幕宽度作为初始值
 
 // 监听容器宽度变化
@@ -295,6 +311,16 @@ onMounted(() => {
   updateContainerWidth()
   // 使用节流版本监听窗口大小变化
   window.addEventListener('resize', throttledUpdateContainerWidth)
+
+  // 确保主题在DOM挂载后正确应用
+  nextTick(() => {
+    if (ganttRootRef.value) {
+      // 如果明确设置了props.theme，使用设置的值；否则检测系统主题
+      const initialTheme = props.theme ?? detectSystemTheme()
+      ganttRootRef.value.setAttribute('data-theme', initialTheme)
+      currentThemeMode.value = initialTheme
+    }
+  })
 })
 
 onUnmounted(() => {
@@ -940,8 +966,7 @@ onUnmounted(() => {
   window.removeEventListener('context-menu', handleTaskContextMenu as EventListener)
 })
 
-// 主题状态管理
-const currentThemeMode = ref<'light' | 'dark'>('light')
+// 主题状态管理（已在上面provide部分定义）
 
 /**
  * 设置主题模式
@@ -950,7 +975,10 @@ const currentThemeMode = ref<'light' | 'dark'>('light')
 const setTheme = (mode?: 'light' | 'dark') => {
   const targetMode = mode || 'dark'
   currentThemeMode.value = targetMode
-  document.documentElement.setAttribute('data-theme', targetMode)
+  // 在组件根元素上设置data-theme，而不是document.documentElement
+  if (ganttRootRef.value) {
+    ganttRootRef.value.setAttribute('data-theme', targetMode)
+  }
 }
 
 /**
@@ -964,12 +992,36 @@ const currentTheme = (): string => {
 watch(
   () => props.theme,
   (newTheme) => {
-    if (newTheme && newTheme !== currentThemeMode.value) {
-      setTheme(newTheme)
+    // 只在组件已挂载后处理
+    if (!ganttRootRef.value) return
+
+    // 如果明确设置了theme，使用设置的值；如果是undefined，检测系统主题
+    const targetTheme = newTheme ?? detectSystemTheme()
+    if (targetTheme !== currentThemeMode.value) {
+      setTheme(targetTheme)
     }
   },
-  { immediate: true },
 )
+
+// 监听系统主题变化（仅在未明确设置theme时生效）
+if (typeof window !== 'undefined' && window.matchMedia) {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+    // 只有在用户未明确设置theme prop时才跟随系统
+    if (!props.theme) {
+      const systemTheme = e.matches ? 'dark' : 'light'
+      setTheme(systemTheme)
+    }
+  }
+
+  // 添加监听器
+  mediaQuery.addEventListener('change', handleSystemThemeChange)
+
+  // 组件卸载时清理
+  onUnmounted(() => {
+    mediaQuery.removeEventListener('change', handleSystemThemeChange)
+  })
+}
 
 // 全屏状态管理
 const isFullscreen = ref(false)
@@ -1597,6 +1649,12 @@ const handleTimelineScaleChanged = (scale: TimelineScale) => {
     const event = new CustomEvent('timeline-scale-updated', { detail: scale })
     window.dispatchEvent(event)
   })
+}
+
+// 主题变化处理函数
+const handleThemeChange = (isDark: boolean) => {
+  const newTheme = isDark ? 'dark' : 'light'
+  setTheme(newTheme)
 }
 
 // === 时间维度相关方法 ===
@@ -2755,6 +2813,7 @@ defineExpose({
       @add-milestone="milestoneAddHandler"
       @expand-all="handleExpandAll"
       @collapse-all="handleCollapseAll"
+      @theme-change="handleThemeChange"
     />
 
     <!-- 甘特图主体 -->
@@ -3111,42 +3170,42 @@ defineExpose({
 }
 
 /* 暗色主题支持 */
-:global(html[data-theme='dark']) .gantt-root {
+:global(.gantt-root[data-theme='dark']) .gantt-root {
   background: #1e1e1e !important;
   color: #e5e5e5 !important;
 }
 
-:global(html[data-theme='dark']) .gantt-panel {
+:global(.gantt-root[data-theme='dark']) .gantt-panel {
   background: #2c2c2c !important;
 }
 
-:global(html[data-theme='dark']) .gantt-panel-left {
+:global(.gantt-root[data-theme='dark']) .gantt-panel-left {
   border-right-color: #4c4c4c !important;
 }
 
-:global(html[data-theme='dark']) .focus-close-button {
+:global(.gantt-root[data-theme='dark']) .focus-close-button {
   background: #d85555;
   border-color: #d85555;
   box-shadow: 0 4px 12px rgba(216, 85, 85, 0.4);
 }
 
-:global(html[data-theme='dark']) .focus-close-button:hover {
+:global(.gantt-root[data-theme='dark']) .focus-close-button:hover {
   background: #e67676;
   border-color: #e67676;
   box-shadow: 0 6px 16px rgba(216, 85, 85, 0.5);
 }
 
-:global(html[data-theme='dark']) .focus-close-button .close-icon,
-:global(html[data-theme='dark']) .focus-close-button .close-text {
+:global(.gantt-root[data-theme='dark']) .focus-close-button .close-icon,
+:global(.gantt-root[data-theme='dark']) .focus-close-button .close-text {
   color: #ffffff;
 }
 
-:global(html[data-theme='dark']) .focus-close-button:hover .close-icon,
-:global(html[data-theme='dark']) .focus-close-button:hover .close-text {
+:global(.gantt-root[data-theme='dark']) .focus-close-button:hover .close-icon,
+:global(.gantt-root[data-theme='dark']) .focus-close-button:hover .close-text {
   color: #ffffff;
 }
 
-:global(html[data-theme='dark']) .gantt-splitter {
+:global(.gantt-root[data-theme='dark']) .gantt-splitter {
   background: linear-gradient(
     to right,
     transparent,
@@ -3157,7 +3216,7 @@ defineExpose({
   box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.1) !important;
 }
 
-:global(html[data-theme='dark']) .gantt-splitter:hover {
+:global(.gantt-root[data-theme='dark']) .gantt-splitter:hover {
   background: linear-gradient(
     to right,
     transparent,
@@ -3173,24 +3232,24 @@ defineExpose({
 }
 
 /* 暗色主题支持 - TaskList切换按钮 */
-:global(html[data-theme='dark']) .task-list-toggle {
+:global(.gantt-root[data-theme='dark']) .task-list-toggle {
   background: rgba(42, 42, 42, 0.95) !important;
   border-color: #555555 !important;
   color: #cccccc !important;
   box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4) !important;
 }
 
-:global(html[data-theme='dark']) .task-list-toggle.collapsed {
+:global(.gantt-root[data-theme='dark']) .task-list-toggle.collapsed {
   box-shadow: -1px 1px 4px rgba(0, 0, 0, 0.4) !important;
 }
 
-:global(html[data-theme='dark']) .task-list-toggle:hover {
+:global(.gantt-root[data-theme='dark']) .task-list-toggle:hover {
   background: rgba(42, 42, 42, 1) !important;
   color: #569cd6 !important;
   box-shadow: 1px 2px 8px rgba(86, 156, 214, 0.3) !important;
 }
 
-:global(html[data-theme='dark']) .task-list-toggle.collapsed:hover {
+:global(.gantt-root[data-theme='dark']) .task-list-toggle.collapsed:hover {
   box-shadow: -1px 2px 8px rgba(86, 156, 214, 0.3) !important;
 }
 
@@ -3245,11 +3304,11 @@ defineExpose({
 }
 
 /* 暗色主题下的全屏模式 */
-:global(html[data-theme='dark']) .gantt-fullscreen {
+:global(.gantt-root[data-theme='dark']) .gantt-fullscreen {
   background: #1e1e1e !important;
 }
 
-:global(html[data-theme='dark']) .gantt-fullscreen .gantt-toolbar {
+:global(.gantt-root[data-theme='dark']) .gantt-fullscreen .gantt-toolbar {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
