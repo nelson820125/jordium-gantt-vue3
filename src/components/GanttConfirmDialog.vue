@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import '../styles/app.css'
 const props = defineProps({
   visible: Boolean,
@@ -102,7 +102,7 @@ const onNo = () => emit('no')
   gap: 12px;
 }
 
-:global(html[data-theme='dark']) .gantt-confirm-dialog {
+:global(.gantt-root[data-theme='dark']) .gantt-confirm-dialog {
   background: var(--gantt-bg-secondary, #f8f9fa) !important;
   border-color: var(--gantt-border-dark, #999999) !important;
 }

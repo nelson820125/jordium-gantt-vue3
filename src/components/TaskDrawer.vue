@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useMessage } from '../composables/useMessage'
@@ -1606,29 +1606,29 @@ const taskStatus = computed(() => {
 }
 
 /* 暗黑模式样式 */
-:global(html[data-theme='dark']) .progress-input-group {
+:global(.gantt-root[data-theme='dark']) .progress-input-group {
   border-color: var(--gantt-border-medium, #4c4d4f);
   background: var(--gantt-bg-primary, #2b2b2b);
 }
 
-:global(html[data-theme='dark']) .progress-input-group:hover {
+:global(.gantt-root[data-theme='dark']) .progress-input-group:hover {
   border-color: var(--gantt-primary, #409eff);
 }
 
-:global(html[data-theme='dark']) .progress-input-group:focus-within {
+:global(.gantt-root[data-theme='dark']) .progress-input-group:focus-within {
   border-color: var(--gantt-primary, #409eff);
 }
 
-:global(html[data-theme='dark']) .progress-input {
+:global(.gantt-root[data-theme='dark']) .progress-input {
   color: var(--gantt-text-primary, #e5eaf3);
   background: transparent;
 }
 
-:global(html[data-theme='dark']) .progress-input::placeholder {
+:global(.gantt-root[data-theme='dark']) .progress-input::placeholder {
   color: var(--gantt-text-placeholder, #8b949e);
 }
 
-:global(html[data-theme='dark']) .progress-unit {
+:global(.gantt-root[data-theme='dark']) .progress-unit {
   color: var(--gantt-text-secondary, #a8a8a8);
 }
 
@@ -1686,27 +1686,27 @@ const taskStatus = computed(() => {
 }
 
 /* 暗黑模式样式优化 */
-:global(html[data-theme='dark']) .drawer-overlay {
+:global(.gantt-root[data-theme='dark']) .drawer-overlay {
   background: rgba(0, 0, 0, 0.7) !important;
 }
 
-:global(html[data-theme='dark']) .drawer-container {
+:global(.gantt-root[data-theme='dark']) .drawer-container {
   box-shadow: -4px 0 15px rgba(0, 0, 0, 0.4) !important;
 }
 
-:global(html[data-theme='dark']) .drawer-close-btn:hover {
+:global(.gantt-root[data-theme='dark']) .drawer-close-btn:hover {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.1)) !important;
   border-radius: 4px;
 }
 
-:global(html[data-theme='dark']) .form-input:focus,
-:global(html[data-theme='dark']) .form-select:focus,
-:global(html[data-theme='dark']) .form-textarea:focus {
+:global(.gantt-root[data-theme='dark']) .form-input:focus,
+:global(.gantt-root[data-theme='dark']) .form-select:focus,
+:global(.gantt-root[data-theme='dark']) .form-textarea:focus {
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
 }
 
-:global(html[data-theme='dark']) .form-input::placeholder,
-:global(html[data-theme='dark']) .form-textarea::placeholder {
+:global(.gantt-root[data-theme='dark']) .form-input::placeholder,
+:global(.gantt-root[data-theme='dark']) .form-textarea::placeholder {
   color: var(--gantt-text-muted, #9e9e9e) !important;
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted, computed, inject, type Ref } from 'vue'
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 import { CanvasContextManager } from '../utils/canvasUtils'
@@ -32,6 +32,7 @@ interface Props {
   // 月份分隔线配置
   verticalLines?: VerticalLine[]
   showVerticalLines?: boolean
+  // 主题模式通过inject获取，不再需要props
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,6 +41,9 @@ const props = withDefaults(defineProps<Props>(), {
   offsetLeft: 0,
   offsetTop: 0,
 })
+
+// 通过inject获取主题
+const injectedTheme = inject<Ref<'light' | 'dark'>>('gantt-theme', ref('light'))
 
 // Canvas 引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -50,16 +54,9 @@ const canvasManager = new CanvasContextManager()
 // requestAnimationFrame 防抖控制
 let rafId: number | null = null
 let pendingRedraw = false
-let themeObserver: MutationObserver | null = null
 
 // 当前主题（用于分隔线颜色）
-const isDarkTheme = ref(document.documentElement.getAttribute('data-theme') === 'dark')
-
-// 监听主题变化
-const updateTheme = () => {
-  isDarkTheme.value = document.documentElement.getAttribute('data-theme') === 'dark'
-  scheduleRedraw()
-}
+const isDarkTheme = computed(() => injectedTheme.value === 'dark')
 
 /**
  * 绘制关系线到 Canvas
@@ -445,6 +442,7 @@ watch(
     () => props.showVerticalLines,
     () => props.offsetLeft, // 监听虚拟渲染的偏移量变化
     () => props.offsetTop,
+    injectedTheme, // 监听inject的主题变化（computed会自动响应）
   ],
   () => {
     // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
@@ -455,21 +453,7 @@ watch(
 
 // 组件挂载后初始化绘制
 onMounted(() => {
-  // 监听主题变化
-  themeObserver = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      if (mutation.attributeName === 'data-theme') {
-        updateTheme()
-        break
-      }
-    }
-  })
-
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme'],
-  })
-
+  // 不再监听 document.documentElement，直接使用props.theme
   nextTick(() => {
     drawLinks()
   })
@@ -477,12 +461,6 @@ onMounted(() => {
 
 // 组件卸载时清理
 onUnmounted(() => {
-  // 清理主题观察器
-  if (themeObserver) {
-    themeObserver.disconnect()
-    themeObserver = null
-  }
-
   // 取消待处理的 RAF
   if (rafId !== null) {
     cancelAnimationFrame(rafId)

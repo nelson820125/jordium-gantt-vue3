@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
@@ -134,7 +134,7 @@ watch(
       const newMode = newTheme === 'dark'
       if (isDarkMode.value !== newMode) {
         isDarkMode.value = newMode
-        document.documentElement.setAttribute('data-theme', newTheme)
+        // 不再直接设置document.documentElement，由GanttChart统一管理
       }
     }
   },
@@ -332,7 +332,7 @@ const handleThemeToggle = () => {
 
   // 立即应用主题变化
   isDarkMode.value = newTheme
-  document.documentElement.setAttribute('data-theme', newTheme ? 'dark' : 'light')
+  // 不再直接设置document.documentElement，由GanttChart统一管理
 
   // 立即触发主题变化事件
   if (props.onThemeChange && typeof props.onThemeChange === 'function') {
@@ -475,23 +475,12 @@ onMounted(() => {
   const currentLocale = locale.value
   currentLanguage.value = currentLocale === 'zh-CN' ? 'zh' : 'en'
 
-  // 初始化主题状态并应用到DOM
-  document.documentElement.setAttribute('data-theme', isDarkMode.value ? 'dark' : 'light')
+  // 不再直接设置document.documentElement，由GanttChart统一管理
 
   // 添加点击外部关闭下拉菜单的监听
   document.addEventListener('click', handleClickOutside)
 
-  // 监听系统主题变化（仅在用户未手动设置时）
-  if (
-    window.matchMedia &&
-    typeof window !== 'undefined' &&
-    !localStorage.getItem(THEME_STORAGE_KEY)
-  ) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      isDarkMode.value = e.matches
-      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light')
-    })
-  }
+  // 不再监听系统主题变化，由GanttChart统一管理
 })
 
 onUnmounted(() => {
@@ -1138,34 +1127,34 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式样式 */
-:global(html[data-theme='dark']) .toolbar-icon-btn:hover {
+:global(.gantt-root[data-theme='dark']) .toolbar-icon-btn:hover {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.08));
   color: var(--gantt-primary, #66b1ff);
 }
 
-:global(html[data-theme='dark']) .toolbar-icon-btn:focus {
+:global(.gantt-root[data-theme='dark']) .toolbar-icon-btn:focus {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.1));
   color: var(--gantt-primary, #66b1ff);
 }
 
-:global(html[data-theme='dark']) .toolbar-lang-btn:hover {
+:global(.gantt-root[data-theme='dark']) .toolbar-lang-btn:hover {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.06));
   border-color: var(--gantt-primary, #66b1ff);
   color: var(--gantt-primary, #66b1ff);
 }
 
-:global(html[data-theme='dark']) .toolbar-lang-btn:focus {
+:global(.gantt-root[data-theme='dark']) .toolbar-lang-btn:focus {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.08));
   border-color: var(--gantt-primary, #66b1ff);
   color: var(--gantt-primary, #66b1ff);
   box-shadow: 0 0 0 2px rgba(102, 177, 255, 0.4);
 }
 
-:global(html[data-theme='dark']) .dialog-content {
+:global(.gantt-root[data-theme='dark']) .dialog-content {
   background: var(--gantt-bg-secondary, #2c2c2c);
 }
 
-:global(html[data-theme='dark']) .dialog-message {
+:global(.gantt-root[data-theme='dark']) .dialog-message {
   color: var(--gantt-text-primary, #e5eaf3);
 }
 
@@ -1468,40 +1457,40 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式下的按钮组样式 */
-:global(html[data-theme='dark']) .gantt-btn-group {
+:global(.gantt-root[data-theme='dark']) .gantt-btn-group {
   box-shadow:
     0 1px 3px 0 rgba(0, 0, 0, 0.3),
     0 1px 2px -1px rgba(0, 0, 0, 0.3);
 }
 
-:global(html[data-theme='dark']) .gantt-btn-group:hover,
-:global(html[data-theme='dark']) .gantt-btn-group:focus-within {
+:global(.gantt-root[data-theme='dark']) .gantt-btn-group:hover,
+:global(.gantt-root[data-theme='dark']) .gantt-btn-group:focus-within {
   box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
 }
 
-:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item {
+:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item {
   background: #337ecc;
   border-color: #337ecc;
   color: #ffffff;
 }
 
-:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item:hover {
+:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item:hover {
   background: #4d94d4;
   border-color: #4d94d4;
 }
 
-:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item:focus {
+:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item:focus {
   background: #2c5aa0;
   border-color: #2c5aa0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
-:global(html[data-theme='dark']) .add-btn-group .gantt-btn-group-item:active {
+:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item:active {
   background: #1f4872;
   border-color: #1f4872;
 }
 
-:global(html[data-theme='dark']) .gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item {
+:global(.gantt-root[data-theme='dark']) .gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item {
   background: #2c2c2c;
   border-color: #4c4c4c;
   color: #e5e5e5;
@@ -1594,41 +1583,41 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式下的分段控制器样式 */
-:global(html[data-theme='dark']) .segmented-control {
+:global(.gantt-root[data-theme='dark']) .segmented-control {
   background: var(--gantt-bg-secondary, #4b4b4b);
   border-color: var(--gantt-border-color, #808080);
 }
 
-:global(html[data-theme='dark']) .segmented-control:hover {
+:global(.gantt-root[data-theme='dark']) .segmented-control:hover {
   border-color: var(--gantt-primary, #3399ff);
 }
 
-:global(html[data-theme='dark']) .segmented-thumb {
+:global(.gantt-root[data-theme='dark']) .segmented-thumb {
   background: var(--gantt-primary, #3399ff);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.3),
     0 1px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
-:global(html[data-theme='dark']) .segmented-item {
+:global(.gantt-root[data-theme='dark']) .segmented-item {
   color: #ffffff !important; /* 强制使用纯白色，更加突出 */
 }
 
 /* 特别针对时间刻度分段控制器的暗黑模式样式 */
-:global(html[data-theme='dark']) .time-scale-segmented .segmented-item {
+:global(.gantt-root[data-theme='dark']) .time-scale-segmented .segmented-item {
   color: #ffffff !important; /* 确保时间刻度按钮也使用纯白色 */
 }
 
-:global(html[data-theme='dark']) .segmented-item:hover:not(.active) {
+:global(.gantt-root[data-theme='dark']) .segmented-item:hover:not(.active) {
   color: var(--gantt-primary, #3399ff); /* 使用主色调，更加鲜艳 */
   background: rgba(51, 153, 255, 0.12); /* 调整背景透明度，与主色调匹配 */
 }
 
-:global(html[data-theme='dark']) .segmented-item:active:not(.active) {
+:global(.gantt-root[data-theme='dark']) .segmented-item:active:not(.active) {
   background: rgba(51, 153, 255, 0.2); /* 调整背景透明度，与主色调匹配 */
 }
 
-:global(html[data-theme='dark']) .segmented-item.active {
+:global(.gantt-root[data-theme='dark']) .segmented-item.active {
   color: #ffffff;
 }
 </style>

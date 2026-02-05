@@ -492,5 +492,19 @@
       "🎉 Optimized: The assignee and avatar properties of the Task object now accept arrays to mark multiple assignees",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yunlbs/fhjfhj/jakepan@gitee for their use and suggestions</span>"
     ]
+  },
+  {
+    "version": "1.8.1",
+    "date": "2026-02-05",
+    "notes": [
+      "🎉 优化：重构组件，Theme作用域从全局调整至局部.gantt-root",
+      "🎉 优化：重构组件，Theme自动跟随系统设置",
+      "🎉 优化：重构组件，完美支持Nuxt3、TailwindCSS等框架",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢andrijor@gmail.com的专业反馈</span>",
+      "🎉 Optimized: Refactored components, Theme scope adjusted from global to local .gantt-root",
+      "🎉 Optimized: Refactored components, Theme automatically follows system settings",
+      "🎉 Optimized: Refactored components, Perfectly supports Nuxt3, TailwindCSS and other frameworks",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to andrijor@gmail.com for their professional feedback</span>"
+    ]
   }
 ]

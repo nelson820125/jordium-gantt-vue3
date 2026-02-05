@@ -2211,7 +2211,6 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :view-mode="viewMode"
         :resource-list-config="resourceListConfig"
         :locale="controlMode === 'props' ? propsLocale : undefined"
-        :theme="controlMode === 'props' ? propsTheme : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
         :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
         :expand-all="controlMode === 'props' ? propsExpandAll : undefined"

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
 import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots, inject, type ComputedRef, type Ref } from 'vue'
 import type { Task } from '../models/classes/Task'
@@ -4227,7 +4227,7 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* 暗黑主题下的标题颜色 */
-:global(html[data-theme='dark']) .actual-task-name {
+:global(.gantt-root[data-theme='dark']) .actual-task-name {
   color: #ffffff !important;
 }
 
@@ -4883,14 +4883,14 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* 暗色主题支持 */
-:global(html[data-theme='dark']) .task-bar {
+:global(.gantt-root[data-theme='dark']) .task-bar {
   border-color: #111827 !important;
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.7),
     0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
-:global(html[data-theme='dark']) .task-bar:hover {
+:global(.gantt-root[data-theme='dark']) .task-bar:hover {
   box-shadow:
     0 6px 20px rgba(0, 0, 0, 0.8),
     0 4px 8px rgba(0, 0, 0, 0.4) !important;
@@ -4898,58 +4898,58 @@ class="hover-tooltip-arrow" :style="{
   transition: all 0.2s ease;
 }
 
-:global(html[data-theme='dark']) .task-bar:hover::after {
+:global(.gantt-root[data-theme='dark']) .task-bar:hover::after {
   background: rgba(7, 10, 15, 0.98) !important;
   color: #f9fafb !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
 }
 
-:global(html[data-theme='dark']) .task-bar.normal {
+:global(.gantt-root[data-theme='dark']) .task-bar.normal {
   background: linear-gradient(135deg, #1e40af, #1e3a8a) !important;
   border-color: #1e3a8a !important;
 }
 
-:global(html[data-theme='dark']) .task-bar.milestone {
+:global(.gantt-root[data-theme='dark']) .task-bar.milestone {
   background: linear-gradient(135deg, #c2410c, #9a3412) !important;
   border-color: #9a3412 !important;
 }
 
-:global(html[data-theme='dark']) .task-bar.completed {
+:global(.gantt-root[data-theme='dark']) .task-bar.completed {
   background: linear-gradient(135deg, #14532d, #16a34a) !important;
   border-color: #14532d !important;
 }
 
-:global(html[data-theme='dark']) .task-bar.delayed {
+:global(.gantt-root[data-theme='dark']) .task-bar.delayed {
   background: linear-gradient(135deg, #991b1b, #dc2626) !important;
   border-color: #991b1b !important;
 }
 
-:global(html[data-theme='dark']) .task-bar.parent {
+:global(.gantt-root[data-theme='dark']) .task-bar.parent {
   background: linear-gradient(135deg, #581c87, #7c3aed) !important;
   border-color: #581c87 !important;
 }
 
-:global(html[data-theme='dark']) .task-content {
+:global(.gantt-root[data-theme='dark']) .task-content {
   color: #ffffff !important;
 }
 
-:global(html[data-theme='dark']) .task-name {
+:global(.gantt-root[data-theme='dark']) .task-name {
   color: #ffffff !important;
 }
 
-:global(html[data-theme='dark']) .progress-bar {
+:global(.gantt-root[data-theme='dark']) .progress-bar {
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-:global(html[data-theme='dark']) .progress-fill {
+:global(.gantt-root[data-theme='dark']) .progress-fill {
   background: rgba(255, 255, 255, 0.8) !important;
 }
 
-:global(html[data-theme='dark']) .resize-handle {
+:global(.gantt-root[data-theme='dark']) .resize-handle {
   background: rgba(255, 255, 255, 0.1) !important;
 }
 
-:global(html[data-theme='dark']) .resize-handle:hover {
+:global(.gantt-root[data-theme='dark']) .resize-handle:hover {
   background: rgba(255, 255, 255, 0.3) !important;
 }
 
@@ -5011,42 +5011,42 @@ class="hover-tooltip-arrow" :style="{
 }
 
 /* 暗色主题下的短TaskBar溢出效果 */
-:global(html[data-theme='dark']) .task-bar.overflow-effect .resize-handle {
+:global(.gantt-root[data-theme='dark']) .task-bar.overflow-effect .resize-handle {
   background: rgba(255, 255, 255, 0.15);
 }
 
-:global(html[data-theme='dark']) .task-bar.overflow-effect .resize-handle:hover {
+:global(.gantt-root[data-theme='dark']) .task-bar.overflow-effect .resize-handle:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
 /* 暗色主题下的进度百分比样式 */
-:global(html[data-theme='dark']) .task-bar.overflow-effect .task-progress {
+:global(.gantt-root[data-theme='dark']) .task-bar.overflow-effect .task-progress {
   background: rgba(0, 0, 0, 0.9);
   color: white;
 }
 
-:global(html[data-theme='dark']) .task-bar.week-view {
+:global(.gantt-root[data-theme='dark']) .task-bar.week-view {
   border-color: var(--gantt-border-light, #555555);
 }
 
 /* 暗色主题下的头像样式 */
-:global(html[data-theme='dark']) .task-avatar {
+:global(.gantt-root[data-theme='dark']) .task-avatar {
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 /* 暗色主题下的默认头像 */
-:global(html[data-theme='dark']) .task-avatar.avatar-default {
+:global(.gantt-root[data-theme='dark']) .task-avatar.avatar-default {
   background: var(--gantt-bg-tertiary, #4a5568);
   color: var(--gantt-text-tertiary, #718096);
 }
 
 /* 暗色主题下的图标颜色 */
-:global(html[data-theme='dark']) .task-avatar .avatar-icon {
+:global(.gantt-root[data-theme='dark']) .task-avatar .avatar-icon {
   color: var(--gantt-text-tertiary, #718096);
 }
 
-:global(html[data-theme='dark']) .task-avatar.avatar-outside {
+:global(.gantt-root[data-theme='dark']) .task-avatar.avatar-outside {
   border-color: rgba(255, 255, 255, 0.4);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }

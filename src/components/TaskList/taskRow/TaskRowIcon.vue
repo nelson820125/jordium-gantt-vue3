@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 interface Props {
   isMilestoneGroup: boolean
   isParentTask: boolean
@@ -75,7 +75,7 @@ withDefaults(defineProps<Props>(), {
 }
 
 /* 暗黑模式下的里程碑图标 */
-:global(html[data-theme='dark']) .milestone-group-icon {
+:global(.gantt-root[data-theme='dark']) .milestone-group-icon {
   color: var(--gantt-danger, #f67c7c);
   fill: var(--gantt-danger, #f67c7c);
 }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
@@ -661,23 +661,23 @@ onUnmounted(() => {
 }
 
 /* 暗色主题支持 */
-:global(html[data-theme='dark']) .task-context-menu {
+:global(.gantt-root[data-theme='dark']) .task-context-menu {
   background-color: #2c2c2c;
   border-color: #444444;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
-:global(html[data-theme='dark']) .menu-item {
+:global(.gantt-root[data-theme='dark']) .menu-item {
   color: #e5e5e5;
 }
 
-:global(html[data-theme='dark']) .menu-item:hover {
+:global(.gantt-root[data-theme='dark']) .menu-item:hover {
   background-color: #3a3a3a;
   color: #409eff;
 }
 
 /* 暗色主题下箭头颜色 */
-:global(html[data-theme='dark']) .menu-arrow {
+:global(.gantt-root[data-theme='dark']) .menu-arrow {
   border-bottom-color: #2c2c2c; /* 匹配暗色菜单背景色 */
   filter: drop-shadow(0 -1px 2px rgba(0, 0, 0, 0.25));
 }
@@ -784,13 +784,13 @@ onUnmounted(() => {
 }
 
 /* 暗色主题下的子菜单 */
-:global(html[data-theme='dark']) .submenu {
+:global(.gantt-root[data-theme='dark']) .submenu {
   background-color: #2c2c2c;
   border-color: #444444;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
-:global(html[data-theme='dark']) .submenu-item:hover {
+:global(.gantt-root[data-theme='dark']) .submenu-item:hover {
   background-color: #3a1f1f;
   color: #f56c6c;
 }

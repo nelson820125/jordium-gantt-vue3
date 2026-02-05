@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import DatePicker from './DatePicker.vue'
@@ -792,12 +792,12 @@ const t = (key: string) => {
 }
 
 /* 暗黑模式下的确认弹窗 */
-:global(html[data-theme='dark']) .milestone-confirm-dialog {
+:global(.gantt-root[data-theme='dark']) .milestone-confirm-dialog {
   background: var(--gantt-bg-dark, #1d1e1f);
   border-color: var(--gantt-border-dark, #3c3e40);
 }
 
-:global(html[data-theme='dark']) .milestone-confirm-footer {
+:global(.gantt-root[data-theme='dark']) .milestone-confirm-footer {
   background: var(--gantt-bg-darker, #141414);
   border-color: var(--gantt-border-dark, #3c3e40);
 }
