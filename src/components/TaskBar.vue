@@ -2028,6 +2028,9 @@ watch(
   () => [props.isHighlighted, props.isPrimaryHighlight],
   ([highlighted, primary]) => {
     if (highlighted || primary) {
+      // 🔧 修复：记录是否刚刚完成了交互操作
+      const wasInteracting = isDragging.value || isResizingLeft.value || isResizingRight.value
+
       // 当TaskBar变为高亮状态时，立即清理所有拖拽状态和事件监听器
       // 无条件清理，即使没有正在拖拽也要重置状态
       isDragging.value = false
@@ -2053,14 +2056,18 @@ watch(
         dragDelayTimer.value = null
       }
 
-      // 触发自定义事件，通知Timeline启动拖拽滚动
-      window.dispatchEvent(
-        new CustomEvent('taskbar-highlighted', {
-          detail: {
-            taskId: props.task.id,
-          },
-        }),
-      )
+      // 🔧 修复：只有在非交互状态下才触发 Timeline 拖拽
+      // 如果刚刚完成拖拽/resize，不应该启动 Timeline 拖拽
+      if (!wasInteracting && !justFinishedDragOrResize.value) {
+        // 触发自定义事件，通知Timeline启动拖拽滚动
+        window.dispatchEvent(
+          new CustomEvent('taskbar-highlighted', {
+            detail: {
+              taskId: props.task.id,
+            },
+          }),
+        )
+      }
     }
   },
 )

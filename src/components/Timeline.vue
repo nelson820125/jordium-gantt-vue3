@@ -13,7 +13,7 @@ import { getPredecessorIds } from '../utils/predecessorUtils'
 import { perfMonitor } from '../utils/perfMonitor'
 import { perfMonitor2 } from '../utils/perfMonitor2' // v1.9.6 性能诊断工具
 import type { Task } from '../models/classes/Task'
-import { Resource } from '../models/classes/Resource'
+import type { Resource } from '../models/types/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
@@ -109,6 +109,9 @@ const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source',
 
 // v1.9.0 从 GanttChart 注入资源冲突信息（由 GanttChart 计算并响应 updateTaskTrigger）
 const resourceConflicts = inject<ComputedRef<Map<string, Set<number>>>>('resourceConflicts', computed(() => new Map()))
+
+// TaskBar渲染key，用于在容器变化时强制重新渲染
+const taskBarRenderKey = ref(0)
 
 // v1.9.2 计算资源视图中每个任务的冲突任务列表（用于显示详细冲突信息）
 const getConflictTasksForTask = (resourceId: string | number, taskId: string | number): Task[] => {
@@ -1611,7 +1614,6 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
     // v1.9.6 Sprint2(P1) - 周/月/季/年视图：使用timelineData精确计算（避免累积误差）
     const data = timelineData.value as any
     if (!data || data.length === 0) {
-      console.warn(`[Sprint2-Debug] timelineData is empty for scale=${scale}, falling back to timelineStart`)
       return timelineStart
     }
 
@@ -1958,17 +1960,17 @@ const rebuildResourceTaskQueues = () => {
       // 如果已经渲染过，保留rendered=true状态
       const isRendered = existingCache?.rendered || false
       if (isRendered) {
-        cachedCount++
+        cachedCount = cachedCount + 1
       }
 
       newCache.set(cacheKey, {
         taskId,
         resourceId,
         rendered: isRendered,
-        timestamp: isRendered ? 
-                  (existingCache ? 
-                    existingCache.timestamp 
-                    : currentTimestamp) 
+        timestamp: isRendered ?
+                  (existingCache ?
+                    existingCache.timestamp
+                    : currentTimestamp)
                   : currentTimestamp,
       })
     })
@@ -2094,12 +2096,12 @@ const visibleResourcesWithFilteredTasks = computed(() => {
     totalFilteredTasks += renderTasks.length
 
     return {
-      resource: new Resource({
+      resource: {
         ...resource,
         tasks: renderTasks,
         // 保留原始完整的任务列表（用于GanttConflicts冲突检测）
         allTasks: originalTasks,
-      }),
+      },
       originalIndex,
     }
   })
@@ -3557,9 +3559,6 @@ const taskBarPositions = shallowRef<
   Record<number, { left: number; top: number; width: number; height: number }>
 >({})
 
-// TaskBar渲染key，用于在容器变化时强制重新渲染
-const taskBarRenderKey = ref(0)
-
 const bodyContentRef = ref<HTMLElement | null>(null)
 // 🚀 LinkDragGuide 命令式 API 引用
 const linkDragGuideRef = ref<InstanceType<typeof LinkDragGuide> | null>(null)
@@ -3734,10 +3733,12 @@ const handleTaskBarResizeEnd = (updatedTask: Task) => {
       const newLayout = getResourceLayout(targetResource)
       const newRowCount = newLayout.rowHeights.length
 
-      // 只有当行数发生变化时，才需要触发全量重绘
-      if (newRowCount !== oldRowCount) {
-        taskBarRenderKey.value++
-      }
+      // 🔧 修复：不再触发 taskBarRenderKey 更新，避免整个视图重建导致闪烁
+      // 资源布局的更新会通过 resourceTaskLayouts 的响应式自动触发重新渲染
+      // 注释掉以避免不必要的全量重绘：
+      // if (newRowCount !== oldRowCount) {
+      //   taskBarRenderKey.value++
+      // }
     }
   }
   // 记录变化的TaskBar ID（用于增量冲突更新）
@@ -3988,6 +3989,27 @@ const handleTaskBarHighlighted = () => {
   // 注意：这里无法直接获取鼠标状态，所以我们添加一个全局监听器
   // 在下一次 mousemove 时启动拖拽滚动
   const handleNextMouseMove = (e: MouseEvent) => {
+    // 🔧 修复：检查是否有 TaskBar 正在被拖拽或 resize
+    // 如果有，不应该触发 Timeline 拖拽，避免与 TaskBar 交互冲突
+    if (isDraggingTaskBar.value) {
+      document.removeEventListener('mousemove', handleNextMouseMove)
+      return
+    }
+
+    // 🔧 修复：检查鼠标是否在 TaskBar、resize 手柄或其他交互元素上
+    // 如果是，不应该触发 Timeline 拖拽
+    const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement
+    if (target) {
+      const isOnTaskBar = target.closest('.task-bar')
+      const isOnResizeHandle = target.closest('.resize-handle-left, .resize-handle-right')
+      const isOnInteractive = target.closest('button, input, select, textarea, .custom-task-content')
+
+      if (isOnTaskBar || isOnResizeHandle || isOnInteractive) {
+        document.removeEventListener('mousemove', handleNextMouseMove)
+        return
+      }
+    }
+
     // 检查鼠标左键是否按下
     if (e.buttons === 1) {
       // 启动拖拽滚动
@@ -4097,6 +4119,13 @@ const handleMouseDown = (event: MouseEvent) => {
 
   // 如果在body区域，需要检查是否点击了交互元素
   if (isInBody) {
+    // 🔧 修复：检查是否点击了 TaskBar 的 resize 手柄
+    const resizeHandle = target.closest('.resize-handle-left, .resize-handle-right') as HTMLElement
+    if (resizeHandle) {
+      // 点击了 resize 手柄，不应该触发 Timeline 拖拽
+      return
+    }
+
     // 检查是否点击了TaskBar
     const taskBarElement = target.closest('.task-bar') as HTMLElement
 
@@ -4199,6 +4228,12 @@ const handleMouseMove = (event: MouseEvent) => {
 
 // 鼠标抬起结束拖拽
 const handleMouseUp = () => {
+  // 🔧 修复：只有在真正处于拖拽状态时才执行清理
+  // 避免 TaskBar 的 resize 事件误触发 Timeline 的拖拽结束逻辑
+  if (!isDragging.value) {
+    return
+  }
+
   isDragging.value = false
 
   // 取消任何待处理的 RAF
@@ -4248,6 +4283,9 @@ const handleTimelineScroll = (event: Event) => {
 
   // 虚拟渲染：滚动时更新 Canvas 位置（防抖处理）
   debouncedUpdateCanvasPosition()
+
+  // [nelson][2026-02-04]拖拽时不同步（避免性能问题）
+  if (isDragging.value) return
 
   // 小时视图简化处理
   if (currentTimeScale.value === TimelineScale.HOUR) {

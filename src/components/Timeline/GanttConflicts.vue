@@ -298,8 +298,6 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
 
 // 重新计算冲突
 function recalculateConflicts() {
-  const startTime = performance.now()
-
   // 调用冲突检测算法
   const conflicts = detectConflicts(props.tasks, props.resourceId)
 
@@ -386,12 +384,6 @@ function recalculateConflicts() {
       height,
     }
   }).filter(z => z !== null) as ConflictZone[]
-
-  const endTime = performance.now()
-  const elapsed = endTime - startTime
-
-  // 开发环境性能监控
-  if (import.meta.env.DEV && elapsed > 50) {}
 
   // v1.9.4 P1优化 - 增量重绘
   // v1.9.5 修复：如果纹理缓存被清空，使用全量重绘避免颜色变淡

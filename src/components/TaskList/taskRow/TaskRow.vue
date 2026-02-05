@@ -4,8 +4,8 @@ import type { StyleValue } from 'vue'
 import { useI18n } from '../../../composables/useI18n'
 import { formatPredecessorDisplay } from '../../../utils/predecessorUtils'
 import type { Task } from '../../../models/classes/Task'
-// @ts-expect-error - Resource is used in type definitions
-import type { Resource } from '../../../models/classes/Resource'
+import type { Resource } from '../../../models/types/Resource'
+import { isResourceOverloaded } from '../../../utils/resourceUtils'
 import type { TaskListColumnConfig } from '../../../models/configs/TaskListConfig'
 import type { DeclarativeColumnConfig } from '../composables/taskList/useTaskListColumns'
 import TaskContextMenu from '../../TaskContextMenu.vue'
@@ -96,16 +96,12 @@ const isResourceRow = computed(() => {
 })
 
 // v1.9.0 检测资源是否超载（任务重叠）
-const isResourceOverloaded = computed(() => {
+const isResourceOverloadedComputed = computed(() => {
   if (!isResourceRow.value) return false
 
   // 类型断言为Resource
-  const resource = props.task as any
-  if (typeof resource.isOverloaded === 'function') {
-    return resource.isOverloaded()
-  }
-
-  return false
+  const resource = props.task as Resource
+  return isResourceOverloaded(resource)
 })
 
 // 计算行高度 - resource视图下使用动态高度
@@ -412,7 +408,7 @@ const assigneeDisplayData = computed(() => {
           <div v-if="isResourceRow" class="resource-row-name">
             <!-- v1.9.0 资源超载警示图标 -->
             <svg
-              v-if="isResourceOverloaded"
+              v-if="isResourceOverloadedComputed"
               class="resource-warning-icon"
               viewBox="0 0 24 24"
               fill="none"

@@ -7,7 +7,7 @@ import GanttConfirmDialog from './GanttConfirmDialog.vue'
 import MultiSelectPredecessor from './MultiSelectPredecessor.vue'
 import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
 import type { Task } from '../models/classes/Task'
-import { Resource } from '../models/classes/Resource'
+import { createResource } from '../utils/resourceUtils'
 import '../styles/app.css'
 
 interface AssigneeOption {
@@ -682,7 +682,7 @@ const addResource = () => {
   if (!formData.resources) {
     formData.resources = []
   }
-  formData.resources.push(new Resource({
+  formData.resources.push(createResource({
     id: '',
     name: '',
     capacity: 100,
@@ -731,7 +731,7 @@ const mapAssigneeToResources = () => {
   formData.resources = assignees.map((assigneeId) => {
     // 查找对应的assigneeOption获取名称
     const option = props.assigneeOptions?.find(opt => opt.value === assigneeId)
-    return new Resource({
+    return createResource({
       id: assigneeId,
       name: option?.label || String(assigneeId),
       capacity: 100, // 默认100%

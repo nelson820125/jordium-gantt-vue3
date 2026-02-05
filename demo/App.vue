@@ -17,7 +17,8 @@ import { useI18n } from '../src/composables/useI18n'
 import { useDemoLocale } from './useDemoLocale'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
-import { Resource } from '../src/models/classes/Resource'
+import type { Resource } from '../src/models/types/Resource'
+import { createResource, addTaskToResource, updateResourceUtilization } from '../src/utils/resourceUtils'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
 import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
@@ -93,8 +94,8 @@ const applyDataSource = (source: RawDataSource) => {
   const resourcePayload = (source.key === 'large' ? largeResourcesData : resourcesData) as { resources?: any[] }
   if (resourcePayload.resources) {
     resources.value = resourcePayload.resources.map(resData => {
-      // 使用Resource类创建资源实例
-      return new Resource({
+      // 使用 createResource 工厂函数创建资源对象
+      return createResource({
         id: resData.id,
         name: resData.name,
         type: resData.type,
@@ -120,7 +121,7 @@ const applyDataSource = (source: RawDataSource) => {
     const resourceMap = new Map<string, Resource>()
     tasks.value.forEach(task => {
       if (task.assignee && !resourceMap.has(task.assignee)) {
-        resourceMap.set(task.assignee, new Resource({
+        resourceMap.set(task.assignee, createResource({
           id: task.assignee,
           name: task.assignee,
           type: 'user',
@@ -135,14 +136,14 @@ const applyDataSource = (source: RawDataSource) => {
       if (task.assignee) {
         const resource = resourceMap.get(task.assignee)
         if (resource) {
-          resource.addTask(task)
+          addTaskToResource(resource, task)
         }
       }
     })
 
     // 计算每个资源的利用率
     resourceMap.forEach(resource => {
-      resource.updateUtilization()
+      updateResourceUtilization(resource)
     })
 
     resources.value = Array.from(resourceMap.values())
@@ -207,11 +208,9 @@ const showVersionDrawer = ref(false)
 const resourceEditHintVisible = ref(false)
 const clickedResource = ref<Resource | null>(null)
 
-// v1.9.7 监听viewMode变化，自动同步useDefaultDrawer
-// 资源视图下关闭默认TaskDrawer，任务视图下开启
-watch(viewMode, (newMode) => {
-  useDefaultDrawer.value = newMode !== 'resource'
-})
+// v1.9.7 移除自动禁用useDefaultDrawer的watch
+// 改为在handleTaskDoubleClick中根据对象类型判断行为
+// useDefaultDrawer保持为true,确保新建任务和TaskBar双击能正常工作
 
 const toolbarConfig = {
   showAddTask: true,
@@ -628,12 +627,27 @@ const handleTaskClick = (task: Task) => {
 
 // v1.9.7 处理任务双击事件（资源视图下显示资源编辑提示）
 const handleTaskDoubleClick = (taskOrResource: Task | Resource) => {  
-  // 在资源视图下，检查是否为资源对象（Resource类型有tasks属性）
-  if (viewMode.value === 'resource' && taskOrResource && typeof taskOrResource === 'object' && 'tasks' in taskOrResource) {
-    clickedResource.value = taskOrResource as Resource
+  // 使用类型守卫严格判断是否为Resource对象
+  if (viewMode.value === 'resource' && isResource(taskOrResource)) {
+    // 这是Resource对象，显示资源编辑提示
+    // GanttChart内部通过 typeof task.id === 'number' 也会阻止打开TaskDrawer
+    clickedResource.value = taskOrResource
     resourceEditHintVisible.value = true
+    return
   }
-  // 注意：useDefaultDrawer由watch(viewMode)自动管理，无需在此处手动设置
+  
+  // 对于真正的Task对象，GanttChart会正常打开TaskDrawer
+  // useDefaultDrawer保持为true，确保新建任务和TaskBar双击都能正常工作
+}
+
+// v1.9.7 类型守卫：判断是否为Resource对象
+// Resource独有的特征：有tasks数组属性，且没有resources属性
+const isResource = (obj: Task | Resource): obj is Resource => {
+  return obj && 
+    typeof obj === 'object' && 
+    'tasks' in obj && 
+    Array.isArray((obj as Resource).tasks) &&
+    !('resources' in obj) // Task有resources属性，Resource没有
 }
 
 // 关闭资源编辑提示dialog

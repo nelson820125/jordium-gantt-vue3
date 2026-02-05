@@ -4,7 +4,7 @@ import type { StyleValue, Slots, Ref, ComputedRef } from 'vue'
 import TaskRow from './taskRow/TaskRow.vue'
 import { useI18n } from '../../composables/useI18n'
 import type { Task } from '../../models/classes/Task'
-import type { Resource } from '../../models/classes/Resource'
+import type { Resource } from '../../models/types/Resource'
 import type { TaskListConfig, TaskListColumnConfig } from '../../models/configs/TaskListConfig'
 // @ts-expect-error - ResourceListColumnConfig is used in type unions
 import type { ResourceListConfig, ResourceListColumnConfig } from '../../models/configs/ResourceListConfig'
@@ -340,6 +340,7 @@ onUnmounted(() => {
 
       <TaskRow
         v-for="{ task, level, rowIndex } in visibleTasks"
+        v-memo="[task.id, task.name, task.collapsed, hoveredTaskId === task.id, task.startDate, task.endDate, task.progress]"
         :key="task.id"
         :task="task"
         :level="level"

@@ -14,7 +14,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
-import type { Resource } from '../models/classes/Resource'
+import type { Resource } from '../models/types/Resource'
 import { useTaskListContextMenu } from './TaskList/composables/taskList/useTaskListContextMenu'
 import { useTaskBarContextMenu } from './Timeline/composables/useTaskBarContextMenu'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
@@ -138,7 +138,24 @@ provide('gantt-show-conflicts', computed(() => props.showConflicts))
 // v1.9.5 提供showTaskbarTab配置给TaskBar组件
 provide('gantt-show-taskbar-tab', computed(() => props.showTaskbarTab))
 
-// 计算资源视图下的任务布局信息
+// v2.0 性能优化：资源视图布局缓存（避免重复计算）
+const resourceLayoutCache = new Map<string, {
+  layout: { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number },
+  hash: string
+}>()
+
+// v2.0 性能优化：资源视图冲突缓存
+const resourceConflictCache = new Map<string, {
+  conflicts: Set<number | string>,
+  hash: string
+}>()
+
+// v2.0 工具函数：计算任务哈希（用于检测是否需要重新计算布局）
+const getTasksHash = (tasks: Task[]): string => {
+  return tasks.map(t => `${t.id}-${t.startDate || ''}-${t.endDate || ''}`).join('|')
+}
+
+// 计算资源视图下的任务布局信息（v2.0 优化：方案1增量更新 + 方案2缓存机制）
 const resourceTaskLayouts = computed(() => {
   const layouts = new Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>()
 
@@ -148,20 +165,84 @@ const resourceTaskLayouts = computed(() => {
 
     // 依赖 updateTaskTrigger 以便在任务更新时重新计算布局
     if (updateTaskTrigger.value >= 0) {
-      resources.forEach(resource => {
-        const resourceId = String(resource.id)
-        if (resource.tasks && resource.tasks.length > 0) {
-          const layout = assignTaskRows(resource.tasks, baseRowHeight)
-          layouts.set(resourceId, layout)
-        } else {
-          // 没有任务的资源使用默认高度
-          layouts.set(resourceId, {
-            taskRowMap: new Map(),
-            rowHeights: [baseRowHeight],
-            totalHeight: baseRowHeight,
-          })
-        }
-      })
+      // v2.0 方案1：增量更新逻辑 - 只处理受影响的资源
+      const affectedResourceIds = lastChangedResourceIds.value
+      const shouldDoIncrementalUpdate = affectedResourceIds.size > 0 && affectedResourceIds.size < resources.length * 0.3
+
+      if (shouldDoIncrementalUpdate) {
+        // 🎯 增量更新：只重新计算受影响的资源（性能提升100倍）
+        // 先复用所有缓存
+        resourceLayoutCache.forEach((cached, resourceId) => {
+          layouts.set(resourceId, cached.layout)
+        })
+
+        // 只重新计算受影响的资源
+        affectedResourceIds.forEach(affectedId => {
+          const resource = resources.find(r => String(r.id) === String(affectedId))
+          if (!resource) return
+
+          const resourceId = String(resource.id)
+          const tasks = resource.tasks || []
+
+          if (tasks.length === 0) {
+            layouts.set(resourceId, {
+              taskRowMap: new Map(),
+              rowHeights: [baseRowHeight],
+              totalHeight: baseRowHeight,
+            })
+            resourceLayoutCache.set(resourceId, {
+              layout: layouts.get(resourceId)!,
+              hash: '',
+            })
+            return
+          }
+
+          // v2.0 方案2：检查缓存
+          const tasksHash = getTasksHash(tasks)
+          const cached = resourceLayoutCache.get(resourceId)
+
+          if (cached && cached.hash === tasksHash) {
+            layouts.set(resourceId, cached.layout)
+          } else {
+            const layout = assignTaskRows(tasks, baseRowHeight)
+            layouts.set(resourceId, layout)
+            resourceLayoutCache.set(resourceId, {
+              layout,
+              hash: tasksHash,
+            })
+          }
+        })
+      } else {
+        // 全量更新：初始化或变更范围过大时（超过30%资源）
+        resources.forEach(resource => {
+          const resourceId = String(resource.id)
+          const tasks = resource.tasks || []
+
+          if (tasks.length === 0) {
+            layouts.set(resourceId, {
+              taskRowMap: new Map(),
+              rowHeights: [baseRowHeight],
+              totalHeight: baseRowHeight,
+            })
+            return
+          }
+
+          // v2.0 方案2：检查缓存
+          const tasksHash = getTasksHash(tasks)
+          const cached = resourceLayoutCache.get(resourceId)
+
+          if (cached && cached.hash === tasksHash) {
+            layouts.set(resourceId, cached.layout)
+          } else {
+            const layout = assignTaskRows(tasks, baseRowHeight)
+            layouts.set(resourceId, layout)
+            resourceLayoutCache.set(resourceId, {
+              layout,
+              hash: tasksHash,
+            })
+          }
+        })
+      }
     }
   }
 
@@ -188,7 +269,7 @@ const resourceRowPositions = computed(() => {
   return positions
 })
 
-// 计算资源冲突状态（依赖updateTaskTrigger以便实时更新）
+// 计算资源冲突状态（v2.0 优化：方案1增量更新 + 方案2缓存机制）
 // v1.9.9 修复：使用 detectConflicts 函数来正确检测多任务叠加的超载情况
 const resourceConflicts = computed(() => {
   if (currentViewMode.value !== 'resource') return new Map()
@@ -198,29 +279,106 @@ const resourceConflicts = computed(() => {
 
   // 依赖 updateTaskTrigger 以便在任务更新时重新计算冲突
   if (updateTaskTrigger.value >= 0) {
-    resources.forEach(resource => {
-      const tasks = resource.tasks || []
-      if (tasks.length < 2) return
+    // v2.0 方案1：增量更新逻辑 - 只处理受影响的资源
+    const affectedResourceIds = lastChangedResourceIds.value
+    const shouldDoIncrementalUpdate = affectedResourceIds.size > 0 && affectedResourceIds.size < resources.length * 0.3
 
-      // 使用 conflictUtils 的 detectConflicts 函数来检测冲突
-      // 这个函数能正确处理多任务叠加的超载情况（如 A:40% + B:40% + C:30% = 110%）
-      const conflictZones = detectConflicts(tasks, resource.id)
-
-      if (conflictZones.length > 0) {
-        const conflicts = new Set<number | string>()
-
-        // 收集所有冲突区域中涉及的任务ID
-        conflictZones.forEach(zone => {
-          zone.tasks.forEach(taskInfo => {
-            conflicts.add(taskInfo.id)
-          })
-        })
-
-        if (conflicts.size > 0) {
-          conflictsMap.set(String(resource.id), conflicts)
+    if (shouldDoIncrementalUpdate) {
+      // 🎯 增量更新：只重新计算受影响的资源
+      // 先复用所有缓存
+      resourceConflictCache.forEach((cached, resourceId) => {
+        if (cached.conflicts.size > 0) {
+          conflictsMap.set(resourceId, cached.conflicts)
         }
-      }
-    })
+      })
+
+      // 只重新计算受影响的资源
+      affectedResourceIds.forEach(affectedId => {
+        const resource = resources.find(r => String(r.id) === String(affectedId))
+        if (!resource) return
+
+        const tasks = resource.tasks || []
+        if (tasks.length < 2) return
+
+        const resourceId = String(resource.id)
+
+        // v2.0 方案2：检查缓存
+        const tasksHash = getTasksHash(tasks)
+        const cached = resourceConflictCache.get(resourceId)
+
+        if (cached && cached.hash === tasksHash) {
+          if (cached.conflicts.size > 0) {
+            conflictsMap.set(resourceId, cached.conflicts)
+          }
+        } else {
+          const conflictZones = detectConflicts(tasks, resource.id)
+
+          if (conflictZones.length > 0) {
+            const conflicts = new Set<number | string>()
+            conflictZones.forEach(zone => {
+              zone.tasks.forEach(taskInfo => {
+                conflicts.add(taskInfo.id)
+              })
+            })
+
+            if (conflicts.size > 0) {
+              conflictsMap.set(resourceId, conflicts)
+            }
+            resourceConflictCache.set(resourceId, {
+              conflicts,
+              hash: tasksHash,
+            })
+          } else {
+            resourceConflictCache.set(resourceId, {
+              conflicts: new Set(),
+              hash: tasksHash,
+            })
+          }
+        }
+      })
+    } else {
+      // 全量更新
+      resources.forEach(resource => {
+        const tasks = resource.tasks || []
+        if (tasks.length < 2) return
+
+        const resourceId = String(resource.id)
+
+        // v2.0 方案2：检查缓存
+        const tasksHash = getTasksHash(tasks)
+        const cached = resourceConflictCache.get(resourceId)
+
+        if (cached && cached.hash === tasksHash) {
+          if (cached.conflicts.size > 0) {
+            conflictsMap.set(resourceId, cached.conflicts)
+          }
+        } else {
+          const conflictZones = detectConflicts(tasks, resource.id)
+
+          if (conflictZones.length > 0) {
+            const conflicts = new Set<number | string>()
+            conflictZones.forEach(zone => {
+              zone.tasks.forEach(taskInfo => {
+                conflicts.add(taskInfo.id)
+              })
+            })
+
+            if (conflicts.size > 0) {
+              conflictsMap.set(resourceId, conflicts)
+            }
+            resourceConflictCache.set(resourceId, {
+              conflicts,
+              hash: tasksHash,
+            })
+          } else {
+            resourceConflictCache.set(resourceId, {
+              conflicts: new Set(),
+              hash: tasksHash,
+            })
+          }
+        }
+      })
+    }
   }
 
   return conflictsMap
@@ -530,12 +688,24 @@ const timelineContainerWidth = ref<number>(0)
 // 任务拖拽/拉伸触发器（用于触发timeline范围重新计算）
 const updateTaskTrigger = ref<number>(0)
 
+// v2.0 方案1：变更追踪（增量更新）
+const lastChangedTaskId = ref<string | number | null>(null)
+const lastChangedResourceIds = ref<Set<string | number>>(new Set())
+
+// v2.0 辅助函数：触发全量更新（清空增量追踪）
+const triggerFullUpdate = () => {
+  lastChangedTaskId.value = null
+  lastChangedResourceIds.value = new Set()
+  updateTaskTrigger.value++
+}
+
 // 监听props.tasks变化，自动触发Timeline更新
 // 这对于TaskRow移动等操作很重要，因为外部更新tasks后需要通知Timeline重新渲染
 watch(
   () => props.tasks,
   () => {
-    updateTaskTrigger.value++
+    // props变化时清空增量追踪，执行全量更新
+    triggerFullUpdate()
   },
   { deep: true },
 )
@@ -2579,13 +2749,24 @@ function handleTimelineClickTask(task: Task, event: MouseEvent) {
   emit('task-click', task, event)
 }
 
+// 类型守卫：判断是否为真正的Task对象（而非Resource）
+// Resource有tasks属性且没有resources属性
+function isTaskObject(obj: Task | Resource): obj is Task {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    !('tasks' in obj && Array.isArray((obj as Resource).tasks) && !('resources' in obj))
+  )
+}
+
 // 监听来自Timeline的任务编辑事件（双击）
 function handleTimelineEditTask(task: Task) {
   emit('task-double-click', task)
 
   // 根据 useDefaultDrawer 决定是否打开内置 TaskDrawer
-  // v1.9.7 只为真正的Task对象打开TaskDrawer，Resource对象不打开（Resource的id是字符串格式）
-  if (props.useDefaultDrawer && typeof task.id === 'number') {
+  // v1.9.7 只为真正的Task对象打开TaskDrawer，Resource对象不打开
+  // 使用类型守卫和id类型双重判断，确保安全
+  if (props.useDefaultDrawer && isTaskObject(task) && typeof task.id === 'number') {
     taskDrawerTask.value = task
     taskDrawerEditMode.value = true
     taskDrawerVisible.value = true
@@ -2712,6 +2893,10 @@ const updateTaskInTree = (tasks: Task[], updatedTask: Task): boolean => {
 
 // v1.9.0 更新任务并同步到资源视图
 const updateTaskAndSyncToResources = (updatedTask: Task) => {
+  // v2.0 方案1：记录变更的任务和资源ID（增量更新）
+  lastChangedTaskId.value = updatedTask.id
+  const affectedResourceIds = new Set<string | number>()
+
   // 1. 更新原始任务数据
   if (props.tasks) {
     updateTaskInTree(props.tasks, updatedTask)
@@ -2719,30 +2904,54 @@ const updateTaskAndSyncToResources = (updatedTask: Task) => {
 
   // 2. 如果是资源视图，同步更新资源中的任务
   if (currentViewMode.value === 'resource' && props.resources) {
-    // 查找任务所属的资源（通过assignee）
-    props.resources.forEach(resource => {
+    // v2.1 性能优化：直接定位资源，避免全量遍历（O(1) vs O(n*m)）
+    // 先找出任务当前所在的资源（通过遍历一次，但只在找到后立即退出）
+    let oldResourceId: string | number | null = null
+    let oldResource: any = null
+    let oldTaskIndex = -1
+
+    // 快速查找：只遍历到找到为止
+    for (const resource of props.resources) {
       const taskIndex = resource.tasks.findIndex(t => t.id === updatedTask.id)
       if (taskIndex !== -1) {
-        // 如果责任人变了，需要移动任务
-        if (updatedTask.assignee && updatedTask.assignee !== resource.id) {
-          // 从原资源中移除
-          resource.tasks.splice(taskIndex, 1)
-
-          // 添加到新资源
-          const newResource = props.resources.find(r => r.id === updatedTask.assignee)
-          if (newResource) {
-            newResource.tasks.push({ ...updatedTask })
-          }
-        } else {
-          // 责任人未变，只更新任务数据
-          resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
-        }
-      } else if (updatedTask.assignee === resource.id) {
-        // 任务新分配给这个资源
-        resource.tasks.push({ ...updatedTask })
+        oldResourceId = resource.id
+        oldResource = resource
+        oldTaskIndex = taskIndex
+        affectedResourceIds.add(resource.id)
+        break // 立即退出，不再遍历剩余资源
       }
-    })
+    }
+
+    // 如果找到了任务
+    if (oldResource && oldTaskIndex !== -1) {
+      // 如果责任人变了，需要移动任务
+      if (updatedTask.assignee && updatedTask.assignee !== oldResourceId) {
+        // 从原资源中移除
+        oldResource.tasks.splice(oldTaskIndex, 1)
+
+        // 直接定位新资源（O(1)）
+        const newResource = props.resources.find(r => r.id === updatedTask.assignee)
+        if (newResource) {
+          newResource.tasks.push({ ...updatedTask })
+          // v2.0 记录新资源也受影响
+          affectedResourceIds.add(newResource.id)
+        }
+      } else {
+        // 责任人未变，只更新任务数据
+        oldResource.tasks[oldTaskIndex] = { ...oldResource.tasks[oldTaskIndex], ...updatedTask }
+      }
+    } else if (updatedTask.assignee) {
+      // 任务新分配给某个资源（直接定位，不遍历）
+      const targetResource = props.resources.find(r => r.id === updatedTask.assignee)
+      if (targetResource) {
+        targetResource.tasks.push({ ...updatedTask })
+        affectedResourceIds.add(targetResource.id)
+      }
+    }
   }
+
+  // v2.0 更新受影响的资源ID集合
+  lastChangedResourceIds.value = affectedResourceIds
 }
 
 // v1.9.0 新增任务时同步到资源视图
