@@ -1423,36 +1423,36 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式下的视图模式切换样式 */
-:global(html[data-theme='dark']) .gantt-view-mode-control {
+:global(.gantt-root[data-theme='dark']) .gantt-view-mode-control {
   background: var(--gantt-bg-secondary, #4b4b4b);
   border-color: var(--gantt-border-color, #808080);
 }
 
-:global(html[data-theme='dark']) .gantt-view-mode-control:hover {
+:global(.gantt-root[data-theme='dark']) .gantt-view-mode-control:hover {
   border-color: var(--gantt-primary, #3399ff);
 }
 
-:global(html[data-theme='dark']) .view-mode-thumb {
+:global(.gantt-root[data-theme='dark']) .view-mode-thumb {
   background: var(--gantt-primary, #3399ff);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.3),
     0 1px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
-:global(html[data-theme='dark']) .view-mode-item {
+:global(.gantt-root[data-theme='dark']) .view-mode-item {
   color: #ffffff !important;
 }
 
-:global(html[data-theme='dark']) .view-mode-item:hover:not(.active) {
+:global(.gantt-root[data-theme='dark']) .view-mode-item:hover:not(.active) {
   color: var(--gantt-primary, #3399ff);
   background: rgba(51, 153, 255, 0.12);
 }
 
-:global(html[data-theme='dark']) .view-mode-item:active:not(.active) {
+:global(.gantt-root[data-theme='dark']) .view-mode-item:active:not(.active) {
   background: rgba(51, 153, 255, 0.2);
 }
 
-:global(html[data-theme='dark']) .view-mode-item.active {
+:global(.gantt-root[data-theme='dark']) .view-mode-item.active {
   color: #ffffff;
 }
 

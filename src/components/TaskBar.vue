@@ -72,7 +72,9 @@ const resourcePercent = computed(() => {
     }
   }
 
-  // 默认100%（向后兼容）
+  // v1.9.10 注释：默认100%（向后兼容）
+  // 在资源视图中，如果任务没有 resources 字段或未找到匹配的资源分配，
+  // 说明任务隶属于该资源但未明确指定占比，视为全职投入（100%）
   return 100
 })
 
@@ -95,9 +97,9 @@ const currentResourceName = computed(() => {
 })
 
 // v1.9.0 是否显示占比文字（占比<100%时显示）
-const shouldShowPercentText = computed(() => {
-  return viewMode.value === 'resource' && resourcePercent.value < 100
-})
+// const shouldShowPercentText = computed(() => {
+//   return viewMode.value === 'resource' && resourcePercent.value < 100
+// })
 
 interface Props {
   task: Task
@@ -356,6 +358,8 @@ const resizeStartLeft = ref(0)
 
 // v1.9.2 注入Timeline的拖拽状态（用于冲突检测优化）
 const timelineIsDraggingTaskBar = inject<Ref<boolean>>('isDraggingTaskBar', ref(false))
+// v1.9.7 注入Timeline容器的拖拽状态（用于禁止TaskBar在Timeline拖拽时被拖拽）
+const isTimelineDragging = inject<Ref<boolean>>('isDraggingTimeline', ref(false))
 
 // v1.9.0 拖拽预览效果（资源视图垂直拖拽）
 const dragPreviewVisible = ref(false)
@@ -1095,6 +1099,12 @@ const needsOverflowEffect = computed(() => isWeekView.value && isShortTaskBar.va
 
 // 鼠标事件处理 - 使用相对位置拖拽方案（带防误触机制）
 const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-right') => {
+  // v1.9.7 如果Timeline正在被拖拽，禁止TaskBar的拖拽和拉伸，让事件传播到Timeline
+  if (isTimelineDragging.value) {
+    // 不阻止事件传播，让Timeline可以继续滚动
+    return
+  }
+
   // 如果处于高亮状态，不阻止事件传播，让Timeline可以滚动
   if (props.isHighlighted || props.isPrimaryHighlight) {
     // 不调用 e.preventDefault() 和 e.stopPropagation()
@@ -1267,7 +1277,7 @@ const dragTooltipContent = ref({ startDate: '', endDate: '' })
 const handleMouseMove = (e: MouseEvent) => {
   // 记录最新的鼠标Y位置（用于资源视图垂直拖拽）
   if (viewMode.value === 'resource') {
-    ;(window as any).lastDragMouseY = e.clientY
+    (window as any).lastDragMouseY = e.clientY
 
     // v1.9.0 检测是否跨行拖拽（基于资源行的实际高度）
     const timelineBody = document.querySelector('.timeline-body')
@@ -1926,6 +1936,9 @@ const handleMouseUp = () => {
   isDelayPassed.value = false
   dragType.value = null
   tempTaskPixelLeft.value = null  // v1.9.0 清除资源视图的像素位置缓存
+
+  // v1.9.7 不需要显式设置timelineIsDraggingTaskBar
+  // 上面的状态重置会自动触发watch，watch会同步timelineIsDraggingTaskBar的值
 
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
@@ -2732,6 +2745,7 @@ const handleTaskBarMouseLeave = () => {
 }
 
 // 监听拖拽/拉伸状态，如果开始拖拽/拉伸，立即隐藏tooltip
+// v1.9.7 使用 flush: 'sync' 确保状态变化时立即同步执行，避免在资源视图拖拽时因组件更新导致watch延迟执行
 watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resizingR]) => {
   if (dragging || resizingL || resizingR) {
     showHoverTooltip.value = false
@@ -2746,6 +2760,8 @@ watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resi
   if (timelineIsDraggingTaskBar.value !== isDraggingOrResizing) {
     timelineIsDraggingTaskBar.value = isDraggingOrResizing
   }
+}, {
+  flush: 'sync', // 同步执行，确保状态重置时立即触发
 })
 
 // v1.9.2 监听 Tab 悬停状态，当 Tab 悬停时立即隐藏 TaskBar 的 tooltip
@@ -3505,9 +3521,9 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
         <div v-else class="task-name">
           {{ task.name }}
           <!-- v1.9.0 资源视图：显示占比文字 -->
-          <span v-if="shouldShowPercentText" class="resource-capacity-text">
+          <!--<span v-if="shouldShowPercentText" class="resource-capacity-text">
             {{ resourcePercent }}%
-          </span>
+          </span>-->
         </div>
       </div>
 

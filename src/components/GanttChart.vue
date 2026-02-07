@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onUnmounted, onMounted, computed, watch, nextTick, useSlots, provide } from 'vue'
 import type { StyleValue } from 'vue'
 import TaskList from './TaskList/TaskList.vue'
@@ -14,7 +14,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
-import type { Resource } from '../models/types/Resource'
+import type { Resource } from '../models/classes/Resource'
 import { useTaskListContextMenu } from './TaskList/composables/taskList/useTaskListContextMenu'
 import { useTaskBarContextMenu } from './Timeline/composables/useTaskBarContextMenu'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
@@ -30,9 +30,6 @@ import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
 import { detectConflicts } from '../utils/conflictUtils'
 import { useMessage } from '../composables/useMessage'
-
-// 根元素引用
-const ganttRootRef = ref<HTMLElement>()
 
 const props = withDefaults(defineProps<Props>(), {
   tasks: () => [],
@@ -113,6 +110,9 @@ const emit = defineEmits([
   'taskbar-resource-change', // 任务跨资源移动事件
   'resource-drag-end', // v1.9.0 资源视图垂直拖拽结束事件
 ])
+
+// 根元素引用
+const ganttRootRef = ref<HTMLElement>()
 
 const { showMessage } = useMessage()
 const slots = useSlots()
@@ -736,6 +736,17 @@ watch(
   { deep: true },
 )
 
+// v1.9.9 监听props.resources变化，自动触发Timeline更新
+// 这对于资源视图下的TaskBar跨资源拖拽很重要
+watch(
+  () => props.resources,
+  () => {
+    // props变化时清空增量追踪，执行全量更新
+    triggerFullUpdate()
+  },
+  { deep: true },
+)
+
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
@@ -766,6 +777,8 @@ const showCloseButton = computed(() => {
   return taskId !== null && taskId !== undefined
 })
 
+// v1.9.7 bugfix: 修复拖拽TaskBar后不必要地触发updateTimeScale的问题
+// 只在Timeline首次挂载时初始化timeScale，避免在updateTaskTrigger变化时重复调用
 watch(
   () => timelineRef.value,
   newTimeline => {
@@ -773,6 +786,7 @@ watch(
       newTimeline.updateTimeScale(currentTimeScale.value)
     }
   },
+  { once: true }, // 只执行一次，避免不必要的重复调用
 )
 
 const dragging = ref(false)
@@ -840,6 +854,10 @@ function onMouseDown(e: MouseEvent) {
   document.addEventListener('wheel', blockAllEvents, { capture: true, passive: false })
   document.addEventListener('contextmenu', blockAllEvents, { capture: true })
 
+  // v1.9.9 性能优化：使用requestAnimationFrame节流，避免高频更新导致卡顿
+  let rafId: number | null = null
+  let pendingWidth: number | null = null
+
   function onMouseMove(ev: MouseEvent) {
     if (!dragging.value) return
 
@@ -853,11 +871,34 @@ function onMouseDown(e: MouseEvent) {
 
     // 直接使用面板宽度限制检查，无需复杂的坐标计算
     const finalWidth = checkWidthLimits(proposedWidth)
-    leftPanelWidth.value = finalWidth
+
+    // 保存待更新的宽度，使用requestAnimationFrame批量更新
+    pendingWidth = finalWidth
+
+    if (rafId === null) {
+      rafId = requestAnimationFrame(() => {
+        if (pendingWidth !== null) {
+          leftPanelWidth.value = pendingWidth
+          pendingWidth = null
+        }
+        rafId = null
+      })
+    }
   }
 
   function onMouseUp() {
     dragging.value = false
+
+    // 取消待处理的requestAnimationFrame
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+      // 如果有待更新的宽度，立即应用
+      if (pendingWidth !== null) {
+        leftPanelWidth.value = pendingWidth
+        pendingWidth = null
+      }
+    }
 
     // 移除全局事件拦截器
     document.removeEventListener('mousedown', blockAllEvents, { capture: true })

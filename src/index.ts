@@ -11,7 +11,7 @@ export { default as MilestonePoint } from './components/MilestonePoint.vue'
 export { default as MilestoneDialog } from './components/MilestoneDialog.vue'
 export { default as TaskRow } from './components/TaskList/taskRow/TaskRow.vue'
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
-export type { Resource } from './models/types/Resource.ts' // v1.9.0 导出Resource类型
+export type { Resource } from './models/classes/Resource.ts' // v1.9.0 导出Resource类型
 export { createResource } from './utils/resourceUtils.ts' // v2.0.0 导出资源创建工厂函数
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 

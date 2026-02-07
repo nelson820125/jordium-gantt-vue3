@@ -5,7 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.8.0] - 2026-02-05
+## [1.9.0] - 2026-02-07
+
+### Added
+- 🎉 新增：GanttChart支持资源视图模式，通过viewMode属性切换任务视图和资源视图
+- 🎉 新增：资源视图以资源为行维度展示，支持一行多任务条布局
+- 🎉 新增：Task对象增加resources字段，支持配置每个资源的投入占比（10%-100%）
+- 🎉 新增：TaskBar高度按资源占比动态缩放，支持占比文字标注和Tooltip显示
+- 🎉 新增：基于占比累计的资源超负荷检测和视觉预警
+- 🎉 新增：TaskDrawer增加资源占比配置控件，支持输入校验
+- 🎉 新增：资源视图支持任务拖拽、拉伸、计时等交互操作
+- 🎉 新增：资源列表支持声明式组件配置列
+- 🎉 新增：Resource数据模型类和useResourceLayout、useViewMode等composables
+- 🎉 Added: GanttChart supports resource view mode, switch via viewMode property
+- 🎉 Added: Resource view displays by resource dimension with multiple task bars per row
+- 🎉 Added: Task object adds resources field for configuring resource allocation percentage (10%-100%)
+- 🎉 Added: TaskBar height scales by percentage with text label and Tooltip support
+- 🎉 Added: Resource overload detection and visual alerts based on percentage accumulation
+- 🎉 Added: TaskDrawer adds resource percentage configuration with input validation
+- 🎉 Added: Resource view supports task drag, resize, timing and other interactions
+- 🎉 Added: Resource list supports declarative component column configuration
+- 🎉 Added: Resource model class and composables including useResourceLayout, useViewMode
+
+### Enhancement
+- 🎉 优化：抽取资源布局计算逻辑到独立composable，避免组件职责膨胀
+- 🎉 优化：扩展v-memo优化覆盖范围，提升渲染性能
+- 🎉 优化：重构provide/inject依赖传递，简化组件依赖关系
+- 🎉 优化：恢复滚动防抖机制，平衡响应性和性能
+- 🎉 优化：历史数据向后兼容，未配置占比时默认为100%
+- 🎉 Optimized: Extracted resource layout logic to independent composable
+- 🎉 Optimized: Extended v-memo optimization coverage for better performance
+- 🎉 Optimized: Refactored provide/inject dependency passing
+- 🎉 Optimized: Restored scroll debounce mechanism
+- 🎉 Optimized: Backward compatible with historical data, defaults to 100%
+
+### Fixed
+- 🔧 修复: 将Theme设置从HTML root变更到Gantt Component root
+- 🔧 Fixed: Changed Theme setting from HTML root to Gantt Component root
+
+## [1.8.1] - 2026-02-05
 
 ### Enhancement
 - 🎉 优化：重构组件，Theme作用域从全局调整至局部.gantt-root

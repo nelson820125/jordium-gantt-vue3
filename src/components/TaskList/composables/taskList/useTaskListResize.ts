@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 
 /**
  * TaskList 容器尺寸管理
@@ -20,6 +20,34 @@ export function useTaskListResize(
   // ResizeObserver 实例
   let containerResizeObserver: ResizeObserver | null = null
   let bodyResizeObserver: ResizeObserver | null = null
+
+  /**
+   * 手动更新容器宽度（用于 Splitter 拖拽结束后）
+   */
+  const updateContainerWidth = () => {
+    if (taskListRef.value) {
+      const newWidth = taskListRef.value.offsetWidth
+      if (Math.abs(newWidth - cachedContainerWidth.value) > 1) {
+        cachedContainerWidth.value = newWidth
+      }
+    }
+  }
+
+  // v1.9.9 监听拖拽结束，手动更新尺寸
+  watch(isSplitterDragging, (dragging) => {
+    if (!dragging) {
+      // 拖拽结束后手动更新容器宽度
+      updateContainerWidth()
+
+      // 同时更新body高度
+      if (taskListBodyRef.value) {
+        const newHeight = taskListBodyRef.value.clientHeight
+        if (Math.abs(newHeight - taskListBodyHeight.value) > 1) {
+          taskListBodyHeight.value = newHeight
+        }
+      }
+    }
+  })
 
   /**
    * 初始化 ResizeObserver
@@ -46,6 +74,11 @@ export function useTaskListResize(
       taskListScrollTop.value = taskListBodyRef.value.scrollTop
 
       bodyResizeObserver = new ResizeObserver(entries => {
+        // v1.9.9 拖拽期间跳过更新，避免影响拖拽性能
+        if (isSplitterDragging.value) {
+          return
+        }
+
         for (const entry of entries) {
           taskListBodyHeight.value = entry.contentRect.height
         }
@@ -67,18 +100,6 @@ export function useTaskListResize(
     if (bodyResizeObserver) {
       bodyResizeObserver.disconnect()
       bodyResizeObserver = null
-    }
-  }
-
-  /**
-   * 手动更新容器宽度（用于 Splitter 拖拽结束后）
-   */
-  const updateContainerWidth = () => {
-    if (taskListRef.value) {
-      const newWidth = taskListRef.value.offsetWidth
-      if (Math.abs(newWidth - cachedContainerWidth.value) > 1) {
-        cachedContainerWidth.value = newWidth
-      }
     }
   }
 

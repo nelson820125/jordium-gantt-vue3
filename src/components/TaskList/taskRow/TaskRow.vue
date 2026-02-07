@@ -2,8 +2,11 @@
 import { ref, computed, useSlots, toRef, inject, type ComputedRef } from 'vue'
 import type { StyleValue } from 'vue'
 import { useI18n } from '../../../composables/useI18n'
+import { useViewMode } from '../../../composables/useViewMode'
 import { formatPredecessorDisplay } from '../../../utils/predecessorUtils'
 import type { Task } from '../../../models/classes/Task'
+import type { Resource } from '../../../models/classes/Resource'
+import { isResourceOverloaded } from '../../../utils/resourceUtils'
 import type { TaskListColumnConfig } from '../../../models/configs/TaskListConfig'
 import type { DeclarativeColumnConfig } from '../composables/taskList/useTaskListColumns'
 import TaskContextMenu from '../../TaskContextMenu.vue'
@@ -21,7 +24,7 @@ interface TaskRowSlotProps {
   level: number
   indent: string
   isHovered: boolean
-  hoveredTaskId: number | null
+  hoveredTaskId: number | string | null
   isParent: boolean
   hasChildren: boolean
   collapsed: boolean
@@ -42,8 +45,8 @@ interface Props {
   level: number
   rowIndex?: number
   isHovered?: boolean
-  hoveredTaskId?: number | null
-  onHover?: (taskId: number | null) => void
+  hoveredTaskId?: number | string | null
+  onHover?: (taskId: number | string | null) => void
   columns: TaskListColumnConfig[]
   declarativeColumns?: DeclarativeColumnConfig[]
   renderMode?: 'default' | 'declarative'
@@ -81,6 +84,36 @@ const daysText = computed(() => t.value?.days ?? '')
 
 const slots = useSlots()
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
+
+// v1.9.9 使用useViewMode统一管理视图模式状态
+const { viewMode } = useViewMode()
+
+// 从 GanttChart 注入资源布局信息
+const resourceTaskLayouts = inject<ComputedRef<Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>>>('resourceTaskLayouts', computed(() => new Map()))
+
+// v1.9.0 Detect if current row is a resource
+const isResourceRow = computed(() => {
+  return viewMode.value === 'resource' && 'tasks' in props.task
+})
+
+// v1.9.0 检测资源是否超载（任务重叠）
+const isResourceOverloadedComputed = computed(() => {
+  if (!isResourceRow.value) return false
+
+  // 类型断言为Resource
+  const resource = props.task as Resource
+  return isResourceOverloaded(resource)
+})
+
+// 计算行高度 - resource视图下使用动态高度
+const rowHeight = computed(() => {
+  if (isResourceRow.value) {
+    const resourceId = String(props.task.id) // 转换为string
+    const layout = resourceTaskLayouts.value.get(resourceId)
+    return layout?.totalHeight || 56 // v1.9.1 默认56px（51 + 5px底部padding）
+  }
+  return 51 // task视图下使用固定高度
+})
 
 // 注入右键菜单配置
 const enableTaskListContextMenu = inject<ComputedRef<boolean>>('enable-task-list-context-menu', computed(() => true))
@@ -227,9 +260,16 @@ const slotPayload = computed(() => ({
   progressClass: progressClass.value,
 }))
 
-// 计算左侧边框颜色 - 支持barColor自定义
+// 计算左侧边框颜色 - 支持barColor/color自定义
 const leftBorderColor = computed(() => {
-  // 如果设置了barColor，优先使用
+  // 资源视图：优先使用resource.color
+  if (isResourceRow.value) {
+    const resource = props.task as any
+    if (resource.color) {
+      return resource.color
+    }
+  }
+  // 任务视图：使用barColor
   if (props.task.barColor) {
     return props.task.barColor
   }
@@ -238,10 +278,12 @@ const leftBorderColor = computed(() => {
 })
 
 // 计算自定义边框样式
-const customBorderStyle = computed(() => {
+const customBorderStyle = computed((): StyleValue => {
   if (leftBorderColor.value) {
     return {
-      borderLeftColor: leftBorderColor.value
+      borderLeftColor: `${leftBorderColor.value} !important` as any,
+      borderLeftWidth: '3px',
+      borderLeftStyle: 'solid' as const,
     }
   }
   return {}
@@ -276,7 +318,7 @@ const assigneeDisplayData = computed(() => {
   return {
     avatars: displayAvatars,
     nameText,
-    hasMultiple: displayAvatars.length > 1
+    hasMultiple: displayAvatars.length > 1,
   }
 })
 </script>
@@ -289,6 +331,7 @@ const assigneeDisplayData = computed(() => {
       :data-task-id="props.task.id"
       :class="{
         'task-row-hovered': isHovered,
+        'task-type-resource': isResourceRow, /* v1.9.0 资源视图始终显示左边框 */
         'parent-task': isParentTask,
         'milestone-group-row': isMilestoneGroup,
         'task-type-story': isStoryTask,
@@ -296,7 +339,7 @@ const assigneeDisplayData = computed(() => {
         'task-type-milestone': isMilestoneTask,
         [customRowClass]: customRowClass,
       }"
-      :style="[customRowStyle, customBorderStyle]"
+      :style="[customRowStyle, customBorderStyle, { height: `${rowHeight}px` }]"
       @click="handleRowClick"
       @dblclick="handleTaskRowDoubleClick"
       @mousedown="handleMouseDown"
@@ -358,11 +401,40 @@ const assigneeDisplayData = computed(() => {
 
           <!-- 叶子节点的占位空间（无折叠按钮且无图标显示时） -->
           <span
-            v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false"
+            v-if="!isParentTask && !isMilestoneGroup && showTaskIcon === false && !isResourceRow"
             class="leaf-spacer"
           ></span>
 
+          <!-- v1.9.0 资源视图：直接显示资源名称 -->
+          <div v-if="isResourceRow" class="resource-row-name">
+            <!-- v1.9.0 资源超载警示图标 -->
+            <svg
+              v-if="isResourceOverloadedComputed"
+              class="resource-warning-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 2L2 20h20L12 2z"
+                fill="var(--gantt-danger, #f56c6c)"
+              />
+              <path
+                d="M12 8v6M12 16h.01"
+                stroke="#fff"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+            <div v-if="(props.task as any).avatar" class="resource-avatar">
+              <img :src="(props.task as any).avatar" :alt="(props.task as any).name" />
+            </div>
+            <span class="resource-name-text">{{ (props.task as any).name || '-' }}</span>
+          </div>
+
+          <!-- 任务视图：正常渲染 -->
           <TaskRowNameContent
+            v-else
             :task="props.task"
             :is-parent-task="isParentTask"
             :has-children="hasChildren"
@@ -417,7 +489,12 @@ const assigneeDisplayData = computed(() => {
             {{ column.formatter(props.task, column) }}
           </template>
 
-          <!-- 优先级3: 内置列类型渲染 -->
+          <!-- v1.9.0 资源视图：使用formatter或直接显示资源属性 -->
+          <template v-else-if="isResourceRow">
+            {{ (props.task as any)[column.key] || '-' }}
+          </template>
+
+          <!-- 优先级3: 内置列类型渲染（任务视图） -->
           <!-- 前置任务列 -->
           <template v-else-if="column.key === 'predecessor'">
             {{ formatPredecessorDisplay(props.task.predecessor) }}
@@ -534,30 +611,26 @@ const assigneeDisplayData = computed(() => {
 .task-row {
   display: flex;
   border-bottom: 1px solid var(--gantt-border-light);
-  height: 51px; /* 修改为51px，与Timeline中的task-row高度保持一致，包含border-bottom 1px */
+  height: 51px; /* v1.9.1 任务视图51px（包含border-bottom 1px），资源视图动态高度（第一行56px，后续行46px） */
   box-sizing: border-box; /* 确保border包含在高度计算中 */
   background: var(--gantt-bg-primary);
   align-items: center;
   color: var(--gantt-text-secondary);
   cursor: pointer;
-  transition: all 0.3s ease;
-  transform: scale(1);
-  transform-origin: 5px center; /* 从左侧偏右5px的位置作为放大中心 */
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
   z-index: 1;
   position: relative;
 }
 
 .task-row:hover {
   background-color: var(--gantt-bg-hover);
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
 }
 
 .task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
-  transform: scale(1.02) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
   z-index: 10 !important;
 }
 
@@ -568,15 +641,13 @@ const assigneeDisplayData = computed(() => {
 
 .task-row.parent-task:hover {
   background: var(--gantt-bg-hover-parent, var(--gantt-bg-hover));
-  transform: scale(1.02);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
 }
 
 .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent, var(--gantt-bg-hover)) !important;
-  transform: scale(1.02) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
   z-index: 10 !important;
 }
 
@@ -588,13 +659,9 @@ const assigneeDisplayData = computed(() => {
 
 .milestone-group-row:hover {
   background: linear-gradient(90deg, var(--gantt-bg-hover-parent) 0%, var(--gantt-bg-hover) 100%);
-  transform: scale(1.02);
-  box-shadow:
-    0 6px 16px rgba(245, 108, 108, 0.3),
-    0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
   border-left-color: var(--gantt-danger, #f56c6c);
-  border-left-width: 4px; /* 悬停时边框稍微加粗 */
 }
 
 /* 任务类型左边框颜色 */
@@ -610,30 +677,43 @@ const assigneeDisplayData = computed(() => {
   border-left: 3px solid var(--gantt-danger, #f56c6c);
 }
 
-/* 任务类型悬停时保持并增强左边框 */
+/* v1.9.0 资源类型左边框颜色 */
+.task-type-resource {
+  border-left: 3px solid var(--gantt-success, #67c23a);
+}
+
+/* 任务类型悬停时保持左边框，无需加粗 */
 .task-type-story:hover {
-  border-left: 5px solid var(--gantt-primary, #409eff);
+  border-left: 3px solid var(--gantt-primary, #409eff);
 }
 
 .task-type-task:hover {
-  border-left: 5px solid var(--gantt-warning, #e6a23c);
+  border-left: 3px solid var(--gantt-warning, #e6a23c);
 }
 
 .task-type-milestone:hover {
-  border-left: 5px solid var(--gantt-danger, #f56c6c);
+  border-left: 3px solid var(--gantt-danger, #f56c6c);
+}
+
+.task-type-resource:hover {
+  border-left: 3px solid var(--gantt-success, #67c23a);
 }
 
 /* 悬停状态下的左边框保持 */
 .task-row-hovered.task-type-story {
-  border-left: 5px solid var(--gantt-primary, #409eff) !important;
+  border-left: 3px solid var(--gantt-primary, #409eff) !important;
 }
 
 .task-row-hovered.task-type-task {
-  border-left: 5px solid var(--gantt-warning, #e6a23c) !important;
+  border-left: 3px solid var(--gantt-warning, #e6a23c) !important;
 }
 
 .task-row-hovered.task-type-milestone {
-  border-left: 5px solid var(--gantt-danger, #f56c6c) !important;
+  border-left: 3px solid var(--gantt-danger, #f56c6c) !important;
+}
+
+.task-row-hovered.task-type-resource {
+  border-left: 3px solid var(--gantt-success, #67c23a) !important;
 }
 
 :global(.gantt-root[data-theme='dark']) .milestone-group-row {
@@ -651,6 +731,10 @@ const assigneeDisplayData = computed(() => {
 
 :global(.gantt-root[data-theme='dark']) .task-type-milestone {
   border-left-color: var(--gantt-danger, #f67c7c);
+}
+
+:global(.gantt-root[data-theme='dark']) .task-type-resource {
+  border-left-color: var(--gantt-success, #85ce61);
 }
 
 .collapse-btn:hover {
@@ -787,35 +871,25 @@ const assigneeDisplayData = computed(() => {
 
 /* 暗黑模式的悬停效果 */
 :global(.gantt-root[data-theme='dark']) .task-row:hover {
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row.task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row.parent-task:hover {
-  box-shadow:
-    0 6px 16px rgba(255, 255, 255, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent) !important;
-  box-shadow:
-    0 6px 16px rgba(255, 255, 255, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
 }
 
 :global(.gantt-root[data-theme='dark']) .milestone-group-row:hover {
-  box-shadow:
-    0 6px 16px rgba(246, 124, 124, 0.4),
-    0 2px 8px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* TaskRow拖拽样式 */
@@ -833,6 +907,52 @@ const assigneeDisplayData = computed(() => {
 .task-row-drop-target.drop-child {
   border: 2px solid var(--gantt-primary, #409eff) !important;
   background-color: rgba(64, 158, 255, 0.05) !important;
+}
+
+/* v1.9.0 资源视图行样式 */
+.resource-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--gantt-text-primary);
+}
+
+/* v1.9.0 资源超载警示图标 */
+.resource-warning-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.resource-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.resource-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resource-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row-drop-target.drop-after {

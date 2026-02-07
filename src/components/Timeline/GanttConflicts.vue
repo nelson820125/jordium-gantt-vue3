@@ -31,6 +31,8 @@ interface Props {
   scrollLeft?: number
   /** 可视区域宽度 */
   containerWidth?: number
+  /** v1.9.9 当前渲染的任务数量限制（用于渐进式渲染） */
+  renderLimit?: number
 }
 
 const props = defineProps<Props>()
@@ -90,10 +92,16 @@ const canvasStyle = computed(() => ({
 watch(() => props.tasks, () => {
   if (isDraggingTaskBar.value) {
     needsRecalculation.value = true
-  } else {
-    recalculateConflicts()
   }
 }, { deep: true })
+
+// v1.9.9 监听renderLimit变化，TaskBar渐进式渲染时重新计算冲突
+watch(() => props.renderLimit, () => {
+  // 延迟一帧，确保DOM更新完成
+  nextTick(() => {
+    recalculateConflicts()
+  })
+})
 
 // 监听拖拽状态变化
 watch(isDraggingTaskBar, (dragging) => {
@@ -155,7 +163,6 @@ watch([canvasWidth, canvasHeight], () => {
 
 // 监听timelineData和currentTimeScale变化
 watch([() => props.timelineData, () => props.currentTimeScale], () => {
-  if (import.meta.env.DEV) {}
   // v1.9.4 BUG修复 - 视图切换时清空坐标缓存
   coordsCache.clear()
   // v1.9.7 Bug修复 - 视图切换时清空纹理缓存并使用nextTick确保立即刷新
@@ -166,6 +173,7 @@ watch([() => props.timelineData, () => props.currentTimeScale], () => {
 }, { deep: true })
 
 // v1.9.6 监听scrollLeft变化，滚动停止后重新计算可视区域的冲突
+// v1.9.9 恢复防抖机制：避免滚动时频繁重绘Canvas导致性能问题
 let scrollTimer: ReturnType<typeof setTimeout> | null = null
 watch(() => props.scrollLeft, () => {
   // 清除之前的定时器
@@ -173,15 +181,14 @@ watch(() => props.scrollLeft, () => {
     clearTimeout(scrollTimer)
   }
 
-  // 滚动停止后100ms重新计算冲突区域（包含视口裁剪）
+  // 滚动时仅清空Canvas，避免闪烁
+  clearCanvas()
+
+  // 50ms防抖：滚动停止后重新计算和绘制冲突区域
   scrollTimer = setTimeout(() => {
-    nextTick(() => {
-      // 先清除Canvas上的旧内容
-      clearCanvas()
-      // 重新计算conflictZones（会根据新的scrollLeft裁剪可见区域）
-      recalculateConflicts()
-    })
-  }, 100)
+    recalculateConflicts()
+    scrollTimer = null
+  }, 50)
 })
 
 // 增量重新计算冲突（仅计算与变化TaskBar相关的冲突）
@@ -298,8 +305,14 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
 
 // 重新计算冲突
 function recalculateConflicts() {
+  // v1.9.9 优化：只计算已渲染的TaskBar的冲突
+  // 如果设置了renderLimit，则只取前N个任务进行冲突检测
+  const tasksToCheck = props.renderLimit !== undefined && props.renderLimit > 0
+    ? props.tasks.slice(0, props.renderLimit)
+    : props.tasks
+
   // 调用冲突检测算法
-  const conflicts = detectConflicts(props.tasks, props.resourceId)
+  const conflicts = detectConflicts(tasksToCheck, props.resourceId)
 
   // v1.9.4 P1优化 - 使用坐标缓存
   conflictZones.value = conflicts.map((zone) => {

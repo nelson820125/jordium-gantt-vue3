@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { GanttChart, TaskListColumn, useI18n, TaskListContextMenu, TaskBarContextMenu } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
-const { t, getTranslation } = useI18n()
+const { t, getTranslation } = useI18n();
 
 // GanttChart ref
 const ganttRef = ref(null)
@@ -114,7 +114,7 @@ const tasks = ref([
     department: '管理部',
     departmentCode: 'D001',
     type: 'task',
-  },
+  }
 ])
 
 const milestones = ref([
@@ -123,8 +123,234 @@ const milestones = ref([
     name: '项目立项',
     startDate: '2025-10-29',
     type: 'milestone',
-    icon: 'diamond',
+    icon: 'diamond'
+  }
+])
+
+// 资源数据源 - 按照Resource类型结构定义
+const resources = ref([
+  {
+    id: 'R001',
+    name: '张三',
+    type: '开发工程师',
+    avatar: 'https://i.pravatar.cc/150?img=1',
+    description: '前端开发专家，擅长Vue.js和React',
+    department: '技术部',
+    skills: ['Vue.js', 'React', 'TypeScript', 'Node.js'],
+    capacity: 85,
+    color: '#1890ff',
+    tasks: [
+      {
+        id: 1000,
+        name: '前端框架搭建',
+        startDate: '2025-11-01',
+        endDate: '2025-11-05',
+        progress: 80,
+        type: 'task'
+      },
+      {
+        id: 1001,
+        name: '组件库开发',
+        startDate: '2025-11-06',
+        endDate: '2025-11-15',
+        progress: 50,
+        type: 'task'
+      },
+      {
+        id: 1002,
+        name: '页面开发',
+        startDate: '2025-11-16',
+        endDate: '2025-11-25',
+        progress: 20,
+        type: 'task'
+      }
+    ]
   },
+  {
+    id: 'R002',
+    name: '李四',
+    type: '后端工程师',
+    avatar: 'https://i.pravatar.cc/150?img=2',
+    description: 'Java后端开发，熟悉Spring全家桶',
+    department: '技术部',
+    skills: ['Java', 'Spring Boot', 'MySQL', 'Redis'],
+    capacity: 85,
+    color: '#52c41a',
+    tasks: [
+      {
+        id: 1003,
+        name: '数据库设计',
+        startDate: '2025-11-01',
+        endDate: '2025-11-03',
+        progress: 100,
+        type: 'task'
+      },
+      {
+        id: 1004,
+        name: 'API接口开发',
+        startDate: '2025-11-04',
+        endDate: '2025-11-12',
+        progress: 60,
+        type: 'task'
+      },
+      {
+        id: 1005,
+        name: '性能优化',
+        startDate: '2025-11-20',
+        endDate: '2025-11-28',
+        progress: 0,
+        type: 'task'
+      }
+    ]
+  },
+  {
+    id: 'R003',
+    name: '王五',
+    type: 'UI设计师',
+    avatar: 'https://i.pravatar.cc/150?img=3',
+    description: '资深UI/UX设计师',
+    department: '设计部',
+    skills: ['Figma', 'Sketch', 'Photoshop', 'Illustrator'],
+    capacity: 8,
+    color: '#faad14',
+    tasks: [
+      {
+        id: 1006,
+        name: 'UI原型设计',
+        startDate: '2025-10-28',
+        endDate: '2025-11-02',
+        progress: 100,
+        type: 'task'
+      },
+      {
+        id: 1007,
+        name: '视觉规范制定',
+        startDate: '2025-11-03',
+        endDate: '2025-11-08',
+        progress: 90,
+        type: 'task'
+      },
+      {
+        id: 1008,
+        name: '界面设计',
+        startDate: '2025-11-09',
+        endDate: '2025-11-18',
+        progress: 40,
+        type: 'task'
+      }
+    ]
+  },
+  {
+    id: 'R004',
+    name: '赵六',
+    type: '测试工程师',
+    avatar: 'https://i.pravatar.cc/150?img=4',
+    description: '软件测试专家，自动化测试经验丰富',
+    department: '质量部',
+    skills: ['Selenium', 'Jest', 'Cypress', 'JMeter'],
+    capacity: 8,
+    color: '#f5222d',
+    tasks: [
+      {
+        id: 1009,
+        name: '测试计划编写',
+        startDate: '2025-11-10',
+        endDate: '2025-11-12',
+        progress: 70,
+        type: 'task'
+      },
+      {
+        id: 1010,
+        name: '自动化测试脚本',
+        startDate: '2025-11-13',
+        endDate: '2025-11-20',
+        progress: 30,
+        type: 'task'
+      },
+      {
+        id: 1011,
+        name: '功能测试',
+        startDate: '2025-11-21',
+        endDate: '2025-11-30',
+        progress: 0,
+        type: 'task'
+      }
+    ]
+  },
+  {
+    id: 'R005',
+    name: '钱七',
+    type: '产品经理',
+    avatar: 'https://i.pravatar.cc/150?img=5',
+    description: '5年产品经验，擅长用户需求分析',
+    department: '产品部',
+    skills: ['需求分析', 'Axure', 'PRD撰写', '用户研究'],
+    capacity: 8,
+    color: '#722ed1',
+    tasks: [
+      {
+        id: 1012,
+        name: '需求调研',
+        startDate: '2025-10-25',
+        endDate: '2025-10-30',
+        progress: 100,
+        type: 'task'
+      },
+      {
+        id: 1013,
+        name: 'PRD文档编写',
+        startDate: '2025-10-31',
+        endDate: '2025-11-05',
+        progress: 85,
+        type: 'task'
+      },
+      {
+        id: 1014,
+        name: '产品验收',
+        startDate: '2025-11-25',
+        endDate: '2025-11-30',
+        progress: 0,
+        type: 'task'
+      }
+    ]
+  },
+  {
+    id: 'R006',
+    name: '孙八',
+    type: '全栈工程师',
+    avatar: 'https://i.pravatar.cc/150?img=6',
+    description: '全栈开发，前后端通吃',
+    department: '技术部',
+    skills: ['Vue.js', 'Node.js', 'Python', 'Docker'],
+    capacity: 8,
+    color: '#13c2c2',
+    tasks: [
+      {
+        id: 1015,
+        name: '服务器部署',
+        startDate: '2025-11-01',
+        endDate: '2025-11-04',
+        progress: 100,
+        type: 'task'
+      },
+      {
+        id: 1016,
+        name: 'CI/CD配置',
+        startDate: '2025-11-05',
+        endDate: '2025-11-10',
+        progress: 75,
+        type: 'task'
+      },
+      {
+        id: 1017,
+        name: '微服务架构',
+        startDate: '2025-11-11',
+        endDate: '2025-11-22',
+        progress: 35,
+        type: 'task'
+      }
+    ]
+  }
 ])
 
 const customMessages = {
@@ -139,7 +365,7 @@ const customMessages = {
     gantt: {
       planStartDate: '计划开始时间',
       //planEndDate: '计划结束时间',
-    },
+    }
   },
   'en-US': {
     department: 'Department',
@@ -152,16 +378,16 @@ const customMessages = {
     gantt: {
       planStartDate: 'Plan Start Date',
       planEndDate: 'Plan End Date',
-    },
-  },
+    }
+  }
 }
 // const tasks = ref([])
 
 // const milestones = ref([])
 
-const showAddTaskDrawer = ref(false)
-const showAddMilestoneDialog = ref(false)
-const showTodayLocate = ref(true)
+const showAddTaskDrawer = ref(false);
+const showAddMilestoneDialog = ref(false);
+const showTodayLocate = ref(true);
 
 // 定义可动态配置的列
 const availableColumns = ref<TaskListColumnConfig[]>([
@@ -186,7 +412,7 @@ const taskListConfig = {
   defaultWidth: '50%',  // 默认展开宽度50%
   minWidth: '300px',      // 最小宽度300px（默认280px）
   maxWidth: '1200px',      // 最大宽度1200px（默认1160px）
-  columns: availableColumns.value,
+  columns: availableColumns.value
 }
 
 // toolbar配置示例
@@ -201,17 +427,18 @@ const toolbarConfig: ToolbarConfig = {
   showFullscreen: true,            // 显示全屏按钮
   showTimeScale: true,             // 显示时间刻度按钮组
   timeScaleDimensions: [           // 显示所有时间刻度维度
-    'hour', 'day', 'week', 'month', 'quarter', 'year',
+    'hour', 'day', 'week', 'month', 'quarter', 'year'
   ],
   defaultTimeScale: 'week',        // 默认选中周视图
-  showExpandCollapse: false,         // 显示展开/折叠按钮
+  showExpandCollapse: false         // 显示展开/折叠按钮
 }
+
 
 const newTask = ref({
   name: '',
   startDate: '',
-  endDate: '',
-})
+  endDate: ''
+});
 
 const addTask = () => {
   tasks.value.push({
@@ -220,10 +447,10 @@ const addTask = () => {
     startDate: newTask.value.startDate,
     endDate: newTask.value.endDate,
     progress: 0,
-  })
-  newTask.value = { name: '', startDate: '', endDate: '' }
-  showAddTaskDrawer.value = false
-}
+  });
+  newTask.value = { name: '', startDate: '', endDate: '' };
+  showAddTaskDrawer.value = false;
+};
 
 const addMilestone = () => {
   milestones.value.push({
@@ -232,11 +459,11 @@ const addMilestone = () => {
     startDate: newTask.value.startDate,
     progress: 0,
     type: 'milestone',
-    icon: 'diamond',
-  })
-  //console.log('milestones: ', milestones.value)
-  newTask.value = { name: '', startDate: '', endDate: '' }
-  showAddMilestoneDialog.value = false
+    icon: 'diamond'
+  });
+  console.log('milestones: ', milestones.value)
+  newTask.value = { name: '', startDate: '', endDate: '' };
+  showAddMilestoneDialog.value = false;
 }
 
 const onTaskDblclick = (task) => {
@@ -293,18 +520,18 @@ const handleTaskRowMoved = async (payload: {
 // 此回调仅用于补充业务逻辑，例如根据assignee填充assigneeName等
 const onTaskAdded = (res) => {
   // 组件已自动添加任务，这里只需要找到并更新额外字段
-  const addedTask = tasks.value.find(t => t.id === res.task.id)
+  const addedTask = tasks.value.find(t => t.id === res.task.id);
 
   if (addedTask && addedTask.assignee) {
     // 根据assignee值查找对应的label并赋值给assigneeName
-    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee)
+    const assigneeOption = assigneeOptions.value.find(option => option.value === addedTask.assignee);
     if (assigneeOption) {
-      addedTask.assigneeName = assigneeOption.label
+      addedTask.assigneeName = assigneeOption.label;
     }
   }
 
   // 不需要手动push，组件已处理
-}
+};
 
 // 自定义右键菜单操作处理
 const handleCustomMenuAction = (action: string, task: Task, onClose: () => void) => {
@@ -315,234 +542,16 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
 <template>
   <div>
     <!-- 工具设置面板 -->
-    <div class="tool-settings-panel">
-      <h3>🔧 External Control Demo</h3>
-
-      <!-- 当前状态显示 -->
-      <div class="status-section">
-        <div class="status-item">
-          <span class="status-label">Fullscreen:</span>
-          <span :class="['status-value', { active: fullscreenStatus }]">
-            {{ fullscreenStatus ? '✓ Yes' : '✗ No' }}
-          </span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Expand All:</span>
-          <span :class="['status-value', { active: expandStatus }]">
-            {{ expandStatus ? '✓ Yes' : '✗ No' }}
-          </span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Locale:</span>
-          <span class="status-value active">{{ currentLocaleStatus }}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Time Scale:</span>
-          <span class="status-value active">{{ currentScaleStatus }}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Theme:</span>
-          <span class="status-value active">{{ currentThemeStatus }}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Control Mode:</span>
-          <span class="status-value active" :style="{ color: controlMode === 'props' ? '#67c23a' : '#409eff' }">
-            {{ controlMode === 'props' ? '📝 Props' : '⚡ Expose' }}
-          </span>
-        </div>
-      </div>
-
-      <!-- 控制模式切换 -->
-      <div class="control-mode-section">
-        <h4>🎛️ Control Mode</h4>
-        <div class="button-group">
-          <button
-            class="mode-button"
-            :class="{ active: controlMode === 'expose' }"
-            @click="controlMode = 'expose'"
-          >
-            ⚡ Expose Methods
-          </button>
-          <button
-            class="mode-button"
-            :class="{ active: controlMode === 'props' }"
-            @click="controlMode = 'props'"
-          >
-            📝 Props Control
-          </button>
-        </div>
-      </div>
-
-      <!-- Expose 方法控制 -->
-      <div v-show="controlMode === 'expose'" class="control-section">
-        <h4>⚡ Expose Methods Control</h4>
-
-        <div class="controls-flow">
-          <div class="control-group">
-            <label>Fullscreen:</label>
-            <button class="control-btn" @click="handleToggleFullscreen">Toggle Fullscreen</button>
-          </div>
-
-          <div class="control-group">
-            <label>Expand All:</label>
-            <button class="control-btn" @click="handleToggleExpandAll">Toggle Expand All</button>
-          </div>
-
-          <div class="control-group">
-            <label>Locale:</label>
-            <div class="button-group">
-              <button class="control-btn" @click="handleSetLocale('zh-CN')">中文</button>
-              <button class="control-btn" @click="handleSetLocale('en-US')">English</button>
-            </div>
-          </div>
-
-          <div class="control-group">
-            <label>Time Scale:</label>
-            <div class="button-group">
-              <button class="control-btn" @click="handleSetTimeScale('day')">Day</button>
-              <button class="control-btn" @click="handleSetTimeScale('week')">Week</button>
-              <button class="control-btn" @click="handleSetTimeScale('month')">Month</button>
-            </div>
-          </div>
-
-          <div class="control-group">
-            <label>Theme:</label>
-            <div class="button-group">
-              <button class="control-btn" @click="handleSetTheme('light')">☀️ Light</button>
-              <button class="control-btn" @click="handleSetTheme('dark')">🌙 Dark</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Props 控制 -->
-      <div v-show="controlMode === 'props'" class="control-section">
-        <h4>📝 Props Control</h4>
-
-        <div class="controls-flow">
-          <div class="control-group">
-            <label>Locale Prop:</label>
-            <div class="button-group">
-              <button
-                class="control-btn"
-                :class="{ primary: propsLocale === 'zh-CN' }"
-                @click="propsLocale = 'zh-CN'"
-              >
-                中文
-              </button>
-              <button
-                class="control-btn"
-                :class="{ primary: propsLocale === 'en-US' }"
-                @click="propsLocale = 'en-US'"
-              >
-                English
-              </button>
-            </div>
-            <p class="prop-info">:locale="{{ propsLocale }}"</p>
-          </div>
-
-          <div class="control-group">
-            <label>Theme Prop:</label>
-            <div class="button-group">
-              <button
-                class="control-btn"
-                :class="{ primary: propsTheme === 'light' }"
-                @click="propsTheme = 'light'"
-              >
-                ☀️ Light
-              </button>
-              <button
-                class="control-btn"
-                :class="{ primary: propsTheme === 'dark' }"
-                @click="propsTheme = 'dark'"
-              >
-                🌙 Dark
-              </button>
-            </div>
-            <p class="prop-info">:theme="{{ propsTheme }}"</p>
-          </div>
-
-          <div class="control-group">
-            <label>Time Scale Prop:</label>
-            <div class="button-group">
-              <button
-                class="control-btn"
-                :class="{ primary: propsTimeScale === 'day' }"
-                @click="propsTimeScale = 'day'"
-              >
-                Day
-              </button>
-              <button
-                class="control-btn"
-                :class="{ primary: propsTimeScale === 'week' }"
-                @click="propsTimeScale = 'week'"
-              >
-                Week
-              </button>
-              <button
-                class="control-btn"
-                :class="{ primary: propsTimeScale === 'month' }"
-                @click="propsTimeScale = 'month'"
-              >
-                Month
-              </button>
-            </div>
-            <p class="prop-info">:time-scale="{{ propsTimeScale }}"</p>
-          </div>
-
-          <div class="control-group">
-            <label>Fullscreen Prop:</label>
-            <div class="button-group">
-              <button
-                class="control-btn"
-                :class="{ primary: propsFullscreen }"
-                @click="propsFullscreen = true"
-              >
-                ✓ True
-              </button>
-              <button
-                class="control-btn"
-                :class="{ primary: !propsFullscreen }"
-                @click="propsFullscreen = false"
-              >
-                ✗ False
-              </button>
-            </div>
-            <p class="prop-info">:fullscreen="{{ propsFullscreen }}"</p>
-          </div>
-
-          <div class="control-group">
-            <label>Expand All Prop:</label>
-            <div class="button-group">
-              <button
-                class="control-btn"
-                :class="{ primary: propsExpandAll }"
-                @click="propsExpandAll = true"
-              >
-                ✓ True
-              </button>
-              <button
-                class="control-btn"
-                :class="{ primary: !propsExpandAll }"
-                @click="propsExpandAll = false"
-              >
-                ✗ False
-              </button>
-            </div>
-            <p class="prop-info">:expand-all="{{ propsExpandAll }}"</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- Gantt Chart -->
     <div style="height: 600px; margin-top: 20px;">
       <GanttChart
         ref="ganttRef"
         :tasks="tasks"
+        :resources="resources"
         :milestones="milestones"
         :locale="controlMode === 'props' ? propsLocale : undefined"
-        :theme="controlMode === 'props' ? propsTheme : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
         :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
         :expand-all="controlMode === 'props' ? propsExpandAll : undefined"
@@ -559,6 +568,10 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
         @task-click="onTaskClick"
         @milestone-double-click="onMilestoneDblclick"
         @task-added="onTaskAdded"
+        @some-event="(e) => {
+          console.log('resourceConflicts:', /* 通过 ref 获取 */)
+          console.log('conflictTasks:', /* 检查传递的数据 */)
+        }"
       >
       <TaskListColumn prop="name" label="任务名称" width="300">
         <template #header>
@@ -655,8 +668,8 @@ const handleCustomMenuAction = (action: string, task: Task, onClose: () => void)
 
     <!-- 自定义Dialog组件基于element plus -->
     <el-dialog
-      v-model="showAddMilestoneDialog"
       title="自定义添加里程碑组件 - Element Plus"
+      v-model="showAddMilestoneDialog"
       width="400px"
       @close="newTask = { name: '', startDate: '', endDate: '' }"
     >

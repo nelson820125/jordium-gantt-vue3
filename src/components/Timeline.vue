@@ -8,16 +8,16 @@ import LinkDragGuide from './LinkDragGuide.vue'
 import GanttConflicts from './Timeline/GanttConflicts.vue'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useI18n } from '../composables/useI18n'
+import { useViewMode } from '../composables/useViewMode' // v1.9.9 视图模式状态管理
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 import { perfMonitor } from '../utils/perfMonitor'
 import { perfMonitor2 } from '../utils/perfMonitor2' // v1.9.6 性能诊断工具
 import type { Task } from '../models/classes/Task'
-import type { Resource } from '../models/types/Resource'
+import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
-import { assignTaskRows } from '../utils/taskLayoutUtils' // v1.9.0 换行布局算法
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 
 // 定义Props接口
@@ -103,9 +103,8 @@ const t = (key: string): string => {
   return getTranslation(key)
 }
 
-// v1.9.0 从 GanttChart 注入视图模式和数据源
-const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
-const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
+// v1.9.9 使用useViewMode统一管理视图模式状态
+const { viewMode, dataSource } = useViewMode()
 
 // v1.9.0 从 GanttChart 注入资源冲突信息（由 GanttChart 计算并响应 updateTaskTrigger）
 const resourceConflicts = inject<ComputedRef<Map<string, Set<number>>>>('resourceConflicts', computed(() => new Map()))
@@ -171,143 +170,16 @@ const isSplitBarDragging = inject<Ref<boolean>>('isSplitBarDragging', ref(false)
 // v1.9.5 注入showConflicts配置
 const showConflicts = inject<ComputedRef<boolean>>('gantt-show-conflicts', computed(() => true))
 
-// v1.9.6 Sprint1(P0) - 布局缓存（用于resourceTaskLayouts按需计算）
-const layoutCache = new Map<string, {
-  taskRowMap: Map<string | number, number>,
-  rowHeights: number[],
-  totalHeight: number
-}>()
+// 纵向虚拟滚动相关状态（需要在useResourceLayout之前定义）
+const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
+const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
+const timelineBodyScrollTop = ref(0) // 纵向滚动位置
+const timelineBodyHeight = ref(0) // 容器高度状态管理
 
-// v1.9.6 Phase2 - 计算资源视图的任务行布局（按需计算+缓存优化）
-// 策略：只计算可见资源的布局，通过缓存避免重复计算
-let resourceTaskLayoutsCallCount = 0
-const resourceTaskLayouts = computed(() => {
-  resourceTaskLayoutsCallCount++
-
-  const layoutMap = new Map<string | number, {
-    taskRowMap: Map<string | number, number>,
-    rowHeights: number[],
-    totalHeight: number
-  }>()
-
-  if (viewMode.value !== 'resource') {
-    return layoutMap
-  }
-
-  const resources = dataSource.value as Resource[]
-
-  // ⚠️ 重要：必须计算所有资源的布局，不能只计算可见资源
-  // 因为 visibleTaskRange 的计算依赖于 resourceRowPositions，而 resourceRowPositions 依赖于这里的布局数据
-  // 如果只计算可见资源，会导致循环依赖和布局错误
-
-  // 性能监控
-  let cacheHits = 0
-  let cacheMisses = 0
-
-  // 为所有资源计算布局（使用缓存优化性能）
-  resources.forEach(resource => {
-    // 先检查缓存命中情况
-    const cacheKey = `${resource.id}-${((resource as any).tasks || []).length}`
-    const isCacheHit = layoutCache.has(cacheKey)
-
-    // 获取布局（如果缓存未命中会自动计算并缓存）
-    const layout = getResourceLayout(resource)
-    layoutMap.set(resource.id, layout)
-
-    // 统计缓存命中率
-    if (isCacheHit) {
-      cacheHits++
-    } else {
-      cacheMisses++
-    }
-  })
-
-  return layoutMap
-})
-
-// v1.9.6 Sprint1(P0) - 缓存清理策略（保留最近100个条目，防止内存泄漏）
-watch(dataSource, () => {
-  if (layoutCache.size > 100) {
-    const keysToDelete = Array.from(layoutCache.keys()).slice(0, layoutCache.size - 100)
-    keysToDelete.forEach(key => layoutCache.delete(key))
-  }
-})
-
-// v1.9.6 Sprint1(P0) - 获取单个资源的布局（按需计算+缓存）
-const getResourceLayout = (resource: Resource) => {
-  const resourceTasks = (resource as any).tasks || []
-
-  // 🎯 修复：缓存key需要包含任务的时间信息，因为时间交汇会影响换行布局
-  // 生成任务时间范围的简单哈希（拼接所有任务的id-start-end）
-  const timeHash = resourceTasks
-    .map((t: Task) => `${t.id}-${t.startDate || ''}-${t.endDate || ''}`)
-    .join('|')
-  const cacheKey = `${resource.id}-${resourceTasks.length}-${timeHash}`
-
-  // 检查缓存
-  if (layoutCache.has(cacheKey)) {
-    return layoutCache.get(cacheKey)!
-  }
-
-  // 未命中缓存，重新计算
-  let result
-  if (resourceTasks.length > 0) {
-    result = assignTaskRows(resourceTasks, 51)
-  } else {
-    result = {
-      taskRowMap: new Map(),
-      rowHeights: [51],
-      totalHeight: 51,
-    }
-  }
-
-  layoutCache.set(cacheKey, result)
-  return result
-}
-
-// v1.9.6 Phase2 - 计算资源行的累积位置（懒加载优化：只计算到需要的位置）
-let resourceRowPositionsCallCount = 0
-const resourceRowPositions = computed(() => {
-  resourceRowPositionsCallCount++
-  const positions = new Map<string | number, number>()
-
-  if (viewMode.value !== 'resource') {
-    return positions
-  }
-
-  const resources = dataSource.value as Resource[]
-  const scrollTop = timelineBodyScrollTop.value
-  const containerHeight = timelineBodyHeight.value || 600
-  const scrollBottom = scrollTop + containerHeight + ROW_HEIGHT * VERTICAL_BUFFER * 2
-
-  let cumulativeTop = 0
-  let processedCount = 0
-
-  // 🎯 Phase2优化：懒加载计算，只计算到scrollBottom以下一定范围
-  // 而不是一次性计算所有100个资源
-  for (const resource of resources) {
-    positions.set(resource.id, cumulativeTop)
-
-    // 使用辅助函数获取布局（自动缓存）
-    const layout = getResourceLayout(resource)
-    const resourceHeight = layout.totalHeight || 51
-    cumulativeTop += resourceHeight
-    processedCount++
-
-    // 优化：如果已经计算到scrollBottom之下足够远，停止计算
-    // 保留一定余量，避免滚动时需要重新计算
-    if (cumulativeTop > scrollBottom + ROW_HEIGHT * 20) {
-      // 仍需继续计算剩余资源的近似位置（假设都是51px高度）
-      for (let i = processedCount; i < resources.length; i++) {
-        positions.set(resources[i].id, cumulativeTop) // 设置当前资源的位置
-        cumulativeTop += 51 // 累加位置，为下一个资源准备
-      }
-      break
-    }
-  }
-
-  return positions
-})
+// v1.9.9 优化：注入GanttChart提供的资源布局，避免重复计算
+// GanttChart已经计算并provide了resourceTaskLayouts和resourceRowPositions
+const resourceTaskLayouts = inject<ComputedRef<Map<string | number, any>>>('resourceTaskLayouts', computed(() => new Map()))
+const resourceRowPositions = inject<ComputedRef<Map<string | number, number>>>('resourceRowPositions', computed(() => new Map()))
 
 // 获取以今天为中心的时间线范围（缓存结果，避免每次计算创建新对象）
 const cachedTodayCenteredRange = (() => {
@@ -356,6 +228,7 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
     }
   }
 })
+
 // 优化：使用常量避免每次创建新空数组
 const EMPTY_TASKS_ARRAY: Task[] = []
 
@@ -1482,12 +1355,6 @@ let hideBubblesTimeout: number | null = null // 半圆显示恢复定时器
 const HOUR_WIDTH = 40 // 每小时40px
 const VIRTUAL_BUFFER = 10 // 减少缓冲区以提升滑动性能
 
-// 纵向虚拟滚动相关状态
-const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
-const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
-const timelineBodyScrollTop = ref(0) // 纵向滚动位置
-const timelineBodyHeight = ref(0) // 容器高度状态管理
-
 // v1.9.5 P2-3优化 - 智能缓存数据结构
 interface TimelineCacheEntry {
   data: unknown
@@ -1720,8 +1587,8 @@ const visibleTaskRange = computed(() => {
     for (let i = 0; i < resources.length; i++) {
       const resourceId = resources[i].id
       const rowTop = resourceRowPositions.value?.get(resourceId) || 0
-      // 🎯 使用辅助函数获取布局，避免循环依赖
-      const layout = getResourceLayout(resources[i])
+      // v1.9.9 从 resourceTaskLayouts 直接获取布局
+      const layout = resourceTaskLayouts.value.get(resourceId)
       const rowHeight = layout?.totalHeight || ROW_HEIGHT
       const rowBottom = rowTop + rowHeight
 
@@ -1968,10 +1835,10 @@ const rebuildResourceTaskQueues = () => {
         resourceId,
         rendered: isRendered,
         timestamp: isRendered ?
-                  (existingCache ?
-                    existingCache.timestamp
-                    : currentTimestamp)
-                  : currentTimestamp,
+          (existingCache ?
+            existingCache.timestamp
+            : currentTimestamp)
+          : currentTimestamp,
       })
     })
 
@@ -2412,11 +2279,19 @@ const getOtherMilestonesInfo = (currentId: number) => {
 // v1.9.5 P2-4优化 - 监听Split Bar拖拽结束，执行清理工作
 watch(isSplitBarDragging, (dragging) => {
   if (!dragging) {
-    // 拖拽结束后，手动触发一次容器宽度更新
+    // v1.9.9 拖拽结束后，手动触发一次容器尺寸更新（因为拖拽期间ResizeObserver被暂停）
     if (timelineContainerElement.value) {
       const newWidth = timelineContainerElement.value.clientWidth
       if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
         timelineContainerWidth.value = newWidth
+      }
+    }
+
+    // 同时更新body高度（虽然拖拽SplitterBar通常不会改变高度，但为了完整性）
+    if (timelineBodyElement.value) {
+      const newHeight = timelineBodyElement.value.clientHeight
+      if (Math.abs(newHeight - timelineBodyHeight.value) > 1) {
+        timelineBodyHeight.value = newHeight
       }
     }
 
@@ -2492,8 +2367,8 @@ const contentHeight = computed(() => {
     let totalHeight = 0
 
     resources.forEach(resource => {
-      // 🎯 使用辅助函数获取布局，确保所有资源高度都被计算
-      const layout = getResourceLayout(resource)
+      // v1.9.9 从 resourceTaskLayouts 直接获取布局
+      const layout = resourceTaskLayouts.value.get(resource.id)
       totalHeight += layout?.totalHeight || 51
     })
 
@@ -3658,42 +3533,19 @@ function handleBarMounted(payload: {
 const handleTaskBarDragEnd = (updatedTask: Task) => {
   // 如果是资源视图，需要更新dataSource中的资源数据
   if (viewMode.value === 'resource' && dataSource.value) {
-    let targetResourceId: string | number | null = null
-    let targetResource: any = null
-
     for (const resource of dataSource.value as any[]) {
       if (resource.tasks) {
         const taskIndex = resource.tasks.findIndex((t: Task) => t.id === updatedTask.id)
         if (taskIndex !== -1) {
           // 更新资源中的任务数据
           resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
-          targetResourceId = resource.id
-          targetResource = resource
           break
         }
       }
     }
 
-    // 🎯 关键修复：清除该资源的布局缓存，触发自动换行重新计算
-    if (targetResourceId !== null && targetResource) {
-      // 清除所有该资源的缓存（通配符删除，因为时间可能变化了）
-      const keysToDelete = Array.from(layoutCache.keys()).filter(key => key.startsWith(`${targetResourceId}-`))
-      keysToDelete.forEach(key => layoutCache.delete(key))
-
-      // 获取旧布局信息
-      const oldLayout = resourceTaskLayouts.value.get(targetResourceId)
-      const oldRowCount = oldLayout?.rowHeights.length || 1
-
-      // 重新计算布局
-      const newLayout = getResourceLayout(targetResource)
-      const newRowCount = newLayout.rowHeights.length
-
-      // 只有当行数发生变化时，才需要触发全量重绘
-      if (newRowCount !== oldRowCount) {
-        // 行数变化，需要触发重绘
-        taskBarRenderKey.value++
-      }
-    }
+    // 🎯 关键修复：数据已经更新，GanttChart的watch会自动检测并刷新布局
+    // v1.9.9 不需要手动调用invalidateLayout，props.resources的deep watch会自动触发
   }
   // 记录变化的TaskBar ID（用于增量冲突更新）
   lastChangedTaskId.value = updatedTask.id
@@ -3703,43 +3555,19 @@ const handleTaskBarDragEnd = (updatedTask: Task) => {
 const handleTaskBarResizeEnd = (updatedTask: Task) => {
   // 如果是资源视图，需要更新dataSource中的资源数据
   if (viewMode.value === 'resource' && dataSource.value) {
-    let targetResourceId: string | number | null = null
-    let targetResource: any = null
-
     for (const resource of dataSource.value as any[]) {
       if (resource.tasks) {
         const taskIndex = resource.tasks.findIndex((t: Task) => t.id === updatedTask.id)
         if (taskIndex !== -1) {
           // 更新资源中的任务数据
           resource.tasks[taskIndex] = { ...resource.tasks[taskIndex], ...updatedTask }
-          targetResourceId = resource.id
-          targetResource = resource
           break
         }
       }
     }
 
-    // 🎯 关键修复：清除该资源的布局缓存，触发自动换行重新计算
-    if (targetResourceId !== null && targetResource) {
-      // 清除所有该资源的缓存（通配符删除，因为时间可能变化了）
-      const keysToDelete = Array.from(layoutCache.keys()).filter(key => key.startsWith(`${targetResourceId}-`))
-      keysToDelete.forEach(key => layoutCache.delete(key))
-
-      // 获取旧布局信息
-      const oldLayout = resourceTaskLayouts.value.get(targetResourceId)
-      const oldRowCount = oldLayout?.rowHeights.length || 1
-
-      // 重新计算布局
-      const newLayout = getResourceLayout(targetResource)
-      const newRowCount = newLayout.rowHeights.length
-
-      // 🔧 修复：不再触发 taskBarRenderKey 更新，避免整个视图重建导致闪烁
-      // 资源布局的更新会通过 resourceTaskLayouts 的响应式自动触发重新渲染
-      // 注释掉以避免不必要的全量重绘：
-      // if (newRowCount !== oldRowCount) {
-      //   taskBarRenderKey.value++
-      // }
-    }
+    // 🎯 关键修复：数据已经更新，GanttChart的watch会自动检测并刷新布局
+    // v1.9.9 不需要手动调用invalidateLayout，props.resources的deep watch会自动触发
   }
   // 记录变化的TaskBar ID（用于增量冲突更新）
   lastChangedTaskId.value = updatedTask.id
@@ -3839,6 +3667,11 @@ onMounted(() => {
       timelineBodyHeight.value = timelineBody.clientHeight
 
       resizeObserver = new ResizeObserver(entries => {
+        // v1.9.9 优化：拖拽SplitterBar期间不处理高度变化，避免影响拖拽性能
+        if (isSplitBarDragging.value) {
+          return
+        }
+
         for (const entry of entries) {
           timelineBodyHeight.value = entry.contentRect.height
         }
@@ -3854,6 +3687,11 @@ onMounted(() => {
 
       // 为容器宽度变化创建独立的ResizeObserver
       const containerResizeObserver = new ResizeObserver(entries => {
+        // v1.9.9 优化：拖拽SplitterBar期间不处理宽度变化，避免影响拖拽性能
+        if (isSplitBarDragging.value) {
+          return
+        }
+
         for (const entry of entries) {
           const newWidth = entry.contentRect.width
           // 当容器宽度发生变化时，立即更新宽度并重新计算半圆显示
@@ -3992,6 +3830,7 @@ const handleTaskBarHighlighted = () => {
     // 🔧 修复：检查是否有 TaskBar 正在被拖拽或 resize
     // 如果有，不应该触发 Timeline 拖拽，避免与 TaskBar 交互冲突
     if (isDraggingTaskBar.value) {
+      // TaskBar 正在被拖拽，取消 Timeline 拖拽启动
       document.removeEventListener('mousemove', handleNextMouseMove)
       return
     }
@@ -4063,8 +3902,8 @@ const handleResourceTaskBarDrop = (event: Event) => {
     const resource = resources[i]
     const resourceId = String(resource.id)
     const rowTop = resourceRowPositions.value.get(resourceId) || 0
-    // v1.9.6 Phase2: 使用getResourceLayout确保获取到布局（自动缓存）
-    const layout = resourceTaskLayouts.value.get(resourceId) || getResourceLayout(resource)
+    // v1.9.9 从resoureTaskLayouts直接获取布局
+    const layout = resourceTaskLayouts.value.get(resourceId)
     const rowHeight = layout?.totalHeight || 51
     const rowCenter = rowTop + rowHeight / 2
     const distance = Math.abs(relativeY - rowCenter)
@@ -4395,8 +4234,8 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
       const resource = resources[i]
       const resourceId = String(resource.id)
       const rowTop = resourceRowPositions.value.get(resourceId) || 0
-      // v1.9.6 Phase2: 使用getResourceLayout确保获取到布局（自动缓存）
-      const layout = resourceTaskLayouts.value.get(resourceId) || getResourceLayout(resource)
+      // v1.9.9 从resoureTaskLayouts直接获取布局
+      const layout = resourceTaskLayouts.value.get(resourceId)
       const rowHeight = layout?.totalHeight || 51
       const rowCenter = rowTop + rowHeight / 2
       const distance = Math.abs(relativeY - rowCenter)
@@ -4669,6 +4508,13 @@ const debouncedUpdateTimelineRange = (delay = 50) => {
 
 // 监听tasks数据变化和容器宽度变化，合并处理以减少重复计算
 const updateTimelineRange = () => {
+  // 资源视图下不自动调整时间范围，保持Timeline背景层（header + 竖列）稳定
+  // 避免滚动时重新生成timelineData导致header闪烁
+  // 虚拟滚动通过visibleTimeRange过滤TaskBar即可
+  if (viewMode.value === 'resource') {
+    return
+  }
+
   let newRange: { startDate: Date; endDate: Date } | null = null
 
   if (currentTimeScale.value === TimelineScale.HOUR) {
@@ -5739,6 +5585,7 @@ const handleAddSuccessor = (task: Task) => {
                 <!-- v1.9.5 可通过 show-conflicts prop 控制是否显示 -->
                 <!-- v1.9.6 修复：width使用totalTimelineWidth（用于坐标计算），containerWidth用于Canvas宽度 -->
                 <!-- v1.9.7 Bug修复：使用渲染的tasks而不是allTasks，避免滚动后显示已消失TaskBar的冲突 -->
+                <!-- v1.9.9 优化：传递renderLimit，只计算已渲染TaskBar的冲突 -->
                 <GanttConflicts
                   v-if="showConflicts"
                   :tasks="(resource as any).tasks"
@@ -5760,6 +5607,7 @@ const handleAddSuccessor = (task: Task) => {
                   :row-heights="resourceTaskLayouts.get(resource.id)?.rowHeights"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
+                  :render-limit="resourceTaskRenderLimits.get(resource.id)"
                 />
               </template>
             </div>

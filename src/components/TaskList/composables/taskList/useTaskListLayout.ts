@@ -1,6 +1,6 @@
 import { ref, computed, inject, type Ref, type ComputedRef } from 'vue'
 import type { Task } from '../../../../models/classes/Task'
-import type { Resource } from '../../../../models/types/Resource'
+import type { Resource } from '../../../../models/classes/Resource'
 
 /**
  * TaskList 布局计算逻辑

@@ -1,4 +1,4 @@
-import type { Resource } from '../types/Resource'
+import type { Resource } from './Resource'
 
 // Task 类型定义
 export interface Task {

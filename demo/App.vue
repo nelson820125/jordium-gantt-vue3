@@ -17,7 +17,7 @@ import { useI18n } from '../src/composables/useI18n'
 import { useDemoLocale } from './useDemoLocale'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
 import type { Task } from '../src/models/Task'
-import type { Resource } from '../src/models/types/Resource'
+import type { Resource } from '../src/models/classes/Resource'
 import { createResource, addTaskToResource, updateResourceUtilization } from '../src/utils/resourceUtils'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
@@ -626,7 +626,7 @@ const handleTaskClick = (task: Task) => {
 }
 
 // v1.9.7 处理任务双击事件（资源视图下显示资源编辑提示）
-const handleTaskDoubleClick = (taskOrResource: Task | Resource) => {  
+const handleTaskDoubleClick = (taskOrResource: Task | Resource) => {
   // 使用类型守卫严格判断是否为Resource对象
   if (viewMode.value === 'resource' && isResource(taskOrResource)) {
     // 这是Resource对象，显示资源编辑提示
@@ -635,7 +635,7 @@ const handleTaskDoubleClick = (taskOrResource: Task | Resource) => {
     resourceEditHintVisible.value = true
     return
   }
-  
+
   // 对于真正的Task对象，GanttChart会正常打开TaskDrawer
   // useDefaultDrawer保持为true，确保新建任务和TaskBar双击都能正常工作
 }
@@ -643,9 +643,9 @@ const handleTaskDoubleClick = (taskOrResource: Task | Resource) => {
 // v1.9.7 类型守卫：判断是否为Resource对象
 // Resource独有的特征：有tasks数组属性，且没有resources属性
 const isResource = (obj: Task | Resource): obj is Resource => {
-  return obj && 
-    typeof obj === 'object' && 
-    'tasks' in obj && 
+  return obj &&
+    typeof obj === 'object' &&
+    'tasks' in obj &&
     Array.isArray((obj as Resource).tasks) &&
     !('resources' in obj) // Task有resources属性，Resource没有
 }
@@ -1169,7 +1169,7 @@ const confirmResourceDrag = () => {
       task.resources.push({
         id: targetResource.id,
         name: targetResource.name,
-        capacity: oldCapacity
+        capacity: oldCapacity,
       })
     }
   }
@@ -3453,196 +3453,196 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 /* 全局暗色主题支持 */
-:global(html[data-theme='dark']) {
+:global(.gantt-root[data-theme='dark']) {
   background: #1e1e1e !important;
 }
 
-:global(html[data-theme='dark']) body {
+:global(.gantt-root[data-theme='dark']) body {
   background: #1e1e1e !important;
   color: #e5e5e5 !important;
 }
 
 /* 暗色主题下的页面标题 */
-:global(html[data-theme='dark']) .page-title {
+:global(.gantt-root[data-theme='dark']) .page-title {
   background: #1e1e1e;
   color: #e5e5e5;
 }
 
 /* 暗色主题下的配置面板样式 */
-:global(html[data-theme='dark']) .config-panel {
+:global(.gantt-root[data-theme='dark']) .config-panel {
   background: var(--gantt-bg-primary, #2d3748);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .data-source-panel {
+:global(.gantt-root[data-theme='dark']) .data-source-panel {
   background: var(--gantt-bg-primary, #2d3748);
   border-color: var(--gantt-border-color, #4a5568);
   box-shadow: none;
 }
 
-:global(html[data-theme='dark']) .data-source-sub {
+:global(.gantt-root[data-theme='dark']) .data-source-sub {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .data-source-button {
+:global(.gantt-root[data-theme='dark']) .data-source-button {
   background: var(--gantt-bg-secondary, #1a202c);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .data-source-button.active {
+:global(.gantt-root[data-theme='dark']) .data-source-button.active {
   background: rgba(64, 158, 255, 0.18);
   border-color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .ds-label,
-:global(html[data-theme='dark']) .ds-desc,
-:global(html[data-theme='dark']) .ds-file {
+:global(.gantt-root[data-theme='dark']) .ds-label,
+:global(.gantt-root[data-theme='dark']) .ds-desc,
+:global(.gantt-root[data-theme='dark']) .ds-file {
   color: var(--gantt-text-primary, #e2e8f0);
 }
 
-:global(html[data-theme='dark']) .ds-file {
+:global(.gantt-root[data-theme='dark']) .ds-file {
   color: var(--gantt-text-muted, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .config-title {
+:global(.gantt-root[data-theme='dark']) .config-title {
   color: var(--gantt-text-primary, #e2e8f0);
 }
 
-:global(html[data-theme='dark']) .section-title {
+:global(.gantt-root[data-theme='dark']) .section-title {
   color: var(--gantt-text-primary, #e2e8f0);
   border-bottom-color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .section-header {
+:global(.gantt-root[data-theme='dark']) .section-header {
   border-bottom-color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .section-header:hover {
+:global(.gantt-root[data-theme='dark']) .section-header:hover {
   border-bottom-color: var(--gantt-primary-color-light, #74c0fc);
 }
 
-:global(html[data-theme='dark']) .section-header-title {
+:global(.gantt-root[data-theme='dark']) .section-header-title {
   color: var(--gantt-text-primary, #e2e8f0);
 }
 
-:global(html[data-theme='dark']) .section-collapse-button {
+:global(.gantt-root[data-theme='dark']) .section-collapse-button {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .section-collapse-button:hover {
+:global(.gantt-root[data-theme='dark']) .section-collapse-button:hover {
   color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .section-icon {
+:global(.gantt-root[data-theme='dark']) .section-icon {
   color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .subsection {
+:global(.gantt-root[data-theme='dark']) .subsection {
   border-left-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .subsection-title {
+:global(.gantt-root[data-theme='dark']) .subsection-title {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .section-subtitle {
+:global(.gantt-root[data-theme='dark']) .section-subtitle {
   color: var(--gantt-primary-color, #66b3ff);
   background: rgba(102, 179, 255, 0.15);
   border-left-color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .subsection-title::before {
+:global(.gantt-root[data-theme='dark']) .subsection-title::before {
   background-color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .column-control {
+:global(.gantt-root[data-theme='dark']) .column-control {
   background: var(--gantt-bg-secondary, #1a202c);
 }
 
-:global(html[data-theme='dark']) .column-control:hover {
+:global(.gantt-root[data-theme='dark']) .column-control:hover {
   background: var(--gantt-hover-bg, #2d3748);
 }
 
-:global(html[data-theme='dark']) .column-label {
+:global(.gantt-root[data-theme='dark']) .column-label {
   color: var(--gantt-text-primary, #e2e8f0);
 }
 
-:global(html[data-theme='dark']) .column-control:hover .column-label {
+:global(.gantt-root[data-theme='dark']) .column-control:hover .column-label {
   color: var(--gantt-primary-color, #66b3ff);
 }
 
 /* 暗色主题下的TaskBar配置样式 */
-:global(html[data-theme='dark']) .taskbar-control {
+:global(.gantt-root[data-theme='dark']) .taskbar-control {
   background: var(--gantt-bg-secondary, #1a202c);
 }
 
-:global(html[data-theme='dark']) .taskbar-control:hover {
+:global(.gantt-root[data-theme='dark']) .taskbar-control:hover {
   background: var(--gantt-hover-bg, #2d3748);
 }
 
-:global(html[data-theme='dark']) .taskbar-label {
+:global(.gantt-root[data-theme='dark']) .taskbar-label {
   color: var(--gantt-text-primary, #e2e8f0);
 }
 
-:global(html[data-theme='dark']) .taskbar-control:hover .taskbar-label {
+:global(.gantt-root[data-theme='dark']) .taskbar-control:hover .taskbar-label {
   color: var(--gantt-primary-color, #66b3ff);
 }
 
 /* 暗色主题下的 TaskBar 高级配置 */
-:global(html[data-theme='dark']) .control-row {
+:global(.gantt-root[data-theme='dark']) .control-row {
   background: var(--gantt-bg-secondary, #1a202c);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .control-label {
+:global(.gantt-root[data-theme='dark']) .control-label {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .control-input {
+:global(.gantt-root[data-theme='dark']) .control-input {
   background: var(--gantt-bg-primary, #2d3748);
   color: var(--gantt-text-primary, #e2e8f0);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .control-hint {
+:global(.gantt-root[data-theme='dark']) .control-hint {
   color: var(--gantt-text-muted, #718096);
 }
 
-:global(html[data-theme='dark']) .taskbar-field-control {
+:global(.gantt-root[data-theme='dark']) .taskbar-field-control {
   background: var(--gantt-bg-secondary, #1a202c);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .field-label {
+:global(.gantt-root[data-theme='dark']) .field-label {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .field-select {
+:global(.gantt-root[data-theme='dark']) .field-select {
   background: var(--gantt-bg-primary, #2d3748);
   color: var(--gantt-text-primary, #e2e8f0);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
 /* 暗色主题下的折叠面板样式 */
-:global(html[data-theme='dark']) .config-header {
+:global(.gantt-root[data-theme='dark']) .config-header {
   border-bottom-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .config-header:hover {
+:global(.gantt-root[data-theme='dark']) .config-header:hover {
   background-color: var(--gantt-hover-bg, #2d3748);
 }
 
-:global(html[data-theme='dark']) .collapse-button {
+:global(.gantt-root[data-theme='dark']) .collapse-button {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .collapse-button:hover {
+:global(.gantt-root[data-theme='dark']) .collapse-button:hover {
   background-color: var(--gantt-hover-bg, #2d3748);
   color: var(--gantt-primary-color, #66b3ff);
 }
 
 /* 暗黑模式下的版本标签 */
-:global(html[data-theme='dark']) .version-badge {
+:global(.gantt-root[data-theme='dark']) .version-badge {
   background: linear-gradient(135deg, #1a73e8 0%, #00bcd4 50%, #3f51b5 100%);
   box-shadow:
     0 0 25px rgba(102, 177, 255, 0.4),
@@ -3650,7 +3650,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-:global(html[data-theme='dark']) .version-badge:hover {
+:global(.gantt-root[data-theme='dark']) .version-badge:hover {
   background: linear-gradient(135deg, #2196f3 0%, #00e5ff 50%, #5c6bc0 100%);
   box-shadow:
     0 0 35px rgba(102, 177, 255, 0.6),
@@ -3763,53 +3763,53 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 /* 移除旧的基于 SVG color 的样式，现在使用 filter */
 
 /* 暗黑模式下覆盖所有链接样式 */
-:global(html[data-theme='dark']) .doc-link {
+:global(.gantt-root[data-theme='dark']) .doc-link {
   color: #ffffff;
 }
 
-:global(html[data-theme='dark']) .doc-link:hover {
+:global(.gantt-root[data-theme='dark']) .doc-link:hover {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-:global(html[data-theme='dark']) .doc-link:nth-child(2) {
+:global(.gantt-root[data-theme='dark']) .doc-link:nth-child(2) {
   color: #ffffff !important;
 }
 
-:global(html[data-theme='dark']) .doc-link:nth-child(2):hover {
+:global(.gantt-root[data-theme='dark']) .doc-link:nth-child(2):hover {
   color: #ffffff !important;
   background-color: rgba(199, 29, 35, 0.1);
 }
 
 /* 暗黑模式下图标样式 */
-:global(html[data-theme='dark']) .github-link .doc-icon {
+:global(.gantt-root[data-theme='dark']) .github-link .doc-icon {
   filter: brightness(0) saturate(100%) invert(100%);
 }
 
-:global(html[data-theme='dark']) .github-link:hover .doc-icon {
+:global(.gantt-root[data-theme='dark']) .github-link:hover .doc-icon {
   filter: brightness(0) saturate(100%) invert(70%) sepia(50%) saturate(2000%) hue-rotate(190deg)
     brightness(1.2);
 }
 
-:global(html[data-theme='dark']) .gitee-link .doc-icon {
+:global(.gantt-root[data-theme='dark']) .gitee-link .doc-icon {
   filter: brightness(0) saturate(100%) invert(45%) sepia(100%) saturate(1500%) hue-rotate(340deg)
     brightness(1.1);
 }
 
-:global(html[data-theme='dark']) .gitee-link:hover .doc-icon {
+:global(.gantt-root[data-theme='dark']) .gitee-link:hover .doc-icon {
   filter: brightness(0) saturate(100%) invert(50%) sepia(100%) saturate(1800%) hue-rotate(340deg)
     brightness(1.2);
 }
 
 /* 暗黑模式下的里程碑图标发光效果 */
-:global(html[data-theme='dark']) .milestone-group-icon {
+:global(.gantt-root[data-theme='dark']) .milestone-group-icon {
   color: var(--gantt-danger, #f67c7c);
   fill: var(--gantt-danger, #f67c7c);
   filter: drop-shadow(0 0 6px var(--gantt-danger, #f67c7c));
   animation: milestone-icon-glow-dark 2.5s ease-in-out infinite alternate;
 }
 
-:global(html[data-theme='dark']) .task-row:hover .milestone-group-icon {
+:global(.gantt-root[data-theme='dark']) .task-row:hover .milestone-group-icon {
   filter: drop-shadow(0 0 10px var(--gantt-danger, #f67c7c))
     drop-shadow(0 0 16px rgba(246, 124, 124, 0.4));
   animation: milestone-icon-glow-intense-dark 1.8s ease-in-out infinite alternate;
@@ -4019,28 +4019,28 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 /* 暗黑模式适配 */
-:global(html[data-theme='dark']) .task-click-dialog {
+:global(.gantt-root[data-theme='dark']) .task-click-dialog {
   background: var(--gantt-bg-primary, #1a1a1a);
 }
 
-:global(html[data-theme='dark']) .task-click-dialog-header h3 {
+:global(.gantt-root[data-theme='dark']) .task-click-dialog-header h3 {
   color: var(--gantt-text-primary, #e0e0e0);
 }
 
-:global(html[data-theme='dark']) .close-button {
+:global(.gantt-root[data-theme='dark']) .close-button {
   color: var(--gantt-text-secondary, #b0b0b0);
 }
 
-:global(html[data-theme='dark']) .close-button:hover {
+:global(.gantt-root[data-theme='dark']) .close-button:hover {
   background: var(--gantt-bg-hover, #2a2a2a);
   color: var(--gantt-text-primary, #e0e0e0);
 }
 
-:global(html[data-theme='dark']) .property-key {
+:global(.gantt-root[data-theme='dark']) .property-key {
   color: var(--gantt-text-secondary, #b0b0b0);
 }
 
-:global(html[data-theme='dark']) .property-value {
+:global(.gantt-root[data-theme='dark']) .property-value {
   color: var(--gantt-text-primary, #e0e0e0);
 }
 
@@ -4079,27 +4079,27 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 /* 暗黑模式下的任务行样式 */
-:global(html[data-theme='dark']) :deep(.task-row-success) {
+:global(.gantt-root[data-theme='dark']) :deep(.task-row-success) {
   background: linear-gradient(90deg, #0a3a2a 0%, #1b4d3e 100%) !important;
 }
 
-:global(html[data-theme='dark']) :deep(.task-row-success:hover) {
+:global(.gantt-root[data-theme='dark']) :deep(.task-row-success:hover) {
   background: linear-gradient(90deg, #0f4d35 0%, #276749 100%) !important;
 }
 
-:global(html[data-theme='dark']) :deep(.task-row-warning) {
+:global(.gantt-root[data-theme='dark']) :deep(.task-row-warning) {
   background: linear-gradient(90deg, #3d2f1f 0%, #4d3b2a 100%) !important;
 }
 
-:global(html[data-theme='dark']) :deep(.task-row-warning:hover) {
+:global(.gantt-root[data-theme='dark']) :deep(.task-row-warning:hover) {
   background: linear-gradient(90deg, #4d3b26 0%, #5d4a35 100%) !important;
 }
 
-:global(html[data-theme='dark']) :deep(.task-row-info) {
+:global(.gantt-root[data-theme='dark']) :deep(.task-row-info) {
   background: linear-gradient(90deg, #2a2a2a 0%, #333333 100%) !important;
 }
 
-:global(html[data-theme='dark']) :deep(.task-row-info:hover) {
+:global(.gantt-root[data-theme='dark']) :deep(.task-row-info:hover) {
   background: linear-gradient(90deg, #353535 0%, #3d3d3d 100%) !important;
 }
 
@@ -4151,34 +4151,34 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 /* 暗色主题下的自定义菜单 */
-:global(html[data-theme='dark']) .custom-menu {
+:global(.gantt-root[data-theme='dark']) .custom-menu {
   background: #2a2a2a;
   border-color: #444;
 }
 
-:global(html[data-theme='dark']) .custom-menu-header {
+:global(.gantt-root[data-theme='dark']) .custom-menu-header {
   background: #1e1e1e;
   color: #e0e0e0;
   border-bottom-color: #444;
 }
 
-:global(html[data-theme='dark']) .custom-menu-item {
+:global(.gantt-root[data-theme='dark']) .custom-menu-item {
   color: #e0e0e0;
 }
 
-:global(html[data-theme='dark']) .custom-menu-item:hover {
+:global(.gantt-root[data-theme='dark']) .custom-menu-item:hover {
   background: #353535;
 }
 
-:global(html[data-theme='dark']) .custom-menu-item.danger {
+:global(.gantt-root[data-theme='dark']) .custom-menu-item.danger {
   color: #ff6b6b;
 }
 
-:global(html[data-theme='dark']) .custom-menu-item.danger:hover {
+:global(.gantt-root[data-theme='dark']) .custom-menu-item.danger:hover {
   background: #3a2020;
 }
 
-:global(html[data-theme='dark']) .custom-menu-divider {
+:global(.gantt-root[data-theme='dark']) .custom-menu-divider {
   background: #444;
 }
 
@@ -4485,61 +4485,61 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 /* 暗色主题支持 */
-:global(html[data-theme='dark']) .status-panel {
+:global(.gantt-root[data-theme='dark']) .status-panel {
   background: var(--gantt-bg-secondary, #1a202c);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .status-value {
+:global(.gantt-root[data-theme='dark']) .status-value {
   background: var(--gantt-bg-secondary, #1a202c);
   color: var(--gantt-text-primary, #e2e8f0);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .status-value.active {
+:global(.gantt-root[data-theme='dark']) .status-value.active {
   background: rgba(64, 158, 255, 0.15);
   border-color: var(--gantt-primary-color, #66b3ff);
   color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .tool-button {
+:global(.gantt-root[data-theme='dark']) .tool-button {
   background: var(--gantt-bg-secondary, #1a202c);
   color: var(--gantt-text-primary, #e2e8f0);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .tool-button:hover {
+:global(.gantt-root[data-theme='dark']) .tool-button:hover {
   background: var(--gantt-hover-bg, #2d3748);
   border-color: var(--gantt-primary-color, #66b3ff);
   color: var(--gantt-primary-color, #66b3ff);
 }
 
-:global(html[data-theme='dark']) .tool-button.primary {
+:global(.gantt-root[data-theme='dark']) .tool-button.primary {
   background: var(--gantt-primary-color, #409eff);
   border-color: var(--gantt-primary-color, #409eff);
   color: white;
 }
 
-:global(html[data-theme='dark']) .tool-button.primary:hover {
+:global(.gantt-root[data-theme='dark']) .tool-button.primary:hover {
   background: var(--gantt-primary-hover, #66b1ff);
   border-color: var(--gantt-primary-hover, #66b1ff);
 }
 
-:global(html[data-theme='dark']) .tool-divider {
+:global(.gantt-root[data-theme='dark']) .tool-divider {
   background: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .tool-input {
+:global(.gantt-root[data-theme='dark']) .tool-input {
   background: var(--gantt-bg-primary, #2d3748);
   color: var(--gantt-text-primary, #e2e8f0);
   border-color: var(--gantt-border-color, #4a5568);
 }
 
-:global(html[data-theme='dark']) .tool-label {
+:global(.gantt-root[data-theme='dark']) .tool-label {
   color: var(--gantt-text-secondary, #a0aec0);
 }
 
-:global(html[data-theme='dark']) .tool-note {
+:global(.gantt-root[data-theme='dark']) .tool-note {
   background: var(--gantt-bg-secondary, #1a202c);
   color: var(--gantt-text-secondary, #a0aec0);
   border-left-color: var(--gantt-primary-color, #66b3ff);

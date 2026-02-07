@@ -81,13 +81,7 @@ export const perfMonitor = {
    * 测量函数执行时间
    */
   measure<T>(fn: () => T): T {
-    const start = performance.now()
     const result = fn()
-    const end = performance.now()
-    const duration = end - start
-
-    if (duration > 5) { }
-
     return result
   },
 

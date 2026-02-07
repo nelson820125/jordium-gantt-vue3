@@ -56,7 +56,8 @@ export function detectConflicts(
   tasks: Task[],
   resourceId: string | number,
 ): ConflictZone[] {
-  // 过滤出包含指定资源的任务（没有resources字段时视为100%分配给该资源）
+  // v1.9.10 过滤出包含指定资源的任务
+  // 注意：如果任务没有resources字段或为空，视为100%分配给该资源（资源视图中任务必然属于某个资源）
   const resourceTasks = tasks.filter((task) => {
     // 如果没有resources字段或为空，视为100%分配
     if (!task.resources || task.resources.length === 0) return true
@@ -125,7 +126,8 @@ function detectConflictsBruteForce(
       // 计算总投入比例
       let totalPercent = 0
       const taskDetails = overlappingTasks.map((task) => {
-        // 如果没有resources字段，默认100%；否则查找对应资源的percent
+        // v1.9.10 如果没有resources字段，默认100%；否则查找对应资源的capacity
+        // 这确保了资源视图中未明确指定占比的任务被正确计入冲突检测
         const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
         const capacity =
           !task.resources || task.resources.length === 0 ? 100 : (resource?.capacity || 0)

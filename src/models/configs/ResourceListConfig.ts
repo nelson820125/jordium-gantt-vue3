@@ -1,4 +1,4 @@
-import type { Resource } from '../types/Resource'
+import type { Resource } from '../classes/Resource'
 
 /**
  * 资源列表列类型枚举

@@ -205,6 +205,8 @@ const conflictInfoList = computed(() => {
     const conflictEnd = new Date(conflictTask.endDate).getTime()
 
     // 计算冲突任务的资源占比
+    // v1.9.10 注释：如果冲突任务没有 resources 字段，默认使用 100%
+    // 这是因为在资源视图中，任务隶属于该资源但未明确指定占比时，视为全职投入
     let conflictPercent = 100
     if (conflictTask.resources && Array.isArray(conflictTask.resources)) {
       const allocation = conflictTask.resources.find(
@@ -214,6 +216,7 @@ const conflictInfoList = computed(() => {
         conflictPercent = Math.max(20, Math.min(100, allocation.capacity))
       }
     }
+    // else: 保持默认 100%（资源视图中任务隶属于当前资源）
 
     // 计算当前任务与该冲突任务的重叠时间段
     const overlapStart = Math.max(currentStart, conflictStart)
@@ -282,6 +285,8 @@ const totalOverloadPercent = computed(() => {
 
           // 检查任务是否在该重叠区间内（使用 +1 天后的 endDate）
           if (tStart < overlapEndPlus && tEndPlus > overlapStart) {
+            // v1.9.10 注释：如果任务没有 resources 字段，默认使用 100%
+            // 这确保了资源视图中未明确指定占比的任务被正确计入冲突检测
             let taskPercent = 100
             if (task.resources && Array.isArray(task.resources)) {
               const allocation = task.resources.find(
@@ -291,6 +296,7 @@ const totalOverloadPercent = computed(() => {
                 taskPercent = allocation.capacity
               }
             }
+            // else: 保持默认 100%（资源视图中任务隶属于当前资源）
             intervalTotal += taskPercent
           }
         })

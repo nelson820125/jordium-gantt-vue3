@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, useSlots, computed, inject } from 'vue'
-import type { StyleValue, Slots, Ref, ComputedRef } from 'vue'
+import type { StyleValue, Slots } from 'vue'
 import TaskRow from './taskRow/TaskRow.vue'
 import { useI18n } from '../../composables/useI18n'
+import { useViewMode } from '../../composables/useViewMode'
 import type { Task } from '../../models/classes/Task'
-import type { Resource } from '../../models/types/Resource'
+import type { Resource } from '../../models/classes/Resource'
 import type { TaskListConfig, TaskListColumnConfig } from '../../models/configs/TaskListConfig'
-// @ts-expect-error - ResourceListColumnConfig is used in type unions
-import type { ResourceListConfig, ResourceListColumnConfig } from '../../models/configs/ResourceListConfig'
 import { DEFAULT_TASK_LIST_COLUMNS } from '../../models/configs/TaskListConfig'
 import { DEFAULT_RESOURCE_LIST_COLUMNS } from '../../models/configs/ResourceListConfig'
 import { useTaskRowDrag } from '../../composables/useTaskRowDrag'
@@ -53,13 +52,8 @@ const emit = defineEmits<{
 const slots = useSlots()
 const hasRowSlot = computed(() => Boolean(slots['custom-task-content']))
 
-// v1.9.0 从 GanttChart 注入视图模式和数据源
-const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
-const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
-const listConfig = inject<ComputedRef<TaskListConfig | ResourceListConfig | undefined>>(
-  'gantt-list-config',
-  computed(() => undefined),
-)
+// v1.9.9 使用useViewMode统一管理视图模式状态
+const { viewMode, dataSource, listConfig } = useViewMode()
 
 // 从 GanttChart 注入列级 slots
 const columnSlots = inject<Slots>('gantt-column-slots', {})
@@ -340,8 +334,8 @@ onUnmounted(() => {
 
       <TaskRow
         v-for="{ task, level, rowIndex } in visibleTasks"
-        v-memo="[task.id, task.name, task.collapsed, hoveredTaskId === task.id, task.startDate, task.endDate, task.progress]"
         :key="task.id"
+        v-memo="[task.id, task.name, task.collapsed, hoveredTaskId === task.id, task.startDate, task.endDate, task.progress]"
         :task="task"
         :level="level"
         :row-index="rowIndex"

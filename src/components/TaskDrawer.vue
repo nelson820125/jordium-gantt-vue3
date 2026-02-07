@@ -1819,24 +1819,24 @@ const taskStatus = computed(() => {
 }
 
 /* 暗黑模式 */
-:global(html[data-theme='dark']) .resource-header {
+:global(.gantt-root[data-theme='dark']) .resource-header {
   background: var(--gantt-bg-toolbar, rgba(255, 255, 255, 0.03)) !important;
   border-color: var(--gantt-border-light, rgba(255, 255, 255, 0.1)) !important;
 }
 
-:global(html[data-theme='dark']) .resource-header-label {
+:global(.gantt-root[data-theme='dark']) .resource-header-label {
   color: var(--gantt-text-secondary, #a8a8a8) !important;
 }
 
-:global(html[data-theme='dark']) .resource-item {
+:global(.gantt-root[data-theme='dark']) .resource-item {
   background: var(--gantt-bg-secondary, rgba(255, 255, 255, 0.05)) !important;
 }
 
-:global(html[data-theme='dark']) .btn-remove-resource:hover {
+:global(.gantt-root[data-theme='dark']) .btn-remove-resource:hover {
   background: var(--gantt-danger-dark, rgba(245, 108, 108, 0.2)) !important;
 }
 
-:global(html[data-theme='dark']) .btn-add-resource:hover {
+:global(.gantt-root[data-theme='dark']) .btn-add-resource:hover {
   background: var(--gantt-primary-dark, rgba(64, 158, 255, 0.2)) !important;
 }
 </style>

@@ -1,5 +1,5 @@
 import type { Task } from '../models/classes/Task'
-import type { Resource } from '../models/types/Resource'
+import type { Resource } from '../models/classes/Resource'
 import { detectConflicts } from './conflictUtils'
 
 /**
