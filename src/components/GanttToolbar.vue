@@ -328,9 +328,12 @@ const closeConfirmDialog = () => {
 }
 
 const handleThemeToggle = () => {
-  const newTheme = !isDarkMode.value
+  // v1.9.10 修复：基于 props.theme 而不是内部状态来切换主题
+  // 确保与 GanttChart 的 currentThemeMode 保持同步
+  const currentTheme = props.theme || (isDarkMode.value ? 'dark' : 'light')
+  const newTheme = currentTheme === 'dark' ? false : true
 
-  // 立即应用主题变化
+  // 立即应用主题变化到本地状态（会被 props watch 覆盖，确保同步）
   isDarkMode.value = newTheme
   // 不再直接设置document.documentElement，由GanttChart统一管理
 
