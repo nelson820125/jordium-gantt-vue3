@@ -544,5 +544,13 @@
       "🔧 Fixed: Changed Theme setting from HTML root to Gantt Component root",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to a_sunshine@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.9.1",
+    "date": "2026-02-07",
+    "notes": [
+      "🔧 修复: GanttChart管理ThemeChange的问题",
+      "🔧 Fixed: Issue with ThemeChange management in GanttChart"
+    ]
   }
 ]
