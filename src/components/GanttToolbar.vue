@@ -340,9 +340,8 @@ const handleThemeToggle = () => {
   // 立即触发主题变化事件
   if (props.onThemeChange && typeof props.onThemeChange === 'function') {
     props.onThemeChange(newTheme)
-  } else {
-    emit('theme-change', newTheme)
   }
+  emit('theme-change', newTheme)
 
   // 显示确认对话框询问是否保存设置
   pendingValue.value = newTheme
