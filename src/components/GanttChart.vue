@@ -75,6 +75,8 @@ const props = withDefaults(defineProps<Props>(), {
   locale: 'zh-CN',
   timeScale: 'week',
   theme: undefined, // 不设置默认值，允许自动检测系统主题
+  enableTaskListCollapsible: true,
+  taskListVisible: true,
 })
 
 const emit = defineEmits([
@@ -545,6 +547,18 @@ interface Props {
   timeScale?: TimelineScale
   // 主题模式（响应式）
   theme?: 'light' | 'dark'
+  /**
+   * 是否允许 TaskList 展开/收起功能（默认为 true）
+   * 当设置为 false 时，TaskList 面板强制隐藏，SplitterBar 及折叠按钮同步隐藏，仅展示 Timeline 区域
+   * taskListVisible 在此情况下失效
+   */
+  enableTaskListCollapsible?: boolean
+  /**
+   * TaskList 可见状态（响应式），默认为 true
+   * 仅当 enableTaskListCollapsible=true 时有效
+   * 可通过 prop 传入或通过 defineExpose 暴露的方法控制
+   */
+  taskListVisible?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -733,7 +747,6 @@ watch(
     // props变化时清空增量追踪，执行全量更新
     triggerFullUpdate()
   },
-  { deep: true },
 )
 
 // v1.9.9 监听props.resources变化，自动触发Timeline更新
@@ -744,7 +757,6 @@ watch(
     // props变化时清空增量追踪，执行全量更新
     triggerFullUpdate()
   },
-  { deep: true },
 )
 
 // 时间刻度状态
@@ -934,7 +946,32 @@ function onMouseDown(e: MouseEvent) {
 }
 
 // TaskList显示/隐藏状态管理
-const isTaskListVisible = ref(true)
+// 初始值：enableTaskListCollapsible=false 时强制隐藏；否则使用 taskListVisible prop 的值
+const isTaskListVisible = ref(props.enableTaskListCollapsible ? (props.taskListVisible ?? true) : false)
+
+// 响应 taskListVisible prop 变化（仅在 enableTaskListCollapsible=true 时生效）
+watch(
+  () => props.taskListVisible,
+  (newVal) => {
+    if (props.enableTaskListCollapsible) {
+      isTaskListVisible.value = newVal ?? true
+    }
+  },
+)
+
+// 响应 enableTaskListCollapsible prop 变化
+watch(
+  () => props.enableTaskListCollapsible,
+  (newVal) => {
+    if (!newVal) {
+      // 禁用折叠功能时，强制隐藏 TaskList
+      isTaskListVisible.value = false
+    } else {
+      // 恢复折叠功能时，还原为 taskListVisible prop 的值
+      isTaskListVisible.value = props.taskListVisible ?? true
+    }
+  },
+)
 
 // 动画状态管理
 const isAnimating = ref(false)
@@ -942,6 +979,8 @@ const animationClass = ref('')
 
 // 切换TaskList显示状态
 const toggleTaskList = () => {
+  // enableTaskListCollapsible=false 时，禁止切换
+  if (!props.enableTaskListCollapsible) return
   // 如果正在动画中，忽略点击
   if (isAnimating.value) return
 
@@ -1299,7 +1338,7 @@ watch(
       notifyTaskListUpdated()
     })
   },
-  { deep: true, immediate: true },
+  { immediate: true },
 )
 
 onMounted(() => {
@@ -3303,6 +3342,21 @@ defineExpose({
   // 主题相关
   setTheme,
   currentTheme,
+
+  // TaskList 显隐相关
+  /** 获取 TaskList 当前可见状态 */
+  getTaskListVisible: () => isTaskListVisible.value,
+  /**
+   * 设置 TaskList 可见状态（仅在 enableTaskListCollapsible=true 时生效）
+   * @param visible true=展开，false=收起
+   */
+  setTaskListVisible: (visible: boolean) => {
+    if (props.enableTaskListCollapsible) {
+      isTaskListVisible.value = visible
+    }
+  },
+  /** 切换 TaskList 展开/收起（仅在 enableTaskListCollapsible=true 时生效，带动画） */
+  toggleTaskList,
 })
 </script>
 
@@ -3371,7 +3425,7 @@ defineExpose({
           </template>
         </TaskList>
       </div>
-      <div class="gantt-splitter" @mousedown="onMouseDown">
+      <div v-if="props.enableTaskListCollapsible" class="gantt-splitter" @mousedown="onMouseDown">
         <!-- TaskList切换按钮 - 贴合splitter右侧 -->
         <div
           class="task-list-toggle"
@@ -3433,6 +3487,10 @@ defineExpose({
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
             <slot name="custom-task-content" v-bind="barScope" />
+          </template>
+          <!-- 向 Timeline 转发 #taskbar-tooltip scoped slot（仅此一层，不穿透至 TaskBar） -->
+          <template v-if="$slots['taskbar-tooltip']" #taskbar-tooltip="tooltipScope">
+            <slot name="taskbar-tooltip" v-bind="tooltipScope" />
           </template>
         </Timeline>
 

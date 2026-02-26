@@ -38,6 +38,9 @@ const emit = defineEmits([
   'link-drag-start',
   'link-drag-move',
   'link-drag-end',
+  // Singleton Tooltip：TaskBar 只负责触发，Timeline 统一渲染
+  'tooltip-show',
+  'tooltip-hide',
 ])
 
 defineSlots<{
@@ -196,9 +199,6 @@ const resourceTaskLayouts = inject<ComputedRef<Map<string, { taskRowMap: Map<str
 
 // v1.9.6 Phase1 - 注入位置计算缓存实例（由Timeline提供）
 const positionCache = inject<PositionCache | null>('positionCache', null)
-
-// 注入 TaskList 宽度（用于 tooltip 定位边界检测）
-const taskListWidth = inject<Ref<number>>('gantt-task-list-width', ref(0))
 
 // 注入右键菜单配置
 const enableTaskBarContextMenu = inject<ComputedRef<boolean>>('enable-task-bar-context-menu', computed(() => true))
@@ -2396,10 +2396,7 @@ const bubbleIndicator = computed(() => {
 const showTooltip = ref(false)
 const tooltipPosition = ref({ x: 0, y: 0 })
 
-// TaskBar 悬停 tooltip 状态
-const showHoverTooltip = ref(false)
-const hoverTooltipPosition = ref({ x: 0, y: 0 })
-const isTooltipBelow = ref(false) // v1.9.0 标记tooltip是否显示在TaskBar下方
+// TaskBar 悬停 tooltip 延迟定时器（状态已上移至 Timeline）
 let hoverTooltipTimer: number | null = null
 
 // 跟踪滚动状态，避免非滚动时的动画
@@ -2568,7 +2565,7 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
   event.stopPropagation()
 
   // v1.9.1 隐藏TaskBar的hover tooltip，只显示bubble tooltip
-  showHoverTooltip.value = false
+  emit('tooltip-hide')
   // 清除可能正在等待的tooltip定时器
   if (hoverTooltipTimer) {
     window.clearTimeout(hoverTooltipTimer)
@@ -2668,67 +2665,16 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
     const mouseY = event.clientY
 
     // 延迟显示tooltip，避免快速滑过时显示
+    // Singleton Tooltip：Timer后 emit tooltip-show，由 Timeline 统一计算位置和渲染
     hoverTooltipTimer = window.setTimeout(() => {
-      showHoverTooltip.value = true
       const rect = targetElement.getBoundingClientRect()
-
-      // 计算tooltip的预估宽高（根据实际CSS设置）
-      const tooltipWidth = 250 // 预估宽度
-      const margin = 10 // 边距
-
-      // 视口尺寸
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-
-      // v1.9.0 改为基于TaskBar边界定位
-      // 水平位置：TaskBar中心对齐
-      let x = rect.left + rect.width / 2
-      // 默认显示在TaskBar上方边缘外（CSS transform: translateY(-100%)会向上偏移tooltip高度）
-      let y = rect.top - 10
-
-      // 获取TaskList的右边界（用于防止tooltip进入TaskList区域）
-      const taskListRightBoundary = taskListWidth.value + margin
-
-      // 水平边界检测：左侧超出或进入TaskList区域
-      if (x - tooltipWidth / 2 < taskListRightBoundary) {
-        x = taskListRightBoundary + tooltipWidth / 2
-      }
-      // 水平边界检测：右侧超出
-      if (x + tooltipWidth / 2 > viewportWidth - margin) {
-        x = viewportWidth - margin - tooltipWidth / 2
-      }
-
-      // 垂直边界检测：计算上下方可用空间，选择空间更大的方向
-      const spaceAbove = rect.top - margin
-      const spaceBelow = viewportHeight - rect.bottom - margin
-
-      // 动态计算tooltip高度（基础高度 + 每行内容）
-      const baseHeight = 80 // 基础高度（标题 + padding）
-      const rowHeight = 24 // 每行内容高度
-      let contentRows = 4 // 默认4行（开始日期、结束日期、预估工时、实际工时、进度）
-
-      // 资源视图且利用率<100%时，多1行
-      if (viewMode.value === 'resource' && resourcePercent.value < 100) {
-        contentRows += 1
-      }
-      // 有资源冲突警告时，多1行
-      if (props.hasResourceConflict) {
-        contentRows += 1
-      }
-
-      const estimatedTooltipHeight = baseHeight + (contentRows * rowHeight)
-
-      // 如果上方空间不足，显示在下方
-      if (spaceAbove < estimatedTooltipHeight && spaceBelow > spaceAbove) {
-        // 显示在TaskBar下方
-        y = rect.bottom + 10
-        isTooltipBelow.value = true
-      } else {
-        // 显示在TaskBar上方
-        isTooltipBelow.value = false
-      }
-
-      hoverTooltipPosition.value = { x, y }
+      emit('tooltip-show', {
+        task: props.task,
+        taskStatus: taskStatus.value,
+        resourcePercent: resourcePercent.value,
+        hasResourceConflict: props.hasResourceConflict ?? false,
+        targetRect: rect,
+      })
     }, 300) // 300ms延迟
   }
 }
@@ -2736,19 +2682,19 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
 const handleTaskBarMouseLeave = () => {
   isTaskBarHovered.value = false
 
-  // 清除定时器并隐藏tooltip
+  // 清除定时器并通知 Timeline 隐藏 tooltip
   if (hoverTooltipTimer) {
     clearTimeout(hoverTooltipTimer)
     hoverTooltipTimer = null
   }
-  showHoverTooltip.value = false
+  emit('tooltip-hide')
 }
 
 // 监听拖拽/拉伸状态，如果开始拖拽/拉伸，立即隐藏tooltip
 // v1.9.7 使用 flush: 'sync' 确保状态变化时立即同步执行，避免在资源视图拖拽时因组件更新导致watch延迟执行
 watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resizingR]) => {
   if (dragging || resizingL || resizingR) {
-    showHoverTooltip.value = false
+    emit('tooltip-hide')
     if (hoverTooltipTimer) {
       clearTimeout(hoverTooltipTimer)
       hoverTooltipTimer = null
@@ -2767,18 +2713,14 @@ watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resi
 // v1.9.2 监听 Tab 悬停状态，当 Tab 悬停时立即隐藏 TaskBar 的 tooltip
 watch(isTabHovered, (tabHovered) => {
   if (tabHovered) {
-    // Tab 悬停：隐藏 TaskBar 的 tooltip
-    showHoverTooltip.value = false
+    // Tab 悬停：隐藏 TaskBar 的 tooltip（通知 Timeline）
+    emit('tooltip-hide')
     if (hoverTooltipTimer) {
       clearTimeout(hoverTooltipTimer)
       hoverTooltipTimer = null
     }
-  } else {
-    // Tab 离开：如果鼠标还在 TaskBar 上，重新显示 tooltip
-    if (isTaskBarHovered.value && props.enableTaskBarTooltip !== false) {
-      showHoverTooltip.value = true
-    }
   }
+  // Tab 离开后不主动重显 tooltip，等待用户下次 mouseenter 触发
 })
 
 // 格式化日期显示
@@ -3726,44 +3668,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
     </div>
   </Teleport>
 
-  <!-- TaskBar悬停提示框 -->
-  <Teleport to="body">
-    <div
-      v-if="showHoverTooltip"
-      class="task-hover-tooltip"
-      :class="{ 'tooltip-below': isTooltipBelow }"
-      :style="{
-        left: `${hoverTooltipPosition.x}px`,
-        top: `${hoverTooltipPosition.y}px`,
-        backgroundColor: taskStatus.color,
-      }"
-    >
-      <div
-class="hover-tooltip-arrow" :style="{
-        borderTopColor: isTooltipBelow ? 'transparent' : taskStatus.color,
-        borderBottomColor: isTooltipBelow ? taskStatus.color : 'transparent'
-      }"></div>
-      <div class="hover-tooltip-content">
-        <div class="hover-tooltip-title">{{ task.name }}</div>
-        <div class="hover-tooltip-row">
-          <span class="hover-tooltip-label">{{ t('plannedStartDate') }}:</span>
-          <span class="hover-tooltip-value">{{ formatDisplayDate(task.startDate) }}</span>
-        </div>
-        <div class="hover-tooltip-row">
-          <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
-          <span class="hover-tooltip-value">{{ formatDisplayDate(task.endDate) }}</span>
-        </div>
-        <div class="hover-tooltip-row">
-          <span class="hover-tooltip-label">{{ t('actualStartDate') }}:</span>
-          <span class="hover-tooltip-value">{{ task.actualStartDate ? formatDisplayDate(task.actualStartDate) : '-' }}</span>
-        </div>
-        <div class="hover-tooltip-row">
-          <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
-          <span class="hover-tooltip-value">{{ task.actualEndDate ? formatDisplayDate(task.actualEndDate) : '-' }}</span>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <!-- TaskBar悬停 Tooltip 已上移至 Timeline 单例渲染（Singleton Tooltip）-->
 </template>
 
 <style scoped>

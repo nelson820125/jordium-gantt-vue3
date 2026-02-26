@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef, inject, provide } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef, inject, provide, reactive } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
@@ -18,6 +18,7 @@ import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
+import type { TooltipShowPayload } from '../models/types/TimelineDataTypes'
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 
 // 定义Props接口
@@ -180,6 +181,77 @@ const timelineBodyHeight = ref(0) // 容器高度状态管理
 // GanttChart已经计算并provide了resourceTaskLayouts和resourceRowPositions
 const resourceTaskLayouts = inject<ComputedRef<Map<string | number, any>>>('resourceTaskLayouts', computed(() => new Map()))
 const resourceRowPositions = inject<ComputedRef<Map<string | number, number>>>('resourceRowPositions', computed(() => new Map()))
+
+// ─── Singleton Tooltip 状态（方案 B：Timeline 统一渲染）─────────────────────────────────
+// 注入 TaskList 宽度，用于 Tooltip 定位边界保护
+const ganttTaskListWidth = inject<Ref<number>>('gantt-task-list-width', ref(0))
+const tooltipState = reactive({
+  visible: false,
+  task: null as any,
+  taskStatus: { color: '#409eff', label: '' } as { color: string; label: string; type?: string },
+  resourcePercent: 100,
+  hasResourceConflict: false,
+  isBelow: false,
+  position: { x: 0, y: 0 },
+})
+
+/** 格式化日期显示 (YYYY-MM-DD) */
+const formatTooltipDate = (dateStr: string | undefined): string => {
+  if (!dateStr) return t('dateNotSet')
+  return String(dateStr).substring(0, 10)
+}
+
+/** TaskBar 触发, Timeline 接受并计算定位 */
+const handleTooltipShow = (payload: TooltipShowPayload) => {
+  if (props.enableTaskBarTooltip === false) return
+
+  const { task, taskStatus, resourcePercent, hasResourceConflict, targetRect } = payload
+  tooltipState.task = task
+  tooltipState.taskStatus = taskStatus
+  tooltipState.resourcePercent = resourcePercent
+  tooltipState.hasResourceConflict = hasResourceConflict
+
+  // 定位计算（迁移自 TaskBar，使用 Timeline 已有容器 ref）
+  const tooltipWidth = 250
+  const margin = 10
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  let x = targetRect.left + targetRect.width / 2
+  let y = targetRect.top - 10
+
+  const taskListRightBoundary = ganttTaskListWidth.value + margin
+  if (x - tooltipWidth / 2 < taskListRightBoundary) {
+    x = taskListRightBoundary + tooltipWidth / 2
+  }
+  if (x + tooltipWidth / 2 > viewportWidth - margin) {
+    x = viewportWidth - margin - tooltipWidth / 2
+  }
+
+  const spaceAbove = targetRect.top - margin
+  const spaceBelow = viewportHeight - targetRect.bottom - margin
+  const baseHeight = 80
+  const rowHeight = 24
+  let contentRows = 4
+  if (viewMode.value === 'resource' && resourcePercent < 100) contentRows += 1
+  if (hasResourceConflict) contentRows += 1
+  const estimatedTooltipHeight = baseHeight + contentRows * rowHeight
+
+  if (spaceAbove < estimatedTooltipHeight && spaceBelow > spaceAbove) {
+    y = targetRect.bottom + 10
+    tooltipState.isBelow = true
+  } else {
+    tooltipState.isBelow = false
+  }
+
+  tooltipState.position = { x, y }
+  tooltipState.visible = true
+}
+
+/** TaskBar 鼠标离开 / 拖拽 / Tab悬停时触发 */
+const handleTooltipHide = () => {
+  tooltipState.visible = false
+}
 
 // 获取以今天为中心的时间线范围（缓存结果，避免每次计算创建新对象）
 const cachedTodayCenteredRange = (() => {
@@ -3777,10 +3849,25 @@ const handleTimelineBodyScroll = (event: Event) => {
   }
 }
 
-// 监听任务数量变化，更新SVG尺寸
+// 合并优化：整合三处 tasks.value.length watch，消除重复的 invalidateTaskDateRangeCache 调用
+// 洵盖：缓存失效 / 里程碑位置更新 / 首次加载时间轴重算 / SVG 尺寸更新
 watch(
-  () => tasks.value.length,
-  () => {
+  () => tasks.value?.length,
+  (newLength, oldLength) => {
+    // 原 ~4562：缓存失效 + 里程碑位置（无条件执行）
+    invalidateTaskDateRangeCache()
+    computeAllMilestonesPositions()
+
+    // 原 ~4616：首次加载时重算时间轴
+    // bugfix: 重置 hasInitialAutoScroll，确保首次加载真实数据后能重新定位今日
+    // 场景：数据异步加载时，初始 updateTimelineRange() 以空任务计算范围并完成滚动，
+    // 真实数据到来后范围扩展，若不重置则 scrollToTodayCenter 不会再次触发
+    if (oldLength === 0 && newLength > 0) {
+      hasInitialAutoScroll = false
+      debouncedUpdateTimelineRange(50)
+    }
+
+    // 原 ~3854：更新 SVG 尺寸
     nextTick(() => {
       updateSvgSize()
     })
@@ -4485,16 +4572,6 @@ const convertTaskToMilestone = (task: Task): Milestone => {
   }
 }
 
-// 监听tasks变化，重新计算里程碑位置（使用 shallow watch 避免深度监听）
-watch(
-  () => tasks.value.length,
-  () => {
-    invalidateTaskDateRangeCache()
-    computeAllMilestonesPositions()
-  },
-  { immediate: true },
-)
-
 // 优化：统一的防抖函数，避免重复的 setTimeout 造成性能浪费
 let timelineUpdateTimer: number | null = null
 
@@ -4543,19 +4620,6 @@ const updateTimelineRange = () => {
 }
 
 watch(
-  () => tasks.value?.length,
-  (newLength, oldLength) => {
-    if (newLength !== oldLength) {
-      invalidateTaskDateRangeCache()
-    }
-    // 当任务从无到有时，重新计算时间范围
-    if (oldLength === 0 && newLength > 0) {
-      debouncedUpdateTimelineRange(50)
-    }
-  },
-)
-
-watch(
   timelineContainerWidth,
   (newWidth, oldWidth) => {
     // 拖拽 splitter 时跳过重新计算
@@ -4597,11 +4661,16 @@ watch([timelineData, timelineContainerWidth], () => {
 // 监听viewMode和dataSource变化，刷新缓存和时间线
 watch(
   [viewMode, dataSource],
-  () => {
+  ([newViewMode]) => {
     invalidateTaskDateRangeCache()
+    // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
+    // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
+    // 若不重置则 scrollToTodayCenter 不会被触发，今日标记将出现在视口之外
+    if (newViewMode === 'task') {
+      hasInitialAutoScroll = false
+    }
     debouncedUpdateTimelineRange()
   },
-  { deep: true },
 )
 
 // 监听tasks变化，清理不再存在的任务的位置信息
@@ -4626,7 +4695,6 @@ watch(
     }
     taskBarPositions.value = newPositions
   },
-  { deep: true },
 )
 
 // 处理里程碑点击定位事件
@@ -5473,6 +5541,8 @@ const handleAddSuccessor = (task: Task) => {
                 @link-drag-start="handleLinkDragStart"
                 @link-drag-move="handleLinkDragMove"
                 @link-drag-end="handleLinkDragEnd"
+                @tooltip-show="handleTooltipShow"
+                @tooltip-hide="handleTooltipHide"
               >
                 <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
                   <slot name="custom-task-content" v-bind="barScope" />
@@ -5567,6 +5637,8 @@ const handleAddSuccessor = (task: Task) => {
                   @link-drag-start="handleLinkDragStart"
                   @link-drag-move="handleLinkDragMove"
                   @link-drag-end="handleLinkDragEnd"
+                  @tooltip-show="handleTooltipShow"
+                  @tooltip-hide="handleTooltipHide"
                 >
                   <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
                     <slot name="custom-task-content" v-bind="barScope" />
@@ -5616,10 +5688,137 @@ const handleAddSuccessor = (task: Task) => {
       </div>
     </div>
   </div>
+
+  <!-- Singleton Tooltip：单一 Teleport、所有 TaskBar 共享、应支持 #taskbar-tooltip slot -->
+  <Teleport v-if="props.enableTaskBarTooltip !== false" to="body">
+    <div
+      v-if="tooltipState.visible"
+      class="task-hover-tooltip"
+      :class="{ 'tooltip-below': tooltipState.isBelow }"
+      :style="{
+        left: `${tooltipState.position.x}px`,
+        top: `${tooltipState.position.y}px`,
+        backgroundColor: tooltipState.taskStatus.color,
+      }"
+    >
+      <!-- 有自定义 slot：消费方内容 -->
+      <template v-if="$slots['taskbar-tooltip']">
+        <slot
+          name="taskbar-tooltip"
+          :task="tooltipState.task"
+          :task-status="tooltipState.taskStatus"
+          :resource-percent="tooltipState.resourcePercent"
+        />
+      </template>
+      <!-- 默认内容：向后兼容 -->
+      <template v-else>
+        <div
+          class="hover-tooltip-arrow"
+          :style="{
+            borderTopColor: tooltipState.isBelow ? 'transparent' : tooltipState.taskStatus.color,
+            borderBottomColor: tooltipState.isBelow ? tooltipState.taskStatus.color : 'transparent',
+          }"
+        />
+        <div class="hover-tooltip-content">
+          <div class="hover-tooltip-title">{{ tooltipState.task?.name }}</div>
+          <div class="hover-tooltip-row">
+            <span class="hover-tooltip-label">{{ t('plannedStartDate') }}:</span>
+            <span class="hover-tooltip-value">{{ formatTooltipDate(tooltipState.task?.startDate) }}</span>
+          </div>
+          <div class="hover-tooltip-row">
+            <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
+            <span class="hover-tooltip-value">{{ formatTooltipDate(tooltipState.task?.endDate) }}</span>
+          </div>
+          <div class="hover-tooltip-row">
+            <span class="hover-tooltip-label">{{ t('actualStartDate') }}:</span>
+            <span class="hover-tooltip-value">{{ tooltipState.task?.actualStartDate ? formatTooltipDate(tooltipState.task.actualStartDate) : '-' }}</span>
+          </div>
+          <div class="hover-tooltip-row">
+            <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
+            <span class="hover-tooltip-value">{{ tooltipState.task?.actualEndDate ? formatTooltipDate(tooltipState.task.actualEndDate) : '-' }}</span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 @import '../styles/theme-variables.css';
+
+/* ─── Singleton Tooltip CSS（从 TaskBar.vue 迁移至此） ─────────────────────── */
+.task-hover-tooltip {
+  position: fixed;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 999999999;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  min-width: 150px;
+}
+
+.task-hover-tooltip.tooltip-below {
+  transform: translate(-50%, 0);
+  margin-top: 0;
+}
+
+.hover-tooltip-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(0, 0, 0, 0.85);
+  border-bottom: 0;
+}
+
+.tooltip-below .hover-tooltip-arrow {
+  bottom: auto;
+  top: -5px;
+  border-top: 0;
+  border-bottom: 6px solid rgba(0, 0, 0, 0.85);
+}
+
+.hover-tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hover-tooltip-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 4px;
+}
+
+.hover-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.hover-tooltip-label {
+  opacity: 0.9;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.hover-tooltip-value {
+  font-weight: 500;
+  text-align: right;
+  font-size: 11px;
+}
 
 .timeline {
   height: 100%;

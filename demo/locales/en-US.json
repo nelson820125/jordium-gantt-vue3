@@ -115,6 +115,22 @@
         "true": "True",
         "false": "False"
       }
+    },
+    "showViewMode": {
+      "title": "Task/Resource View Toggle",
+      "label": "Show view mode switcher",
+      "hint": "Hides the Task/Resource toggle control from the toolbar when off"
+    },
+    "taskListControl": {
+      "sectionTitle": "TaskList Collapsible Control",
+      "sectionTitle1": "TaskList Show/Hide Control",
+      "show": "Expand",
+      "hide": "Collapse",
+      "toggle": "Toggle (animated)",
+      "enableCollapsible": "enableTaskListCollapsible",
+      "visibleProp": "taskListVisible",
+      "true": "Enabled",
+      "false": "Disabled"
     }
   },
   "taskBarConfig": {

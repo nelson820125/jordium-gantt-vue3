@@ -115,6 +115,22 @@
         "true": "真",
         "false": "假"
       }
+    },
+    "showViewMode": {
+      "title": "Task/Resource 视图切换按钮组",
+      "label": "显示视图切换按钮组",
+      "hint": "关闭后工具栏不展示 Task/Resource 切换控件"
+    },
+    "taskListControl": {
+      "sectionTitle": "TaskList 可折叠控制",
+      "sectionTitle1": "TaskList 显隐控制",
+      "show": "展开",
+      "hide": "收起",
+      "toggle": "切换(动画)",
+      "enableCollapsible": "enableTaskListCollapsible",
+      "visibleProp": "taskListVisible",
+      "true": "允许",
+      "false": "禁用"
     }
   },
   "taskBarConfig": {

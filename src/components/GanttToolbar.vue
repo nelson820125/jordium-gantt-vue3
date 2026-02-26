@@ -551,7 +551,7 @@ onUnmounted(() => {
       </div>
 
       <!-- v1.9.0 视图模式切换按钮组 - 使用 Segmented Control 样式 -->
-      <div class="gantt-view-mode-control">
+      <div v-if="config.showViewMode !== false" class="gantt-view-mode-control">
         <div class="view-mode-track">
           <div
             class="view-mode-thumb"

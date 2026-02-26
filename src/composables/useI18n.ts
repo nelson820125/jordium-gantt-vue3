@@ -247,8 +247,15 @@ const messages = {
         maxWidth: '最大宽度',
         pixelsModel: '像素 (px)',
         percentageModel: '百分比 (%)',
-      },
-    },
+      },      collapsible: {
+        title: '展开/收起控制',
+        enableCollapsible: '启用任务列可折叠',
+        enableCollapsibleHint: '启用后任务列可展开/收起',
+        visible: '任务列显示状态',
+        visibleExpanded: '展开',
+        visibleCollapsed: '收起',
+        visibleHint: '通过 prop 控制任务列初始/当前显示状态',
+      },    },
     // TaskBar配置
     taskBarConfig: {
       title: 'TaskBar 配置',
@@ -288,6 +295,11 @@ const messages = {
           label: '常规数据源',
           description: 'data.json · 含完整前/后置依赖，适合功能演示',
           badge: 'data.json',
+        },
+        medium: {
+          label: '中等数据源',
+          description: 'data-100.json · 含完整前/后置依赖，适合功能演示',
+          badge: 'data-100.json',
         },
         large: {
           label: '超大数据源',
@@ -551,8 +563,15 @@ const messages = {
         maxWidth: 'Max Width',
         pixelsModel: 'pixels (px)',
         percentageModel: 'percentage (%)',
-      },
-    },
+      },      collapsible: {
+        title: 'Collapsible Control',
+        enableCollapsible: 'Enable collapsible task list',
+        enableCollapsibleHint: 'Allow task list to expand/collapse when enabled',
+        visible: 'Task list visibility',
+        visibleExpanded: 'Expanded',
+        visibleCollapsed: 'Collapsed',
+        visibleHint: 'Controls initial/current visibility state of the task list',
+      },    },
     // TaskBar配置
     taskBarConfig: {
       title: 'TaskBar Configuration',
@@ -592,6 +611,11 @@ const messages = {
           label: 'Standard Dataset',
           description: 'data.json · Full predecessor graph for feature demos',
           badge: 'data.json',
+        },
+        medium: {
+          label: 'Medium Dataset',
+          description: 'data-100.json · Full predecessor graph for feature demos',
+          badge: 'data-100.json',
         },
         large: {
           label: 'Massive Dataset',

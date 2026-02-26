@@ -14,4 +14,5 @@ export interface ToolbarConfig {
   timeScaleDimensions?: TimelineScale[] // 设置时间刻度按钮的展示维度
   defaultTimeScale?: TimelineScale // 默认选中的时间刻度
   showExpandCollapse?: boolean // 显示全部展开/折叠按钮
+  showViewMode?: boolean // 显示 Task/Resource 视图切换按钮组
 }

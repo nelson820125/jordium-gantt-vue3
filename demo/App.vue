@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
 // GanttChart 和 TaskListColumn 已经通过 app.use(JordiumGantt) 全局注册，无需导入
 // import TaskDrawer from '../src/components/TaskDrawer.vue' // 移除
 import MilestoneDialog from '../src/components/MilestoneDialog.vue'
 import normalData from './data.json'
+import mediumData from './data-100.json'
 import largeData from './data-large-1m.json'
 import resourcesData from './data-resources.json'
 import largeResourcesData from './data-resources-large.json'
@@ -49,6 +50,11 @@ const rawDataSources = [
     payload: normalData,
   },
   {
+    key: 'medium',
+    fileName: 'data-100.json',
+    payload: mediumData,
+  },
+  {
     key: 'large',
     fileName: 'data-large-1m.json',
     payload: largeData,
@@ -71,7 +77,7 @@ const dataSourceOptions = computed(() => {
   })
 })
 
-const currentDataSource = ref<DataSourceKey>('normal')
+const currentDataSource = ref<DataSourceKey>('medium')
 const dataLoading = ref(false)
 
 const cloneData = <T>(data: T): T => {
@@ -212,7 +218,7 @@ const clickedResource = ref<Resource | null>(null)
 // 改为在handleTaskDoubleClick中根据对象类型判断行为
 // useDefaultDrawer保持为true,确保新建任务和TaskBar双击能正常工作
 
-const toolbarConfig = {
+const toolbarConfig = reactive({
   showAddTask: true,
   showAddMilestone: true,
   showTodayLocate: true,
@@ -225,7 +231,8 @@ const toolbarConfig = {
   timeScaleDimensions: ['hour', 'day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
   defaultTimeScale: 'week',
   showExpandCollapse: true, // 显示全部展开/折叠按钮
-}
+  showViewMode: true, // 显示 Task/Resource 视图切换按钮组
+})
 
 // TaskList列渲染模式配置
 const taskListColumnRenderMode = ref<'default' | 'declarative'>('default')
@@ -291,6 +298,10 @@ const taskListConfig = computed<TaskListConfig>(() => ({
   maxWidth:
     widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
 }))
+
+// TaskList 展开/收起配置
+const enableTaskListCollapsible = ref(true)
+const taskListVisible = ref(true)
 
 // 资源列表配置
 const resourceListConfig = computed<ResourceListConfig>(() => ({
@@ -392,6 +403,8 @@ const taskBarOptions = ref({
 
 // 自定义任务状态背景色
 const showActualTaskBar = ref(true)
+// Tooltip 自定义 Slot 演示
+const useCustomTooltip = ref(true)
 const pendingTaskBackgroundColor = ref('#409eff')
 const delayTaskBackgroundColor = ref('#f56c6c')
 const completeTaskBackgroundColor = ref('#909399')
@@ -466,6 +479,14 @@ watch(propsFullscreen, (newFullscreen) => {
 watch(propsExpandAll, (newExpandAll) => {
   expandStatus.value = newExpandAll
 })
+
+// TaskList 显隐 expose 方法
+const handleSetTaskListVisible = (visible: boolean) => {
+  gantt.value?.setTaskListVisible(visible)
+}
+const handleToggleTaskList = () => {
+  gantt.value?.toggleTaskList()
+}
 
 // 切换配置面板折叠状态
 const toggleConfigPanel = () => {
@@ -1596,6 +1617,40 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                 </label>
               </div>
             </div>
+
+            <!-- 展开/收起控制 -->
+            <div class="subsection">
+              <h5 class="subsection-title">{{ (t.taskListConfig as any).collapsible.title }}</h5>
+              <!-- enableTaskListCollapsible 开关 -->
+              <div class="column-control" style="margin-bottom: 10px;">
+                <label class="taskbar-control">
+                  <input v-model="enableTaskListCollapsible" type="checkbox" />
+                  <span class="taskbar-label">{{ (t.taskListConfig as any).collapsible.enableCollapsible }}</span>
+                </label>
+                <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                  {{ (t.taskListConfig as any).collapsible.enableCollapsibleHint }}
+                </div>
+              </div>
+              <!-- taskListVisible 切换（仅当 enableTaskListCollapsible=true 时展示） -->
+              <transition name="section-content">
+                <div v-show="enableTaskListCollapsible">
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span class="width-label" style="flex-shrink: 0;">{{ (t.taskListConfig as any).collapsible.visible }}:</span>
+                    <label class="taskbar-control">
+                      <input v-model="taskListVisible" type="radio" :value="true" />
+                      <span class="taskbar-label">{{ (t.taskListConfig as any).collapsible.visibleExpanded }}</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <input v-model="taskListVisible" type="radio" :value="false" />
+                      <span class="taskbar-label">{{ (t.taskListConfig as any).collapsible.visibleCollapsed }}</span>
+                    </label>
+                  </div>
+                  <div class="config-hint" style="margin-top: 4px;">
+                    {{ (t.taskListConfig as any).collapsible.visibleHint }}
+                  </div>
+                </div>
+              </transition>
+            </div>
               </div>
             </transition>
           </div>
@@ -1659,6 +1714,10 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                     <label class="taskbar-control">
                       <input v-model="showActualTaskBar" type="checkbox" />
                       <span class="taskbar-label">{{ taskBarConfigMessages.display?.showActualTaskBar }}</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <input v-model="useCustomTooltip" type="checkbox" />
+                      <span class="taskbar-label">🎨 自定义 Tooltip（Slot 演示）</span>
                     </label>
                   </div>
 
@@ -1907,6 +1966,20 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                   </p>
                 </div>
 
+                <!-- 工具栏配置 - showViewMode -->
+                <div class="subsection">
+                  <h5 class="subsection-title">🔀 {{ (ts as any).showViewMode?.title || 'Task/Resource 视图切换按钮组' }}</h5>
+                  <div class="column-control">
+                    <label class="taskbar-control">
+                      <input v-model="toolbarConfig.showViewMode" type="checkbox" />
+                      <span class="taskbar-label">{{ (ts as any).showViewMode?.label || '显示视图切换按钮组' }}</span>
+                    </label>
+                    <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                      {{ (ts as any).showViewMode?.hint || '关闭后工具栏不展示 Task/Resource 切换控件' }}
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Expose Methods 控制区域 -->
                 <div v-show="controlMode === 'expose'" class="subsection">
                   <h4 class="section-subtitle">⚡ {{ ts.exposeMethods?.sectionTitle || 'Expose 方法控制' }}</h4>
@@ -2039,6 +2112,24 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                           class="tool-input"
                         />
                         <button class="tool-button" @click="handleScrollToDate">{{ ts.exposeMethods?.navigation?.go || 'Go' }}</button>
+                      </div>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- TaskList 显隐 Expose 控制 -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📋 {{ (ts as any).taskListControl?.sectionTitle || 'TaskList 显隐' }}</h5>
+                      <div class="tool-button-group">
+                        <button class="tool-button" @click="handleSetTaskListVisible(true)">
+                          ✅ {{ (ts as any).taskListControl?.show || '展开' }}
+                        </button>
+                        <button class="tool-button" @click="handleSetTaskListVisible(false)">
+                          ❌ {{ (ts as any).taskListControl?.hide || '收起' }}
+                        </button>
+                        <button class="tool-button primary" @click="handleToggleTaskList">
+                          🔄 {{ (ts as any).taskListControl?.toggle || '切换(动画)' }}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2193,6 +2284,57 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                       </div>
                       <p class="prop-info">:expand-all="{{ propsExpandAll }}"</p>
                     </div>
+
+                    <div class="tool-divider"></div>
+
+                    <!-- TaskList 控制 Props -->
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📋 {{ (ts as any).taskListControl?.sectionTitle || 'TaskList 可折叠控制' }}</h5>
+                      <!-- enableTaskListCollapsible -->
+                      <div class="tool-button-group">
+                          <button
+                            class="tool-button"
+                            :class="{ primary: enableTaskListCollapsible === true }"
+                            @click="enableTaskListCollapsible = true"
+                          >
+                            ✅ {{ (ts as any).taskListControl?.true || '开启' }}
+                          </button>
+                          <button
+                            class="tool-button"
+                            :class="{ primary: enableTaskListCollapsible === false }"
+                            @click="enableTaskListCollapsible = false"
+                          >
+                            ❌ {{ (ts as any).taskListControl?.false || '关闭' }}
+                          </button>
+                      </div>
+                      <p class="prop-info">:enable-task-list-collapsible="{{ enableTaskListCollapsible }}"</p>
+                    </div>
+
+                    <div class="tool-divider"></div>
+
+                    <div class="tool-control-group">
+                      <h5 class="subsection-title">📋 {{ (ts as any).taskListControl?.sectionTitle1 || 'TaskList 显隐控制' }}</h5>
+                      <!-- taskListVisible -->
+                      <div class="tool-button-group">
+                        <button
+                          class="tool-button"
+                          :class="{ primary: taskListVisible === true }"
+                          :disabled="!enableTaskListCollapsible"
+                          @click="taskListVisible = true"
+                        >
+                          ✅ {{ (ts as any).taskListControl?.show || '展开' }}
+                        </button>
+                        <button
+                          class="tool-button"
+                          :class="{ primary: taskListVisible === false }"
+                          :disabled="!enableTaskListCollapsible"
+                          @click="taskListVisible = false"
+                        >
+                          ❌ {{ (ts as any).taskListControl?.hide || '收起' }}
+                        </button>
+                      </div>
+                      <p class="prop-info">:task-list-visible="{{ taskListVisible }}"</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2216,6 +2358,8 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :expand-all="controlMode === 'props' ? propsExpandAll : undefined"
         :toolbar-config="toolbarConfig"
         :task-list-config="taskListConfig"
+        :enable-task-list-collapsible="enableTaskListCollapsible"
+        :task-list-visible="enableTaskListCollapsible ? taskListVisible : undefined"
         :task-bar-config="taskBarConfig"
         :working-hours="workingHoursConfig"
         :use-default-milestone-dialog="true"
@@ -2404,6 +2548,196 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             </div>
           </template>
         </TaskBarContextMenu> -->
+
+        <!-- ✨ #taskbar-tooltip Slot 示例：自定义悬浮 Tooltip -->
+        <!-- 此 slot 完全替换内置 Tooltip，通过 useCustomTooltip 开关切换两种样式 -->
+        <template #taskbar-tooltip="{ task, taskStatus, resourcePercent }">
+          <!-- 默认复刻样式（slot 接管，保持内置风格） -->
+          <template v-if="!useCustomTooltip">
+            <div
+              :style="{
+                position: 'absolute',
+                left: '50%',
+                bottom: '-5px',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: `6px solid ${taskStatus.color}`,
+                borderBottom: '0',
+              }"
+            />
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 4px;">
+                {{ task.name }}
+              </div>
+              <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
+                <span style="opacity: 0.9;">📅 开始：</span>
+                <span style="font-weight: 500;">{{ task.startDate?.slice(0, 10) ?? '-' }}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
+                <span style="opacity: 0.9;">🏁 结束：</span>
+                <span style="font-weight: 500;">{{ task.endDate?.slice(0, 10) ?? '-' }}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
+                <span style="opacity: 0.9;">📊 进度：</span>
+                <span style="font-weight: 500;">{{ task.progress ?? 0 }}%</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                <span
+                  style="
+                    background: rgba(255,255,255,0.25);
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    font-size: 10px;
+                    font-weight: 600;
+                    border: 1px solid rgba(255,255,255,0.4);
+                  "
+                >
+                  {{ taskStatus.label }}
+                </span>
+                <span style="opacity: 0.7; font-size: 10px; margin-left: 4px;">● Slot 接管（默认风格）</span>
+              </div>
+            </div>
+          </template>
+
+          <!-- 🎨 自定义富文本样式（完全重设计） -->
+          <template v-else>
+            <div
+              style="
+                min-width: 230px;
+                margin: -10px -14px;
+                border-radius: 6px;
+                overflow: hidden;
+                background: #fff;
+                color: #333;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+              "
+            >
+              <!-- 彩色顶栏 -->
+              <div
+                :style="{
+                  background: `linear-gradient(135deg, ${taskStatus.color} 0%, ${taskStatus.color}cc 100%)`,
+                  padding: '12px 14px 10px',
+                  color: 'white',
+                }"
+              >
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <img
+                    v-if="task.avatar && typeof task.avatar === 'string'"
+                    :src="task.avatar"
+                    width="28"
+                    height="28"
+                    style="border-radius: 50%; border: 2px solid rgba(255,255,255,0.6); flex-shrink: 0;"
+                  />
+                  <div
+                    v-else
+                    :style="{
+                      width: '28px', height: '28px', borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '14px', flexShrink: '0',
+                    }"
+                  >📋</div>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ task.name }}</div>
+                    <div style="font-size: 10px; opacity: 0.85; margin-top: 2px;">{{ task.assigneeName ?? '未分配' }}</div>
+                  </div>
+                  <span
+                    style="
+                      background: rgba(255,255,255,0.25);
+                      padding: 2px 8px;
+                      border-radius: 10px;
+                      font-size: 10px;
+                      font-weight: 600;
+                      white-space: nowrap;
+                      border: 1px solid rgba(255,255,255,0.5);
+                    "
+                  >{{ taskStatus.label }}</span>
+                </div>
+              </div>
+
+              <!-- 主体内容 -->
+              <div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;">
+                <!-- 进度条 -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 4px;">
+                    <span>完成进度</span>
+                    <span style="font-weight: 600;" :style="{ color: taskStatus.color }">{{ task.progress ?? 0 }}%</span>
+                  </div>
+                  <div style="height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+                    <div
+                      :style="{
+                        height: '100%',
+                        width: `${task.progress ?? 0}%`,
+                        background: `linear-gradient(90deg, ${taskStatus.color} 0%, ${taskStatus.color}99 100%)`,
+                        borderRadius: '3px',
+                        transition: 'width 0.3s',
+                      }"
+                    />
+                  </div>
+                </div>
+
+                <!-- 资源利用率（资源视图时） -->
+                <div v-if="resourcePercent !== 100">
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 4px;">
+                    <span>资源占用</span>
+                    <span
+                      style="font-weight: 600;"
+                      :style="{ color: resourcePercent > 100 ? '#f56c6c' : '#67c23a' }"
+                    >{{ resourcePercent }}%</span>
+                  </div>
+                  <div style="height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+                    <div
+                      :style="{
+                        height: '100%',
+                        width: `${Math.min(resourcePercent, 100)}%`,
+                        background: resourcePercent > 100 ? '#f56c6c' : '#67c23a',
+                        borderRadius: '3px',
+                      }"
+                    />
+                  </div>
+                </div>
+
+                <!-- 日期信息 -->
+                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+                  <div style="display: flex; justify-content: space-between; color: #666;">
+                    <span>📅 计划开始</span>
+                    <span style="color: #333; font-weight: 500;">{{ task.startDate?.slice(0, 10) ?? '-' }}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; color: #666;">
+                    <span>🏁 计划结束</span>
+                    <span style="color: #333; font-weight: 500;">{{ task.endDate?.slice(0, 10) ?? '-' }}</span>
+                  </div>
+                  <template v-if="task.actualStartDate || task.actualEndDate">
+                    <div style="border-top: 1px solid #f0f0f0; margin: 2px 0;"/>
+                    <div v-if="task.actualStartDate" style="display: flex; justify-content: space-between; color: #888;">
+                      <span>✅ 实际开始</span>
+                      <span style="color: #555; font-weight: 500;">{{ task.actualStartDate?.slice(0, 10) }}</span>
+                    </div>
+                    <div v-if="task.actualEndDate" style="display: flex; justify-content: space-between; color: #888;">
+                      <span>✅ 实际结束</span>
+                      <span style="color: #555; font-weight: 500;">{{ task.actualEndDate?.slice(0, 10) }}</span>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- 底部标签 -->
+                <div
+                  style="
+                    margin-top: 2px;
+                    padding-top: 6px;
+                    border-top: 1px solid #f0f0f0;
+                    font-size: 10px;
+                    color: #999;
+                    text-align: right;
+                  "
+                >✨ 自定义 Slot Tooltip</div>
+              </div>
+            </div>
+          </template>
+        </template>
       </GanttChart>
     </div>
 
