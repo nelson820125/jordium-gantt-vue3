@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-02-26
+
+### Added
+- 🎉 新增：Singleton Tooltip 架构重构，TaskBar 不再独立维护 Teleport DOM，改由 Timeline 统一管理单一 Tooltip 节点，大幅降低大数据量下的 DOM 开销
+- 🎉 新增：GanttChart 支持 `#taskbar-tooltip` 自定义 Scoped Slot，可完全替换内置 Tooltip 内容，获得 `task`、`taskStatus`、`resourcePercent` 三个作用域参数
+- 🎉 新增：GanttChart 新增 Props `enableTaskListCollapsible`（默认 `true`），设为 `false` 时强制隐藏 TaskList 并让 Timeline 独占全宽
+- 🎉 新增：GanttChart 新增 Props `taskListVisible`（默认 `true`），支持响应式外部控制 TaskList 显隐
+- 🎉 新增：GanttChart Expose API 新增 `getTaskListVisible()`、`setTaskListVisible(visible)`、`toggleTaskList()` 三个方法，支持命令式控制 TaskList
+- 🎉 新增：ToolbarConfig 新增 `showViewMode` 字段，用于控制视图切换按钮组的可见性
+- 🎉 新增：Demo 新增 `data-100.json` 中等规模数据集（100 条任务），默认数据源切换至此
+- 🎉 Added: Singleton Tooltip architecture refactored — TaskBar no longer maintains independent Teleport DOM, Timeline now manages a single shared Tooltip node, significantly reducing DOM overhead for large datasets
+- 🎉 Added: GanttChart supports `#taskbar-tooltip` custom Scoped Slot to fully replace built-in Tooltip content, exposing `task`, `taskStatus`, `resourcePercent` scope parameters
+- 🎉 Added: GanttChart new prop `enableTaskListCollapsible` (default `true`); set to `false` to force-hide TaskList and let Timeline occupy full width
+- 🎉 Added: GanttChart new prop `taskListVisible` (default `true`) for reactive external control of TaskList visibility
+- 🎉 Added: GanttChart Expose API adds `getTaskListVisible()`, `setTaskListVisible(visible)`, `toggleTaskList()` for imperative TaskList control
+- 🎉 Added: ToolbarConfig adds `showViewMode` field to control visibility of the view-mode toggle button group
+- 🎉 Added: Demo adds `data-100.json` medium-scale dataset (100 tasks) as the new default data source
+
+### Fixed
+- 🔧 修复：异步加载数据时首次滚动以空任务列表计算范围，真实数据到来后今日定位失效
+- 🔧 修复：从资源视图切换回任务视图后，`updateTimelineRange` 重算偏移导致今日标记偏离视口
+- 🔧 修复：GanttToolbar 中视图切换按钮组缺少 `v-if` 守卫，导致 `showViewMode: false` 设置不生效
+- 🔧 Fixed: When data is loaded asynchronously, initial scroll used empty task list; today marker lost after real data arrived
+- 🔧 Fixed: After switching from resource view back to task view, `updateTimelineRange` recalculation caused today marker to move out of viewport
+- 🔧 Fixed: View-mode toggle button group in GanttToolbar was missing `v-if` guard, causing `showViewMode: false` to have no effect
+
 ## [1.9.1] - 2026-02-07
 
 ### Fixed

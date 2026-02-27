@@ -552,5 +552,29 @@
       "🔧 修复: GanttChart管理ThemeChange的问题",
       "🔧 Fixed: Issue with ThemeChange management in GanttChart"
     ]
+  },
+  {
+    "version": "1.9.2",
+    "date": "2026-02-26",
+    "notes": [
+      "🎉 新增：Singleton Tooltip 架构重构，整个 Timeline 共享单一 Tooltip 节点，大幅降低大数据量下的 DOM 开销",
+      "🎉 新增：GanttChart 支持 #taskbar-tooltip 自定义插槽，可完全替换内置 Tooltip 内容",
+      "🎉 新增：GanttChart 新增 enableTaskListCollapsible / taskListVisible Props，支持响应式外部控制 TaskList 显隐",
+      "🎉 新增：GanttChart Expose API 新增 getTaskListVisible()、setTaskListVisible()、toggleTaskList() 方法",
+      "🎉 新增：ToolbarConfig 新增 showViewMode 字段，控制视图切换按钮组可见性",
+      "🔧 修复：异步数据加载后今日定位失效",
+      "🔧 修复：资源视图切换回任务视图后今日定位偏移",
+      "🔧 修复：GanttToolbar 视图切换按钮组 showViewMode:false 设置不生效",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自德国柏林的 Andrés Jorge 使用与反馈</span>",
+      "🎉 Added: Singleton Tooltip architecture refactored — Timeline shares a single Tooltip node, greatly reducing DOM overhead for large datasets",
+      "🎉 Added: GanttChart supports #taskbar-tooltip custom scoped slot to fully replace built-in Tooltip content",
+      "🎉 Added: GanttChart new props enableTaskListCollapsible / taskListVisible for reactive external TaskList visibility control",
+      "🎉 Added: GanttChart Expose API adds getTaskListVisible(), setTaskListVisible(), toggleTaskList() methods",
+      "🎉 Added: ToolbarConfig adds showViewMode field to control view-mode toggle button group visibility",
+      "🔧 Fixed: Today marker lost after async data load",
+      "🔧 Fixed: Today marker offset after switching from resource view back to task view",
+      "🔧 Fixed: GanttToolbar showViewMode:false had no effect due to missing v-if guard",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to Andrés Jorge from Berlin, Germany for their use and feedback</span>"
+    ]
   }
 ]

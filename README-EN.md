@@ -223,7 +223,9 @@ npm run dev
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Whether to display actual TaskBar (shows actual execution progress below planned TaskBar)  |
 | `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable TaskBar hover tooltip (shows task details on mouse hover)  |
 | `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource conflict visualization layer (shows diagonal stripe background for overload zones in resource view) |
-| `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) | 
+| `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) |
+| `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow collapsing/expanding the TaskList panel. When `false`: forcibly hides TaskList, SplitterBar and collapse button; Timeline takes full width |
+| `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Controls TaskList visibility (reactive). Only effective when `enableTaskListCollapsible=true` |
 
 #### TaskListColumn Component Props
 
@@ -1798,6 +1800,7 @@ Customize the toolbar functional buttons and time scale options.
 | `timeScaleDimensions` | `TimelineScale[]` | `['hour', 'day', 'week', 'month', 'quarter', 'year']` | Set time scale dimensions to display, options: `'hour'`, `'day'`, `'week'`, `'month'`, `'quarter'`, `'year'` |
 | `defaultTimeScale`    | `TimelineScale`   | `'week'`                                              | Default selected time scale                                                                                  |
 | `showExpandCollapse`  | `boolean`         | `true`                                                | Show "Expand All/Collapse All" button (for parent-child task tree structure)                                 |
+| `showViewMode` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`         | `true`                                                | Show Task / Resource view mode toggle button group                                                           |
 
 **TimelineScale Type Description:**
 
@@ -2349,6 +2352,9 @@ The GanttChart component exposes a series of methods through `defineExpose`, all
 | `scrollToToday` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Scroll to today's position |
 | `scrollToTask` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `taskId: number \| string` | `void` | Scroll to specified task (task will auto-expand to visible state) |
 | `scrollToDate` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `date: string \| Date` | `void` | Scroll to specified date position (format: `'YYYY-MM-DD'` or Date object) |
+| `getTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get the current visibility state of TaskList |
+| `setTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `visible: boolean` | `void` | Imperatively set TaskList visibility (only effective when `enableTaskListCollapsible=true`) |
+| `toggleTaskList` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle TaskList expand/collapse state with animation |
 
 #### Usage Example
 
@@ -2779,6 +2785,71 @@ const month = formatMonth(3)  // '3月' (zh-CN) or '03' (en-US)
 #### Slots (Slots)
 
 Component provides slots support, allowing custom task content rendering。
+
+##### `taskbar-tooltip` Slot ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Fully replaces the built-in TaskBar hover tooltip content. When used, the built-in tooltip is no longer rendered — the consumer has complete control.
+
+> **Prerequisite**: Requires `:enable-taskbar-tooltip="true"` (enabled by default)
+
+**Slot scope parameters (`TaskbarTooltipSlotScope`):**
+
+> The component provides data via `<slot :task="..." :task-status="..." />`. The consumer can receive the whole `scope` object or destructure only what's needed — all parameters are **optional**. `task` is the raw task object from your `:tasks` / `:resources` data, including any custom fields.
+
+| Param | Type | Description |
+| --- | --- | --- |
+| `task` | `Task` | The currently hovered task object with complete task data |
+| `taskStatus` | `{ color: string; label: string }` | Pre-computed task status (color + label) for quick display |
+| `resourcePercent` | `number \| null` | Resource usage percentage (valid in resource view; `null` in task view) |
+
+**All three patterns are equivalent:**
+
+```vue
+<!-- Pattern 1: whole scope object -->
+<template #taskbar-tooltip="scope">
+  {{ scope.task.name }}
+</template>
+
+<!-- Pattern 2: destructure only what you need -->
+<template #taskbar-tooltip="{ task }">
+  {{ task.name }}
+</template>
+
+<!-- Pattern 3: destructure all fields -->
+<template #taskbar-tooltip="{ task, taskStatus, resourcePercent }">
+  ...
+</template>
+```
+
+**Example — minimal usage (task name only):**
+
+```vue
+<GanttChart :tasks="tasks">
+  <template #taskbar-tooltip="{ task }">
+    <div class="my-simple-tooltip">{{ task.name }}</div>
+  </template>
+</GanttChart>
+```
+
+**Example — using full scope:**
+
+```vue
+<GanttChart :tasks="tasks">
+  <template #taskbar-tooltip="{ task, taskStatus, resourcePercent }">
+    <div class="my-tooltip">
+      <div class="tooltip-title" :style="{ borderColor: taskStatus.color }">
+        {{ task.name }}
+      </div>
+      <div>Status: {{ taskStatus.label }}</div>
+      <div>Start: {{ task.startDate }}</div>
+      <div>End: {{ task.endDate }}</div>
+      <div v-if="resourcePercent !== null">Resource: {{ resourcePercent }}%</div>
+    </div>
+  </template>
+</GanttChart>
+```
+
+---
 
 ##### `custom-task-content` Slots
 

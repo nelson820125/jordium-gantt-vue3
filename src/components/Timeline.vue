@@ -4661,15 +4661,25 @@ watch([timelineData, timelineContainerWidth], () => {
 // 监听viewMode和dataSource变化，刷新缓存和时间线
 watch(
   [viewMode, dataSource],
-  ([newViewMode]) => {
+  ([newViewMode], [oldViewMode]) => {
     invalidateTaskDateRangeCache()
-    // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
-    // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
-    // 若不重置则 scrollToTodayCenter 不会被触发，今日标记将出现在视口之外
+    const viewModeChanged = newViewMode !== oldViewMode
     if (newViewMode === 'task') {
+      // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
+      // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
+      // 若不重置则 scrollToTodayCenter 不会被触发，今日标记将出现在视口之外
       hasInitialAutoScroll = false
+      debouncedUpdateTimelineRange()
+    } else if (newViewMode === 'resource') {
+      if (viewModeChanged) {
+        // bugfix: 切换到资源视图时直接调用 scrollToTodayCenter
+        // 原因：updateTimelineRange() 在 resource 视图下直接返回（不更新 timelineData/timelineConfig），
+        // 导致内层 watch 无法触发，timeline 保留任务视图中拖拽后的偏移位置
+        // 注意：切换视图不重新挂载 DOM，timelineContainerElement 始终可用，
+        // nextTick 后直接调用即可，scrollToTodayCenter 内部有重试机制无需额外 setTimeout
+        nextTick(() => scrollToTodayCenter())
+      }
     }
-    debouncedUpdateTimelineRange()
   },
 )
 
