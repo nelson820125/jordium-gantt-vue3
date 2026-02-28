@@ -162,7 +162,7 @@ const milestones = ref([
   {
     id: 101,
     name: 'Project Approval',
-    date: '2025-01-01',
+    startDate: '2025-01-01',
     type: 'milestone',
   },
 ])
