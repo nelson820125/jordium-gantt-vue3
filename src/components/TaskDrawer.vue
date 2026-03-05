@@ -27,6 +27,8 @@ interface Props {
   delayTaskBackgroundColor?: string
   completeTaskBackgroundColor?: string
   ongoingTaskBackgroundColor?: string
+  /** 是否允许点击遮罩层关闭抽屉，默认为 true（保持原有行为）。设置为 false 可防止失去焦点时自动关闭 */
+  enableCloseOnOverlayClick?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -45,6 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
   delayTaskBackgroundColor: '#f56c6c',
   completeTaskBackgroundColor: '#67c23a',
   ongoingTaskBackgroundColor: '#409eff',
+  enableCloseOnOverlayClick: true,
 })
 
 const emit = defineEmits<{
@@ -484,7 +487,9 @@ const handleClose = () => {
 
 // 点击遮罩层关闭
 const handleOverlayClick = () => {
-  handleClose()
+  if (props.enableCloseOnOverlayClick) {
+    handleClose()
+  }
 }
 
 // 提交表单

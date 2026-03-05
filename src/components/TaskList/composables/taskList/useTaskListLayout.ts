@@ -65,41 +65,31 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
   const flattenedTasks = computed(() => getFlattenedVisibleTasks(tasks.value))
 
   /**
-   * v1.9.0 计算每个任务/资源的累计高度位置（支持动态行高）
+   * 资源视图专用：累计高度数组（动态行高，需要数组+二分查找）
+   * 任务视图固定行高，直接用公式计算，不构造此数组，避免 O(n) 分配
    */
   const cumulativeHeights = computed<number[]>(() => {
-    if (viewMode.value === 'resource') {
-      // 资源视图：使用每个资源的实际高度
-      const resources = dataSource.value as Resource[]
-      const heights: number[] = [0] // 第一个位置是0
-      let cumulative = 0
+    if (viewMode.value !== 'resource') return []
 
-      resources.forEach(resource => {
-        const layout = resourceTaskLayouts.value.get(resource.id)
-        const height = layout?.totalHeight || ROW_HEIGHT
-        cumulative += height
-        heights.push(cumulative)
-      })
-
-      return heights
-    } else {
-      // 任务视图：使用固定行高
-      const heights: number[] = [0]
-      for (let i = 1; i <= flattenedTasks.value.length; i++) {
-        heights.push(i * ROW_HEIGHT)
-      }
-      return heights
-    }
+    const resources = dataSource.value as Resource[]
+    const heights: number[] = [0]
+    let cumulative = 0
+    resources.forEach(resource => {
+      const layout = resourceTaskLayouts.value.get(resource.id)
+      const height = layout?.totalHeight || ROW_HEIGHT
+      cumulative += height
+      heights.push(cumulative)
+    })
+    return heights
   })
 
   /**
-   * 根据滚动位置查找对应的任务/资源索引（二分查找）
+   * 资源视图专用：根据滚动位置查找资源索引（二分查找）
    */
   const findIndexByScrollTop = (scrollTop: number): number => {
     const heights = cumulativeHeights.value
     let left = 0
     let right = heights.length - 1
-
     while (left < right) {
       const mid = Math.floor((left + right) / 2)
       if (heights[mid] <= scrollTop) {
@@ -108,38 +98,37 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
         right = mid
       }
     }
-
     return Math.max(0, left - 1)
   }
 
   /**
-   * 计算可视区域任务范围（支持动态行高）
+   * 计算可视区域任务范围
+   * - 任务视图：固定行高，O(1) 公式直接计算（不依赖 cumulativeHeights）
+   * - 资源视图：动态行高，使用累计高度数组 + 二分查找
    */
   const visibleTaskRange = computed<VisibleTaskRange>(() => {
     const scrollTop = taskListScrollTop.value
     const containerHeight = taskListBodyHeight.value || 600
-    const heights = cumulativeHeights.value
 
-    if (heights.length <= 1) {
-      return { startIndex: 0, endIndex: 0 }
-    }
+    if (viewMode.value === 'resource') {
+      const heights = cumulativeHeights.value
+      if (heights.length <= 1) return { startIndex: 0, endIndex: 0 }
 
-    // 找到起始索引（考虑缓冲区）
-    let startIndex = findIndexByScrollTop(scrollTop)
-    startIndex = Math.max(0, startIndex - VERTICAL_BUFFER)
-
-    // 找到结束索引（考虑缓冲区）
-    const scrollBottom = scrollTop + containerHeight
-    let endIndex = findIndexByScrollTop(scrollBottom)
-    endIndex = Math.min(heights.length - 1, endIndex + VERTICAL_BUFFER + 1)
-
-    const total = viewMode.value === 'resource'
-      ? (dataSource.value as Resource[]).length
-      : flattenedTasks.value.length
-
-    return {
-      startIndex: Math.min(startIndex, total),
-      endIndex: Math.min(endIndex, total),
+      const total = (dataSource.value as Resource[]).length
+      let startIndex = Math.max(0, findIndexByScrollTop(scrollTop) - VERTICAL_BUFFER)
+      const scrollBottom = scrollTop + containerHeight
+      let endIndex = Math.min(heights.length - 1, findIndexByScrollTop(scrollBottom) + VERTICAL_BUFFER + 1)
+      return {
+        startIndex: Math.min(startIndex, total),
+        endIndex: Math.min(endIndex, total),
+      }
+    } else {
+      // 任务视图：固定行高 ROW_HEIGHT，O(1) 直接计算，不访问 cumulativeHeights
+      const total = flattenedTasks.value.length
+      if (total === 0) return { startIndex: 0, endIndex: 0 }
+      const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER)
+      const endIndex = Math.min(total, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER)
+      return { startIndex, endIndex }
     }
   })
 
@@ -149,7 +138,6 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
   const visibleTasks = computed<TaskWithLevelAndIndex[]>(() => {
     const { startIndex, endIndex } = visibleTaskRange.value
     const slicedTasks = flattenedTasks.value.slice(startIndex, endIndex)
-    // 添加 rowIndex（基于在扁平化列表中的实际索引）
     return slicedTasks.map((item, index) => ({
       ...item,
       rowIndex: startIndex + index,
@@ -157,22 +145,31 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
   })
 
   /**
-   * Spacer 高度用于撑起滚动区域（支持动态行高）
+   * Spacer 高度撑起滚动区域
+   * 任务视图：O(1) 乘法；资源视图：从累计高度数组读取
    */
   const totalContentHeight = computed(() => {
-    const heights = cumulativeHeights.value
-    return heights.length > 0 ? heights[heights.length - 1] : 0
+    if (viewMode.value === 'resource') {
+      const heights = cumulativeHeights.value
+      return heights.length > 0 ? heights[heights.length - 1] : 0
+    }
+    return flattenedTasks.value.length * ROW_HEIGHT
   })
 
   const startSpacerHeight = computed(() => {
-    const startIdx = visibleTaskRange.value.startIndex
-    return cumulativeHeights.value[startIdx] || 0
+    if (viewMode.value === 'resource') {
+      return cumulativeHeights.value[visibleTaskRange.value.startIndex] || 0
+    }
+    return visibleTaskRange.value.startIndex * ROW_HEIGHT
   })
 
   const endSpacerHeight = computed(() => {
-    const endIdx = visibleTaskRange.value.endIndex
-    const endHeight = cumulativeHeights.value[endIdx] || 0
-    return Math.max(0, totalContentHeight.value - endHeight)
+    if (viewMode.value === 'resource') {
+      const endIdx = visibleTaskRange.value.endIndex
+      const endHeight = cumulativeHeights.value[endIdx] || 0
+      return Math.max(0, totalContentHeight.value - endHeight)
+    }
+    return Math.max(0, (flattenedTasks.value.length - visibleTaskRange.value.endIndex) * ROW_HEIGHT)
   })
 
   return {

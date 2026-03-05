@@ -1569,8 +1569,14 @@ const handleMouseMove = (e: MouseEvent) => {
       } else {
         // 其他情况：使用原有的简单计算
         const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
-        const duration = dragStartWidth.value / props.dayWidth
-        const newEndDate = addDaysToLocalDate(newStartDate, duration - 1)
+
+        // 从原始任务日期计算持续天数，避免从像素宽度反推（dragStartWidth / dayWidth）
+        // 导致的精度损失（WEEK视图 dayWidth=60/7 非整数，parseInt截断后往返计算误差会缩短任务）
+        const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+        const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+        const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
+        const duration = Math.round(durationMs / (1000 * 60 * 60 * 24))
+        const newEndDate = addDaysToLocalDate(newStartDate, duration)
 
         // 只更新临时数据，不触发事件
         tempTaskData.value = {

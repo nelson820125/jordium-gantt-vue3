@@ -226,6 +226,7 @@ npm run dev
 | `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) |
 | `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow collapsing/expanding the TaskList panel. When `false`: forcibly hides TaskList, SplitterBar and collapse button; Timeline takes full width |
 | `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Controls TaskList visibility (reactive). Only effective when `enableTaskListCollapsible=true` |
+| `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow TaskDrawer to auto-close (closes on outside click or Esc key). Set to `false` to disable auto-close — the drawer can only be closed via its internal close button |
 
 #### TaskListColumn Component Props
 
@@ -3637,7 +3638,13 @@ View the complete [Contributors list](./CONTRIBUTORS.md)。
 
 ---
 
-## 📄 Open Source License
+## � Troubleshooting
+
+For common issues and solutions, please refer to [Troubleshooting-EN.md](./Troubleshooting-EN.md).
+
+---
+
+## �📄 Open Source License
 
 [MIT License](./LICENSE) © 2025 JORDIUM.COM
 

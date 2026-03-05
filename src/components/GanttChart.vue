@@ -77,6 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
   theme: undefined, // 不设置默认值，允许自动检测系统主题
   enableTaskListCollapsible: true,
   taskListVisible: true,
+  enableTaskDrawerAutoClose: true,
 })
 
 const emit = defineEmits([
@@ -559,6 +560,12 @@ interface Props {
    * 可通过 prop 传入或通过 defineExpose 暴露的方法控制
    */
   taskListVisible?: boolean
+  /**
+   * 是否允许点击遮罩层关闭 TaskDrawer，默认为 true（保持原有行为）
+   * 设置为 false 可防止 TaskDrawer 在失去焦点（点击遮罩区域）时自动关闭
+   * 仅在 useDefaultDrawer=true 时有效
+   */
+  enableTaskDrawerAutoClose?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -1601,31 +1608,30 @@ const tasksForTimeline = computed(() => {
     }
 
     // 递归更新任务树中所有父任务的时间范围（从叶子节点开始向上）
+    // 优化：叶子任务直接返回原引用，避免无效 { ...task } 对象创建
+    // （后续 smartFlattenTasks 会在 spread 时附加 level，不会污染原对象）
     const updateParentDateRanges = (tasks: Task[]): Task[] => {
       return tasks.map(task => {
-        let updatedTask = { ...task }
-
-        // 先递归更新子任务
-        if (task.children && task.children.length > 0) {
-          updatedTask.children = updateParentDateRanges(task.children)
+        // 叶子任务：无需创建新对象，直接返回原引用
+        if (!task.children || task.children.length === 0) {
+          return task
         }
 
-        // 基于任务类型判断是否为父任务
-        const isParent =
-          task.type === 'story' || (updatedTask.children && updatedTask.children.length > 0)
-        updatedTask.isParent = isParent
+        // 父任务：先递归处理子任务
+        const updatedChildren = updateParentDateRanges(task.children)
+        const isParent = task.type === 'story' || true
 
-        // 如果是父任务且有子任务，重新计算时间范围
-        if (isParent && updatedTask.children && updatedTask.children.length > 0) {
-          const { startDate, endDate } = calculateParentDateRange(updatedTask)
-          updatedTask = {
-            ...updatedTask,
-            startDate,
-            endDate,
-          }
+        // 重新计算父任务时间范围
+        const taskWithChildren = { ...task, children: updatedChildren }
+        const { startDate, endDate } = calculateParentDateRange(taskWithChildren)
+
+        return {
+          ...task,
+          children: updatedChildren,
+          isParent,
+          startDate,
+          endDate,
         }
-
-        return updatedTask
       })
     }
 
@@ -3530,6 +3536,7 @@ defineExpose({
       :delay-task-background-color="props.delayTaskBackgroundColor"
       :complete-task-background-color="props.completeTaskBackgroundColor"
       :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
+      :enable-close-on-overlay-click="props.enableTaskDrawerAutoClose"
       @submit="handleTaskDrawerSubmit"
       @close="taskDrawerVisible = false"
       @start-timer="handleStartTimer"

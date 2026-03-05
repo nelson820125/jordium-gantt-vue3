@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.3] - 2026-03-05
+
+### Added
+- 🎉 新增：GanttChart 新增 enableTaskDrawerAutoClose 属性，设置为 false 时禁用 TaskDrawer 的自动关闭行为
+- 🎉 Added: GanttChart new prop enableTaskDrawerAutoClose — set to false to disable the automatic closing behavior of the TaskDrawer
+
+### Fixed
+- 🔧 修复：周视图下拖拽 TaskBar 左右移动后任务宽度（持续时间）自动缩短的问题
+- 🔧 Fixed: TaskBar width (duration) shrinking after dragging left and right in weekly view
+
 ## [1.9.2] - 2026-02-26
 
 ### Added

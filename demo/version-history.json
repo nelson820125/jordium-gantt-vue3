@@ -576,5 +576,17 @@
       "🔧 Fixed: GanttToolbar showViewMode:false had no effect due to missing v-if guard",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to Andrés Jorge from Berlin, Germany for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.9.3",
+    "date": "2026-03-05",
+    "notes": [
+      "🎉 新增：GanttChart 新增 enableTaskDrawerAutoClose 属性，设置为 false 时禁用 TaskDrawer 的自动关闭行为",
+      "🔧 修复：周视图下拖拽 TaskBar 左右移动后任务宽度（持续时间）自动缩短的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自xuhang513@gitee的使用与反馈</span>",
+      "🎉 Added: GanttChart new prop enableTaskDrawerAutoClose — set to false to disable the automatic closing behavior of the TaskDrawer",
+      "🔧 Fixed: TaskBar width (duration) shrinking after dragging left and right in weekly view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to xuhang513@gitee for their use and feedback</span>"
+    ]
   }
 ]
