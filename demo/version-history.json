@@ -597,13 +597,13 @@
       "🔧 修复：任务视图切换至资源视图后今日定位偏移问题",
       "🔧 修复：任务视图切换至资源视图后最大和最小日期范围计算问题",
       "🔧 修复：资源视图下，小时/日/周视图切换后，最大值和最小值范围问题",
-      "🔧 修复：包弱点处理",
+      "🔧 修复：包弱点处理，jspdf增加了依赖包dompurify，用于HTML的XSS消毒",
       "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自jwuxin@gitee的使用与反馈</span>",
       "🔧 Fixed: In date view, after dragging the SplitterBar and collapsing/expanding the TaskList, the calculation caused the February cycle to be lost",
       "🔧 Fixed: After switching from task view to resource view, the today marker offset issue",
       "🔧 Fixed: After switching from task view to resource view, the max and min date range calculation issue",
       "🔧 Fixed: In resource view, after switching between hourly/daily/weekly views, the max and min date range issue",
-      "🔧 Fixed: Vulnerabilities fixed",
+      "🔧 Fixed: Vulnerabilities fixed, jspdf added dependency dompurify for HTML XSS sanitization",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jwuxin@gitee for their use and feedback</span>"
     ]
   }
