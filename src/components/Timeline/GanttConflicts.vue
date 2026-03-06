@@ -91,7 +91,21 @@ const canvasStyle = computed(() => ({
 // 监听任务列表变化
 watch(() => props.tasks, () => {
   if (isDraggingTaskBar.value) {
+    // 拖拽进行中：标记需要重算，等拖拽结束后再执行
     needsRecalculation.value = true
+  } else {
+    // 拖拽结束后的已提交数据变更：isDraggingTaskBar 已先于数据更新变为 false，
+    // 此处直接触发增量/全量重算，避免冲突层不刷新。
+    nextTick(() => {
+      if (lastChangedTaskId.value !== null) {
+        recalculateConflictsIncremental(lastChangedTaskId.value)
+        lastChangedTaskId.value = null
+      } else {
+        texturePatterns.value = { light: null, medium: null, severe: null }
+        coordsCache.clear()
+        recalculateConflicts()
+      }
+    })
   }
 }, { deep: true })
 

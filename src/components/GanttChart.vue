@@ -813,6 +813,10 @@ const dragging = ref(false)
 // v1.9.5 P2-4优化 - 提供Split Bar拖拽状态给子组件
 provide('isSplitBarDragging', dragging)
 
+// TaskList 切换动画进行中的标志（提供给 Timeline，避免 toggle 期间误触发 resize 重算）
+const isTaskListToggling = ref(false)
+provide('isTaskListToggling', isTaskListToggling)
+
 function onMouseDown(e: MouseEvent) {
   // 检查事件目标是否是task-list-toggle按钮或其子元素
   const target = e.target as HTMLElement
@@ -991,6 +995,9 @@ const toggleTaskList = () => {
   // 如果正在动画中，忽略点击
   if (isAnimating.value) return
 
+  // 标记 toggle 进行中，阻止 Timeline 内 containerResizeObserver 误触发日期范围重算
+  isTaskListToggling.value = true
+
   // 触发撞击动画
   isAnimating.value = true
 
@@ -1012,7 +1019,9 @@ const toggleTaskList = () => {
     isAnimating.value = false
     animationClass.value = ''
 
-    // 手动切换TaskList后，通知Timeline重新计算半圆
+    // toggle 结束：先清除标志（Timeline watch 会响应并只更新 sticky/bubble，跳过日期范围重算）
+    // 再通知 Timeline 重新计算半圆和 TaskBar 位置
+    isTaskListToggling.value = false
     nextTick(() => {
       window.dispatchEvent(
         new CustomEvent('timeline-container-resized', {
@@ -1025,11 +1034,14 @@ const toggleTaskList = () => {
 
 // 监听Timeline的TaskList切换事件
 const handleToggleTaskList = (event: CustomEvent) => {
+  // 标记 toggle 进行中，阻止 Timeline 内 containerResizeObserver 误触发日期范围重算
+  isTaskListToggling.value = true
   isTaskListVisible.value = event.detail
 
   // TaskList切换会改变Timeline容器宽度，需要通知Timeline重新计算半圆
-  // 派发事件通知Timeline容器宽度发生了变化
+  // toggle 结束：清除标志后再派发事件，Timeline watch 响应时只更新 sticky/bubble
   nextTick(() => {
+    isTaskListToggling.value = false
     window.dispatchEvent(
       new CustomEvent('timeline-container-resized', {
         detail: { source: 'task-list-toggle' },
@@ -1069,11 +1081,16 @@ onMounted(() => {
 
   // 监听 timeline 容器宽度变化
   nextTick(() => {
-    // 监听右侧面板（timeline 的可视容器）的宽度
-    const rightPanel = document.querySelector('.gantt-panel-right')
-    if (rightPanel) {
+    // 监听 gantt-body（整体布局容器）宽度变化作为日期范围规划的基准
+    // 使用 .gantt-body 而非 .gantt-panel-right，原因：
+    //   1. 拖拽 SplitterBar 和 TaskList toggle 只改变左右面板的内部分割，.gantt-body 总宽度不变
+    //      → 不会误触发日期范围重算
+    //   2. 窗口 resize / 全屏切换才改变 .gantt-body 宽度 → 正确触发重算
+    //   3. 作为「最大可能宽度」兜底：TaskList 隐藏时 Timeline 最大可展开至此宽度
+    const ganttBody = document.querySelector('.gantt-body')
+    if (ganttBody) {
       // 初始化宽度
-      timelineContainerWidth.value = rightPanel.clientWidth
+      timelineContainerWidth.value = ganttBody.clientWidth
 
       // 使用 ResizeObserver 监听宽度变化
       resizeObserver = new ResizeObserver(entries => {
@@ -1081,7 +1098,7 @@ onMounted(() => {
           timelineContainerWidth.value = entry.contentRect.width
         }
       })
-      resizeObserver.observe(rightPanel)
+      resizeObserver.observe(ganttBody)
     }
   })
 })
@@ -1720,8 +1737,18 @@ const timelineDateRange = computed(() => {
   }
 
   let allTasks: Task[] = []
-  if (props.tasks) allTasks = allTasks.concat(flattenTasks(props.tasks))
-  if (props.milestones) allTasks = allTasks.concat(props.milestones)
+
+  if (currentViewMode.value === 'resource' && props.resources) {
+    // 资源视图：从 resource.tasks 提取日期，避免传入基于任务视图的错误范围
+    for (const resource of (props.resources as Resource[])) {
+      if (resource.tasks && Array.isArray(resource.tasks)) {
+        allTasks = allTasks.concat(flattenTasks(resource.tasks as Task[]))
+      }
+    }
+  } else {
+    if (props.tasks) allTasks = allTasks.concat(flattenTasks(props.tasks))
+    if (props.milestones) allTasks = allTasks.concat(props.milestones)
+  }
 
   // 过滤出有日期的任务
   const startDates = allTasks

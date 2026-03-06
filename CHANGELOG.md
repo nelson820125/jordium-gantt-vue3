@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.4] - 2026-03-06
+
+### Fixed
+- 🔧 修复：日期视图下，SplitterBar拖拽以及TaskList收起/展开后，计算导致2月份周期丢失问题
+- 🔧 修复：任务视图切换至资源视图后今日定位偏移问题
+- 🔧 修复：任务视图切换至资源视图后最大和最小日期范围计算问题
+- 🔧 修复：资源视图下，小时/日/周视图切换后，最大值和最小值范围问题
+- 🔧 Fixed: In date view, after dragging the SplitterBar and collapsing/expanding the TaskList, the calculation caused the February cycle to be lost
+- 🔧 Fixed: After switching from task view to resource view, the today marker offset issue
+- 🔧 Fixed: After switching from task view to resource view, the max and min date range calculation issue
+- 🔧 Fixed: In resource view, after switching between hourly/daily/weekly views, the max and min date range issue
+
 ## [1.9.3] - 2026-03-05
 
 ### Added

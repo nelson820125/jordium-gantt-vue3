@@ -1,0 +1,37 @@
+{
+  "tasks": [
+    {
+      "id": 1001,
+      "name": "上午会议",
+      "assignee": "测试用户",
+      "startDate": "2026-03-02 09:00",
+      "endDate": "2026-03-10 10:30",
+      "progress": 50,
+      "estimatedHours": 1.5,
+      "actualHours": 0.75,
+      "type": "task"
+    },
+    {
+      "id": 1002,
+      "name": "午后开发",
+      "assignee": "开发者",
+      "startDate": "2026-03-02 09:00",
+      "endDate": "2026-03-06 16:15",
+      "progress": 30,
+      "estimatedHours": 2.25,
+      "actualHours": 1.33,
+      "type": "task"
+    },
+    {
+      "id": 1003,
+      "name": "测试任务",
+      "assignee": "测试员",
+      "startDate": "2026-03-02 09:00",
+      "endDate": "2026-03-08 17:45",
+      "progress": 0,
+      "estimatedHours": 1.25,
+      "actualHours": 0,
+      "type": "task"
+    }
+  ]
+}

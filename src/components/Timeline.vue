@@ -168,6 +168,9 @@ provide('positionCache', positionCache)
 // v1.9.5 P2-4优化 - 注入Split Bar拖拽状态
 const isSplitBarDragging = inject<Ref<boolean>>('isSplitBarDragging', ref(false))
 
+// 注入 TaskList toggle 状态（toggle 期间阻止 containerResizeObserver 误触发日期范围重算）
+const isTaskListToggling = inject<Ref<boolean>>('isTaskListToggling', ref(false))
+
 // v1.9.5 注入showConflicts配置
 const showConflicts = inject<ComputedRef<boolean>>('gantt-show-conflicts', computed(() => true))
 
@@ -292,7 +295,10 @@ const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
 // 响应外部props变化，动态更新timelineConfig
 watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
-  // 所有视图都正常响应props变化
+  // 资源视图下不响应 props 变化：
+  //   GanttChart 的 timelineDateRange 计算可能传入基于任务视图的日期范围（已 computed 修复，但保留守卫作为二重保险）
+  //   资源视图的日期范围由 updateTimeScale / debouncedUpdateTimelineRange 内部管理
+  if (viewMode.value === 'resource') return
   if (props.startDate || props.endDate) {
     if (!isUpdatingTimelineConfig) {
       timelineConfig.value.startDate = newStart
@@ -496,9 +502,13 @@ const getDayTimelineRange = () => {
 
   const { minDate, maxDate } = taskRange
 
-  // 开始日期：任务最小开始日期-30天
-  let startDate = new Date(minDate)
-  startDate.setDate(startDate.getDate() - 30)
+  // 开始日期：取任务最小日期所在月的前一个月月初（第1天）
+  // 采用月运算而非减30天，原因：
+  //   减30天后若落在月末（如1月31日），normalize 到月初会多出一整个月（1月→1月1日），
+  //   而语义上只需在任务月份前保留一个完整月作为 buffer。
+  // 直接用 new Date(year, month-1, 1) 使 startDate 始终为月初且精确为前一个月，
+  //   generateDayTimelineData 以月为单位迭代时 setMonth(+1) 不会因日期溢出跳过任何月份。
+  let startDate = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1)
 
   // 结束日期：任务最大结束日期+30天
   let endDate = new Date(maxDate)
@@ -1417,6 +1427,14 @@ let scrollTimeout: number | null = null
 // 粘性效果所需的滚动位置信息
 const timelineScrollLeft = ref(0)
 const timelineContainerWidth = ref(0)
+
+// 跳过 debouncedUpdateTimelineRange 的一次性标志
+// 用于 drag-end / toggle-end 配置 trigger 的宽度更新，只需要更新 sticky/bubble，无需重算日期范围
+let skipTimelineRangeUpdate = false
+
+// 允许 updateTimelineRange 在资源视图下执行一次的一次性标志
+// 只在任务视图 → 资源视图切换时设置，计算完成后自动清除
+let forceTimelineRangeInResourceView = false
 
 // 半圆气泡控制状态
 const hideBubbles = ref(true) // 初始时隐藏半圆，等待初始滚动完成
@@ -2352,10 +2370,13 @@ const getOtherMilestonesInfo = (currentId: number) => {
 watch(isSplitBarDragging, (dragging) => {
   if (!dragging) {
     // v1.9.9 拖拽结束后，手动触发一次容器尺寸更新（因为拖拽期间ResizeObserver被暂停）
+    // 设置 skip 标志：拖拽不改变日期范围，只更新 sticky/bubble
     if (timelineContainerElement.value) {
       const newWidth = timelineContainerElement.value.clientWidth
       if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
+        skipTimelineRangeUpdate = true
         timelineContainerWidth.value = newWidth
+        nextTick(() => { skipTimelineRangeUpdate = false })
       }
     }
 
@@ -2387,6 +2408,23 @@ const handleSplitterDragEnd = () => {
   // v1.9.5 P2-4优化 - 状态已由GanttChart统一管理
   // 清理工作已移至watch(isSplitBarDragging)
 }
+
+// 监听 TaskList toggle 结束，手动更新 Timeline 内部容器宽度
+// 跳过日期范围重算，只让 sticky/bubble 重算和 TaskBar 重渲染生效
+watch(isTaskListToggling, (toggling) => {
+  if (!toggling) {
+    // toggle 结束：读取 .timeline 滚动容器的真实新宽度
+    // 使用 skip 标志，避免 watch(timelineContainerWidth) 触发 debouncedUpdateTimelineRange
+    if (timelineContainerElement.value) {
+      const newWidth = timelineContainerElement.value.clientWidth
+      if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
+        skipTimelineRangeUpdate = true
+        timelineContainerWidth.value = newWidth
+        nextTick(() => { skipTimelineRangeUpdate = false })
+      }
+    }
+  }
+})
 
 // 处理Timeline容器resize事件（如TaskList切换等）
 const handleTimelineContainerResized = () => {
@@ -3763,6 +3801,11 @@ onMounted(() => {
         if (isSplitBarDragging.value) {
           return
         }
+        // TaskList toggle 期间不处理宽度变化，外层 .gantt-body 已屏蔽日期范围重算
+        // toggle 结束后由 watch(isTaskListToggling) 手动更新宽度
+        if (isTaskListToggling.value) {
+          return
+        }
 
         for (const entry of entries) {
           const newWidth = entry.contentRect.width
@@ -4587,10 +4630,11 @@ const debouncedUpdateTimelineRange = (delay = 50) => {
 const updateTimelineRange = () => {
   // 资源视图下不自动调整时间范围，保持Timeline背景层（header + 竖列）稳定
   // 避免滚动时重新生成timelineData导致header闪烁
-  // 虚拟滚动通过visibleTimeRange过滤TaskBar即可
-  if (viewMode.value === 'resource') {
+  // 例外：任务视图 → 资源视图切换时，需要一次性重算以实现基于资源任务的日期范围
+  if (viewMode.value === 'resource' && !forceTimelineRangeInResourceView) {
     return
   }
+  forceTimelineRangeInResourceView = false
 
   let newRange: { startDate: Date; endDate: Date } | null = null
 
@@ -4624,6 +4668,9 @@ watch(
   (newWidth, oldWidth) => {
     // 拖拽 splitter 时跳过重新计算
     if (isSplitterDragging.value) return
+
+    // drag-end / toggle-end 触发的宽度更新：只需要 sticky/bubble/TaskBar 重渲染，跳过日期范围重算
+    if (skipTimelineRangeUpdate) return
 
     // 只在容器宽度从 0 变为有效值，或容器宽度发生显著变化时重新计算
     if (!oldWidth || oldWidth === 0 || Math.abs(newWidth - oldWidth) > 50) {
@@ -4672,12 +4719,13 @@ watch(
       debouncedUpdateTimelineRange()
     } else if (newViewMode === 'resource') {
       if (viewModeChanged) {
-        // bugfix: 切换到资源视图时直接调用 scrollToTodayCenter
-        // 原因：updateTimelineRange() 在 resource 视图下直接返回（不更新 timelineData/timelineConfig），
-        // 导致内层 watch 无法触发，timeline 保留任务视图中拖拽后的偏移位置
-        // 注意：切换视图不重新挂载 DOM，timelineContainerElement 始终可用，
-        // nextTick 后直接调用即可，scrollToTodayCenter 内部有重试机制无需额外 setTimeout
-        nextTick(() => scrollToTodayCenter())
+        // 切换到资源视图：基于资源任务重算日期范围，重算完成后由 watch([timelineData,...]) 触发滚到今日
+        // 重置 hasInitialAutoScroll，确保 watch([timelineData, timelineConfig...]) 在重算完成后能滚到今日
+        // 不在此处直接调用 scrollToTodayCenter()，因为 debouncedUpdateTimelineRange 有 50ms 延迟，
+        // nextTick 会在 50ms 之前就执行，导致用旧的 task 视图坐标滚到错误位置
+        hasInitialAutoScroll = false
+        forceTimelineRangeInResourceView = true
+        debouncedUpdateTimelineRange()
       }
     }
   },
