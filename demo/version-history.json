@@ -606,5 +606,17 @@
       "🔧 Fixed: Vulnerabilities fixed, jspdf added dependency dompurify for HTML XSS sanitization",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jwuxin@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.9.5",
+    "date": "2026-03-07",
+    "notes": [
+      "🔧 优化：优化算法，提升插件性能，更好兼容移动设备的访问",
+      "🔧 优化：来自Github一位用户的共同探讨，是带来此次性能飞跃的关键，同时他也提供了另外一种应用层的优化方案，请参考: <a href=\"https://github.com/nelson820125/jordium-gantt-vue3/discussions/16\">discussion #16</a>",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自eldrift@github的使用与反馈</span>",
+      "🔧 Optimized: Algorithm optimizations for improved plugin performance and better compatibility with mobile device access",
+      "🔧 Optimized: Collaborative discussions with a Github user led to this performance leap, and they also provided another application-level optimization方案, please refer to: <a href=\"https://github.com/nelson820125/jordium-gantt-vue3/discussions/16\">discussion #16</a>",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to eldritf@github for their use and feedback</span>"
+    ]
   }
 ]

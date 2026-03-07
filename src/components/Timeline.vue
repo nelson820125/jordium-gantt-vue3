@@ -178,6 +178,11 @@ const showConflicts = inject<ComputedRef<boolean>>('gantt-show-conflicts', compu
 const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
 const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
 const timelineBodyScrollTop = ref(0) // 纵向滚动位置
+// 滚动同步标志位：防止 TaskList ↔ Timeline 垂直滚动形成 2 跳循环派发
+let _isSyncingScrollFromTaskList = false
+// GanttLinks 性能优化：滚动期间暂停 canvas 重绘，滚动停止后补绘一次
+const isTimelineScrolling = ref(false)
+let _scrollIdleTimer: ReturnType<typeof setTimeout> | null = null
 const timelineBodyHeight = ref(0) // 容器高度状态管理
 
 // v1.9.9 优化：注入GanttChart提供的资源布局，避免重复计算
@@ -1744,6 +1749,74 @@ const visibleResources = computed(() => {
     originalIndex: startIndex + index,
   }))
 })
+
+// ─── 任务视图 TaskBar 分批渲染（对齐资源视图策略）────────────────────────────────────
+// 每次虚拟窗口滑动时，新进入视口的行限流挂载，避免同帧大量 getBoundingClientRect reflow
+const TASK_VIEW_BATCH_SIZE = 3 // 每帧最多新增 3 行（节奏与资源视图一致）
+let _taskBatchRafId: number | null = null
+let _taskBatchQueue: { task: Task; originalIndex: number }[] = []
+// P2 修复：ID 可为 number | string，之前用 Set<number> 导致字符串 ID 永不被清理
+const _taskRenderedIds = new Set<number | string>()
+const taskRenderedItems = shallowRef<{ task: Task; originalIndex: number }[]>([])
+
+watch(
+  [visibleTasks, viewMode] as const,
+  ([newVisible, mode]) => {
+    if (mode !== 'task') {
+      // 切换到其他视图时清理状态
+      if (_taskBatchRafId !== null) { cancelAnimationFrame(_taskBatchRafId); _taskBatchRafId = null }
+      _taskBatchQueue = []
+      _taskRenderedIds.clear()
+      taskRenderedItems.value = []
+      return
+    }
+
+    // 显式声明为 Set<number | string>，与 _taskRenderedIds 类型对齐（任务视图 ID 为 number）
+    const newIds = new Set<number | string>(newVisible.map(t => t.task.id))
+
+    // P1 修复：移除已滚出视口的 ID，同步清理 taskBarPositions
+    // 虚拟滚动进出视口不触发 tasks watch，若不主动清理会导致位置对象无限增长
+    const removedIds: (number | string)[] = []
+    _taskRenderedIds.forEach(id => {
+      if (!newIds.has(id)) {
+        _taskRenderedIds.delete(id)
+        removedIds.push(id)
+      }
+    })
+    if (removedIds.length > 0) {
+      const newPositions = { ...taskBarPositions.value }
+      for (const id of removedIds) {
+        delete newPositions[id as number]
+      }
+      taskBarPositions.value = newPositions
+    }
+
+    // 找出新进入视口的行
+    const toAdd = newVisible.filter(t => !_taskRenderedIds.has(t.task.id))
+
+    // 取消上一帧未完成的批次
+    if (_taskBatchRafId !== null) { cancelAnimationFrame(_taskBatchRafId); _taskBatchRafId = null }
+    _taskBatchQueue = toAdd
+
+    // 立即渲染第一批（保证当帧无闪烁）
+    const firstBatch = _taskBatchQueue.splice(0, TASK_VIEW_BATCH_SIZE)
+    firstBatch.forEach(t => _taskRenderedIds.add(t.task.id))
+    taskRenderedItems.value = newVisible.filter(t => _taskRenderedIds.has(t.task.id))
+
+    // 剩余行逐帧补入
+    if (_taskBatchQueue.length > 0) {
+      const step = () => {
+        const batch = _taskBatchQueue.splice(0, TASK_VIEW_BATCH_SIZE)
+        if (batch.length === 0) { _taskBatchRafId = null; return }
+        batch.forEach(t => _taskRenderedIds.add(t.task.id))
+        taskRenderedItems.value = visibleTasks.value.filter(t => _taskRenderedIds.has(t.task.id))
+        _taskBatchRafId = _taskBatchQueue.length > 0 ? requestAnimationFrame(step) : null
+      }
+      _taskBatchRafId = requestAnimationFrame(step)
+    }
+  },
+  { immediate: true },
+)
 
 // v1.9.6 Sprint2(P1+P4) - 资源视图TaskBar分批渲染队列（优化：批次从20改为5）
 const RESOURCE_BATCH_SIZE = 5 // 方案4: 更小批次，从20改为5
@@ -3556,12 +3629,18 @@ const canvasHeight = ref(0)
 const canvasOffsetLeft = ref(0) // Canvas 在全局坐标系中的偏移量
 const canvasOffsetTop = ref(0)
 
-// 虚拟渲染 Canvas 的安全宽度（防止超过浏览器限制）
-// 可根据实际需求调整：
-// - 5000: 最小内存 (~30MB)，适合低端设备，但滚动时更频繁更新
-// - 10000: 平衡选择 (~60MB)，覆盖小时视图 10 天，周视图 2 年
-const SAFE_CANVAS_WIDTH = 5000 // 平衡性能和覆盖范围
-const SAFE_CANVAS_HEIGHT = 5000
+// 虚拟渲染 Canvas 的安全尺寸（动态计算，防止超过浏览器限制和移动端 OOM）
+// 策略：以当前可见视口的倍数为基准，全屏/分辨率变化时 updateSvgSize() 自动重算
+// - 宽度 = clamp(视口宽度 × 3, 2000, 8000)：覆盖日视图滑动 2 屏 + 关系线缓冲
+// - 高度 = clamp(视口高度 × 3, 1200, 4000)：覆盖 3 屏任务行，移动端从 100MB→15MB
+function computeSafeCanvasDimensions(): { width: number; height: number } {
+  const vw = Math.max(timelineContainerWidth.value, 300) // 避免初始化为 0
+  const vh = Math.max(timelineBodyHeight.value, 300)
+  return {
+    width: Math.min(Math.max(vw * 3, 2000), 8000),
+    height: Math.min(Math.max(vh * 3, 1200), 4000),
+  }
+}
 
 function updateSvgSize() {
   if (bodyContentRef.value) {
@@ -3574,8 +3653,11 @@ function updateSvgSize() {
     const scrollLeft = timelineScrollLeft.value
     const scrollTop = timelineBodyScrollTop.value
 
+    // 根据当前视口（全屏/窗口/屏幕分辨率）动态确定 Canvas 安全尺寸
+    const { width: SAFE_CANVAS_WIDTH, height: SAFE_CANVAS_HEIGHT } = computeSafeCanvasDimensions()
+
     // 虚拟渲染策略（统一模式）：
-    // Canvas 始终使用固定安全宽度，通过 offsetLeft 动态定位
+    // Canvas 始终使用动态安全宽度，通过 offsetLeft 动态定位
     canvasWidth.value = SAFE_CANVAS_WIDTH
 
     // 计算 Canvas 覆盖的起始位置
@@ -3614,6 +3696,12 @@ function updateSvgSize() {
   }
 }
 
+// 原因2优化：批量合并 handleBarMounted 更新，避免每个 TaskBar 挂载都触发一次响应式变化
+// 原来：N 个 TaskBar 挂载 → N 次 taskBarPositions spread 内存复制 + N 次 GanttLinks RAF
+// 现在：N 个 TaskBar 挂载 → 1 次合并写入 + 1 次 GanttLinks 重绘
+const _pendingBarUpdates: Record<number, { left: number; top: number; width: number; height: number }> = {}
+let _barUpdateScheduled = false
+
 function handleBarMounted(payload: {
   id: number
   left: number
@@ -3622,22 +3710,51 @@ function handleBarMounted(payload: {
   height: number
 }) {
   if (!bodyContentRef.value) return
-  const baseRect = bodyContentRef.value.getBoundingClientRect()
-  // 统一坐标系：以bodyContent为基准
-  // 注意：使用 shallowRef 时，需要触发整个对象引用的变化
-  taskBarPositions.value = {
-    ...taskBarPositions.value,
-    [payload.id]: {
-      left: payload.left - baseRect.left,
-      top: payload.top - baseRect.top,
-      width: payload.width,
-      height: payload.height,
-    },
+  // 使用已有的 cachedBodyRect，避免每次挂载都触发强制 reflow
+  // bodyRectInvalidated 在滚动时被置为 true，确保坐标转换准确
+  if (!cachedBodyRect || bodyRectInvalidated) {
+    cachedBodyRect = bodyContentRef.value.getBoundingClientRect()
+    bodyRectCacheTime = Date.now()
+    bodyRectInvalidated = false
   }
-  setTimeout(() => {
-    updateSvgSize()
-  }, 200)
+  const baseRect = cachedBodyRect
+  // 先缓存到 pending，不立即触发响应式
+  _pendingBarUpdates[payload.id] = {
+    left: payload.left - baseRect.left,
+    top: payload.top - baseRect.top,
+    width: payload.width,
+    height: payload.height,
+  }
+  if (!_barUpdateScheduled) {
+    // 滚动期间跳过 flush：_pendingBarUpdates 继续累积，等滚动停止后统一写入
+    // GanttLinks 此时本就等待 isScrolling=false 才重绘，延迟不影响显示
+    if (isTimelineScrolling.value) return
+
+    _barUpdateScheduled = true
+    // 微任务：将同一渲染批次内的多次调用合并为一次响应式引用变化
+    Promise.resolve().then(() => {
+      _barUpdateScheduled = false
+      // 一次性合并，只触发一次 GanttLinks 重绘
+      taskBarPositions.value = { ...taskBarPositions.value, ..._pendingBarUpdates }
+      for (const key in _pendingBarUpdates) {
+        delete _pendingBarUpdates[key as unknown as number]
+      }
+      setTimeout(() => updateSvgSize(), 200)
+    })
+  }
 }
+
+// 滚动停止时统一 flush 滚动期间积累的 bar 位置更新
+watch(isTimelineScrolling, (scrolling) => {
+  if (scrolling) return
+  if (Object.keys(_pendingBarUpdates).length === 0) return
+  _barUpdateScheduled = false
+  taskBarPositions.value = { ...taskBarPositions.value, ..._pendingBarUpdates }
+  for (const key in _pendingBarUpdates) {
+    delete _pendingBarUpdates[key as unknown as number]
+  }
+  setTimeout(() => updateSvgSize(), 200)
+})
 
 // 向上传递 TaskBar 拖拽/拉伸事件
 const handleTaskBarDragEnd = (updatedTask: Task) => {
@@ -3859,8 +3976,12 @@ const handleTaskListVerticalScroll = (event: CustomEvent) => {
   debouncedUpdateCanvasPosition()
 
   if (timelineBodyElement.value && Math.abs(timelineBodyElement.value.scrollTop - scrollTop) > 1) {
-    // 使用更精确的比较，避免1px以内的细微差异导致的循环触发
+    // 设置标志位：当前是由 TaskList 触发的同步写入
+    // 防止 handleTimelineBodyScroll 被触发后反向再次派发事件（2跳链路）
+    _isSyncingScrollFromTaskList = true
     timelineBodyElement.value.scrollTop = scrollTop
+    // scroll 事件会同步触发，Promise.resolve 在其后执行，确保标志在返回相义务后重置
+    Promise.resolve().then(() => { _isSyncingScrollFromTaskList = false })
   }
 }
 
@@ -3877,10 +3998,21 @@ const handleTimelineBodyScroll = (event: Event) => {
   // 优化：滚动时失效 bodyRect 缓存（用于连接线拖拽）
   bodyRectInvalidated = true
 
+  // GanttLinks 性能优化：设置滚动标志，暂停 canvas 重绘
+  isTimelineScrolling.value = true
+  if (_scrollIdleTimer !== null) clearTimeout(_scrollIdleTimer)
+  _scrollIdleTimer = setTimeout(() => {
+    _scrollIdleTimer = null
+    isTimelineScrolling.value = false
+  }, 150)
+
   debouncedUpdateCanvasPosition()
 
   // 拖拽时不同步滚动事件，避免性能问题
   if (isDragging.value) return
+
+  // 由 TaskList → Timeline 同步写入触发时，不再反向派发，避免 2 跳循环
+  if (_isSyncingScrollFromTaskList) return
 
   // 同步垂直滚动到TaskList
   if (scrollTop >= 0) {
@@ -4736,19 +4868,19 @@ watch(
   () => tasks.value,
   newTasks => {
     invalidateTaskDateRangeCache()
-    // 优化：使用 for 循环直接构建 Set，避免 map 创建临时数组
-    const currentTaskIds = new Set<number>()
+    // P2 修复：task.id 可为 number 或 string（资源视图），统一转为 string 比较
+    // 原来使用 parseInt(taskIdStr) 会将 "res-1" → NaN，导致字符串 ID 永远无法匹配，位置信息堆积
+    const currentTaskIdStrs = new Set<string>()
     for (const task of newTasks) {
-      currentTaskIds.add(task.id)
+      currentTaskIdStrs.add(String(task.id))
     }
 
-    // 优化：使用 for...in 循环代替 Object.keys().forEach()
     // 注意：shallowRef 需要创建新对象来触发响应式
     const newPositions: Record<number, any> = {}
     for (const taskIdStr in taskBarPositions.value) {
-      const taskId = parseInt(taskIdStr)
-      if (currentTaskIds.has(taskId)) {
-        newPositions[taskId] = taskBarPositions.value[taskId]
+      // 对象键本身就是字符串，直接与 string Set 比较，避免 parseInt 对非数字 ID 返回 NaN
+      if (currentTaskIdStrs.has(taskIdStr)) {
+        newPositions[taskIdStr as unknown as number] = taskBarPositions.value[taskIdStr as unknown as number]
       }
     }
     taskBarPositions.value = newPositions
@@ -5270,6 +5402,7 @@ const handleAddSuccessor = (task: Task) => {
           :hovered-task-id="hoveredTaskId"
           :vertical-lines="monthFirstVerticalLines"
           :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
+          :is-scrolling="isTimelineScrolling"
         />
 
         <!-- 连接线拖拽引导线 - 🚀 优化：使用命令式 API，由 RAF 直接调用 draw() -->
@@ -5458,9 +5591,9 @@ const handleAddSuccessor = (task: Task) => {
         <!-- 同时需要考虑左侧TaskList包含1px的bottom border -->
         <div class="task-bar-container" :style="{ height: `${contentHeight}px` }">
           <div class="task-rows" :style="{ height: `${contentHeight}px` }">
-            <!-- 任务视图：使用虚拟滚动渲染可见任务 -->
+            <!-- 任务视图：使用虚拟滚动分批渲染可见任务（taskRenderedItems 每帧限流 3 行新增）-->
             <div
-              v-for="{ task, originalIndex } in visibleTasks"
+              v-for="{ task, originalIndex } in taskRenderedItems"
               v-if="viewMode === 'task'"
               :key="task.id"
               class="task-row"

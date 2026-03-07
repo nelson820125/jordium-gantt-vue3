@@ -3694,6 +3694,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   position: absolute;
   border-radius: 4px;
   user-select: none;
+  touch-action: none; /* JS 完全接管拖拽手势，不影响父层水平滚动 */
   /* 阴影通过JS动态设置，使用TaskBar的颜色 */
   transition:
     box-shadow 0.2s,

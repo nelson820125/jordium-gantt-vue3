@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.5] - 2026-03-07
+
+### Fixed
+- 🔧 优化：优化算法，提升插件性能，更好兼容移动设备的访问
+- 🔧 优化：来自Github一位用户的共同探讨，带来此次性能的飞跃，同时他也提供了另外一种应用层的优化方案，请参考: <a href=\"https://github.com/nelson820125/jordium-gantt-vue3/discussions/16\">discussion #16</a>
+- 🔧 Optimized: Algorithm optimizations for improved plugin performance and better compatibility with mobile device access
+- 🔧 Optimized: Collaborative discussions with a Github user led to this performance leap, and they also provided another application-level optimization方案, please refer to: <a href=\"https://github.com/nelson820125/jordium-gantt-vue3/discussions/16\">discussion #16</a>
+
 ## [1.9.4] - 2026-03-06
 
 ### Fixed

@@ -33,6 +33,8 @@ interface Props {
   verticalLines?: VerticalLine[]
   showVerticalLines?: boolean
   // 主题模式通过inject获取，不再需要props
+  // 滚动优化：垂直滚动时跳过 canvas 重绘，等滚动停止后一次性重绘
+  isScrolling?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
   showVerticalLines: true,
   offsetLeft: 0,
   offsetTop: 0,
+  isScrolling: false,
 })
 
 // 通过inject获取主题
@@ -54,6 +57,8 @@ const canvasManager = new CanvasContextManager()
 // requestAnimationFrame 防抖控制
 let rafId: number | null = null
 let pendingRedraw = false
+// 滚动期间跳过重绘，滚动停止后补一次
+let pendingRedrawOnScrollStop = false
 
 // 当前主题（用于分隔线颜色）
 const isDarkTheme = computed(() => injectedTheme.value === 'dark')
@@ -406,8 +411,15 @@ const drawArrowOptimized = (
 /**
  * 使用 requestAnimationFrame 优化的重绘调度器
  * 合并多个连续的重绘请求为单次绘制
+ * 垂直滚动期间跳过重绘，等滚动停止后补绘一次（避免每帧重绘 canvas）
  */
 const scheduleRedraw = () => {
+  // 滚动期间：延迟至滚动停止后再重绘
+  if (props.isScrolling) {
+    pendingRedrawOnScrollStop = true
+    return
+  }
+
   if (pendingRedraw) {
     // 已有待处理的重绘请求，跳过
     return
@@ -427,6 +439,17 @@ const scheduleRedraw = () => {
     drawLinks()
   })
 }
+
+// 监听滚动结束：滚动期间有待重绘时，在停止后立即补绘一次
+watch(
+  () => props.isScrolling,
+  (scrolling) => {
+    if (!scrolling && pendingRedrawOnScrollStop) {
+      pendingRedrawOnScrollStop = false
+      scheduleRedraw()
+    }
+  },
+)
 
 // 监听相关状态变化，自动重绘 Canvas
 watch(

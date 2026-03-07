@@ -1,5 +1,6 @@
 import { onMounted, onUnmounted, type Ref } from 'vue'
 import type { Task } from '../../../../models/classes/Task'
+import { registerDragOver, unregisterDragOver } from '../../../../utils/dragOverRegistry'
 
 /**
  * TaskRow 事件处理和拖拽交互
@@ -98,27 +99,25 @@ export function useTaskRowEventHandlers(
     }
   }
 
-  // 处理全局拖拽悬停事件
-  const handleTaskRowDragOver = (event: CustomEvent) => {
+  // 处理全局拖拽悬停事件（通过 dragOverRegistry 委托，不再直接监听 window）
+  // 优化：从每行独立注册 window 监听器改为全局单一监听器 + Map 直接查找 O(1)
+  const handleTaskRowDragOver = (mouseEvent: MouseEvent) => {
     if (!enableDrag.value || !taskRowRef.value || !dragOver) return
-
-    const { taskId, event: mouseEvent } = event.detail
-    if (taskId === task.value.id) {
-      dragOver(task.value, taskRowRef.value, mouseEvent)
-    }
+    dragOver(task.value, taskRowRef.value, mouseEvent)
   }
 
   // 生命周期钩子 - 注册事件监听器
   onMounted(() => {
     window.addEventListener('splitter-drag-start', handleSplitterDragStart)
     window.addEventListener('splitter-drag-end', handleSplitterDragEnd)
-    window.addEventListener('task-row-drag-over', handleTaskRowDragOver as EventListener)
+    // 使用 dragOverRegistry 委托注册，避免每个 TaskRow 各自占用一个 window 监听器
+    registerDragOver(task.value.id, handleTaskRowDragOver)
   })
 
   onUnmounted(() => {
     window.removeEventListener('splitter-drag-start', handleSplitterDragStart)
     window.removeEventListener('splitter-drag-end', handleSplitterDragEnd)
-    window.removeEventListener('task-row-drag-over', handleTaskRowDragOver as EventListener)
+    unregisterDragOver(task.value.id)
   })
 
   return {
