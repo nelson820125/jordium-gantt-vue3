@@ -148,5 +148,6 @@
       "label": "启用TaskRow拖拽移动",
       "hint": "允许通过拖拽TaskRow来调整任务的层级和顺序"
     }
-  }
+  },
+  "releaseNotes": "点击查看更新日志"
 }

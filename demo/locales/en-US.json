@@ -148,5 +148,6 @@
       "label": "Enable TaskRow Drag and Drop",
       "hint": "Allow dragging TaskRow to adjust task hierarchy and order"
     }
-  }
+  },
+  "releaseNotes": "Click to view release notes"
 }

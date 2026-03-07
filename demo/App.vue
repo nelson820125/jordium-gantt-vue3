@@ -1312,7 +1312,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </svg>
         Jordium Gantt Vue3 Demo
         <span class="version-badge" style="cursor: pointer" @click="showVersionDrawer = true">{{
-          packageInfo.version
+          packageInfo.version + ' ' + demoMessages.releaseNotes
         }}</span>
       </div>
       <!-- <div class="title-center">
