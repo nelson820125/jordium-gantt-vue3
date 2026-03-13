@@ -618,5 +618,15 @@
       "🔧 Optimized: Collaborative discussions with a Github user led to this performance leap, and they also provided another application-level optimization方案, please refer to: <a href=\"https://github.com/nelson820125/jordium-gantt-vue3/discussions/16\">discussion #16</a>",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to eldritf@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.10.1",
+    "date": "2026-03-13",
+    "notes": [
+      "🔧 优化：优化算法，提升GanttLinks以及GanttConflicts的绘制性能",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自xuhang513@gitee的使用与反馈</span>",
+      "🔧 Optimized: Algorithm optimizations for improved GanttLinks and GanttConflicts rendering performance",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to xuhang513@gitee for their use and feedback</span>"
+    ]
   }
 ]

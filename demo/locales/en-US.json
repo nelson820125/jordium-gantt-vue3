@@ -149,5 +149,6 @@
       "hint": "Allow dragging TaskRow to adjust task hierarchy and order"
     }
   },
-  "releaseNotes": "Click to view release notes"
+  "releaseNotes": "Click to view release notes",
+  "collapseExpandClickHint": "Click to expand/collapse"
 }

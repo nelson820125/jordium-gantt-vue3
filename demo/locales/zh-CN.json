@@ -149,5 +149,6 @@
       "hint": "允许通过拖拽TaskRow来调整任务的层级和顺序"
     }
   },
-  "releaseNotes": "点击查看更新日志"
+  "releaseNotes": "点击查看更新日志",
+  "collapseExpandClickHint": "可点击展开/收起"
 }

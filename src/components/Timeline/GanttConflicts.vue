@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject, type Ref } from 'vue'
 import { detectConflicts, type ConflictZone } from '../../utils/conflictUtils'
 import type { Task } from '../../models/classes/Task'
 import { TimelineScale } from '../../models/types/TimelineScale'
@@ -45,6 +45,45 @@ const isSplitBarDragging = inject<Ref<boolean>>('isSplitBarDragging', ref(false)
 const isDraggingTimeline = inject<Ref<boolean>>('isDraggingTimeline', ref(false))
 // 注入最近变化的TaskBar ID（用于增量更新）
 const lastChangedTaskId = inject<Ref<string | number | null>>('lastChangedTaskId', ref(null))
+
+// ── 异步计算调度（requestIdleCallback 错峰，避免 N 个实例同帧涌出主线程）──────────
+// 各实例独立持有自己的 idle handle，浏览器自动将 N 个回调分散到空闲帧执行
+let _conflictIdleHandle: number | null = null
+
+/** 取消待执行的异步计算 */
+function cancelPendingConflictUpdate() {
+  if (_conflictIdleHandle !== null) {
+    if (typeof cancelIdleCallback !== 'undefined') {
+      cancelIdleCallback(_conflictIdleHandle)
+    } else {
+      cancelAnimationFrame(_conflictIdleHandle)
+    }
+    _conflictIdleHandle = null
+  }
+}
+
+/**
+ * 调度冲突计算 / 重绘。多次调用会取消上一次未执行的回调（自动去抖）。
+ * @param fn 实际要调度的函数
+ * @param timeout 最大等待时间（ms），超时后即使不空闲也强制执行。默认 500ms。
+ */
+function scheduleConflictUpdate(fn: () => void, timeout = 500) {
+  cancelPendingConflictUpdate()
+  if (typeof requestIdleCallback !== 'undefined') {
+    _conflictIdleHandle = requestIdleCallback(() => {
+      _conflictIdleHandle = null
+      fn()
+    }, { timeout })
+  } else {
+    // Safari / 旧浏览器兜底：使用 rAF，同样将压力分散到渲染帧后
+    _conflictIdleHandle = requestAnimationFrame(() => {
+      _conflictIdleHandle = null
+      fn()
+    }) as unknown as number
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 // Canvas引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -96,7 +135,7 @@ watch(() => props.tasks, () => {
   } else {
     // 拖拽结束后的已提交数据变更：isDraggingTaskBar 已先于数据更新变为 false，
     // 此处直接触发增量/全量重算，避免冲突层不刷新。
-    nextTick(() => {
+    scheduleConflictUpdate(() => {
       if (lastChangedTaskId.value !== null) {
         recalculateConflictsIncremental(lastChangedTaskId.value)
         lastChangedTaskId.value = null
@@ -111,16 +150,13 @@ watch(() => props.tasks, () => {
 
 // v1.9.9 监听renderLimit变化，TaskBar渐进式渲染时重新计算冲突
 watch(() => props.renderLimit, () => {
-  // 延迟一帧，确保DOM更新完成
-  nextTick(() => {
-    recalculateConflicts()
-  })
+  scheduleConflictUpdate(recalculateConflicts)
 })
 
 // 监听拖拽状态变化
 watch(isDraggingTaskBar, (dragging) => {
   if (!dragging && needsRecalculation.value) {
-    nextTick(() => {
+    scheduleConflictUpdate(() => {
       // 检查是否可以使用增量更新（单个TaskBar变化且有ID记录）
       if (lastChangedTaskId.value !== null) {
         recalculateConflictsIncremental(lastChangedTaskId.value)
@@ -139,7 +175,7 @@ watch(isDraggingTaskBar, (dragging) => {
 // v1.9.5 P2-4优化 - 监听Split Bar拖拽状态变化
 watch(isSplitBarDragging, (dragging) => {
   if (!dragging && needsRecalculation.value) {
-    nextTick(() => {
+    scheduleConflictUpdate(() => {
       // 拖拽结束后清空缓存并重新计算，清空纹理缓存避免颜色问题
       texturePatterns.value = { light: null, medium: null, severe: null }
       coordsCache.clear()
@@ -152,26 +188,27 @@ watch(isSplitBarDragging, (dragging) => {
 // 监听Timeline拖拽状态变化 - 拖拽开始时立即清除Canvas
 watch(isDraggingTimeline, (dragging) => {
   if (dragging) {
-    // 拖拽开始时立即清除Canvas
+    // 拖拽开始时立即清除Canvas，同时取消待执行的重算
+    cancelPendingConflictUpdate()
     clearCanvas()
   } else {
     // 拖拽结束后重新计算并绘制
-    nextTick(() => {
-      recalculateConflicts()
-    })
+    scheduleConflictUpdate(recalculateConflicts)
   }
 })
 
-// 监听Canvas尺寸变化
+// 监听Canvas尺寸变化（window resize / containerWidth 变化）
 watch([canvasWidth, canvasHeight], () => {
   // v1.9.5 P2-4优化 - Split Bar拖拽时延迟重绘
   if (isSplitBarDragging.value) {
     needsRecalculation.value = true
     return
   }
-
-  nextTick(() => {
-    renderConflicts()
+  // Canvas 尺寸变化时重新计算坐标并重绘
+  // idle 时 DOM 属性已更新，直接清坐标缓存后全量重算
+  scheduleConflictUpdate(() => {
+    coordsCache.clear()
+    recalculateConflicts()
   })
 })
 
@@ -179,11 +216,10 @@ watch([canvasWidth, canvasHeight], () => {
 watch([() => props.timelineData, () => props.currentTimeScale], () => {
   // v1.9.4 BUG修复 - 视图切换时清空坐标缓存
   coordsCache.clear()
-  // v1.9.7 Bug修复 - 视图切换时清空纹理缓存并使用nextTick确保立即刷新
+  // v1.9.7 Bug修复 - 视图切换时清空纹理缓存
   texturePatterns.value = { light: null, medium: null, severe: null }
-  nextTick(() => {
-    recalculateConflicts()
-  })
+  // idle 错峰：切换 timescale 时 N 个实例同时触发，分散到空闲帧避免卡顿
+  scheduleConflictUpdate(recalculateConflicts)
 }, { deep: true })
 
 // v1.9.6 监听scrollLeft变化，滚动停止后重新计算可视区域的冲突
@@ -959,10 +995,8 @@ function drawTopWarning(ctx: CanvasRenderingContext2D, zone: ConflictZone) {
 // 组件挂载
 onMounted(() => {
   // v1.9.6 修复：资源视图使用虚拟滚动，可见的资源行必然在视口内
-  // 直接计算冲突，不需要IntersectionObserver延迟渲染
-  nextTick(() => {
-    recalculateConflicts()
-  })
+  // 使用 idle 调度：N 个实例并发挂载时，浏览器自动平滑分散到空闲帧
+  scheduleConflictUpdate(recalculateConflicts)
 })
 
 // 组件卸载
@@ -970,6 +1004,9 @@ onUnmounted(() => {
   if (scrollTimer) {
     clearTimeout(scrollTimer)
   }
+
+  // 取消待执行的异步计算，防止卸载后访问已销毁的响应式状态
+  cancelPendingConflictUpdate()
 
   // v1.9.4 清理坐标缓存
   coordsCache.clear()

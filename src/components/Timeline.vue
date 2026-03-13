@@ -20,6 +20,7 @@ import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import type { TooltipShowPayload } from '../models/types/TimelineDataTypes'
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
+import { computeTaskViewLogicalPosition } from '../utils/taskPositionUtils' // 逻辑坐标种子填充
 
 // 定义Props接口
 interface Props {
@@ -2322,6 +2323,9 @@ const totalTimelineWidth = computed(() => {
 })
 
 let resizeObserver: ResizeObserver | null = null
+// 具名事件处理函数引用，专供 onUnmounted 清理
+let _handleWindowResize: (() => void) | null = null
+let _handleVisibilityChange: (() => void) | null = null
 
 // 里程碑位置信息管理（用于推挤效果）
 const milestonePositions = ref<
@@ -3617,6 +3621,105 @@ const taskBarPositions = shallowRef<
   Record<number, { left: number; top: number; width: number; height: number }>
 >({})
 
+// ── 持久化 TaskBar 坐标存储（供 GanttLinks 绘制关系线）──────────────────────────
+// 两层写入机制：
+//   1. 逻辑种子坐标（requestIdleCallback 异步）：全程溅任务，含离屏任务，不阻塞主线程
+//   2. DOM 精确坐标（handleBarMounted）：TaskBar 挂载后以 DOM 值覆盖对应种子，优先级更高
+// 持久策略：虚拟滚动滚出视口不删除，仅任务从数据集删除时才移除坐标条目。
+type BarPosition = { left: number; top: number; width: number; height: number }
+const allBarPositions = shallowRef<Record<number, BarPosition>>({})
+
+// ― 种子填充控制状态（模块级变量，不参与响应式）
+let _seedIdleHandle: number | null = null
+let _seedTaskSnapshot: Task[] | null = null
+let _seedIndex = 0
+let _seedOverwrite = false
+let _seedScale = ''
+let _seedDayWidth = 30
+let _seedBaseStart: Date | null = null
+
+/** 取消待执行的异步种子填充 */
+function cancelPendingSeedFill() {
+  if (_seedIdleHandle !== null) {
+    if (typeof cancelIdleCallback !== 'undefined') {
+      cancelIdleCallback(_seedIdleHandle)
+    } else {
+      cancelAnimationFrame(_seedIdleHandle)
+    }
+    _seedIdleHandle = null
+  }
+  _seedTaskSnapshot = null
+}
+
+/** 种子填充分块执行函数（requestIdleCallback / rAF 驱动） */
+function _runSeedChunk(deadline?: IdleDeadline) {
+  const snapshot = _seedTaskSnapshot
+  if (!snapshot) return
+
+  const scale = _seedScale
+  const dw = _seedDayWidth
+  const baseStart = _seedBaseStart
+  const chunkResult: Record<number, BarPosition> = {}
+  const startTs = Date.now()
+
+  while (_seedIndex < snapshot.length) {
+    // 时间预算：deadline 模式用 timeRemaining()，rAF 模式每帧最多 4ms
+    if (deadline ? deadline.timeRemaining() < 1 : Date.now() - startTs > 4) break
+
+    const task = snapshot[_seedIndex]
+    // overwrite=false：已有坐标（DOM 或旧种子）时跳过
+    if (!_seedOverwrite && allBarPositions.value[task.id as number]) {
+      _seedIndex++
+      continue
+    }
+
+    const pos = computeTaskViewLogicalPosition(
+      task, _seedIndex, scale as any, positionCache, dw, baseStart,
+    )
+    if (pos) chunkResult[task.id as number] = pos
+    _seedIndex++
+  }
+
+  // 合并：{ ...新种子, ...现有 } 确保现有 DOM/种子值不被覆盖（DOM 优先）
+  if (Object.keys(chunkResult).length > 0) {
+    allBarPositions.value = { ...chunkResult, ...allBarPositions.value }
+  }
+
+  if (_seedIndex < snapshot.length) {
+    if (typeof requestIdleCallback !== 'undefined') {
+      _seedIdleHandle = requestIdleCallback(_runSeedChunk, { timeout: 1000 })
+    } else {
+      _seedIdleHandle = requestAnimationFrame(() => _runSeedChunk()) as unknown as number
+    }
+  } else {
+    _seedTaskSnapshot = null
+    _seedIdleHandle = null
+  }
+}
+
+/**
+ * 调度异步种子填充。
+ * @param overwrite true = 重算所有任务坐标（时间线/刻度变化时使用）
+ *                  false = 仅为无坐标任务补种子（任务新增时使用）
+ */
+function scheduleSeedFill(overwrite: boolean) {
+  cancelPendingSeedFill()
+  if (tasks.value.length === 0 || viewMode.value !== 'task') return
+
+  _seedTaskSnapshot = [...tasks.value]  // 快照，防止异步期间响应式变化干扰
+  _seedIndex = 0
+  _seedOverwrite = overwrite
+  _seedScale = currentTimeScale.value   // 决调根据调度时的刻度快照计算
+  _seedDayWidth = dayWidth.value
+  _seedBaseStart = timelineStartDate.value
+
+  if (typeof requestIdleCallback !== 'undefined') {
+    _seedIdleHandle = requestIdleCallback(_runSeedChunk, { timeout: 1000 })
+  } else {
+    _seedIdleHandle = requestAnimationFrame(() => _runSeedChunk()) as unknown as number
+  }
+}
+
 const bodyContentRef = ref<HTMLElement | null>(null)
 // 🚀 LinkDragGuide 命令式 API 引用
 const linkDragGuideRef = ref<InstanceType<typeof LinkDragGuide> | null>(null)
@@ -3736,6 +3839,8 @@ function handleBarMounted(payload: {
       _barUpdateScheduled = false
       // 一次性合并，只触发一次 GanttLinks 重绘
       taskBarPositions.value = { ...taskBarPositions.value, ..._pendingBarUpdates }
+      // DOM 精确值同步到 allBarPositions（覆盖种子坐标，确保已渲染任务的坐标最精确）
+      allBarPositions.value = { ...allBarPositions.value, ..._pendingBarUpdates }
       for (const key in _pendingBarUpdates) {
         delete _pendingBarUpdates[key as unknown as number]
       }
@@ -3750,6 +3855,8 @@ watch(isTimelineScrolling, (scrolling) => {
   if (Object.keys(_pendingBarUpdates).length === 0) return
   _barUpdateScheduled = false
   taskBarPositions.value = { ...taskBarPositions.value, ..._pendingBarUpdates }
+  // DOM 精确值同步到 allBarPositions
+  allBarPositions.value = { ...allBarPositions.value, ..._pendingBarUpdates }
   for (const key in _pendingBarUpdates) {
     delete _pendingBarUpdates[key as unknown as number]
   }
@@ -3771,7 +3878,7 @@ const handleTaskBarDragEnd = (updatedTask: Task) => {
       }
     }
 
-    // 🎯 关键修复：数据已经更新，GanttChart的watch会自动检测并刷新布局
+    // 关键修复：数据已经更新，GanttChart的watch会自动检测并刷新布局
     // v1.9.9 不需要手动调用invalidateLayout，props.resources的deep watch会自动触发
   }
   // 记录变化的TaskBar ID（用于增量冲突更新）
@@ -3793,7 +3900,7 @@ const handleTaskBarResizeEnd = (updatedTask: Task) => {
       }
     }
 
-    // 🎯 关键修复：数据已经更新，GanttChart的watch会自动检测并刷新布局
+    // 关键修复：数据已经更新，GanttChart的watch会自动检测并刷新布局
     // v1.9.9 不需要手动调用invalidateLayout，props.resources的deep watch会自动触发
   }
   // 记录变化的TaskBar ID（用于增量冲突更新）
@@ -3962,7 +4069,21 @@ onMounted(() => {
     scrollToTodayCenter()
     updateSvgSize()
   }, 200)
-  window.addEventListener('resize', updateSvgSize)
+  // window resize：失效 bodyRect 缓存并重算 SVG 尺寸
+  _handleWindowResize = () => {
+    bodyRectInvalidated = true
+    updateSvgSize()
+  }
+  window.addEventListener('resize', _handleWindowResize)
+
+  // visibilitychange：页面切换回来时失效 bodyRect 缓存（防止浏览器缩放等导致坐标偏移）
+  _handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      bodyRectInvalidated = true
+      updateSvgSize()
+    }
+  }
+  document.addEventListener('visibilitychange', _handleVisibilityChange)
   // 注意：Timeline滚动事件已在模板中通过@scroll="handleTimelineScroll"绑定，无需重复监听
 })
 
@@ -4543,6 +4664,9 @@ onUnmounted(() => {
   // 停止自动滚动
   stopAutoScroll()
 
+  // 取消异步种子填充，防止组件卸载后访问已销毁的响应式状态
+  cancelPendingSeedFill()
+
   // 清理连接线拖拽状态
   cleanupLinkDrag()
 
@@ -4571,7 +4695,14 @@ onUnmounted(() => {
   }
 
   // 清理window事件监听器
-  window.removeEventListener('resize', updateSvgSize)
+  if (_handleWindowResize) {
+    window.removeEventListener('resize', _handleWindowResize)
+    _handleWindowResize = null
+  }
+  if (_handleVisibilityChange) {
+    document.removeEventListener('visibilitychange', _handleVisibilityChange)
+    _handleVisibilityChange = null
+  }
 
   // 清理可能残留的鼠标事件监听器
   document.removeEventListener('mousemove', handleMouseMove)
@@ -4823,8 +4954,13 @@ watch([timelineData, timelineContainerWidth], () => {
   // 使用防抖避免频繁重新渲染
   if (taskBarRenderTimer) clearTimeout(taskBarRenderTimer)
   taskBarRenderTimer = setTimeout(() => {
-    // 清空位置信息
+    // 数据变化导致 TaskBar 全量重新挂载，失效 bodyRect 缓存，并异步重计全量种子坐标
+    bodyRectInvalidated = true
+    // 清空 DOM 坐标
     taskBarPositions.value = {}
+    // 清空全量坐标并重新异步种子填充（时间线数据变化，坐标全部失效）
+    allBarPositions.value = {}
+    scheduleSeedFill(true)
     // 更新渲染key强制TaskBar重新渲染
     taskBarRenderKey.value++
     // 延迟更新SVG尺寸
@@ -4868,6 +5004,8 @@ watch(
   () => tasks.value,
   newTasks => {
     invalidateTaskDateRangeCache()
+    // 任务增删导致行布局变化，失效 bodyRect 缓存确保后续 handleBarMounted 取到新 rect
+    bodyRectInvalidated = true
     // P2 修复：task.id 可为 number 或 string（资源视图），统一转为 string 比较
     // 原来使用 parseInt(taskIdStr) 会将 "res-1" → NaN，导致字符串 ID 永远无法匹配，位置信息堆积
     const currentTaskIdStrs = new Set<string>()
@@ -4884,6 +5022,16 @@ watch(
       }
     }
     taskBarPositions.value = newPositions
+    // 同步清理 allBarPositions：移除已删除任务的坐标
+    const newAllPositions: Record<number, BarPosition> = {}
+    for (const taskIdStr in allBarPositions.value) {
+      if (currentTaskIdStrs.has(taskIdStr)) {
+        newAllPositions[taskIdStr as unknown as number] = allBarPositions.value[taskIdStr as unknown as number]
+      }
+    }
+    allBarPositions.value = newAllPositions
+    // 为新增任务异步补充种子坐标
+    scheduleSeedFill(false)
   },
 )
 
@@ -5392,7 +5540,7 @@ const handleAddSuccessor = (task: Task) => {
         <GanttLinks
           v-if="viewMode === 'task'"
           :tasks="tasks"
-          :task-bar-positions="taskBarPositions"
+          :task-bar-positions="allBarPositions"
           :width="canvasWidth"
           :height="canvasHeight"
           :offset-left="canvasOffsetLeft"

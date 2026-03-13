@@ -229,7 +229,7 @@ const toolbarConfig = reactive({
   showFullscreen: true,
   showTimeScale: true, // 控制日|周|月时间刻度按钮组的可见性
   timeScaleDimensions: ['hour', 'day', 'week', 'month', 'quarter', 'year'], // 设置时间刻度按钮的展示维度，包含所有时间维度
-  defaultTimeScale: 'week',
+  defaultTimeScale: 'month',
   showExpandCollapse: true, // 显示全部展开/折叠按钮
   showViewMode: true, // 显示 Task/Resource 视图切换按钮组
 })
@@ -421,8 +421,8 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 }))
 
 // 配置面板折叠状态
-const isConfigPanelCollapsed = ref(false)
-const isDataSourcePanelCollapsed = ref(false)
+const isConfigPanelCollapsed = ref(true)
+const isDataSourcePanelCollapsed = ref(true)
 
 // TaskList 配置区域折叠状态（默认收起）
 const isTaskListConfigCollapsed = ref(true)
@@ -1362,7 +1362,8 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               fill="currentColor"
             />
           </svg>
-          {{ t.dataSourceSwitch?.title }} - {{ t.dataSourceSwitch?.subtitle }}
+          {{ t.dataSourceSwitch?.title }} - {{ t.dataSourceSwitch?.subtitle }}&nbsp;&nbsp;
+          <span class="version-badge" style="cursor: pointer" @click="showVersionDrawer = true">{{ demoMessages.collapseExpandClickHint }}</span>
         </h3>
         <button class="collapse-button" :class="{ collapsed: isDataSourcePanelCollapsed }">
           <svg
@@ -1422,6 +1423,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             />
           </svg>
           {{ t.configDemo }}
+          <span class="version-badge" style="cursor: pointer" @click="showVersionDrawer = true">{{ demoMessages.collapseExpandClickHint }}</span>
         </h3>
         <button class="collapse-button" :class="{ collapsed: isConfigPanelCollapsed }">
           <svg
@@ -3766,7 +3768,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 }
 
 .gantt-wrapper {
-  max-height: 60vh;
+  max-height: 100vh;
   margin: 0 10px 20px 10px;
   min-width: 0;
   display: flex;
