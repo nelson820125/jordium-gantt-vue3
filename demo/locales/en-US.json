@@ -150,5 +150,16 @@
     }
   },
   "releaseNotes": "Click to view release notes",
-  "collapseExpandClickHint": "Click to expand/collapse"
+  "collapseExpandClickHint": "Click to expand/collapse",
+  "sponsor": {
+    "btnLabel": "☕ Sponsor",
+    "dialogTitle": "Buy the Author a Coffee ☕",
+    "dialogSubtitle": "Your support keeps this open-source project alive and moving forward!",
+    "wechat": "WeChat Pay",
+    "alipay": "Alipay",
+    "afdian": "Afdian",
+    "kofi": "Ko-fi",
+    "orStar": "Or simply give a ⭐ Star \u2014 it means a lot to open-source authors!",
+    "close": "Close"
+  }
 }

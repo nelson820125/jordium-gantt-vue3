@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://nelson820125.github.io/jordium-gantt-vue3/</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-03-15</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>1.9.2</priority>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nelson820125.github.io/jordium-gantt-vue3/"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nelson820125.github.io/jordium-gantt-vue3/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nelson820125.github.io/jordium-gantt-vue3/"/>
   </url>
 </urlset>

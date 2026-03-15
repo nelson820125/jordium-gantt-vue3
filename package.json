@@ -52,9 +52,15 @@
     "vue3-gantt-chart-plugin",
     "vue3-gantt-chart-tool",
     "vue3-gantt-chart-ui",
-    "project-management-tool"
+    "project-management-tool",
+    "resource-planning",
+    "resource-management",
+    "resource-scheduler",
+    "scheduler",
+    "vue3-resource-planning",
+    "vue3-scheduler"
   ],
-  "description": "A Vue 3 Gantt chart component for project management, task scheduling, and timeline visualization. Built with TypeScript and Vite.",
+  "description": "A Vue 3 Gantt chart component for project management, task scheduling, resource planning and timeline visualization. Built with TypeScript and Vite.",
   "author": "Jordium.com (Email: lining820125@163.com/nelson820125@gmail.com/ning.li@jordium.com)",
   "scripts": {
     "dev": "vite",

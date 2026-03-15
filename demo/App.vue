@@ -209,6 +209,7 @@ const isMilestoneEditMode = ref(false)
 
 // 版本历史Drawer状态
 const showVersionDrawer = ref(false)
+const showSponsorDialog = ref(false)
 
 // v1.9.7 资源编辑提示dialog状态
 const resourceEditHintVisible = ref(false)
@@ -1326,6 +1327,8 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </a>
       </div> -->
       <div class="title-right docs-links">
+        <button class="sponsor-btn" @click="showSponsorDialog = true">{{ demoMessages.sponsor?.btnLabel || '&#9749; Sponsor' }}</button>
+        <span class="docs-divider"></span>
         <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
           <img src="https://img.shields.io/npm/v/jordium-gantt-vue3?style=flat-square" alt="npm version">
         </a>
@@ -1346,6 +1349,39 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         <a href='https://gitee.com/jordium/jordium-gantt-vue3/members'><img src='https://gitee.com/jordium/jordium-gantt-vue3/badge/fork.svg?theme=dark' alt='fork'></img></a>
       </div>
     </h1>
+
+    <!-- Sponsor Dialog -->
+    <Teleport to="body">
+      <Transition name="sponsor-fade">
+        <div v-if="showSponsorDialog" class="sponsor-overlay" @click.self="showSponsorDialog = false">
+          <div class="sponsor-dialog">
+            <button class="sponsor-dialog-close" @click="showSponsorDialog = false">&times;</button>
+            <div class="sponsor-dialog-title">{{ demoMessages.sponsor?.dialogTitle || '&#9749; Sponsor' }}</div>
+            <div class="sponsor-dialog-subtitle">{{ demoMessages.sponsor?.dialogSubtitle }}</div>
+            <div class="sponsor-badge-links">
+              <a href="https://afdian.com/a/nelsonli" target="_blank" rel="noopener noreferrer" class="sponsor-badge afdian">
+                <span class="badge-icon">💜</span>{{ demoMessages.sponsor?.afdian }}
+              </a>
+              <a href="https://ko-fi.com/nelsonli" target="_blank" rel="noopener noreferrer" class="sponsor-badge kofi">
+                <span class="badge-icon">☕</span>{{ demoMessages.sponsor?.kofi }}
+              </a>
+            </div>
+            <div class="sponsor-qr-row">
+              <div class="sponsor-qr-item">
+                <img src="/wechat-pay.png" :alt="demoMessages.sponsor?.wechat" />
+                <span>{{ demoMessages.sponsor?.wechat }}</span>
+              </div>
+              <div class="sponsor-qr-item">
+                <img src="/alipay.jpg" :alt="demoMessages.sponsor?.alipay" />
+                <span>{{ demoMessages.sponsor?.alipay }}</span>
+              </div>
+            </div>
+            <div class="sponsor-star-hint">{{ demoMessages.sponsor?.orStar }}</div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
     <div class="data-source-panel" :class="{ collapsed: isDataSourcePanelCollapsed }">
@@ -2745,7 +2781,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
     </div>
 
     <div class="license-info">
-      <span>MIT License @ 2025 JORDIUM.COM</span>
+      <span>Powered by <a href="https://jordium.com" target="_blank" rel="noopener noreferrer" class="jordium-link">JORDIUM.COM</a> &nbsp;|&nbsp; MIT License @ 2025</span>
       <a href="https://opensource.org/licenses/MIT">
         <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
       </a>
@@ -4018,6 +4054,200 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   align-items: center;
   gap: 8px;
 }
+
+/* ===== Sponsor Dialog ===== */
+.sponsor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #ff9a3c 0%, #ff6b6b 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  line-height: 1.4;
+}
+
+.sponsor-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 107, 107, 0.45);
+}
+
+.sponsor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  backdrop-filter: blur(2px);
+}
+
+.sponsor-dialog {
+  position: relative;
+  background: white;
+  border-radius: 20px;
+  padding: 36px 48px 32px;
+  width: 540px;
+  max-width: 94vw;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+.sponsor-dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 28px;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.sponsor-dialog-close:hover {
+  background: rgba(0,0,0,0.12);
+  color: #333;
+}
+
+.sponsor-dialog-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.sponsor-dialog-subtitle {
+  font-size: 0.88rem;
+  color: #888;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.sponsor-badge-links {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.sponsor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  letter-spacing: 0.02em;
+}
+
+.sponsor-badge .badge-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.sponsor-badge.afdian {
+  background: linear-gradient(135deg, #9c6ee8 0%, #7c3aed 100%);
+  color: #fff;
+}
+
+.sponsor-badge.afdian:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.4);
+}
+
+.sponsor-badge.kofi {
+  background: linear-gradient(135deg, #ff868b 0%, #ff5e5b 100%);
+  color: #fff;
+}
+
+.sponsor-badge.kofi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 94, 91, 0.4);
+}
+
+.sponsor-qr-row {
+  display: flex;
+  gap: 36px;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.sponsor-qr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sponsor-qr-item img {
+  width: 250px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.sponsor-qr-item span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.sponsor-star-hint {
+  font-size: 0.8rem;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Sponsor dialog transition */
+.sponsor-fade-enter-active,
+.sponsor-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.sponsor-fade-enter-active .sponsor-dialog,
+.sponsor-fade-leave-active .sponsor-dialog {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.sponsor-fade-enter-from,
+.sponsor-fade-leave-to {
+  opacity: 0;
+}
+.sponsor-fade-enter-from .sponsor-dialog {
+  transform: scale(0.93) translateY(12px);
+}
+.sponsor-fade-leave-to .sponsor-dialog {
+  transform: scale(0.93) translateY(12px);
+  opacity: 0;
+}
+
+.jordium-link {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.jordium-link:hover {
+  color: var(--gantt-primary-color, #409eff);
+}
 .docs-divider {
   display: inline-block;
   width: 1px;
@@ -4880,6 +5110,43 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   background: var(--gantt-bg-secondary, #1a202c);
   color: var(--gantt-text-secondary, #a0aec0);
   border-left-color: var(--gantt-primary-color, #66b3ff);
+}
+
+/* Dark theme: Sponsor dialog */
+:global(.gantt-root[data-theme='dark']) .sponsor-dialog {
+  background: #2d3748;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-dialog-close {
+  background: rgba(255,255,255,0.1);
+  color: #a0aec0;
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-dialog-close:hover {
+  background: rgba(255,255,255,0.18);
+  color: #e2e8f0;
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-dialog-title {
+  color: #e2e8f0;
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-dialog-subtitle {
+  color: #a0aec0;
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-qr-item img {
+  border-color: #4a5568;
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-qr-item span {
+  color: #a0aec0;
+}
+
+:global(.gantt-root[data-theme='dark']) .sponsor-star-hint {
+  color: #718096;
+  border-top-color: #4a5568;
 }
 </style>
 

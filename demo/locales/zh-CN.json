@@ -150,5 +150,16 @@
     }
   },
   "releaseNotes": "点击查看更新日志",
-  "collapseExpandClickHint": "可点击展开/收起"
+  "collapseExpandClickHint": "可点击展开/收起",
+  "sponsor": {
+    "btnLabel": "☕ 感谢赞助支持",
+    "dialogTitle": "请作者喝杯咖啡 ☕",
+    "dialogSubtitle": "你的支持，是开源持续维护的最大动力！",
+    "wechat": "微信",
+    "alipay": "支付宝",
+    "afdian": "爱发电",
+    "kofi": "Ko-fi",
+    "orStar": "或者，一个 ⭐ Star 同样是对开源作者的极大鼓励！",
+    "close": "关闭"
+  }
 }

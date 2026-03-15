@@ -1,4 +1,4 @@
-﻿# <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="32" style="vertical-align:middle;margin-right:8px;" /> jordium-gantt-vue3
+# <img src="public/assets/jordium-gantt-vue3-logo.svg" alt="jordium-gantt-vue3 logo" width="32" style="vertical-align:middle;margin-right:8px;" /> jordium-gantt-vue3
 
 <p align="center">
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
@@ -61,7 +61,8 @@ jordium-gantt-vue3 is a modern Gantt chart component built with Vue 3 and TypeSc
 
 ### Core Features
 
-- 📊 **Feature Complete** - Task management, milestones, dependencies, progress tracking
+- � **Resource Planning View** - The only Vue 3 Gantt component with a dedicated resource view. Visualize task assignments and workload per resource (people / equipment)
+- �📊 **Feature Complete** - Task management, milestones, dependencies, progress tracking
 - 🎨 **Theme System** - Built-in light/dark themes with customizable styles
 - 🖱️ **Smooth Interaction** - Drag & resize, zoom, double-click edit, context menu
 - 🌍 **Internationalization** - Built-in Chinese/English with extensible language support
@@ -3647,6 +3648,35 @@ For common issues and solutions, please refer to [Troubleshooting-EN.md](./Troub
 ## �📄 Open Source License
 
 [MIT License](./LICENSE) © 2025 JORDIUM.COM
+
+---
+
+## ❤️ Sponsor & Support
+
+Buy the author a coffee ☕ — it keeps the motivation going and the project moving forward!
+
+<p align="center">
+  <a href="https://ko-fi.com/nelsonli" target="_blank">
+    <img src="https://img.shields.io/badge/Ko--fi-Sponsor-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi" />
+  </a>
+  &nbsp;
+  <a href="https://afdian.com/a/nelsonli" target="_blank">
+    <img src="https://img.shields.io/badge/Afdian-Sponsor-946ce6?style=for-the-badge&logo=buymeacoffee&logoColor=white" alt="Afdian" />
+  </a>
+</p>
+
+<details>
+<summary>☕ Scan to donate via WeChat Pay / Alipay (click to expand)</summary>
+<br>
+<p align="center">
+  <img src="public/assets/wechat-pay.png" width="160" alt="WeChat Pay" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="public/assets/alipay.jpg" width="160" alt="Alipay" />
+</p>
+<p align="center"><sub>WeChat Pay &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Alipay</sub></p>
+</details>
+
+> 🙏 A **⭐ Star** on GitHub is also a wonderful way to show support — it helps others discover this project!
 
 ---
 

@@ -33,8 +33,15 @@
     <meta name="theme-color" content="#4FC08D" />
     <meta name="application-name" content="Jordium Gantt Vue3" />
 
-    <!-- Links to documentation and repository -->
-    <link rel="alternate" type="application/json+oembed" href="https://github.com/nelson820125/jordium-gantt-vue3" />
+    <!-- Internationalization -->
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <link rel="alternate" hreflang="en" href="https://nelson820125.github.io/jordium-gantt-vue3/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://nelson820125.github.io/jordium-gantt-vue3/" />
+    <link rel="alternate" hreflang="x-default" href="https://nelson820125.github.io/jordium-gantt-vue3/" />
+
+    <!-- GitHub repository reference -->
+    <link rel="me" href="https://github.com/nelson820125/jordium-gantt-vue3" />
 
     <!-- Schema.org structured data -->
     <script type="application/ld+json">
@@ -56,7 +63,7 @@
         "price": "0",
         "priceCurrency": "USD"
       },
-      "softwareVersion": "1.4.6",
+      "softwareVersion": "1.10.1",
       "programmingLanguage": "TypeScript",
       "codeRepository": "https://github.com/nelson820125/jordium-gantt-vue3",
       "license": "https://opensource.org/licenses/MIT"
@@ -65,6 +72,25 @@
   </head>
   <body>
     <div id="app"></div>
+    <!-- Fallback content for crawlers without JS support -->
+    <noscript>
+      <div style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px">
+        <h1>Jordium Gantt Vue3</h1>
+        <p>A modern, feature-rich Gantt chart component for Vue 3 with TypeScript support.</p>
+        <h2>Key Features</h2>
+        <ul>
+          <li>Interactive drag-and-drop task management</li>
+          <li>Milestone tracking and dependency links</li>
+          <li>Day / Week / Month / Quarter / Year timeline views</li>
+          <li>Resource layout support</li>
+          <li>TypeScript-first, fully typed API</li>
+          <li>i18n: English and Chinese built-in</li>
+        </ul>
+        <p>Install: <code>npm install jordium-gantt-vue3</code></p>
+        <p>Repository: <a href="https://github.com/nelson820125/jordium-gantt-vue3">github.com/nelson820125/jordium-gantt-vue3</a></p>
+        <p>Please enable JavaScript to view the interactive demo.</p>
+      </div>
+    </noscript>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
