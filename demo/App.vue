@@ -1399,7 +1399,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             />
           </svg>
           {{ t.dataSourceSwitch?.title }} - {{ t.dataSourceSwitch?.subtitle }}&nbsp;&nbsp;
-          <span class="version-badge" style="cursor: pointer" @click="showVersionDrawer = true">{{ demoMessages.collapseExpandClickHint }}</span>
+          <span class="version-badge" style="cursor: pointer" >{{ demoMessages.collapseExpandClickHint }}</span>
         </h3>
         <button class="collapse-button" :class="{ collapsed: isDataSourcePanelCollapsed }">
           <svg
@@ -1459,7 +1459,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             />
           </svg>
           {{ t.configDemo }}
-          <span class="version-badge" style="cursor: pointer" @click="showVersionDrawer = true">{{ demoMessages.collapseExpandClickHint }}</span>
+          <span class="version-badge" style="cursor: pointer">{{ demoMessages.collapseExpandClickHint }}</span>
         </h3>
         <button class="collapse-button" :class="{ collapsed: isConfigPanelCollapsed }">
           <svg
