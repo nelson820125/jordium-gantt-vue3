@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.2] - 2026-03-16
+
+### Added
+- 🎉 新增：里程碑支持悬停 Tooltip，正常显示和磁吸停靠状态均可触发，内置气泡样式与 TaskBar Tooltip 保持一致
+- 🎉 新增：GanttChart 新增 `enableMilestoneTooltip` 属性（默认 `true`），设为 `false` 可关闭里程碑 Tooltip
+- 🎉 新增：GanttChart 支持 `#milestone-tooltip` 自定义 Scoped Slot，可完全替换里程碑内置 Tooltip内容，提供 `milestone` 对象作为作用域参数
+- 🎉 新增：Tooltip 三角箭头内置默认内容、箭头颜色自动跟随里程碑颜色（`milestoneColor`）变化
+- 🎉 Added: Milestone supports hover Tooltip in both normal visible and sticky states, with built-in tooltip style consistent with TaskBar Tooltip
+- 🎉 Added: GanttChart new prop `enableMilestoneTooltip` (default `true`); set to `false` to disable milestone Tooltip
+- 🎉 Added: GanttChart supports `#milestone-tooltip` custom Scoped Slot to fully replace built-in milestone Tooltip content, exposing `milestone` as scope parameter
+- 🎉 Added: Tooltip arrow color automatically follows milestone color (`milestoneColor`)
+
+### Fixed
+- 🔧 清理：移除 GanttChart 中已废弃的 `provide('gantt-has-milestone-tooltip-slot', ...)` 死代码
+- 🔧 Cleaned: Removed dead code `provide('gantt-has-milestone-tooltip-slot', ...)` from GanttChart
+
 ## [1.10.1] - 2026-03-013
 
 ### Enhancement

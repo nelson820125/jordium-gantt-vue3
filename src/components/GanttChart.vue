@@ -68,6 +68,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableLinkAnchor: true,
   showActualTaskbar: false,
   enableTaskBarTooltip: true,
+  enableMilestoneTooltip: true,
   showConflicts: true,
   showTaskbarTab: true,
   fullscreen: false,
@@ -397,6 +398,8 @@ provide('resourceConflicts', resourceConflicts)
 
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
+// 提供 slot 存在标志（TaskBar 磁吸气泡注入）
+provide('gantt-has-taskbar-tooltip-slot', computed(() => !!slots['taskbar-tooltip']))
 
 // 提供右键菜单配置给子组件
 provide('enable-task-list-context-menu', computed(() => props.enableTaskListContextMenu))
@@ -520,6 +523,9 @@ interface Props {
   // 是否启用 TaskBar 气泡提示框（默认为 true）
   // 当设置为 false 时，TaskBar 上不显示悬停气泡提示框
   enableTaskBarTooltip?: boolean
+  // 是否启用里程碑气泡提示框（默认为 true）
+  // 当设置为 false 时，里程碑悬停不显示 Tooltip
+  enableMilestoneTooltip?: boolean
   // 是否显示实际任务条（默认为 false）
   // 当设置为 true 且任务存在 actualStartDate 时，会在计划任务条下方显示实际任务条
   showActualTaskbar?: boolean
@@ -3497,6 +3503,7 @@ defineExpose({
           :allow-drag-and-resize="props.allowDragAndResize"
           :show-actual-taskbar="props.showActualTaskbar"
           :enable-task-bar-tooltip="props.enableTaskBarTooltip"
+          :enable-milestone-tooltip="props.enableMilestoneTooltip"
           :pending-task-background-color="props.pendingTaskBackgroundColor"
           :delay-task-background-color="props.delayTaskBackgroundColor"
           :complete-task-background-color="props.completeTaskBackgroundColor"
@@ -3524,6 +3531,10 @@ defineExpose({
           <!-- 向 Timeline 转发 #taskbar-tooltip scoped slot（仅此一层，不穿透至 TaskBar） -->
           <template v-if="$slots['taskbar-tooltip']" #taskbar-tooltip="tooltipScope">
             <slot name="taskbar-tooltip" v-bind="tooltipScope" />
+          </template>
+          <!-- 向 Timeline 转发 #milestone-tooltip scoped slot -->
+          <template v-if="$slots['milestone-tooltip']" #milestone-tooltip="milestoneScope">
+            <slot name="milestone-tooltip" v-bind="milestoneScope" />
           </template>
         </Timeline>
 

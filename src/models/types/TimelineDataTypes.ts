@@ -3,6 +3,7 @@
  * 统一管理所有时间轴相关的数据结构
  */
 import type { Task } from '../classes/Task'
+import type { Milestone } from '../classes/Milestone'
 
 // 基础时间单位接口
 export interface TimelineHour {
@@ -152,4 +153,23 @@ export interface TaskbarTooltipSlotScope {
   task: Task
   taskStatus: { color: string; label: string }
   resourcePercent: number
+}
+
+/**
+ * MilestonePoint 向 Timeline emit milestone-tooltip-show 时携带的数据
+ */
+export interface MilestoneTooltipShowPayload {
+  milestone: Milestone
+  milestoneColor: string
+  /** MilestonePoint 元素的 DOMRect，用于 Timeline 计算定位 */
+  targetRect: DOMRect
+  /** 停靠位置，用于 tooltip 方向判断 */
+  stickyPosition: 'left' | 'right'
+}
+
+/**
+ * #milestone-tooltip scoped slot 向消费方暴露的数据
+ */
+export interface MilestoneTooltipSlotScope {
+  milestone: Milestone
 }

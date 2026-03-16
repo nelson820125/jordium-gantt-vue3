@@ -628,5 +628,19 @@
       "🔧 Optimized: Algorithm optimizations for improved GanttLinks and GanttConflicts rendering performance",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to xuhang513@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.10.2",
+    "date": "2026-03-16",
+    "notes": [
+      "🎉 新增：Milestone以及TaskBar支停靠timeline边框的tooltip允许自定义",
+      "🎉 新增：GanttChart 新增 enableMilestoneTooltip 属性（默认 true），设为 false 可关闭里程碑 Tooltip",
+      "🎉 新增：支持 #milestone-tooltip 自定义 Scoped Slot 完全替换里程碑内置 Tooltip 内容",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自cunqu@gitee的使用与反馈</span>",
+      "🎉 Added: Tooltips for Milestone and TaskBar that dock to the timeline border can be customized",
+      "🎉 Added: GanttChart new prop enableMilestoneTooltip (default true), set to false to disable milestone Tooltip",
+      "🎉 Added: Support for #milestone-tooltip custom Scoped Slot to fully replace built-in milestone Tooltip content",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to cunqu@gitee for their use and feedback</span>"
+    ]
   }
 ]

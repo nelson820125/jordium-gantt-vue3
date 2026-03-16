@@ -57,12 +57,12 @@
 
 ## ✨ 简介
 
-jordium-gantt-vue3 是一个基于 Vue 3 和 TypeScript 开发的现代化甘特图组件，专为项目管理和任务调度场景设计。它提供了丰富的交互功能、灵活的配置选项和优雅的视觉效果。
+jordium-gantt-vue3 是一个现代化的 Vue3 甘特图组件，内置资源视图与资源规划能力。在统一界面中同时管理任务、时间线以及资源分配，适用于项目计划与资源调度场景。
 
 ### 核心特性
 
-- � **资源计划视图** - Vue 3 生态唯一支持资源视图的甘特图，可按资源（人员/设备）展示任务分配与工时占用
-- �📊 **功能完整** - 任务管理、里程碑、依赖关系、进度追踪
+- 📊**资源计划视图** - Vue 3 生态唯一支持资源视图的甘特图，可按资源（人员/设备）展示任务分配与工时占用
+- 📊 **功能完整** - 任务管理、里程碑、依赖关系、进度追踪
 - 🎨 **主题系统** - 内置亮色/暗色主题，支持自定义样式
 - 🖱️ **交互流畅** - 拖拽调整、缩放、双击编辑、右键菜单
 - 🌍 **国际化** - 内置中英文，可扩展其他语言
@@ -221,6 +221,7 @@ npm run dev
 | `ongoingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#e6a23c'` | 进行中任务的TaskBar背景色。支持十六进制颜色值（如 `'#e6a23c'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 是否显示实际TaskBar（在计划TaskBar下方显示实际执行进度）  |
 | `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用TaskBar悬停提示框（鼠标悬停显示任务详情）  |
+| `enableMilestoneTooltip` ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用里程碑悬停提示框（鼠标悬停显示里程碑名称和日期）  |
 | `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域） |
 | `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar的资源分配标签） |
 | `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许折叠/展开 TaskList 面板。`false` 时强制隐藏 TaskList、SplitterBar 及折叠按钮，Timeline 独占全宽 |
@@ -2839,6 +2840,33 @@ const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
       <div>开始：{{ task.startDate }}</div>
       <div>结束：{{ task.endDate }}</div>
       <div v-if="resourcePercent !== null">资源占比：{{ resourcePercent }}%</div>
+    </div>
+  </template>
+</GanttChart>
+```
+
+---
+
+##### `milestone-tooltip` 插槽 ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF)
+
+用于完全替换里程碑的内置悬停 Tooltip 内容。启用后内置气泡样式不再渲染，由消费方完全控制。
+
+> **前提条件**：需设置 `:enable-milestone-tooltip="true"`（默认已开启）
+
+**插槽作用域参数（`MilestoneTooltipSlotScope`）：**
+
+| 参数名 | 类型 | 说明 |
+| --- | --- | --- |
+| `milestone` | `Milestone` | 当前悬停的里程碑对象，包含里程碑完整数据 |
+
+**示例：**
+
+```vue
+<GanttChart :tasks="tasks">
+  <template #milestone-tooltip="{ milestone }">
+    <div class="my-milestone-tooltip">
+      <div class="title">{{ milestone.name }}</div>
+      <div>目标日期：{{ milestone.startDate }}</div>
     </div>
   </template>
 </GanttChart>

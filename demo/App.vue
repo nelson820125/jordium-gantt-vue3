@@ -2646,7 +2646,6 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             <div
               style="
                 min-width: 230px;
-                margin: -10px -14px;
                 border-radius: 6px;
                 overflow: hidden;
                 background: #fff;
@@ -2777,6 +2776,75 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             </div>
           </template>
         </template>
+
+        <!-- ── Milestone 自定义 Tooltip ─────────────────────────────── -->
+        <template #milestone-tooltip="{ milestone }">
+          <div
+            style="
+              background: #fff;
+              border-radius: 8px;
+              overflow: hidden;
+              min-width: 180px;
+              max-width: 260px;
+              font-size: 12px;
+              color: #333;
+              box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            "
+          >
+            <!-- 顶部色带 -->
+            <div
+              :style="{
+                background: `linear-gradient(135deg, ${milestone.color || '#f56c6c'} 0%, ${(milestone.color || '#f56c6c') + 'bb'} 100%)`,
+                padding: '8px 12px',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }"
+            >
+              <span style="font-size: 14px; flex-shrink: 0;">🔷</span>
+              <span
+                style="
+                  font-weight: 700;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  font-size: 13px;
+                "
+              >{{ milestone.name }}</span>
+            </div>
+
+            <!-- 内容区 -->
+            <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <span style="color: #999; white-space: nowrap;">📅 里程碑日期</span>
+                <span style="font-weight: 600; color: #333; white-space: nowrap;">
+                  {{ milestone.startDate?.slice(0, 10) ?? '-' }}
+                </span>
+              </div>
+              <div
+                v-if="milestone.description"
+                style="
+                  color: #666;
+                  font-size: 11px;
+                  border-top: 1px solid #f0f0f0;
+                  padding-top: 5px;
+                  line-height: 1.5;
+                "
+              >{{ milestone.description }}</div>
+              <div
+                style="
+                  color: #bbb;
+                  font-size: 10px;
+                  text-align: right;
+                  border-top: 1px solid #f5f5f5;
+                  padding-top: 4px;
+                "
+              >✨ 自定义 Milestone Tooltip</div>
+            </div>
+          </div>
+        </template>
+
       </GanttChart>
     </div>
 

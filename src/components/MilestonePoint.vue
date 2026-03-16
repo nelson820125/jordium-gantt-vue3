@@ -3,8 +3,7 @@
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
-import type { TimelineMonth, TimelineYear, TimelineDay } from '../models/types/TimelineDataTypes'
-import { useI18n } from '../composables/useI18n'
+import type { TimelineMonth, TimelineYear, TimelineDay, MilestoneTooltipShowPayload } from '../models/types/TimelineDataTypes'
 import { createLocalDate } from '../utils/predecessorUtils'
 const props = defineProps<Props>()
 
@@ -13,13 +12,10 @@ const emit = defineEmits<{
   'milestone-double-click': [milestone: Milestone]
   'update:milestone': [milestone: Milestone] // 新增里程碑更新事件
   'drag-end': [milestone: Milestone] // 新增
+  // 磁吸气泡悬停 tooltip（用户设置了 #milestone-tooltip slot 时，由 Timeline 统一渲染）
+  'milestone-tooltip-show': [payload: MilestoneTooltipShowPayload]
+  'milestone-tooltip-hide': []
 }>()
-
-const { getTranslation } = useI18n()
-
-const t = (key: string): string => {
-  return getTranslation(key)
-}
 
 interface Props {
   date: string
@@ -620,58 +616,34 @@ const milestoneVisibility = computed(() => {
   }
 })
 
-// Tooltip状态管理
-const showTooltip = ref(false)
-const tooltipPosition = ref({ x: 0, y: 0 })
-
-// 处理里程碑悬停 - 只在停靠状态且显示图标时显示tooltip
+// 处理里程碑悬停——停靠和正常可见状态均显示 Tooltip
 const handleMilestoneMouseEnter = (event: MouseEvent) => {
-  // 只有在停靠状态、显示图标且未被推出时才显示tooltip
-  if (
-    milestoneVisibility.value.isSticky &&
-    milestoneVisibility.value.showIcon &&
-    !milestoneVisibility.value.isPushedOut
-  ) {
-    showTooltip.value = true
+  // 图标不可见或已被推出时不显示
+  if (!milestoneVisibility.value.showIcon || milestoneVisibility.value.isPushedOut) return
 
-    // 计算tooltip位置
-    const rightOffset = !props.milestone || props.milestone?.icon === 'diamond' ? -300 : -270
-    const offsetX = milestoneVisibility.value.stickyPosition === 'left' ? 10 : rightOffset // 左侧停靠在右侧显示，右侧停靠在左侧显示
+  const el = event.currentTarget as HTMLElement
+  const targetRect = el.getBoundingClientRect()
 
-    tooltipPosition.value = {
-      x: event.clientX + offsetX,
-      y: event.clientY - 10,
-    }
+  // 停靠状态：使用已计算的停靠方向
+  // 正常可见：根据元素在视窗中的位置判断——偏右则 tooltip 在左侧，偏左则在右侧
+  let stickyPosition: 'left' | 'right'
+  if (milestoneVisibility.value.isSticky) {
+    stickyPosition = milestoneVisibility.value.stickyPosition as 'left' | 'right'
+  } else {
+    stickyPosition = targetRect.left + targetRect.width / 2 > window.innerWidth * 0.6 ? 'right' : 'left'
   }
+
+  emit('milestone-tooltip-show', {
+    milestone: props.milestone ?? { name: props.name ?? '', startDate: props.date, type: 'milestone' },
+    milestoneColor: milestoneColor.value,
+    targetRect,
+    stickyPosition,
+  })
 }
 
 const handleMilestoneMouseLeave = () => {
-  showTooltip.value = false
+  emit('milestone-tooltip-hide')
 }
-
-// 格式化日期显示
-const formatDisplayDate = (dateStr: string): string => {
-  if (!dateStr) return t('dateNotSet') //Not Set
-
-  try {
-    const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return t('dateNotSet')
-
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  } catch {
-    return t('dateNotSet')
-  }
-}
-
-// Tooltip内容
-const tooltipContent = computed(() => {
-  const milestoneName = props.name || props.milestone?.name || t('milestone')
-  const targetDate = formatDisplayDate(props.date || props.milestone?.startDate || '')
-  return `${t('milestone')}：${milestoneName} - ${t('targetDate')}：${targetDate}`
-})
 
 // 组件销毁时清理事件监听器
 onUnmounted(() => {
@@ -951,22 +923,6 @@ const calculateMilestonePositionFromTimelineData = (
       {{ props.name }}
     </span>
   </div>
-
-  <!-- Tooltip 弹窗 - 只在停靠状态显示 -->
-  <Teleport to="body">
-    <div
-      v-if="showTooltip && milestoneVisibility.isSticky"
-      class="milestone-tooltip"
-      :style="{
-        left: `${tooltipPosition.x}px`,
-        top: `${tooltipPosition.y}px`,
-      }"
-    >
-      <div class="tooltip-content">
-        {{ tooltipContent }}
-      </div>
-    </div>
-  </Teleport>
 </template>
 
 <style scoped>
@@ -1233,35 +1189,6 @@ const calculateMilestonePositionFromTimelineData = (
     filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
       drop-shadow(0 0 24px rgba(245, 108, 108, 0.7)) drop-shadow(0 0 32px rgba(245, 108, 108, 0.3));
   }
-}
-
-/* === Milestone Tooltip 样式 === */
-.milestone-tooltip {
-  position: fixed;
-  background: rgba(0, 0, 0, 0.9);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  z-index: 10000; /* 确保在最上层 */
-  max-width: 300px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 2px 6px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-}
-
-.milestone-tooltip .tooltip-content {
-  font-weight: 600;
-  color: #ffffff;
-  line-height: 1.4;
-}
-
-/* 暗黑模式下的Tooltip样式 */
-:global(.gantt-root[data-theme='dark']) .milestone-tooltip {
-  background: rgba(30, 30, 30, 0.95) !important;
-  color: #ffffff !important;
 }
 
 /* 推挤状态的视觉增强 */

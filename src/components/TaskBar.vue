@@ -204,6 +204,8 @@ const positionCache = inject<PositionCache | null>('positionCache', null)
 const enableTaskBarContextMenu = inject<ComputedRef<boolean>>('enable-task-bar-context-menu', computed(() => true))
 const hasTaskBarContextMenuSlot = inject<ComputedRef<boolean>>('task-bar-context-menu-slot', computed(() => false))
 const declarativeTaskBarContextMenu = inject<ComputedRef<any>>('declarative-task-bar-context-menu', computed(() => null))
+// 磁吸气泡悬停时，若用户设置了 #taskbar-tooltip slot，则复用 Singleton Tooltip 渲染
+const hasBubbleTooltipSlot = inject<ComputedRef<boolean>>('gantt-has-taskbar-tooltip-slot', computed(() => false))
 
 // 判断是否应该显示任何右键菜单
 const shouldShowAnyContextMenu = computed(() => {
@@ -2578,13 +2580,25 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
     hoverTooltipTimer = null
   }
 
+  // 若设置了 #taskbar-tooltip slot，复用 Singleton Tooltip 渲染
+  if (hasBubbleTooltipSlot.value) {
+    const el = event.currentTarget as HTMLElement
+    emit('tooltip-show', {
+      task: props.task,
+      taskStatus: taskStatus.value,
+      resourcePercent: resourcePercent.value,
+      hasResourceConflict: props.hasResourceConflict ?? false,
+      targetRect: el.getBoundingClientRect(),
+    })
+    return
+  }
+
+  // 默认：保留原有本地 task-tooltip 逻辑
   showTooltip.value = true
 
   // v1.9.6 智能定位：强制tooltip显示在.gantt-panel-right容器内
   const isRightBubble = bubbleIndicator.value.side === 'right'
-  const tooltipWidth = 250 // tooltip预估宽度
   const tooltipHeight = 200 // tooltip预估高度
-  const padding = 10 // 与边界的安全距离
 
   // 获取.gantt-panel-right容器的边界
   const timelineContainer = document.querySelector('.gantt-panel-right')
@@ -2599,8 +2613,8 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
     let tentativeX = x + defaultOffsetX
 
     // 强制约束：确保tooltip左边界不超出容器左边界
-    const minX = containerRect.left + padding
-    const maxX = containerRect.right - tooltipWidth - padding
+    const minX = containerRect.left
+    const maxX = containerRect.right
 
     if (tentativeX < minX) {
       // 如果超出左边界，贴左边界显示
@@ -2618,8 +2632,8 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
     x = tentativeX
 
     // 垂直方向边界检测
-    const minY = containerRect.top + padding
-    const maxY = containerRect.bottom - tooltipHeight - padding
+    const minY = containerRect.top
+    const maxY = containerRect.bottom - tooltipHeight
 
     if (y < minY) {
       y = minY
@@ -2639,7 +2653,12 @@ const handleBubbleMouseLeave = (event: MouseEvent) => {
   // 阻止事件冒泡
   event.stopPropagation()
 
-  showTooltip.value = false
+  // 若使用了 Singleton Tooltip（slot 模式），通知 Timeline 隐藏
+  if (hasBubbleTooltipSlot.value) {
+    emit('tooltip-hide')
+  } else {
+    showTooltip.value = false
+  }
 }
 
 // 处理气泡点击事件 - 点击时隐藏tooltip，但不影响定位功能

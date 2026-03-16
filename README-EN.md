@@ -57,7 +57,7 @@
 
 ## ✨ Introduction
 
-jordium-gantt-vue3 is a modern Gantt chart component built with Vue 3 and TypeScript, designed specifically for project management and task scheduling scenarios. It provides rich interactive features, flexible configuration options, and elegant visual effects.
+jordium-gantt-vue3 is a modern Gantt chart component for Vue3 with built-in Resource View and Resource Planning capabilities. Manage tasks, timelines, and resource allocation in one unified interface, ideal for project scheduling and workforce planning.
 
 ### Core Features
 
@@ -223,6 +223,7 @@ npm run dev
 | `ongoingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#e6a23c'` | Background color for ongoing tasks' TaskBar. Supports hex color values (e.g., `'#e6a23c'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Whether to display actual TaskBar (shows actual execution progress below planned TaskBar)  |
 | `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable TaskBar hover tooltip (shows task details on mouse hover)  |
+| `enableMilestoneTooltip` ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable milestone hover tooltip (shows milestone name and date on mouse hover)  |
 | `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource conflict visualization layer (shows diagonal stripe background for overload zones in resource view) |
 | `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) |
 | `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow collapsing/expanding the TaskList panel. When `false`: forcibly hides TaskList, SplitterBar and collapse button; Timeline takes full width |
@@ -2846,6 +2847,33 @@ Fully replaces the built-in TaskBar hover tooltip content. When used, the built-
       <div>Start: {{ task.startDate }}</div>
       <div>End: {{ task.endDate }}</div>
       <div v-if="resourcePercent !== null">Resource: {{ resourcePercent }}%</div>
+    </div>
+  </template>
+</GanttChart>
+```
+
+---
+
+##### `milestone-tooltip` Slot ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Fully replaces the built-in milestone hover Tooltip content. When used, the built-in tooltip is no longer rendered — the consumer has complete control.
+
+> **Prerequisite**: Requires `:enable-milestone-tooltip="true"` (enabled by default)
+
+**Slot scope parameters (`MilestoneTooltipSlotScope`):**
+
+| Param | Type | Description |
+| --- | --- | --- |
+| `milestone` | `Milestone` | The currently hovered milestone object with complete milestone data |
+
+**Example:**
+
+```vue
+<GanttChart :tasks="tasks">
+  <template #milestone-tooltip="{ milestone }">
+    <div class="my-milestone-tooltip">
+      <div class="title">{{ milestone.name }}</div>
+      <div>Target Date: {{ milestone.startDate }}</div>
     </div>
   </template>
 </GanttChart>

@@ -18,7 +18,7 @@ import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
-import type { TooltipShowPayload } from '../models/types/TimelineDataTypes'
+import type { TooltipShowPayload, MilestoneTooltipShowPayload } from '../models/types/TimelineDataTypes'
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 import { computeTaskViewLogicalPosition } from '../utils/taskPositionUtils' // 逻辑坐标种子填充
 
@@ -49,6 +49,8 @@ interface Props {
   showActualTaskbar?: boolean
   // 是否启用 TaskBar 气泡提示框（默认为 true）
   enableTaskBarTooltip?: boolean
+  // 是否启用里程碑气泡提示框（默认为 true）
+  enableMilestoneTooltip?: boolean
   // 自定义任务状态背景色
   pendingTaskBackgroundColor?: string
   delayTaskBackgroundColor?: string
@@ -74,6 +76,7 @@ const props = withDefaults(defineProps<Props>(), {
   allowDragAndResize: true,
   showActualTaskbar: false,
   enableTaskBarTooltip: true,
+  enableMilestoneTooltip: true,
   pendingTaskBackgroundColor: undefined,
   delayTaskBackgroundColor: undefined,
   completeTaskBackgroundColor: undefined,
@@ -200,14 +203,30 @@ const tooltipState = reactive({
   taskStatus: { color: '#409eff', label: '' } as { color: string; label: string; type?: string },
   resourcePercent: 100,
   hasResourceConflict: false,
-  isBelow: false,
-  position: { x: 0, y: 0 },
+  /** 'above'|'below'：tooltip 在目标上下方；'left'|'right'：tooltip 在目标左右侧（气泡停靠时） */
+  placement: 'above' as 'above' | 'below' | 'left' | 'right',
+  /** tooltip 盒子的左上角坐标（直接用于 fixed left/top，无 transform） */
+  position: { left: 0, top: 0 },
+  /**
+   * 箭头定位偏移（px）：
+   *   - placement above/below → 箭头距 tooltip 左边缘的水平距离
+   *   - placement left/right  → 箭头距 tooltip 顶边缘的垂直距离
+   */
+  arrowOffset: 0,
 })
 
 /** 格式化日期显示 (YYYY-MM-DD) */
 const formatTooltipDate = (dateStr: string | undefined): string => {
   if (!dateStr) return t('dateNotSet')
   return String(dateStr).substring(0, 10)
+}
+
+/** 估算默认 tooltip 内容行数 → 高度 */
+const estimateTaskTooltipHeight = (resourcePercent: number, hasResourceConflict: boolean) => {
+  let rows = 4
+  if (viewMode.value === 'resource' && resourcePercent < 100) rows += 1
+  if (hasResourceConflict) rows += 1
+  return 52 + rows * 22 // header + rows
 }
 
 /** TaskBar 触发, Timeline 接受并计算定位 */
@@ -220,46 +239,129 @@ const handleTooltipShow = (payload: TooltipShowPayload) => {
   tooltipState.resourcePercent = resourcePercent
   tooltipState.hasResourceConflict = hasResourceConflict
 
-  // 定位计算（迁移自 TaskBar，使用 Timeline 已有容器 ref）
-  const tooltipWidth = 250
-  const margin = 10
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
+  const TW = 250          // tooltip 固定宽度（与 CSS width:250px 保持一致）
+  const TH = estimateTaskTooltipHeight(resourcePercent, hasResourceConflict)
+  const GAP = 15   // tooltip 与目标元素之间的间距
+  const PAD = 7           // tooltip 与面板 / 视窗边缘的安全距离
 
-  let x = targetRect.left + targetRect.width / 2
-  let y = targetRect.top - 10
+  const panelRect = timelinePanelElement.value?.getBoundingClientRect()
+  const panelLeft  = panelRect ? panelRect.left  : ganttTaskListWidth.value
+  const panelRight = panelRect ? panelRect.right : window.innerWidth
+  const viewH = window.innerHeight
 
-  const taskListRightBoundary = ganttTaskListWidth.value + margin
-  if (x - tooltipWidth / 2 < taskListRightBoundary) {
-    x = taskListRightBoundary + tooltipWidth / 2
-  }
-  if (x + tooltipWidth / 2 > viewportWidth - margin) {
-    x = viewportWidth - margin - tooltipWidth / 2
-  }
+  const targetCX = targetRect.left + targetRect.width  / 2
+  const targetCY = targetRect.top  + targetRect.height / 2
 
-  const spaceAbove = targetRect.top - margin
-  const spaceBelow = viewportHeight - targetRect.bottom - margin
-  const baseHeight = 80
-  const rowHeight = 24
-  let contentRows = 4
-  if (viewMode.value === 'resource' && resourcePercent < 100) contentRows += 1
-  if (hasResourceConflict) contentRows += 1
-  const estimatedTooltipHeight = baseHeight + contentRows * rowHeight
+  // ── 判断气泡停靠场景 ────────────────────────────────────────────────────────
+  // 当 TaskBar 滑出面板左/右边缘时，气泡显示在面板边框处
+  // 判断依据：目标元素中心是否在面板内 60px 缓冲范围外
+  const dockLeft  = targetCX < panelLeft  + 60
+  const dockRight = targetCX > panelRight - 60
 
-  if (spaceAbove < estimatedTooltipHeight && spaceBelow > spaceAbove) {
-    y = targetRect.bottom + 10
-    tooltipState.isBelow = true
+  let left: number, top: number, arrowOffset: number
+  let placement: 'above' | 'below' | 'left' | 'right'
+
+  if (dockLeft) {
+    // ── 左侧停靠：tooltip 显示在气泡右侧，垂直居中 ──────────────────────────
+    // CSS 对 placement-right 应用 translateY(-50%)，故 top 为目标垂直中心，限制在视窗内
+    placement   = 'right'
+    left        = targetRect.right + GAP
+    top         = Math.max(PAD + TH / 2, Math.min(viewH - PAD - TH / 2, targetCY))
+    arrowOffset = Math.max(10, Math.min(TH - 10, targetCY - top + TH / 2))
+  } else if (dockRight) {
+    // ── 右侧停靠：tooltip 显示在气泡左侧，垂直居中 ──────────────────────────
+    // CSS 对 placement-left 应用 translateY(-50%)，故 top 为目标垂直中心，限制在视窗内
+    placement   = 'left'
+    left        = targetRect.left - TW - GAP
+    top         = Math.max(PAD + TH / 2, Math.min(viewH - PAD - TH / 2, targetCY))
+    arrowOffset = Math.max(10, Math.min(TH - 10, targetCY - top + TH / 2))
   } else {
-    tooltipState.isBelow = false
+    // ── 正常可见状态：tooltip 显示在任务条上方或下方 ─────────────────────────
+    // 水平方向：以目标中心为准，限制在面板内
+    left        = Math.max(panelLeft + PAD, Math.min(panelRight - TW - PAD, targetCX - TW / 2))
+    arrowOffset = Math.max(10, Math.min(TW - 10, targetCX - left))
+
+    const spaceAbove = targetRect.top    - PAD
+    const spaceBelow = viewH - targetRect.bottom - PAD
+    if (spaceAbove >= TH + GAP || spaceAbove >= spaceBelow) {
+      // CSS 对 placement-above 应用 translateY(-100%)，故 top 为目标顶边小间距处
+      // 无论卡片实际高度多少，底部始终贴靠到目标上方
+      placement = 'above'
+      top       = targetRect.top - GAP
+    } else {
+      // CSS 对 placement-below 无 transform，top 直接为目标底部 + 间距
+      placement = 'below'
+      top       = targetRect.bottom + GAP
+    }
   }
 
-  tooltipState.position = { x, y }
-  tooltipState.visible = true
+  tooltipState.placement    = placement
+  tooltipState.position     = { left, top }
+  tooltipState.arrowOffset  = arrowOffset
+  tooltipState.visible      = true
 }
 
 /** TaskBar 鼠标离开 / 拖拽 / Tab悬停时触发 */
 const handleTooltipHide = () => {
   tooltipState.visible = false
+}
+
+// ─── Milestone Singleton Tooltip ──────────────────────────────────────────────
+const milestoneTooltipState = reactive({
+  visible: false,
+  milestone: null as Milestone | null,
+  milestoneColor: '#f56c6c',
+  position: { x: 0, y: 0 },
+  arrowDirection: 'left' as 'left' | 'right',
+  arrowOffsetY: 0, // 箭头 top 坐标（距 tooltip 顶边）= 目标垂直中心在 tooltip 内的位置，约等于 estimatedH/2 = 17px
+})
+
+/** MilestonePoint 磁吸气泡悬停时触发 */
+const handleMilestoneTooltipShow = (payload: MilestoneTooltipShowPayload) => {
+  if (props.enableMilestoneTooltip === false) return
+
+  const { milestone, milestoneColor, targetRect, stickyPosition } = payload
+  milestoneTooltipState.milestone = milestone
+  milestoneTooltipState.milestoneColor = milestoneColor
+
+  const tooltipWidth = 220
+  const gap = 8           // tooltip 与元素之间的间距
+  const edgePadding = 8   // tooltip 与视窗边缘的最小间距
+  const estimatedH = 34   // tooltip 估算高度：padding(8+8) + 单行文字(12px×1.4≈17px) ≈ 33px
+  const viewportW = window.innerWidth
+  const viewportH = window.innerHeight
+
+  // 左侧停靠：milestone 在左边缘 → tooltip 出现在其右侧 → 箭头指向左
+  // 右侧停靠：milestone 在右边缘 → tooltip 出现在其左侧 → 箭头指向右
+  let x: number
+  let arrowDir: 'left' | 'right'
+  if (stickyPosition === 'left') {
+    x = targetRect.right + gap
+    arrowDir = 'left'
+  } else {
+    x = targetRect.left - tooltipWidth - gap - 40
+    arrowDir = 'right'
+  }
+  // 防止超出视窗左右边缘
+  x = Math.max(edgePadding, Math.min(viewportW - tooltipWidth - edgePadding, x))
+
+  // tooltip 垂直居中于目标元素，并防止超出视窗上下边缘
+  const targetCenterY = targetRect.top + targetRect.height / 2
+  let y = targetCenterY - estimatedH / 2
+  y = Math.max(edgePadding, Math.min(viewportH - estimatedH - edgePadding, y))
+
+  // 箭头精确指向目标元素垂直中心：计算目标中心相对于 tooltip 顶边缘的偏移
+  const arrowOffsetY = Math.max(10, Math.min(estimatedH - 10, targetCenterY - y))
+
+  milestoneTooltipState.position = { x, y }
+  milestoneTooltipState.arrowDirection = arrowDir
+  milestoneTooltipState.arrowOffsetY = arrowOffsetY
+  milestoneTooltipState.visible = true
+}
+
+/** MilestonePoint 鼠标离开时触发 */
+const handleMilestoneTooltipHide = () => {
+  milestoneTooltipState.visible = false
 }
 
 // 获取以今天为中心的时间线范围（缓存结果，避免每次计算创建新对象）
@@ -5783,6 +5885,8 @@ const handleAddSuccessor = (task: Task) => {
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
+                  @milestone-tooltip-show="handleMilestoneTooltipShow"
+                  @milestone-tooltip-hide="handleMilestoneTooltipHide"
                 />
               </template>
               <!-- 独立里程碑 -->
@@ -5817,6 +5921,8 @@ const handleAddSuccessor = (task: Task) => {
                   @milestone-double-click="handleMilestoneDoubleClick"
                   @update:milestone="handleMilestoneUpdate"
                   @drag-end="handleMilestoneDragEnd"
+                  @milestone-tooltip-show="handleMilestoneTooltipShow"
+                  @milestone-tooltip-hide="handleMilestoneTooltipHide"
                 />
               </template>
               <!-- 普通任务条 - 排除里程碑分组和普通里程碑 -->
@@ -6033,14 +6139,15 @@ const handleAddSuccessor = (task: Task) => {
     <div
       v-if="tooltipState.visible"
       class="task-hover-tooltip"
-      :class="{ 'tooltip-below': tooltipState.isBelow }"
+      :class="[`placement-${tooltipState.placement}`, { 'tooltip-custom-slot': $slots['taskbar-tooltip'] }]"
       :style="{
-        left: `${tooltipState.position.x}px`,
-        top: `${tooltipState.position.y}px`,
-        backgroundColor: tooltipState.taskStatus.color,
+        left:            `${tooltipState.position.left}px`,
+        top:             `${tooltipState.position.top}px`,
+        '--arrow-offset': `${tooltipState.arrowOffset}px`,
+        '--tt-color':    tooltipState.taskStatus.color,
       }"
     >
-      <!-- 有自定义 slot：消费方内容 -->
+      <!-- 自定义 slot -->
       <template v-if="$slots['taskbar-tooltip']">
         <slot
           name="taskbar-tooltip"
@@ -6049,15 +6156,8 @@ const handleAddSuccessor = (task: Task) => {
           :resource-percent="tooltipState.resourcePercent"
         />
       </template>
-      <!-- 默认内容：向后兼容 -->
+      <!-- 默认内容 -->
       <template v-else>
-        <div
-          class="hover-tooltip-arrow"
-          :style="{
-            borderTopColor: tooltipState.isBelow ? 'transparent' : tooltipState.taskStatus.color,
-            borderBottomColor: tooltipState.isBelow ? tooltipState.taskStatus.color : 'transparent',
-          }"
-        />
         <div class="hover-tooltip-content">
           <div class="hover-tooltip-title">{{ tooltipState.task?.name }}</div>
           <div class="hover-tooltip-row">
@@ -6078,6 +6178,42 @@ const handleAddSuccessor = (task: Task) => {
           </div>
         </div>
       </template>
+      <!-- 箭头：最后渲染，确保层叠在内容之上，并正确超出容器边缘 -->
+      <span class="tt-arrow" />
+    </div>
+  </Teleport>
+
+  <!-- Milestone Singleton Tooltip -->
+  <Teleport v-if="props.enableMilestoneTooltip !== false" to="body">
+    <div
+      v-if="milestoneTooltipState.visible"
+      class="milestone-sticky-tooltip"
+      :class="[
+        `arrow-${milestoneTooltipState.arrowDirection}`,
+        { 'milestone-tooltip-custom': $slots['milestone-tooltip'] },
+      ]"
+      :style="{
+        left: `${milestoneTooltipState.position.x + ($slots['milestone-tooltip'] ? 0 : (milestoneTooltipState.arrowDirection === 'left' ? 0 : 50))}px`,
+        top: `${milestoneTooltipState.position.y}px`,
+        '--ms-color': milestoneTooltipState.milestoneColor,
+        maxWidth: `${$slots['milestone-tooltip'] ? '280px' : '180px'}`,
+      }"
+    >
+      <!-- 有自定义 slot -->
+      <template v-if="$slots['milestone-tooltip']">
+        <slot
+          name="milestone-tooltip"
+          :milestone="milestoneTooltipState.milestone"
+        />
+      </template>
+      <!-- 默认内容：保留原有文字气泡样式 -->
+      <template v-else>
+        <div class="milestone-sticky-tooltip-content">
+          {{ milestoneTooltipState.milestone?.name }} &ndash; {{ formatTooltipDate(milestoneTooltipState.milestone?.startDate) + 1111111111}}"
+        </div>
+      </template>
+      <!-- 箭头：仅绑定动态的 top 坐标，其余方向和配色均由 CSS 类控制 -->
+      <span class="ms-arrow" :style="{ top: `${milestoneTooltipState.arrowOffsetY}px` }" />
     </div>
   </Teleport>
 </template>
@@ -6085,10 +6221,11 @@ const handleAddSuccessor = (task: Task) => {
 <style scoped>
 @import '../styles/theme-variables.css';
 
-/* ─── Singleton Tooltip CSS（从 TaskBar.vue 迁移至此） ─────────────────────── */
+/* ─── Singleton Tooltip CSS ─────────────────────────────────────────────────── */
 .task-hover-tooltip {
   position: fixed;
-  background-color: rgba(0, 0, 0, 0.85);
+  width: 250px;              /* 固定宽度，与 JS TW=250 保持一致 */
+  background-color: var(--tt-color, rgba(0, 0, 0, 0.85));
   color: white;
   padding: 10px 14px;
   border-radius: 6px;
@@ -6096,34 +6233,101 @@ const handleAddSuccessor = (task: Task) => {
   z-index: 999999999;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
-  transform: translate(-50%, -100%);
-  margin-top: -8px;
-  min-width: 150px;
+  overflow: visible;         /* 允许箭头伸出容器边缘 */
 }
 
-.task-hover-tooltip.tooltip-below {
-  transform: translate(-50%, 0);
-  margin-top: 0;
-}
+/*
+ * 各方向定位说明：
+ *   above  → JS top = targetRect.top - GAP，用 translateY(-100%) 把底边锤到目标上方
+ *   below  → JS top = targetRect.bottom + GAP，无 transform，顶边锤到目标下方
+ *   right  → JS top = 垂直中心（已限制），用 translateY(-50%) 垂直居中
+ *   left   → 同 right
+ */
+.placement-above { transform: translateY(-100%); }
+.placement-below { transform: none; }
+.placement-right { transform: translateY(-50%); }
+.placement-left  { transform: translateY(-50%); }
 
-.hover-tooltip-arrow {
+/* ── 箭头基础样式 ────────────────────────────────────────────────────────── */
+.tt-arrow {
+  display: block;
   position: absolute;
-  left: 50%;
-  bottom: -5px;
-  transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 1; /* 确保箭头渲染在 slot 内容之上 */
+}
+
+/*
+ * 关键原理：箭头元素是 0×0 的盒子，transform 里的 % 相对于自身尺寸，
+ * 0×0 时 100% = 0px——所以绝不能用 translate(±100%) 来推出边缘。
+ * 必须用具体像素值（-7px）把 0-盒子推到 tooltip 边缘外侧，
+ * 只用 translate 做另一轴的居中。
+ *
+ * above：tooltip 在目标上方，箭头 ▼ 朝下，放在 tooltip 底边外侧
+ *   border-top 向上绘制三角，尖端在元素位置（最低点）
+ *   bottom:-7px → 0-高元素位于 tooltip 底边下方 7px → 尖端在外
+ */
+.placement-above .tt-arrow {
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left:   7px solid transparent;
+  border-right:  7px solid transparent;
+  border-top:    7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
   border-bottom: 0;
 }
 
-.tooltip-below .hover-tooltip-arrow {
-  bottom: auto;
-  top: -5px;
+/*
+ * below：tooltip 在目标下方，箭头 ▲ 朝上，放在 tooltip 顶边外侧
+ *   border-bottom 向下绘制三角，尖端在元素位置（最高点）
+ *   top:-17px → 0-高元素位于 tooltip 顶边上方 17px → 尖端在外
+ */
+.placement-below .tt-arrow {
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left:   7px solid transparent;
+  border-right:  7px solid transparent;
+  border-bottom: 7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
   border-top: 0;
-  border-bottom: 6px solid rgba(0, 0, 0, 0.85);
+}
+
+/*
+ * right：tooltip 在目标右侧，箭头 ◀ 朝左，放在 tooltip 左边外侧
+ *   border-right 向右绘制三角，尖端在元素位置（最左点）
+ *   left:-17px → 0-宽元素位于 tooltip 左边再左 17px → 尖端在外
+ */
+.placement-right .tt-arrow {
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top:    7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right:  7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
+  border-left: 0;
+}
+
+/*
+ * left：tooltip 在目标左侧，箭头 ▶ 朝右，放在 tooltip 右边外侧
+ *   border-left 向左绘制三角，尖端在元素位置（最右点）
+ *   right:-17px → 0-宽元素位于 tooltip 右边再右 17px → 尖端在外
+ */
+.placement-left .tt-arrow {
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top:    7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left:   7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
+  border-right: 0;
+}
+
+/* 自定义 slot 时容器样式：保留 250px 宽度使箭头偏移数学一致，但移除背景和边距 */
+.task-hover-tooltip.tooltip-custom-slot {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
 }
 
 .hover-tooltip-content {
@@ -7255,5 +7459,72 @@ const handleAddSuccessor = (task: Task) => {
 /* 暗色主题：15分钟刻度线样式 */
 :global(.gantt-root[data-theme='dark']) .quarter-line {
   background-color: var(--gantt-border-light, #555555) !important;
+}
+
+/* ─── Milestone Singleton Tooltip CSS ─────────────────────────────────────── */
+.milestone-sticky-tooltip {
+  position: fixed;
+  background: var(--ms-color, rgba(0, 0, 0, 0.9));
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 999999999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  overflow: visible; /* 允许箭头伸出容器边缘 */
+}
+
+/* 箭头基础样式：0×0 盒子 + border 三角；top 由 :style 直接绑定，transform 做垂直居中修正 */
+.ms-arrow {
+  display: block;
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+/* 箭头指向左（tooltip 在元素右侧） */
+.arrow-left .ms-arrow {
+  left: -6px;
+  border-top:    6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right:  6px solid var(--ms-color, rgba(0, 0, 0, 0.9));
+  border-left:   0;
+}
+
+/* 箭头指向右（tooltip 在元素左侧） */
+.arrow-right .ms-arrow {
+  right: -6px;
+  border-top:    6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left:   6px solid var(--ms-color, rgba(0, 0, 0, 0.9));
+  border-right:  0;
+}
+
+/* 使用自定义 slot 时移除容器样式，避免白色卡片被黑色背景包裹 */
+.milestone-sticky-tooltip.milestone-tooltip-custom {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.milestone-sticky-tooltip-content {
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.4;
+}
+
+:global(.gantt-root[data-theme='dark']) .milestone-sticky-tooltip {
+  background: rgba(30, 30, 30, 0.95) !important;
+}
+
+:global(.gantt-root[data-theme='dark']) .milestone-sticky-tooltip.milestone-tooltip-custom {
+  background: transparent;
+  box-shadow: none;
 }
 </style>
