@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.3] - 2026-03-24
+
+### Enhancement
+- 🎉 优化：Taskbar右键触发后，禁止Tooltip的展示
+- 🎉 优化：移除里程碑以及Taskbar停靠磁贴的闪缩动画，提升资源效率
+- 🎉 优化：优化内部接口
+- 🎉 Optimized: After right-clicking on Taskbar, the display of Tooltip is disabled
+- 🎉 Optimized: Removed flicker animation for Milestone and Taskbar docking tiles, improving resource efficiency
+- 🎉 Optimized: Optimized internal interfaces
+
 ## [1.10.2] - 2026-03-16
 
 ### Added

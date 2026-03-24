@@ -1,6 +1,17 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, nextTick, watch, useSlots, inject, type ComputedRef, type Ref } from 'vue'
+import {
+  ref,
+  computed,
+  onUnmounted,
+  onMounted,
+  nextTick,
+  watch,
+  useSlots,
+  inject,
+  type ComputedRef,
+  type Ref,
+} from 'vue'
 import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
@@ -48,7 +59,10 @@ defineSlots<{
 }>()
 
 // 从 GanttChart 注入 enableLinkAnchor 配置
-const enableLinkAnchor = inject<ComputedRef<boolean>>('enable-link-anchor', computed(() => true))
+const enableLinkAnchor = inject<ComputedRef<boolean>>(
+  'enable-link-anchor',
+  computed(() => true)
+)
 
 // v1.9.0 计算当前资源的利用率
 const resourcePercent = computed(() => {
@@ -191,21 +205,49 @@ const slots = useSlots()
 const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
 
 // v1.9.5 注入showTaskbarTab配置
-const showTaskbarTab = inject<ComputedRef<boolean>>('gantt-show-taskbar-tab', computed(() => true))
+const showTaskbarTab = inject<ComputedRef<boolean>>(
+  'gantt-show-taskbar-tab',
+  computed(() => true)
+)
 
 // 注入资源布局信息（用于判断跨行拖拽边界）
-const resourceRowPositions = inject<ComputedRef<Map<string, number>>>('resourceRowPositions', computed(() => new Map()))
-const resourceTaskLayouts = inject<ComputedRef<Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>>>('resourceTaskLayouts', computed(() => new Map()))
+const resourceRowPositions = inject<ComputedRef<Map<string, number>>>(
+  'resourceRowPositions',
+  computed(() => new Map())
+)
+const resourceTaskLayouts = inject<
+  ComputedRef<
+    Map<
+      string,
+      { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+    >
+  >
+>(
+  'resourceTaskLayouts',
+  computed(() => new Map())
+)
 
 // v1.9.6 Phase1 - 注入位置计算缓存实例（由Timeline提供）
 const positionCache = inject<PositionCache | null>('positionCache', null)
 
 // 注入右键菜单配置
-const enableTaskBarContextMenu = inject<ComputedRef<boolean>>('enable-task-bar-context-menu', computed(() => true))
-const hasTaskBarContextMenuSlot = inject<ComputedRef<boolean>>('task-bar-context-menu-slot', computed(() => false))
-const declarativeTaskBarContextMenu = inject<ComputedRef<any>>('declarative-task-bar-context-menu', computed(() => null))
+const enableTaskBarContextMenu = inject<ComputedRef<boolean>>(
+  'enable-task-bar-context-menu',
+  computed(() => true)
+)
+const hasTaskBarContextMenuSlot = inject<ComputedRef<boolean>>(
+  'task-bar-context-menu-slot',
+  computed(() => false)
+)
+const declarativeTaskBarContextMenu = inject<ComputedRef<any>>(
+  'declarative-task-bar-context-menu',
+  computed(() => null)
+)
 // 磁吸气泡悬停时，若用户设置了 #taskbar-tooltip slot，则复用 Singleton Tooltip 渲染
-const hasBubbleTooltipSlot = inject<ComputedRef<boolean>>('gantt-has-taskbar-tooltip-slot', computed(() => false))
+const hasBubbleTooltipSlot = inject<ComputedRef<boolean>>(
+  'gantt-has-taskbar-tooltip-slot',
+  computed(() => false)
+)
 
 // 判断是否应该显示任何右键菜单
 const shouldShowAnyContextMenu = computed(() => {
@@ -351,7 +393,7 @@ const isResizingLeft = ref(false)
 const isResizingRight = ref(false)
 const justFinishedDragOrResize = ref(false) // 标记刚刚完成拖拽或调整大小
 const dragStartX = ref(0)
-const dragStartY = ref(0)  // v1.9.0 用于资源视图垂直拖拽
+const dragStartY = ref(0) // v1.9.0 用于资源视图垂直拖拽
 const dragStartLeft = ref(0)
 const dragStartWidth = ref(0)
 const resizeStartX = ref(0)
@@ -478,7 +520,11 @@ const taskBarStyle = computed(() => {
     const startDate = createLocalDate(currentStartDate)
     const endDate = createLocalDate(currentEndDate)
     if (startDate && endDate) {
-      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+      const startDateOnly = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate()
+      )
       const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
       const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
       const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
@@ -534,17 +580,17 @@ const taskBarStyle = computed(() => {
     const startDateOnly = new Date(
       renderStartDate.getFullYear(),
       renderStartDate.getMonth(),
-      renderStartDate.getDate(),
+      renderStartDate.getDate()
     )
     const endDateOnly = new Date(
       renderEndDate.getFullYear(),
       renderEndDate.getMonth(),
-      renderEndDate.getDate(),
+      renderEndDate.getDate()
     )
     const baseStartOnly = new Date(
       renderBaseStart.getFullYear(),
       renderBaseStart.getMonth(),
-      renderBaseStart.getDate(),
+      renderBaseStart.getDate()
     )
 
     if (
@@ -570,7 +616,7 @@ const taskBarStyle = computed(() => {
           startPosition = calculatePositionFromTimelineData(
             startDateOnly,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           )
         }
 
@@ -585,7 +631,7 @@ const taskBarStyle = computed(() => {
           endPosition = calculatePositionFromTimelineData(
             nextDay,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           )
         }
       } else {
@@ -593,14 +639,14 @@ const taskBarStyle = computed(() => {
         startPosition = calculatePositionFromTimelineData(
           startDateOnly,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
         const nextDay = new Date(endDateOnly)
         nextDay.setDate(nextDay.getDate() + 1)
         endPosition = calculatePositionFromTimelineData(
           nextDay,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
       }
 
@@ -618,16 +664,13 @@ const taskBarStyle = computed(() => {
           calculatePositionFromTimelineData(
             endDateOnly,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           ) + dayWidth
       }
 
       left = startPosition
       width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
-    } else if (
-      props.timelineData &&
-      props.currentTimeScale === TimelineScale.DAY
-    ) {
+    } else if (props.timelineData && props.currentTimeScale === TimelineScale.DAY) {
       // v1.9.6 Phase1 - 日视图也使用缓存优化
       let startPosition: number
       let endPosition: number
@@ -642,7 +685,7 @@ const taskBarStyle = computed(() => {
           startPosition = calculatePositionFromTimelineData(
             startDateOnly,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           )
         }
 
@@ -656,7 +699,7 @@ const taskBarStyle = computed(() => {
           endPosition = calculatePositionFromTimelineData(
             nextDay,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           )
         }
       } else {
@@ -664,24 +707,25 @@ const taskBarStyle = computed(() => {
         startPosition = calculatePositionFromTimelineData(
           startDateOnly,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
         const nextDay = new Date(endDateOnly)
         nextDay.setDate(nextDay.getDate() + 1)
         endPosition = calculatePositionFromTimelineData(
           nextDay,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
       }
 
       // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
       if (endPosition === startPosition) {
-        endPosition = calculatePositionFromTimelineData(
-          endDateOnly,
-          props.timelineData,
-          props.currentTimeScale,
-        ) + 30 // 日视图每天30px
+        endPosition =
+          calculatePositionFromTimelineData(
+            endDateOnly,
+            props.timelineData,
+            props.currentTimeScale
+          ) + 30 // 日视图每天30px
       }
 
       left = startPosition
@@ -689,7 +733,7 @@ const taskBarStyle = computed(() => {
     } else {
       // 其他情况（没有 timelineData）：基于日期的简单计算
       const startDiff = Math.floor(
-        (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24),
+        (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24)
       )
 
       // 计算持续天数（基于日期，忽略时间）
@@ -715,7 +759,12 @@ const taskBarStyle = computed(() => {
   // v1.9.1 计算垂直位置：资源视图中支持换行布局
   let topOffset = (props.rowHeight - taskBarHeight) / 2 // 默认：居中对齐
 
-  if (viewMode.value === 'resource' && props.taskSubRow !== undefined && props.rowHeights && props.rowHeights.length > 0) {
+  if (
+    viewMode.value === 'resource' &&
+    props.taskSubRow !== undefined &&
+    props.rowHeights &&
+    props.rowHeights.length > 0
+  ) {
     // 换行布局：根据子行索引和每行高度计算垂直位置
     const subRow = props.taskSubRow
     const rowHeights = props.rowHeights
@@ -793,11 +842,13 @@ const taskStatus = computed(() => {
     // 将十六进制颜色转换为RGB
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      } : { r: 64, g: 158, b: 255 } // 默认蓝色
+      return result
+        ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+          }
+        : { r: 64, g: 158, b: 255 } // 默认蓝色
     }
 
     const rgb = hexToRgb(props.task.barColor)
@@ -841,11 +892,13 @@ const taskStatus = computed(() => {
   const generateColorsFromMain = (mainColor: string) => {
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      } : { r: 64, g: 158, b: 255 }
+      return result
+        ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+          }
+        : { r: 64, g: 158, b: 255 }
     }
     const rgb = hexToRgb(mainColor)
     const bgColor = `rgb(${Math.round(255 * 0.95 + rgb.r * 0.05)}, ${Math.round(255 * 0.95 + rgb.g * 0.05)}, ${Math.round(255 * 0.95 + rgb.b * 0.05)})`
@@ -1020,14 +1073,14 @@ const actualBarStyle = computed(() => {
     const startPosition = calculatePositionFromTimelineData(
       effectiveStart,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
     const nextDay = new Date(effectiveEnd)
     nextDay.setDate(nextDay.getDate() + 1)
     let endPosition = calculatePositionFromTimelineData(
       nextDay,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     if (endPosition === startPosition) {
@@ -1039,11 +1092,12 @@ const actualBarStyle = computed(() => {
       } else if (props.currentTimeScale === TimelineScale.YEAR) {
         dayWidth = 180 / 182
       }
-      endPosition = calculatePositionFromTimelineData(
-        effectiveEnd,
-        props.timelineData,
-        props.currentTimeScale,
-      ) + dayWidth
+      endPosition =
+        calculatePositionFromTimelineData(
+          effectiveEnd,
+          props.timelineData,
+          props.currentTimeScale
+        ) + dayWidth
     }
 
     actualLeft = startPosition
@@ -1052,29 +1106,30 @@ const actualBarStyle = computed(() => {
     const startPosition = calculatePositionFromTimelineData(
       effectiveStart,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
     const nextDay = new Date(effectiveEnd)
     nextDay.setDate(nextDay.getDate() + 1)
     let endPosition = calculatePositionFromTimelineData(
       nextDay,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     if (endPosition === startPosition) {
-      endPosition = calculatePositionFromTimelineData(
-        effectiveEnd,
-        props.timelineData,
-        props.currentTimeScale,
-      ) + 30
+      endPosition =
+        calculatePositionFromTimelineData(
+          effectiveEnd,
+          props.timelineData,
+          props.currentTimeScale
+        ) + 30
     }
 
     actualLeft = startPosition
     actualWidth = Math.max(endPosition - startPosition, 4)
   } else {
     const startDiff = Math.floor(
-      (effectiveStart.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24),
+      (effectiveStart.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24)
     )
     const timeDiffMs = effectiveEnd.getTime() - effectiveStart.getTime()
     const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
@@ -1185,7 +1240,7 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
 
   // 记录初始状态，但不立即激活拖拽
   dragStartX.value = e.clientX
-  dragStartY.value = e.clientY  // v1.9.0 记录Y坐标用于资源视图垂直拖拽
+  dragStartY.value = e.clientY // v1.9.0 记录Y坐标用于资源视图垂直拖拽
   dragStartLeft.value = parseInt(taskBarStyle.value.left)
   dragStartWidth.value = parseInt(taskBarStyle.value.width)
 
@@ -1279,7 +1334,7 @@ const dragTooltipContent = ref({ startDate: '', endDate: '' })
 const handleMouseMove = (e: MouseEvent) => {
   // 记录最新的鼠标Y位置（用于资源视图垂直拖拽）
   if (viewMode.value === 'resource') {
-    (window as any).lastDragMouseY = e.clientY
+    ;(window as any).lastDragMouseY = e.clientY
 
     // v1.9.0 检测是否跨行拖拽（基于资源行的实际高度）
     const timelineBody = document.querySelector('.timeline-body')
@@ -1305,7 +1360,7 @@ const handleMouseMove = (e: MouseEvent) => {
         // 虚拟预览应该显示在鼠标位置
         dragPreviewPosition.value = {
           x: e.clientX - dragPreviewOffsetX.value,
-          y: e.clientY - (props.rowHeight / 2),
+          y: e.clientY - props.rowHeight / 2,
         }
       } else {
         dragPreviewVisible.value = false
@@ -1329,9 +1384,10 @@ const handleMouseMove = (e: MouseEvent) => {
     const deltaY = Math.abs(e.clientY - dragStartY.value)
 
     // v1.9.0 资源视图中，同时考虑Y轴移动（垂直拖拽）
-    const threshold = viewMode.value === 'resource' && dragType.value === 'drag'
-      ? Math.max(deltaX, deltaY)  // 资源视图拖拽：X或Y有一个达到阈值即可
-      : deltaX  // 任务视图或拉伸：只考虑X轴
+    const threshold =
+      viewMode.value === 'resource' && dragType.value === 'drag'
+        ? Math.max(deltaX, deltaY) // 资源视图拖拽：X或Y有一个达到阈值即可
+        : deltaX // 任务视图或拉伸：只考虑X轴
 
     // 如果移动距离小于阈值，不执行任何操作
     if (threshold < dragThreshold.value) {
@@ -1359,13 +1415,13 @@ const handleMouseMove = (e: MouseEvent) => {
     new CustomEvent('drag-boundary-check', {
       detail: {
         mouseX: e.clientX,
-        mouseY: e.clientY,  // v1.9.0 添加Y坐标用于资源视图垂直拖拽检测
-        taskId: props.task.id,  // v1.9.0 添加taskId
-        rowIndex: props.rowIndex,  // v1.9.0 添加当前行索引
+        mouseY: e.clientY, // v1.9.0 添加Y坐标用于资源视图垂直拖拽检测
+        taskId: props.task.id, // v1.9.0 添加taskId
+        rowIndex: props.rowIndex, // v1.9.0 添加当前行索引
         isDragging: isDragging.value || isResizingLeft.value || isResizingRight.value,
-        isResourceView: viewMode.value === 'resource',  // v1.9.0 标识是否资源视图
+        isResourceView: viewMode.value === 'resource', // v1.9.0 标识是否资源视图
       },
-    }),
+    })
   )
 
   // 更新拖拽提示框位置
@@ -1399,16 +1455,18 @@ const handleMouseMove = (e: MouseEvent) => {
         // 使用与任务视图相同的日期计算算法
         let newStartDate: Date | null = null
 
-        if (props.timelineData &&
-            (props.currentTimeScale === TimelineScale.DAY ||
-             props.currentTimeScale === TimelineScale.MONTH ||
-             props.currentTimeScale === TimelineScale.QUARTER ||
-             props.currentTimeScale === TimelineScale.YEAR)) {
+        if (
+          props.timelineData &&
+          (props.currentTimeScale === TimelineScale.DAY ||
+            props.currentTimeScale === TimelineScale.MONTH ||
+            props.currentTimeScale === TimelineScale.QUARTER ||
+            props.currentTimeScale === TimelineScale.YEAR)
+        ) {
           // 有timelineData时，使用精确的日期计算
           newStartDate = calculateDateFromPosition(
             relativeX,
             props.timelineData,
-            props.currentTimeScale,
+            props.currentTimeScale
           )
         }
 
@@ -1543,7 +1601,7 @@ const handleMouseMove = (e: MouseEvent) => {
         const newStartDate = calculateDateFromPosition(
           newLeft,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
 
         if (newStartDate) {
@@ -1670,7 +1728,7 @@ const handleMouseMove = (e: MouseEvent) => {
         const newStartDate = calculateDateFromPosition(
           newLeft,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
 
         if (newStartDate) {
@@ -1781,7 +1839,7 @@ const handleMouseMove = (e: MouseEvent) => {
         const newEndDate = calculateDateFromPosition(
           newRightPosition,
           props.timelineData,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
 
         if (newEndDate) {
@@ -1802,7 +1860,7 @@ const handleMouseMove = (e: MouseEvent) => {
         const newDurationDays = newWidth / props.dayWidth
         const newEndDate = addDaysToLocalDate(
           props.startDate,
-          resizeStartLeft.value / props.dayWidth + newDurationDays - 1,
+          resizeStartLeft.value / props.dayWidth + newDurationDays - 1
         )
 
         // 只更新临时数据，不触发事件
@@ -1847,7 +1905,7 @@ const handleMouseUp = () => {
         mouseX: 0,
         isDragging: false,
       },
-    }),
+    })
   )
 
   // v1.9.0 资源视图垂直拖拽：检测是否移动到不同资源
@@ -1855,7 +1913,12 @@ const handleMouseUp = () => {
   let targetResourceRowIndex: number | undefined
   let isCrossRowDrag = false
 
-  if (viewMode.value === 'resource' && isDragging.value && isDragThresholdMet.value && props.currentResourceId) {
+  if (
+    viewMode.value === 'resource' &&
+    isDragging.value &&
+    isDragThresholdMet.value &&
+    props.currentResourceId
+  ) {
     // 记录松开鼠标时的X位置（用于计算新日期）
     dragEndX.value = (window as any).event?.clientX || 0
 
@@ -1891,7 +1954,7 @@ const handleMouseUp = () => {
             calculatedStartDate: tempTaskData.value?.startDate,
             calculatedEndDate: tempTaskData.value?.endDate,
           },
-        }),
+        })
       )
     }
 
@@ -1901,7 +1964,11 @@ const handleMouseUp = () => {
 
   // 只有达到拖拽阈值且有临时数据时才提交更新
   // v1.9.0 资源视图跨行拖拽时不提交，由确认对话框处理
-  if (isDragThresholdMet.value && tempTaskData.value && !(viewMode.value === 'resource' && isCrossRowDrag)) {
+  if (
+    isDragThresholdMet.value &&
+    tempTaskData.value &&
+    !(viewMode.value === 'resource' && isCrossRowDrag)
+  ) {
     const updatedTask = {
       ...props.task,
       ...tempTaskData.value,
@@ -1943,7 +2010,7 @@ const handleMouseUp = () => {
   isDragThresholdMet.value = false
   isDelayPassed.value = false
   dragType.value = null
-  tempTaskPixelLeft.value = null  // v1.9.0 清除资源视图的像素位置缓存
+  tempTaskPixelLeft.value = null // v1.9.0 清除资源视图的像素位置缓存
 
   // v1.9.7 不需要显式设置timelineIsDraggingTaskBar
   // 上面的状态重置会自动触发watch，watch会同步timelineIsDraggingTaskBar的值
@@ -1961,7 +2028,7 @@ onMounted(() => {
 
     // 使用 ResizeObserver 监听任务名称宽度变化
     if (taskBarNameRef.value) {
-      nameResizeObserver = new ResizeObserver((entries) => {
+      nameResizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           nameTextWidth.value = entry.contentRect.width
         }
@@ -2041,7 +2108,7 @@ watch(
       reportBarPosition()
     })
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 监听高亮状态变化（调试）
@@ -2086,11 +2153,11 @@ watch(
             detail: {
               taskId: props.task.id,
             },
-          }),
+          })
         )
       }
     }
-  },
+  }
 )
 
 // 单击/双击延迟处理
@@ -2201,9 +2268,12 @@ const stickyStyles = computed(() => {
   const singleAvatarWidth = 22 // 单个avatar 宽度
   // 计算实际avatar总宽度（多个头像时会重叠，每个头像露出18px）
   const actualAvatarCount = avatarList.value.length
-  const avatarTotalWidth = actualAvatarCount > 0
-    ? (actualAvatarCount === 1 ? singleAvatarWidth : singleAvatarWidth + (actualAvatarCount - 1) * 18)
-    : 0
+  const avatarTotalWidth =
+    actualAvatarCount > 0
+      ? actualAvatarCount === 1
+        ? singleAvatarWidth
+        : singleAvatarWidth + (actualAvatarCount - 1) * 18
+      : 0
   const handleWidth = actualHandleWidth.value // 拉伸手柄宽度
 
   // === 第一步：检测 Avatar 是否需要粘性定位 ===
@@ -2219,7 +2289,7 @@ const stickyStyles = computed(() => {
   // Avatar 右侧粘性逻辑：当 avatar 接近右边框 + name/progress 宽度 + 15px 时触发
   const maxContentWidth = Math.max(nameWidth, progressWidth)
   const avatarNeedsRightSticky =
-    (avatarRightPos + maxContentWidth + 15 > rightBoundary && taskLeft < rightBoundary)
+    avatarRightPos + maxContentWidth + 15 > rightBoundary && taskLeft < rightBoundary
 
   // 计算 avatar 粘性时的偏移量
   let avatarStickyOffset = 0
@@ -2513,7 +2583,7 @@ watch(
       }, 200)
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 监听外部hideBubbles属性变化，确保Timeline的容器变化能及时反应
@@ -2526,7 +2596,7 @@ watch(
         // 强制重新计算bubbleIndicator，确保容器宽度变化后正确显示半圆
       })
     }
-  },
+  }
 )
 
 // 监听TaskBar可见性变化，只在滚动时实现重新出现动画
@@ -2535,7 +2605,7 @@ watch(
   () => {
     // TaskBar重新出现时，不需要动画效果
     // 半圆会自然消失，TaskBar会立即显示
-  },
+  }
 )
 
 // 监听页面缩放和大小变化，重新计算气泡位置
@@ -2680,7 +2750,12 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
 
   // 如果启用了TaskBar Tooltip（父级任务也显示tooltip）
   // 但在拖拽或拉伸时不显示tooltip
-  if (props.enableTaskBarTooltip !== false && !isDragging.value && !isResizingLeft.value && !isResizingRight.value) {
+  if (
+    props.enableTaskBarTooltip !== false &&
+    !isDragging.value &&
+    !isResizingLeft.value &&
+    !isResizingRight.value
+  ) {
     // 保存event.currentTarget的引用，因为在setTimeout回调中它会变成null
     const targetElement = event.currentTarget as HTMLElement
     // 保存鼠标位置
@@ -2717,26 +2792,30 @@ const handleTaskBarMouseLeave = () => {
 
 // 监听拖拽/拉伸状态，如果开始拖拽/拉伸，立即隐藏tooltip
 // v1.9.7 使用 flush: 'sync' 确保状态变化时立即同步执行，避免在资源视图拖拽时因组件更新导致watch延迟执行
-watch([isDragging, isResizingLeft, isResizingRight], ([dragging, resizingL, resizingR]) => {
-  if (dragging || resizingL || resizingR) {
-    emit('tooltip-hide')
-    if (hoverTooltipTimer) {
-      clearTimeout(hoverTooltipTimer)
-      hoverTooltipTimer = null
+watch(
+  [isDragging, isResizingLeft, isResizingRight],
+  ([dragging, resizingL, resizingR]) => {
+    if (dragging || resizingL || resizingR) {
+      emit('tooltip-hide')
+      if (hoverTooltipTimer) {
+        clearTimeout(hoverTooltipTimer)
+        hoverTooltipTimer = null
+      }
     }
-  }
 
-  // v1.9.2 同步拖拽状态到Timeline（用于冲突检测优化）
-  const isDraggingOrResizing = dragging || resizingL || resizingR
-  if (timelineIsDraggingTaskBar.value !== isDraggingOrResizing) {
-    timelineIsDraggingTaskBar.value = isDraggingOrResizing
+    // v1.9.2 同步拖拽状态到Timeline（用于冲突检测优化）
+    const isDraggingOrResizing = dragging || resizingL || resizingR
+    if (timelineIsDraggingTaskBar.value !== isDraggingOrResizing) {
+      timelineIsDraggingTaskBar.value = isDraggingOrResizing
+    }
+  },
+  {
+    flush: 'sync', // 同步执行，确保状态重置时立即触发
   }
-}, {
-  flush: 'sync', // 同步执行，确保状态重置时立即触发
-})
+)
 
 // v1.9.2 监听 Tab 悬停状态，当 Tab 悬停时立即隐藏 TaskBar 的 tooltip
-watch(isTabHovered, (tabHovered) => {
+watch(isTabHovered, tabHovered => {
   if (tabHovered) {
     // Tab 悬停：隐藏 TaskBar 的 tooltip（通知 Timeline）
     emit('tooltip-hide')
@@ -2858,7 +2937,7 @@ const calculatePositionFromTimelineData = (
       subDays: Array<{ date: Date; dayOfWeek?: number }>
     }>
   }>,
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ) => {
   let cumulativePosition = 0
 
@@ -2896,11 +2975,11 @@ const calculatePositionFromTimelineData = (
           // 找到目标日期所在的季度
           const quarterWidth = 60
           const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = quarterWidth / daysInQuarter
           const dayInQuarter = Math.ceil(
-            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInQuarter * dayWidth
         }
@@ -2972,11 +3051,11 @@ const calculatePositionFromTimelineData = (
           // 找到目标日期所在的半年
           const halfYearWidth = 180 // 年度视图每半年180px
           const daysInHalfYear = Math.ceil(
-            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = halfYearWidth / daysInHalfYear
           const dayInHalfYear = Math.ceil(
-            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInHalfYear * dayWidth
         }
@@ -2997,15 +3076,21 @@ const calculatePositionFromTimelineData = (
 
     // 如果目标日期在时间轴之前
     if (targetDate < timelineStart) {
-      const daysBefore = Math.ceil((timelineStart.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24))
-      const dayWidth = timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
+      const daysBefore = Math.ceil(
+        (timelineStart.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
+      const dayWidth =
+        timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
       return -daysBefore * dayWidth
     }
 
     // 如果目标日期在时间轴之后，基于最后可用的位置计算
     if (targetDate > timelineEnd) {
-      const daysAfter = Math.ceil((targetDate.getTime() - timelineEnd.getTime()) / (1000 * 60 * 60 * 24))
-      const dayWidth = timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
+      const daysAfter = Math.ceil(
+        (targetDate.getTime() - timelineEnd.getTime()) / (1000 * 60 * 60 * 24)
+      )
+      const dayWidth =
+        timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
       return cumulativePosition + daysAfter * dayWidth
     }
   }
@@ -3024,7 +3109,7 @@ const calculateDateFromPosition = (
     days?: Array<{ date: Date; day: number }>
     monthData?: { dayCount: number }
   }>,
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ): Date | null => {
   if (!timelineData) {
     return null
@@ -3091,7 +3176,7 @@ const calculateDateFromPosition = (
           // 计算在当前季度内的相对位置
           const relativePosition = pixelPosition - cumulativePosition
           const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = quarterWidth / daysInQuarter
 
@@ -3126,7 +3211,7 @@ const calculateDateFromPosition = (
           // 计算在当前半年内的相对位置
           const relativePosition = pixelPosition - cumulativePosition
           const daysInHalfYear = Math.ceil(
-            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = halfYearWidth / daysInHalfYear
 
@@ -3176,6 +3261,12 @@ function handleContextMenu(event: MouseEvent) {
     return
   }
   event.preventDefault()
+  // 右键菜单弹出时，清除悬停 tooltip 定时器并隐藏 tooltip
+  if (hoverTooltipTimer) {
+    clearTimeout(hoverTooltipTimer)
+    hoverTooltipTimer = null
+  }
+  emit('tooltip-hide')
   contextMenuVisible.value = true
   contextMenuPosition.value = { x: event.clientX, y: event.clientY }
 }
@@ -3210,7 +3301,11 @@ const handleDeleteLink = (event: { sourceTaskId: number; targetTaskId: number })
 }
 
 // 连接线触点事件处理
-const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
+const handleLinkDragStart = (event: {
+  task: Task
+  type: 'predecessor' | 'successor'
+  mouseEvent: MouseEvent
+}) => {
   emit('link-drag-start', event)
 }
 
@@ -3223,7 +3318,12 @@ const handleLinkDragEnd = (event: { task: Task; type: 'predecessor' | 'successor
 }
 
 // 处理 LinkAnchor 的 drag-start 事件（转换为统一格式）
-const handleAnchorDragStart = (anchorEvent: { taskId: number; type: 'predecessor' | 'successor'; x: number; y: number }) => {
+const handleAnchorDragStart = (anchorEvent: {
+  taskId: number
+  type: 'predecessor' | 'successor'
+  x: number
+  y: number
+}) => {
   const mouseEvent = {
     clientX: anchorEvent.x,
     clientY: anchorEvent.y,
@@ -3245,7 +3345,10 @@ const handleAnchorDragMove = (anchorEvent: { x: number; y: number }) => {
 }
 
 // 处理 LinkAnchor 的 drag-end 事件
-const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' | 'successor' }) => {
+const handleAnchorDragEnd = (anchorEvent: {
+  taskId: number
+  type: 'predecessor' | 'successor'
+}) => {
   handleLinkDragEnd({
     task: props.task,
     type: anchorEvent.type,
@@ -3262,349 +3365,409 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
       class="actual-bar"
       :data-task-id="`actual-${task.id}`"
       :class="{
-        'highlighted': isHighlighted,
+        highlighted: isHighlighted,
         'primary-highlight': isPrimaryHighlight,
-        'dimmed': isDimmed,
+        dimmed: isDimmed,
       }"
       :style="{
         ...actualBarStyle,
         backgroundColor: taskStatus.color,
-        filter: 'brightness(1.15) saturate(0.9)', /* 加白并降低饱和度，与计划TaskBar色系一致 */
-        boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40`, /* 使用TaskBar颜色的阴影，移除白边 */
+        filter: 'brightness(1.15) saturate(0.9)' /* 加白并降低饱和度，与计划TaskBar色系一致 */,
+        boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40` /* 使用TaskBar颜色的阴影，移除白边 */,
       }"
     >
-    <div class="actual-bar-content">
-      <span class="actual-progress">{{ task.progress || 0 }}%</span>
-    </div>
-    <!-- 头像和标题放置在实际TaskBar尾部外面 -->
-    <div class="actual-bar-trailing">
-      <!-- 实际TaskBar的多头像容器 -->
-      <div
-        v-if="barConfig.showAvatar && avatarList.length > 0"
-        class="actual-avatars-container"
-      >
+      <div class="actual-bar-content">
+        <span class="actual-progress">{{ task.progress || 0 }}%</span>
+      </div>
+      <!-- 头像和标题放置在实际TaskBar尾部外面 -->
+      <div class="actual-bar-trailing">
+        <!-- 实际TaskBar的多头像容器 -->
+        <div v-if="barConfig.showAvatar && avatarList.length > 0" class="actual-avatars-container">
+          <div
+            v-for="(avatarItem, index) in avatarList"
+            :key="index"
+            class="actual-task-avatar"
+            :class="{
+              'avatar-default':
+                !avatarItem ||
+                (typeof avatarItem === 'object' && !avatarItem.isText && !avatarItem),
+            }"
+            :style="{
+              zIndex: index + 1,
+              marginLeft: index > 0 ? '-8px' : '0',
+            }"
+          >
+            <!-- 文字头像（从assignee生成） -->
+            <span
+              v-if="avatarItem && typeof avatarItem === 'object' && avatarItem.isText"
+              class="avatar-text"
+            >
+              {{ avatarItem.name.charAt(0).toUpperCase() }}
+            </span>
+            <!-- 图片头像 -->
+            <img
+              v-else-if="avatarItem && typeof avatarItem === 'string'"
+              :src="avatarItem"
+              :alt="`avatar-${index}`"
+            />
+            <!-- 默认灰色用户图标 -->
+            <svg
+              v-else
+              class="avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+        </div>
+        <!-- 任务标题 - 支持HTML解析和自定义slot -->
         <div
-          v-for="(avatarItem, index) in avatarList"
-          :key="index"
-          class="actual-task-avatar"
-          :class="{ 'avatar-default': !avatarItem || (typeof avatarItem === 'object' && !avatarItem.isText && !avatarItem) }"
+          v-if="barConfig.showTitle"
+          class="actual-task-name-wrapper"
           :style="{
-            zIndex: index + 1,
-            marginLeft: index > 0 ? '-8px' : '0'
+            fontSize: '12px',
+            color: taskStatus.color,
           }"
         >
-          <!-- 文字头像（从assignee生成） -->
-          <span v-if="avatarItem && typeof avatarItem === 'object' && avatarItem.isText" class="avatar-text">
-            {{ avatarItem.name.charAt(0).toUpperCase() }}
-          </span>
-          <!-- 图片头像 -->
-          <img v-else-if="avatarItem && typeof avatarItem === 'string'" :src="avatarItem" :alt="`avatar-${index}`" />
-          <!-- 默认灰色用户图标 -->
-          <svg v-else class="avatar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
-          </svg>
+          <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+          <div v-else class="actual-task-name" v-html="task.name"></div>
         </div>
       </div>
-      <!-- 任务标题 - 支持HTML解析和自定义slot -->
+    </div>
+
+    <!-- 计划进度条（原有TaskBar） -->
+    <div
+      v-if="shouldRenderTaskBar"
+      ref="barRef"
+      class="task-bar"
+      :data-task-id="task.id"
+      :style="{
+        ...taskBarStyle,
+        backgroundColor:
+          showActualTaskbar && hasActualProgress && isTaskBarHovered
+            ? 'transparent'
+            : taskStatus.bgColor,
+        borderColor: dynamicBorderColor,
+        ...(viewMode === 'resource' && currentResourceId
+          ? {
+              borderTopWidth: '2px',
+              borderTopStyle: 'solid',
+              borderTopColor: currentResourceColor,
+            }
+          : {}),
+        color: taskStatus.color,
+        cursor: isCompleted || isParent ? 'default' : 'move',
+        '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
+        '--handle-width': `${actualHandleWidth}px` /* 传递手柄宽度给CSS变量 */,
+        '--parent-color': taskStatus.color /* 传递父级TaskBar颜色给伪元素箭头使用 */,
+        '--allocation-capacity': Number.isFinite(resourcePercent)
+          ? resourcePercent / 100
+          : 1 /* v1.9.1 传递占比给CSS变量 */,
+        '--task-bar-bg-color': taskStatus.bgColor /* v1.9.1 传递背景色给伪元素 */,
+        '--task-bar-border-color': dynamicBorderColor /* v1.9.2 使用动态边框颜色 */,
+        boxShadow: isParent
+          ? `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 父级任务也使用动态颜色阴影 */
+          : `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 使用TaskBar颜色的阴影 - 加强版 */,
+      }"
+      :class="{
+        dragging: isDragging,
+        resizing: isResizingLeft || isResizingRight,
+        completed: isCompleted,
+        'parent-task': isParent,
+        'week-view': isWeekView,
+        'short-task-bar': isShortTaskBar,
+        'overflow-effect': needsOverflowEffect,
+        highlighted: isHighlighted,
+        'primary-highlight': isPrimaryHighlight,
+        dimmed: isDimmed,
+        'has-actual':
+          showActualTaskbar &&
+          hasActualProgress /* 只有在showActualTaskbar=true时才标记有实际进度 */,
+        'resource-conflict': props.hasResourceConflict /* v1.9.0 资源冲突样式 */,
+        'resource-view': viewMode === 'resource' /* v1.9.1 资源视图专属样式 */,
+        'has-bubble':
+          bubbleIndicator.show /* v1.9.1 有气泡时提升层级，确保气泡不被其他TaskBar遮挡 */,
+      }"
+      @click="handleTaskBarClick"
+      @contextmenu="handleContextMenu"
+      @dblclick="handleTaskBarDoubleClick"
+      @mouseenter="handleTaskBarMouseEnter"
+      @mouseleave="handleTaskBarMouseLeave"
+    >
+      <!-- 父级任务的标题（直接在内部居中显示） -->
+      <div v-if="isParent" class="parent-label-inner">
+        <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+        <template v-else> {{ task.name }} ({{ task.progress || 0 }}%) </template>
+      </div>
+
+      <!-- 完成进度条（非父级任务） -->
       <div
-        v-if="barConfig.showTitle"
-        class="actual-task-name-wrapper"
+        v-if="!isParent && task.progress && task.progress > 0"
+        class="progress-bar"
         :style="{
-          fontSize: '12px',
-          color: taskStatus.color,
+          width: progressWidth,
+          backgroundColor: taskStatus.color,
         }"
-      >
-        <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
-        <div v-else class="actual-task-name" v-html="task.name"></div>
-      </div>
-    </div>
-  </div>
+      ></div>
 
-  <!-- 计划进度条（原有TaskBar） -->
-  <div
-    v-if="shouldRenderTaskBar"
-    ref="barRef"
-    class="task-bar"
-    :data-task-id="task.id"
-    :style="{
-      ...taskBarStyle,
-      backgroundColor: (showActualTaskbar && hasActualProgress && isTaskBarHovered) ? 'transparent' : taskStatus.bgColor,
-      borderColor: dynamicBorderColor,
-      ...(viewMode === 'resource' && currentResourceId ? {
-        borderTopWidth: '2px',
-        borderTopStyle: 'solid',
-        borderTopColor: currentResourceColor,
-      } : {}),
-      color: taskStatus.color,
-      cursor: isCompleted || isParent ? 'default' : 'move',
-      '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
-      '--handle-width': `${actualHandleWidth}px` /* 传递手柄宽度给CSS变量 */,
-      '--parent-color': taskStatus.color, /* 传递父级TaskBar颜色给伪元素箭头使用 */
-      '--allocation-capacity': (Number.isFinite(resourcePercent) ? resourcePercent / 100 : 1), /* v1.9.1 传递占比给CSS变量 */
-      '--task-bar-bg-color': taskStatus.bgColor, /* v1.9.1 传递背景色给伪元素 */
-      '--task-bar-border-color': dynamicBorderColor, /* v1.9.2 使用动态边框颜色 */
-      boxShadow: isParent
-        ? `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 父级任务也使用动态颜色阴影 */
-        : `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26`, /* 使用TaskBar颜色的阴影 - 加强版 */
-    }"
-    :class="{
-      dragging: isDragging,
-      resizing: isResizingLeft || isResizingRight,
-      completed: isCompleted,
-      'parent-task': isParent,
-      'week-view': isWeekView,
-      'short-task-bar': isShortTaskBar,
-      'overflow-effect': needsOverflowEffect,
-      highlighted: isHighlighted,
-      'primary-highlight': isPrimaryHighlight,
-      dimmed: isDimmed,
-      'has-actual': showActualTaskbar && hasActualProgress, /* 只有在showActualTaskbar=true时才标记有实际进度 */
-      'resource-conflict': props.hasResourceConflict, /* v1.9.0 资源冲突样式 */
-      'resource-view': viewMode === 'resource', /* v1.9.1 资源视图专属样式 */
-      'has-bubble': bubbleIndicator.show, /* v1.9.1 有气泡时提升层级，确保气泡不被其他TaskBar遮挡 */
-    }"
-    @click="handleTaskBarClick"
-    @contextmenu="handleContextMenu"
-    @dblclick="handleTaskBarDoubleClick"
-    @mouseenter="handleTaskBarMouseEnter"
-    @mouseleave="handleTaskBarMouseLeave"
-  >
-    <!-- 父级任务的标题（直接在内部居中显示） -->
-    <div v-if="isParent" class="parent-label-inner">
-      <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
-      <template v-else> {{ task.name }} ({{ task.progress || 0 }}%) </template>
-    </div>
+      <!-- v1.9.2 资源视图Tab标签 -->
+      <!-- v1.9.5 可通过 show-taskbar-tab prop 控制是否显示 -->
+      <TaskBarTab
+        v-if="showTaskbarTab && viewMode === 'resource' && !isParent && currentResourceId"
+        :key="`tab-${task.id}-${currentResourceId}`"
+        :task="task"
+        :current-resource-id="currentResourceId"
+        :resource-color="currentResourceColor"
+        :resource-capacity="resourcePercent"
+        :resource-name="currentResourceName"
+        :task-bar-width="taskBarWidth"
+        :task-bar-left="taskBarLeft"
+        :scroll-left="scrollLeft || 0"
+        :container-width="containerWidth || 0"
+        :has-conflict="hasResourceConflict"
+        :conflict-tasks="conflictTasks"
+        :resources="resources"
+        @hover-change="isTabHovered = $event"
+      />
 
-    <!-- 完成进度条（非父级任务） -->
-    <div
-      v-if="!isParent && task.progress && task.progress > 0"
-      class="progress-bar"
-      :style="{
-        width: progressWidth,
-        backgroundColor: taskStatus.color,
-      }"
-    ></div>
-
-    <!-- v1.9.2 资源视图Tab标签 -->
-    <!-- v1.9.5 可通过 show-taskbar-tab prop 控制是否显示 -->
-    <TaskBarTab
-      v-if="showTaskbarTab && viewMode === 'resource' && !isParent && currentResourceId"
-      :key="`tab-${task.id}-${currentResourceId}`"
-      :task="task"
-      :current-resource-id="currentResourceId"
-      :resource-color="currentResourceColor"
-      :resource-capacity="resourcePercent"
-      :resource-name="currentResourceName"
-      :task-bar-width="taskBarWidth"
-      :task-bar-left="taskBarLeft"
-      :scroll-left="scrollLeft || 0"
-      :container-width="containerWidth || 0"
-      :has-conflict="hasResourceConflict"
-      :conflict-tasks="conflictTasks"
-      :resources="resources"
-      @hover-change="isTabHovered = $event"
-    />
-
-    <!-- 左侧调整把手 -->
-    <div
-      v-if="
-        !isCompleted &&
-        !isParent &&
-        !isInteractionDisabled &&
-        props.allowDragAndResize !== false &&
-        !isHighlighted &&
-        !isPrimaryHighlight
-      "
-      class="resize-handle resize-handle-left"
-      :style="resizeHandleStyle"
-      @mousedown="e => handleMouseDown(e, 'resize-left')"
-    ></div>
-
-    <!-- 任务条主体（非父级任务） -->
-    <div
-      v-if="!isParent"
-      class="task-bar-content"
-      :style="{
-        cursor:
-          isInteractionDisabled ||
-          props.allowDragAndResize === false ||
-          isHighlighted ||
-          isPrimaryHighlight
-            ? 'grab'
-            : 'move',
-      }"
-      @mousedown="
-        e => {
-          // 高亮状态下不处理，让事件冒泡到Timeline
-          if (isHighlighted || isPrimaryHighlight) {
-            return
-          }
-          // 禁用交互时也不处理
-          if (isInteractionDisabled || props.allowDragAndResize === false) {
-            return
-          }
-          // 正常拖拽
-          handleMouseDown(e, 'drag')
-        }
-      "
-    >
-      <!-- 任务头像 - 有实际TaskBar时隐藏，支持多头像 -->
+      <!-- 左侧调整把手 -->
       <div
-        v-if="barConfig.showAvatar && !(showActualTaskbar && hasActualProgress) && avatarList.length > 0"
-        class="task-avatars-container"
-        :class="{ 'avatar-outside': shouldRenderAvatarOutside }"
-        :style="getAvatarStyles()"
+        v-if="
+          !isCompleted &&
+          !isParent &&
+          !isInteractionDisabled &&
+          props.allowDragAndResize !== false &&
+          !isHighlighted &&
+          !isPrimaryHighlight
+        "
+        class="resize-handle resize-handle-left"
+        :style="resizeHandleStyle"
+        @mousedown="e => handleMouseDown(e, 'resize-left')"
+      ></div>
+
+      <!-- 任务条主体（非父级任务） -->
+      <div
+        v-if="!isParent"
+        class="task-bar-content"
+        :style="{
+          cursor:
+            isInteractionDisabled ||
+            props.allowDragAndResize === false ||
+            isHighlighted ||
+            isPrimaryHighlight
+              ? 'grab'
+              : 'move',
+        }"
+        @mousedown="
+          e => {
+            // 高亮状态下不处理，让事件冒泡到Timeline
+            if (isHighlighted || isPrimaryHighlight) {
+              return
+            }
+            // 禁用交互时也不处理
+            if (isInteractionDisabled || props.allowDragAndResize === false) {
+              return
+            }
+            // 正常拖拽
+            handleMouseDown(e, 'drag')
+          }
+        "
       >
+        <!-- 任务头像 - 有实际TaskBar时隐藏，支持多头像 -->
         <div
-          v-for="(avatarItem, index) in avatarList"
-          :key="index"
-          class="task-avatar"
-          :class="{ 'avatar-default': !avatarItem || (typeof avatarItem === 'object' && !avatarItem.isText && !avatarItem) }"
-          :style="{
-            zIndex: index + 1,
-            marginLeft: index > 0 ? '-8px' : '0'
-          }"
+          v-if="
+            barConfig.showAvatar &&
+            !(showActualTaskbar && hasActualProgress) &&
+            avatarList.length > 0
+          "
+          class="task-avatars-container"
+          :class="{ 'avatar-outside': shouldRenderAvatarOutside }"
+          :style="getAvatarStyles()"
         >
-          <!-- 文字头像（从assignee生成） -->
-          <span v-if="avatarItem && typeof avatarItem === 'object' && avatarItem.isText" class="avatar-text">
-            {{ avatarItem.name.charAt(0).toUpperCase() }}
-          </span>
-          <!-- 图片头像 -->
-          <img v-else-if="avatarItem && typeof avatarItem === 'string'" :src="avatarItem" :alt="`avatar-${index}`" />
-          <!-- 默认灰色用户图标 -->
-          <svg v-else class="avatar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
-          </svg>
+          <div
+            v-for="(avatarItem, index) in avatarList"
+            :key="index"
+            class="task-avatar"
+            :class="{
+              'avatar-default':
+                !avatarItem ||
+                (typeof avatarItem === 'object' && !avatarItem.isText && !avatarItem),
+            }"
+            :style="{
+              zIndex: index + 1,
+              marginLeft: index > 0 ? '-8px' : '0',
+            }"
+          >
+            <!-- 文字头像（从assignee生成） -->
+            <span
+              v-if="avatarItem && typeof avatarItem === 'object' && avatarItem.isText"
+              class="avatar-text"
+            >
+              {{ avatarItem.name.charAt(0).toUpperCase() }}
+            </span>
+            <!-- 图片头像 -->
+            <img
+              v-else-if="avatarItem && typeof avatarItem === 'string'"
+              :src="avatarItem"
+              :alt="`avatar-${index}`"
+            />
+            <!-- 默认灰色用户图标 -->
+            <svg
+              v-else
+              class="avatar-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
         </div>
-      </div>
 
-      <!-- 任务名称 - 有实际TaskBar时隐藏 -->
-      <div
-        v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
-        ref="taskBarNameRef"
-        :style="getNameStyles()"
-      >
-        <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
-        <div v-else class="task-name">
-          {{ task.name }}
-          <!-- v1.9.0 资源视图：显示占比文字 -->
-          <!--<span v-if="shouldShowPercentText" class="resource-capacity-text">
+        <!-- 任务名称 - 有实际TaskBar时隐藏 -->
+        <div
+          v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
+          ref="taskBarNameRef"
+          :style="getNameStyles()"
+        >
+          <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+          <div v-else class="task-name">
+            {{ task.name }}
+            <!-- v1.9.0 资源视图：显示占比文字 -->
+            <!--<span v-if="shouldShowPercentText" class="resource-capacity-text">
             {{ resourcePercent }}%
           </span>-->
+          </div>
+        </div>
+
+        <!-- 进度百分比 - 有实际TaskBar时隐藏 -->
+        <div
+          v-if="
+            barConfig.showProgress &&
+            shouldShowProgress &&
+            !(showActualTaskbar && hasActualProgress)
+          "
+          class="task-progress"
+          :style="getProgressStyles()"
+        >
+          {{ task.progress || 0 }}%
         </div>
       </div>
 
-      <!-- 进度百分比 - 有实际TaskBar时隐藏 -->
+      <!-- 右侧调整把手 -->
       <div
-        v-if="barConfig.showProgress && shouldShowProgress && !(showActualTaskbar && hasActualProgress)"
-        class="task-progress"
-        :style="getProgressStyles()"
-      >
-        {{ task.progress || 0 }}%
-      </div>
-    </div>
+        v-if="
+          !isCompleted &&
+          !isParent &&
+          !isInteractionDisabled &&
+          props.allowDragAndResize !== false &&
+          !isHighlighted &&
+          !isPrimaryHighlight
+        "
+        class="resize-handle resize-handle-right"
+        :style="resizeHandleStyle"
+        @mousedown="e => handleMouseDown(e, 'resize-right')"
+      ></div>
 
-    <!-- 右侧调整把手 -->
-    <div
-      v-if="
-        !isCompleted &&
-        !isParent &&
-        !isInteractionDisabled &&
-        props.allowDragAndResize !== false &&
-        !isHighlighted &&
-        !isPrimaryHighlight
-      "
-      class="resize-handle resize-handle-right"
-      :style="resizeHandleStyle"
-      @mousedown="e => handleMouseDown(e, 'resize-right')"
-    ></div>
+      <!-- 连接线触点 - 只在非高亮模式且非父级任务时显示 -->
+      <!-- 前置任务触点（左侧） -->
+      <LinkAnchor
+        v-if="enableLinkAnchor && !isParent && !isInHighlightMode"
+        type="predecessor"
+        :task-id="task.id"
+        :visible="isTaskBarHovered"
+        :is-drag-source="isLinkDragSource && dragLinkMode === 'predecessor'"
+        :is-drag-target="isValidLinkTarget || isInvalidLinkTarget"
+        :is-valid-target="isValidLinkTarget"
+        :global-dragging="!!dragLinkMode"
+        @drag-start="handleAnchorDragStart"
+        @drag-move="handleAnchorDragMove"
+        @drag-end="handleAnchorDragEnd"
+      />
+      <!-- 后置任务触点（右侧） -->
+      <LinkAnchor
+        v-if="enableLinkAnchor && !isParent && !isInHighlightMode"
+        type="successor"
+        :task-id="task.id"
+        :visible="isTaskBarHovered"
+        :is-drag-source="isLinkDragSource && dragLinkMode === 'successor'"
+        :is-drag-target="isValidLinkTarget || isInvalidLinkTarget"
+        :is-valid-target="isValidLinkTarget"
+        :global-dragging="!!dragLinkMode"
+        @drag-start="handleAnchorDragStart"
+        @drag-move="handleAnchorDragMove"
+        @drag-end="handleAnchorDragEnd"
+      />
 
-    <!-- 连接线触点 - 只在非高亮模式且非父级任务时显示 -->
-    <!-- 前置任务触点（左侧） -->
-    <LinkAnchor
-      v-if="enableLinkAnchor && !isParent && !isInHighlightMode"
-      type="predecessor"
-      :task-id="task.id"
-      :visible="isTaskBarHovered"
-      :is-drag-source="isLinkDragSource && dragLinkMode === 'predecessor'"
-      :is-drag-target="isValidLinkTarget || isInvalidLinkTarget"
-      :is-valid-target="isValidLinkTarget"
-      :global-dragging="!!dragLinkMode"
-      @drag-start="handleAnchorDragStart"
-      @drag-move="handleAnchorDragMove"
-      @drag-end="handleAnchorDragEnd"
-    />
-    <!-- 后置任务触点（右侧） -->
-    <LinkAnchor
-      v-if="enableLinkAnchor && !isParent && !isInHighlightMode"
-      type="successor"
-      :task-id="task.id"
-      :visible="isTaskBarHovered"
-      :is-drag-source="isLinkDragSource && dragLinkMode === 'successor'"
-      :is-drag-target="isValidLinkTarget || isInvalidLinkTarget"
-      :is-valid-target="isValidLinkTarget"
-      :global-dragging="!!dragLinkMode"
-      @drag-start="handleAnchorDragStart"
-      @drag-move="handleAnchorDragMove"
-      @drag-end="handleAnchorDragEnd"
-    />
-
-    <!-- 半圆气泡指示器 - 只在 TaskBar 完全消失时显示 -->
-    <div
-      v-if="bubbleIndicator.show && !isParent"
-      class="bubble-indicator"
-      :class="[
-        `bubble-${bubbleIndicator.side}`,
-        `bubble-animation-${bubbleIndicator.animationType}`,
-      ]"
-      :style="{
-        left: bubbleIndicator.left,
-        backgroundColor: bubbleIndicator.color,
-        borderColor: bubbleIndicator.color,
-      }"
-      @mouseenter.stop="handleBubbleMouseEnter"
-      @mouseleave.stop="handleBubbleMouseLeave"
-      @mousedown.stop="handleBubbleMouseDown"
-      @click.stop="handleBubbleClick"
-    ></div>
-
-    <!-- 默认右键菜单 -->
-    <TaskContextMenu
-      v-if="shouldShowDefaultContextMenu"
-      :visible="contextMenuVisible"
-      :task="contextMenuTask"
-      :position="contextMenuPosition"
-      :all-tasks="allTasks"
-      @close="closeContextMenu"
-      @start-timer="$emit('start-timer', props.task)"
-      @stop-timer="$emit('stop-timer', props.task)"
-      @add-predecessor="$emit('add-predecessor', props.task)"
-      @add-successor="$emit('add-successor', props.task)"
-      @delete="handleTaskDelete"
-      @delete-link="handleDeleteLink"
-    />
-
-    <!-- 声明式右键菜单 -->
-    <Teleport to="body">
+      <!-- 半圆气泡指示器 - 只在 TaskBar 完全消失时显示 -->
       <div
-        v-if="shouldShowCustomContextMenu && contextMenuVisible && declarativeTaskBarContextMenu?.defaultSlot"
-        class="gantt-context-menu-wrapper"
+        v-if="bubbleIndicator.show && !isParent"
+        class="bubble-indicator"
+        :class="[
+          `bubble-${bubbleIndicator.side}`,
+          `bubble-animation-${bubbleIndicator.animationType}`,
+        ]"
         :style="{
-          position: 'fixed',
-          left: `${contextMenuPosition.x}px`,
-          top: `${contextMenuPosition.y}px`,
-          zIndex: 9999,
+          left: bubbleIndicator.left,
+          backgroundColor: bubbleIndicator.color,
+          borderColor: bubbleIndicator.color,
         }"
-      >
-        <component
-          :is="declarativeTaskBarContextMenu.defaultSlot"
-          :row="contextMenuTask"
-          :$index="props.rowIndex ?? -1"
-        />
-      </div>
-    </Teleport>
+        @mouseenter.stop="handleBubbleMouseEnter"
+        @mouseleave.stop="handleBubbleMouseLeave"
+        @mousedown.stop="handleBubbleMouseDown"
+        @click.stop="handleBubbleClick"
+      ></div>
+
+      <!-- 默认右键菜单 -->
+      <TaskContextMenu
+        v-if="shouldShowDefaultContextMenu"
+        :visible="contextMenuVisible"
+        :task="contextMenuTask"
+        :position="contextMenuPosition"
+        :all-tasks="allTasks"
+        @close="closeContextMenu"
+        @start-timer="$emit('start-timer', props.task)"
+        @stop-timer="$emit('stop-timer', props.task)"
+        @add-predecessor="$emit('add-predecessor', props.task)"
+        @add-successor="$emit('add-successor', props.task)"
+        @delete="handleTaskDelete"
+        @delete-link="handleDeleteLink"
+      />
+
+      <!-- 声明式右键菜单 -->
+      <Teleport to="body">
+        <div
+          v-if="
+            shouldShowCustomContextMenu &&
+            contextMenuVisible &&
+            declarativeTaskBarContextMenu?.defaultSlot
+          "
+          class="gantt-context-menu-wrapper"
+          :style="{
+            position: 'fixed',
+            left: `${contextMenuPosition.x}px`,
+            top: `${contextMenuPosition.y}px`,
+            zIndex: 9999,
+          }"
+        >
+          <component
+            :is="declarativeTaskBarContextMenu.defaultSlot"
+            :row="contextMenuTask"
+            :$index="props.rowIndex ?? -1"
+          />
+        </div>
+      </Teleport>
+    </div>
   </div>
-  </div><!-- 关闭task-bar-wrapper -->
+  <!-- 关闭task-bar-wrapper -->
 
   <!-- Tooltip 弹窗（tab悬停时不显示） -->
   <Teleport to="body">
@@ -3810,7 +3973,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 }
 
 /* 占比100%时，隐藏上半部分镂空区域 */
-.task-bar.resource-view[style*="--allocation-capacity: 1"]::before {
+.task-bar.resource-view[style*='--allocation-capacity: 1']::before {
   display: none;
 }
 
@@ -3832,7 +3995,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 }
 
 /* 占比100%时，整个TaskBar都是实心，四个角圆角 */
-.task-bar.resource-view[style*="--allocation-capacity: 1"]::after {
+.task-bar.resource-view[style*='--allocation-capacity: 1']::after {
   border-radius: 4px;
 }
 
@@ -3850,7 +4013,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 }
 
 /* 占比100%时，进度条四个角圆角 */
-.task-bar.resource-view[style*="--allocation-capacity: 1"] .progress-bar {
+.task-bar.resource-view[style*='--allocation-capacity: 1'] .progress-bar {
   border-radius: 4px;
 }
 
@@ -4070,7 +4233,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   z-index: 1004 !important; /* 高于计划TaskBar的highlighted(1002)，确保在上层 */
   transform: translateY(-5px) scale(1.05) !important;
   transition: all 0.3s ease !important;
-  filter: brightness(1.25) saturate(1.0) !important; /* 高亮时更亮 */
+  filter: brightness(1.25) saturate(1) !important; /* 高亮时更亮 */
 }
 
 /* 实际TaskBar的主要高亮样式 */
@@ -4078,7 +4241,7 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   z-index: 1005 !important; /* 高于计划TaskBar的primary-highlight(1003)，确保在上层 */
   transform: translateY(-8px) scale(1.08) !important;
   transition: all 0.3s ease !important;
-  filter: brightness(1.3) saturate(1.0) !important; /* 主要高亮时最亮 */
+  filter: brightness(1.3) saturate(1) !important; /* 主要高亮时最亮 */
 }
 
 /* 实际TaskBar的头像样式 - 在尾部外面 */
@@ -4221,7 +4384,9 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 /* 多头像重叠效果 */
 .task-avatars-container .task-avatar,
 .actual-avatars-container .actual-task-avatar {
-  transition: transform 0.2s ease, z-index 0s;
+  transition:
+    transform 0.2s ease,
+    z-index 0s;
   cursor: pointer;
   position: relative; /* 改为相对定位，在容器内排列 */
 }
@@ -4337,15 +4502,15 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
 }
 
 /* TaskBar宽度<40px时隐藏占比文字 */
-.task-bar[style*="width: 4px"],
-.task-bar[style*="width: 8px"],
-.task-bar[style*="width: 12px"],
-.task-bar[style*="width: 16px"],
-.task-bar[style*="width: 20px"],
-.task-bar[style*="width: 24px"],
-.task-bar[style*="width: 28px"],
-.task-bar[style*="width: 32px"],
-.task-bar[style*="width: 36px"] {
+.task-bar[style*='width: 4px'],
+.task-bar[style*='width: 8px'],
+.task-bar[style*='width: 12px'],
+.task-bar[style*='width: 16px'],
+.task-bar[style*='width: 20px'],
+.task-bar[style*='width: 24px'],
+.task-bar[style*='width: 28px'],
+.task-bar[style*='width: 32px'],
+.task-bar[style*='width: 36px'] {
   .resource-capacity-text {
     display: none;
   }
@@ -4535,80 +4700,21 @@ const handleAnchorDragEnd = (anchorEvent: { taskId: number; type: 'predecessor' 
   }
 }
 
-/* 半圆的脉动效果 */
-@keyframes semiCirclePulse {
-  0% {
-    opacity: 0.8;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  }
-  100% {
-    opacity: 0.8;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-}
-
-/* 左侧半圆脉动 */
-@keyframes leftSemiCirclePulse {
-  0% {
-    opacity: 0.8;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  }
-  100% {
-    opacity: 0.8;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-}
-
-/* 右侧半圆脉动 */
-@keyframes rightSemiCirclePulse {
-  0% {
-    opacity: 0.8;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  }
-  100% {
-    opacity: 0.8;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-}
-
 /* 应用动画类 */
 .bubble-animation-morphToSemiCircle {
-  animation: semiCirclePulse 2s ease-in-out infinite;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* 左侧半圆的变换动画 */
 .bubble-left.bubble-animation-morphToSemiCircle {
-  animation:
-    morphToLeftSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
-    leftSemiCirclePulse 2s ease-in-out 0.8s infinite;
+  animation: morphToLeftSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* 右侧半圆的变换动画 */
 .bubble-right.bubble-animation-morphToSemiCircle {
-  animation:
-    morphToRightSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
-    rightSemiCirclePulse 2s ease-in-out 0.8s infinite;
+  animation: morphToRightSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* TaskBar 重新出现动画已移除，保持简洁 */

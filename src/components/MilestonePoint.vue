@@ -3,7 +3,12 @@
 import { computed, ref, onUnmounted } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
 import { TimelineScale } from '../models/types/TimelineScale'
-import type { TimelineMonth, TimelineYear, TimelineDay, MilestoneTooltipShowPayload } from '../models/types/TimelineDataTypes'
+import type {
+  TimelineMonth,
+  TimelineYear,
+  TimelineDay,
+  MilestoneTooltipShowPayload,
+} from '../models/types/TimelineDataTypes'
 import { createLocalDate } from '../utils/predecessorUtils'
 const props = defineProps<Props>()
 
@@ -111,7 +116,7 @@ const calculateDateFromPosition = (
     days?: Array<{ date: Date; day: number }>
     monthData?: { dayCount: number }
   }>,
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ): Date | null => {
   if (!timelineData) {
     return null
@@ -157,11 +162,12 @@ const calculateDateFromPosition = (
   } else if (timeScale === TimelineScale.QUARTER) {
     // 季度视图：每个季度60px
     for (const periodData of timelineData) {
-      const quarters = (periodData as Record<string, unknown>).quarters as Array<{
-        quarter: number
-        startDate: Date
-        endDate: Date
-      }> || []
+      const quarters =
+        ((periodData as Record<string, unknown>).quarters as Array<{
+          quarter: number
+          startDate: Date
+          endDate: Date
+        }>) || []
 
       for (const quarter of quarters) {
         const quarterStart = new Date(quarter.startDate)
@@ -174,7 +180,7 @@ const calculateDateFromPosition = (
         ) {
           const relativePosition = pixelPosition - cumulativePosition
           const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = quarterWidth / daysInQuarter
 
@@ -254,7 +260,7 @@ const handleMouseMove = (e: MouseEvent) => {
         mouseX: e.clientX,
         isDragging: isDragging.value,
       },
-    }),
+    })
   )
 
   const deltaX = e.clientX - dragStartX.value
@@ -284,7 +290,7 @@ const handleMouseMove = (e: MouseEvent) => {
             days?: Array<{ date: Date; day: number }>
             monthData?: { dayCount: number }
           }>,
-          props.currentTimeScale,
+          props.currentTimeScale
         )
         if (calculatedDate) {
           newStartDate = calculatedDate
@@ -316,7 +322,7 @@ const handleMouseUp = () => {
         mouseX: 0,
         isDragging: false,
       },
-    }),
+    })
   )
 
   // 只有在真正拖拽了（有临时数据）且状态为拖拽中时才触发更新
@@ -378,7 +384,7 @@ const handleMilestoneClick = (e: MouseEvent) => {
           scrollLeft: targetScrollLeft,
           smooth: true,
         },
-      }),
+      })
     )
   }
 }
@@ -442,14 +448,14 @@ const milestoneStyle = computed(() => {
     const centerPosition = calculateMilestonePositionFromTimelineData(
       milestoneDate,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     left = centerPosition - size / 2 // 从中心位置偏移到图标左上角
   } else {
     // 其他情况（没有 timelineData）：保持原有逻辑
     const startDiff = Math.floor(
-      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
+      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
     left = startDiff * props.dayWidth + props.dayWidth / 2 - size / 2
   }
@@ -515,7 +521,7 @@ const milestoneVisibility = computed(() => {
   if (iconRight <= leftBoundary + iconSize / 2) {
     // 检查左侧是否有其他停靠的里程碑，需要判断推挤优先级
     const leftStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky,
+      m => m.id !== currentId && m.stickyPosition === 'left' && m.isSticky
     )
 
     // 如果有其他里程碑已经停靠在左侧，比较优先级决定推挤顺序
@@ -561,7 +567,7 @@ const milestoneVisibility = computed(() => {
   if (iconLeft >= rightBoundary - iconSize / 2) {
     // 检查右侧是否有其他停靠的里程碑，需要判断推挤优先级
     const rightStickyMilestones = otherMilestones.filter(
-      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky,
+      m => m.id !== currentId && m.stickyPosition === 'right' && m.isSticky
     )
 
     // 如果有其他里程碑已经停靠在右侧，比较优先级决定推挤顺序
@@ -630,11 +636,16 @@ const handleMilestoneMouseEnter = (event: MouseEvent) => {
   if (milestoneVisibility.value.isSticky) {
     stickyPosition = milestoneVisibility.value.stickyPosition as 'left' | 'right'
   } else {
-    stickyPosition = targetRect.left + targetRect.width / 2 > window.innerWidth * 0.6 ? 'right' : 'left'
+    stickyPosition =
+      targetRect.left + targetRect.width / 2 > window.innerWidth * 0.6 ? 'right' : 'left'
   }
 
   emit('milestone-tooltip-show', {
-    milestone: props.milestone ?? { name: props.name ?? '', startDate: props.date, type: 'milestone' },
+    milestone: props.milestone ?? {
+      name: props.name ?? '',
+      startDate: props.date,
+      type: 'milestone',
+    },
     milestoneColor: milestoneColor.value,
     targetRect,
     stickyPosition,
@@ -663,12 +674,12 @@ const calculateHourViewMilestonePosition = (targetDate: Date, baseStartDate: Dat
   const targetNormalized = new Date(
     targetDate.getFullYear(),
     targetDate.getMonth(),
-    targetDate.getDate(),
+    targetDate.getDate()
   )
   const baseNormalized = new Date(
     baseStartDate.getFullYear(),
     baseStartDate.getMonth(),
-    baseStartDate.getDate(),
+    baseStartDate.getDate()
   )
   const timeDiff = targetNormalized.getTime() - baseNormalized.getTime()
   const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
@@ -694,7 +705,7 @@ const calculateHourViewMilestonePosition = (targetDate: Date, baseStartDate: Dat
 const calculateMilestonePositionFromTimelineData = (
   targetDate: Date,
   timelineData: TimelineMonth[] | TimelineYear[] | TimelineDay[],
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ) => {
   // 回退到原来的逻辑用于其他时间刻度
   let cumulativePosition = 0
@@ -703,7 +714,7 @@ const calculateMilestonePositionFromTimelineData = (
     if (timeScale === TimelineScale.DAY) {
       // 日视图：处理days数组，返回中心位置
       // 类型保护：确保 periodData 是 TimelineMonth 并有 days 属性
-      const days = ('days' in periodData && periodData.days) ? periodData.days : []
+      const days = 'days' in periodData && periodData.days ? periodData.days : []
 
       for (let i = 0; i < days.length; i++) {
         const dayData = days[i]
@@ -725,7 +736,7 @@ const calculateMilestonePositionFromTimelineData = (
     } else if (timeScale === TimelineScale.QUARTER) {
       // 季度视图：处理years数组，每个year包含quarters
       // 类型保护：确保 periodData 是 TimelineYear 并有 quarters 属性
-      const quarters = ('quarters' in periodData && periodData.quarters) ? periodData.quarters : []
+      const quarters = 'quarters' in periodData && periodData.quarters ? periodData.quarters : []
 
       for (const quarter of quarters) {
         const quarterStart = new Date(quarter.startDate)
@@ -735,11 +746,11 @@ const calculateMilestonePositionFromTimelineData = (
           // 找到目标日期所在的季度
           const quarterWidth = 60
           const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = quarterWidth / daysInQuarter
           const dayInQuarter = Math.ceil(
-            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const finalPosition = cumulativePosition + dayInQuarter * dayWidth + dayWidth / 2
 
@@ -752,7 +763,8 @@ const calculateMilestonePositionFromTimelineData = (
     } else if (timeScale === TimelineScale.YEAR) {
       // 年度视图：处理years数组，每个year包含halfYears
       // 类型保护：确保 periodData 是 TimelineYear 并有 halfYears 属性
-      const halfYears = ('halfYears' in periodData && periodData.halfYears) ? periodData.halfYears : []
+      const halfYears =
+        'halfYears' in periodData && periodData.halfYears ? periodData.halfYears : []
 
       for (const halfYear of halfYears) {
         const halfYearStart = new Date(halfYear.startDate)
@@ -762,11 +774,11 @@ const calculateMilestonePositionFromTimelineData = (
           // 找到目标日期所在的半年
           const halfYearWidth = 180 // 年度视图每半年180px
           const daysInHalfYear = Math.ceil(
-            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = halfYearWidth / daysInHalfYear
           const dayInHalfYear = Math.ceil(
-            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInHalfYear * dayWidth + dayWidth / 2
         }
@@ -777,7 +789,7 @@ const calculateMilestonePositionFromTimelineData = (
     } else if (timeScale === TimelineScale.WEEK) {
       // 周视图：处理嵌套的weeks结构，返回中心位置
       // 类型保护：确保 periodData 是 TimelineMonth 并有 weeks 属性
-      const weeks = ('weeks' in periodData && periodData.weeks) ? periodData.weeks : []
+      const weeks = 'weeks' in periodData && periodData.weeks ? periodData.weeks : []
 
       for (const week of weeks) {
         const weekStart = new Date(week.weekStart)
@@ -949,36 +961,12 @@ const calculateMilestonePositionFromTimelineData = (
 /* 里程碑SVG发光效果 */
 .milestone svg {
   filter: drop-shadow(0 0 8px var(--gantt-danger, #f56c6c));
-  animation: milestone-glow 2s ease-in-out infinite alternate;
-}
-
-/* 里程碑发光动画 */
-@keyframes milestone-glow {
-  from {
-    filter: drop-shadow(0 0 4px var(--gantt-danger, #f56c6c));
-  }
-  to {
-    filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 20px rgba(245, 108, 108, 0.3));
-  }
 }
 
 /* 悬停时增强发光效果 */
 .milestone:hover svg {
   filter: drop-shadow(0 0 16px var(--gantt-danger, #f56c6c))
     drop-shadow(0 0 24px rgba(245, 108, 108, 0.4));
-  animation: milestone-glow-intense 1.5s ease-in-out infinite alternate;
-}
-
-@keyframes milestone-glow-intense {
-  from {
-    filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 20px rgba(245, 108, 108, 0.4));
-  }
-  to {
-    filter: drop-shadow(0 0 20px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 32px rgba(245, 108, 108, 0.6));
-  }
 }
 
 .milestone-label {
@@ -1036,35 +1024,11 @@ const calculateMilestonePositionFromTimelineData = (
 
 :global(.gantt-root[data-theme='dark']) .milestone svg {
   filter: drop-shadow(0 0 8px var(--gantt-danger, #f67c7c));
-  animation: milestone-glow-dark 2s ease-in-out infinite alternate;
 }
 
 :global(.gantt-root[data-theme='dark']) .milestone:hover svg {
   filter: drop-shadow(0 0 16px var(--gantt-danger, #f67c7c))
     drop-shadow(0 0 24px rgba(246, 124, 124, 0.4));
-  animation: milestone-glow-intense-dark 1.5s ease-in-out infinite alternate;
-}
-
-/* 暗黑模式发光动画 */
-@keyframes milestone-glow-dark {
-  from {
-    filter: drop-shadow(0 0 4px var(--gantt-danger, #f67c7c));
-  }
-  to {
-    filter: drop-shadow(0 0 12px var(--gantt-danger, #f67c7c))
-      drop-shadow(0 0 20px rgba(246, 124, 124, 0.3));
-  }
-}
-
-@keyframes milestone-glow-intense-dark {
-  from {
-    filter: drop-shadow(0 0 12px var(--gantt-danger, #f67c7c))
-      drop-shadow(0 0 20px rgba(246, 124, 124, 0.4));
-  }
-  to {
-    filter: drop-shadow(0 0 20px var(--gantt-danger, #f67c7c))
-      drop-shadow(0 0 32px rgba(246, 124, 124, 0.6));
-  }
 }
 
 /* 拖拽状态样式 */
@@ -1094,53 +1058,32 @@ const calculateMilestonePositionFromTimelineData = (
 }
 
 .milestone-sticky-left svg {
-  animation: milestone-glow-sticky 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 8px var(--gantt-danger, #f56c6c))
+    drop-shadow(0 0 16px rgba(245, 108, 108, 0.5));
 }
 
 .milestone-sticky-right svg {
-  animation: milestone-glow-sticky 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 8px var(--gantt-danger, #f56c6c))
+    drop-shadow(0 0 16px rgba(245, 108, 108, 0.5));
 }
 
 /* 半图标显示时取消发光效果 */
 .milestone-sticky-left svg[style*='clip-path'],
 .milestone-sticky-right svg[style*='clip-path'] {
-  animation: none;
   filter: none;
-}
-
-@keyframes milestone-glow-sticky {
-  from {
-    filter: drop-shadow(0 0 6px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 12px rgba(245, 108, 108, 0.4));
-  }
-  to {
-    filter: drop-shadow(0 0 10px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 20px rgba(245, 108, 108, 0.6));
-  }
 }
 
 /* 暗黑模式下的停靠状态样式 */
 :global(.gantt-root[data-theme='dark']) .milestone-sticky-left svg,
 :global(.gantt-root[data-theme='dark']) .milestone-sticky-right svg {
-  animation: milestone-glow-sticky-dark 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 8px var(--gantt-danger, #f67c7c))
+    drop-shadow(0 0 16px rgba(246, 124, 124, 0.5));
 }
 
 /* 暗黑模式下半图标显示时取消发光效果 */
 :global(.gantt-root[data-theme='dark']) .milestone-sticky-left svg[style*='clip-path'],
 :global(.gantt-root[data-theme='dark']) .milestone-sticky-right svg[style*='clip-path'] {
-  animation: none;
   filter: none;
-}
-
-@keyframes milestone-glow-sticky-dark {
-  from {
-    filter: drop-shadow(0 0 6px var(--gantt-danger, #f67c7c))
-      drop-shadow(0 0 12px rgba(246, 124, 124, 0.4));
-  }
-  to {
-    filter: drop-shadow(0 0 10px var(--gantt-danger, #f67c7c))
-      drop-shadow(0 0 20px rgba(246, 124, 124, 0.6));
-  }
 }
 
 /* 半图标显示效果 - 优化clip-path过渡 */
@@ -1177,37 +1120,8 @@ const calculateMilestonePositionFromTimelineData = (
 /* 停靠状态的增强发光效果 */
 .milestone-sticky-left svg,
 .milestone-sticky-right svg {
-  animation: milestone-glow-sticky-enhanced 2s ease-in-out infinite alternate;
-}
-
-@keyframes milestone-glow-sticky-enhanced {
-  from {
-    filter: drop-shadow(0 0 8px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 16px rgba(245, 108, 108, 0.5));
-  }
-  to {
-    filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 24px rgba(245, 108, 108, 0.7)) drop-shadow(0 0 32px rgba(245, 108, 108, 0.3));
-  }
-}
-
-/* 推挤状态的视觉增强 */
-.milestone-pushing {
-  animation: milestone-pushing-pulse 0.6s ease-in-out;
-}
-
-@keyframes milestone-pushing-pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-    filter: drop-shadow(0 0 12px var(--gantt-danger, #f56c6c))
-      drop-shadow(0 0 20px rgba(245, 108, 108, 0.6));
-  }
-  100% {
-    transform: scale(1);
-  }
+  filter: drop-shadow(0 0 10px var(--gantt-danger, #f56c6c))
+    drop-shadow(0 0 20px rgba(245, 108, 108, 0.6)) drop-shadow(0 0 28px rgba(245, 108, 108, 0.3));
 }
 
 /* 推挤动画效果 - 被推出边界的里程碑 */

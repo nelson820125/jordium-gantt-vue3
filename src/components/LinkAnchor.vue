@@ -145,7 +145,7 @@ onUnmounted(() => {
       'drag-target': isDragTarget,
       'valid-target': isDragTarget && isValidTarget,
       'invalid-target': isDragTarget && !isValidTarget,
-      'visible': shouldShow,
+      visible: shouldShow,
     }"
     @mousedown="handleMouseDown"
     @mouseenter="handleMouseEnter"
@@ -209,7 +209,7 @@ onUnmounted(() => {
   opacity: 1;
   /* 拖拽目标：保持垂直居中并放大 */
   transform: translateY(-50%) scale(1.5);
-  animation: pulse 0.8s infinite;
+  box-shadow: 0 0 12px rgba(64, 158, 255, 0.8);
 }
 
 .link-anchor.valid-target {
@@ -240,16 +240,6 @@ onUnmounted(() => {
 
 .link-anchor:hover .anchor-tooltip {
   opacity: 1;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 8px rgba(64, 158, 255, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(64, 158, 255, 1);
-  }
 }
 
 /* 暗色主题支持 */
