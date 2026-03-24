@@ -10,6 +10,9 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
   </a>
+  <a href="https://socket.dev/npm/package/jordium-gantt-vue3">
+    <img src="https://badge.socket.dev/npm/package/jordium-gantt-vue3" alt="Socket Security">
+  </a>
   <a href="https://vuejs.org/">
     <img src="https://img.shields.io/badge/Vue.js->=3.5.13-4FC08D?style=flat-square&logo=vue.js&logoColor=white" alt="Vue.js">
   </a>
@@ -27,7 +30,7 @@
   <a href="./CHANGELOG.md">Release Notes</a>
 </p>
 
-<p align="center">A modern Vue 3 Gantt chart component library providing complete solutions for project management and task scheduling</p>
+<p align="center">A modern Vue 3 Gantt chart component library with built-in resource view and resource planning capabilities, providing complete solutions for project management, task scheduling, and resource allocation</p>
 
 <!-- <p align="center">
   <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
@@ -46,6 +49,10 @@
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://github.com/nelson820125/jordium-gantt-vue3">
     <strong>📦 GitHub</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="https://gitee.com/jordium/jordium-gantt-vue3">
+    <strong>📦 Gitee</strong>
   </a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">

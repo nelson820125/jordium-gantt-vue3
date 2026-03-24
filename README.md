@@ -10,6 +10,9 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
   </a>
+  <a href="https://socket.dev/npm/package/jordium-gantt-vue3">
+    <img src="https://badge.socket.dev/npm/package/jordium-gantt-vue3" alt="Socket Security">
+  </a>
   <a href="https://vuejs.org/">
     <img src="https://img.shields.io/badge/Vue.js->=3.5.13-4FC08D?style=flat-square&logo=vue.js&logoColor=white" alt="Vue.js">
   </a>
@@ -27,7 +30,7 @@
   <a href="./CHANGELOG.md">更新日志</a>
 </p>
 
-<p align="center">现代化的 Vue 3 甘特图组件库，为项目管理和任务调度提供完整解决方案</p>
+<p align="center">现代化的 Vue 3 甘特图组件库，内置资源视图与资源规划能力，为项目管理、任务调度与资源分配提供完整解决方案</p>
 
 <!-- <p align="center">
   <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
@@ -46,6 +49,10 @@
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://github.com/nelson820125/jordium-gantt-vue3">
     <strong>📦 GitHub</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="https://gitee.com/jordium/jordium-gantt-vue3">
+    <strong>📦 Gitee</strong>
   </a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
