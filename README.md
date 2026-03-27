@@ -27,24 +27,24 @@
 <p align="center">
   <a href="./README.md">中文</a> | 
   <a href="./README-EN.md">English</a> | 
-  <a href="./CHANGELOG.md">更新日志</a>
+  <a href="./CHANGELOG.md">Release Notes</a>
 </p>
 
-<p align="center">现代化的 Vue 3 甘特图组件库，内置资源视图与资源规划能力，为项目管理、任务调度与资源分配提供完整解决方案</p>
+<p align="center">A modern Vue 3 Gantt chart component library with built-in resource view and resource planning capabilities, providing complete solutions for project management, task scheduling, and resource allocation</p>
 
 <!-- <p align="center">
   <a href="https://gitee.com/activity/2025opensource?ident=IOUNZP" target="_blank">
-    <img src="https://img.shields.io/badge/🥇_Gitee_2025年度开源项目评选-👉_感谢您的参与投票-gold?style=for-the-badge&labelColor=C71D23&logoColor=white" alt="Gitee 2025年度开源项目评选" height="40">
+    <img src="https://img.shields.io/badge/🥇_Gitee_2025_Open_Source_Awards-👉_Thanks_for_Your_Vote-gold?style=for-the-badge&labelColor=C71D23&logoColor=white" alt="Gitee 2025 Open Source Project Awards" height="40">
   </a>
 </p> -->
 
 <p align="center">
   <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
-    <strong>📱 Gitee在线演示</strong>
+    <strong>📱 Gitee Live Demo</strong>
   </a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://nelson820125.github.io/jordium-gantt-vue3/">
-    <strong>📱 Github在线演示</strong>
+    <strong>📱 Github Live Demo</strong>
   </a>
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://github.com/nelson820125/jordium-gantt-vue3">
@@ -62,39 +62,39 @@
 
 ---
 
-## ✨ 简介
+## ✨ Introduction
 
-jordium-gantt-vue3 是一个现代化的 Vue3 甘特图组件，内置资源视图与资源规划能力。在统一界面中同时管理任务、时间线以及资源分配，适用于项目计划与资源调度场景。
+jordium-gantt-vue3 is a modern Gantt chart component for Vue3 with built-in Resource View and Resource Planning capabilities. Manage tasks, timelines, and resource allocation in one unified interface, ideal for project scheduling and workforce planning.
 
-### 核心特性
+### Core Features
 
-- 📊**资源计划视图** - Vue 3 生态唯一支持资源视图的甘特图，可按资源（人员/设备）展示任务分配与工时占用
-- 📊 **功能完整** - 任务管理、里程碑、依赖关系、进度追踪
-- 🎨 **主题系统** - 内置亮色/暗色主题，支持自定义样式
-- 🖱️ **交互流畅** - 拖拽调整、缩放、双击编辑、右键菜单
-- 🌍 **国际化** - 内置中英文，可扩展其他语言
-- ⚡ **高性能** - 虚拟滚动、懒加载，轻松处理大量数据
-- 💎 **类型安全** - 完整 TypeScript 支持
+- � **Resource Planning View** - The only Vue 3 Gantt component with a dedicated resource view. Visualize task assignments and workload per resource (people / equipment)
+- �📊 **Feature Complete** - Task management, milestones, dependencies, progress tracking
+- 🎨 **Theme System** - Built-in light/dark themes with customizable styles
+- 🖱️ **Smooth Interaction** - Drag & resize, zoom, double-click edit, context menu
+- 🌍 **Internationalization** - Built-in Chinese/English with extensible language support
+- ⚡ **High Performance** - Virtual scrolling, lazy loading for handling massive data
+- 💎 **Type Safe** - Full TypeScript support
 
-### 效果预览
+### Preview
 
-#### 亮色主题
+#### Light Theme
 
-<img src="design/screenshots/light-theme.png" alt="亮色主题" width="100%">
+<img src="design/screenshots/light-theme-en.png" alt="Light Theme" width="100%">
 
-<img src="design/screenshots/light-theme1.png" alt="亮色主题" width="100%">
+<img src="design/screenshots/light-theme-en1.png" alt="Light Theme" width="100%">
 
-#### 暗色主题
+#### Dark Theme
 
-<img src="design/screenshots/dark-theme.png" alt="暗色主题" width="100%">
+<img src="design/screenshots/dark-theme-en.png" alt="Dark Theme" width="100%">
 
-<img src="design/screenshots/dark-theme1.png" alt="暗色主题" width="100%">
+<img src="design/screenshots/dark-theme-en1.png" alt="Dark Theme" width="100%">
 
 ---
 
-## 📦 安装
+## 📦 Installation
 
-使用你喜欢的包管理器安装：
+Install using your preferred package manager:
 
 ```bash
 # npm
@@ -109,11 +109,11 @@ pnpm add jordium-gantt-vue3
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 组件引入
+### Import Component
 
-在组件中引入 `GanttChart` 组件和样式：
+Import the `GanttChart` component and styles:
 
 ```vue
 <script setup lang="ts">
@@ -122,11 +122,11 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 </script>
 ```
 
-> **提示**: 样式文件只需在项目中引入一次即可，建议在 `main.ts` 或根组件中引入。
+> **Tip**: The style file only needs to be imported once in your project. It's recommended to import it in `main.ts` or the root component.
 
-### 第一个示例
+### First Example
 
-创建你的第一个甘特图：
+Create your first Gantt chart:
 
 ```vue
 <template>
@@ -143,14 +143,14 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const tasks = ref([
   {
     id: 1,
-    name: '项目启动',
+    name: 'Project Kickoff',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
   },
   {
     id: 2,
-    name: '需求分析',
+    name: 'Requirements Analysis',
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 80,
@@ -158,7 +158,7 @@ const tasks = ref([
   },
   {
     id: 3,
-    name: '系统设计',
+    name: 'System Design',
     startDate: '2025-01-21',
     endDate: '2025-02-05',
     progress: 50,
@@ -169,7 +169,7 @@ const tasks = ref([
 const milestones = ref([
   {
     id: 101,
-    name: '项目立项',
+    name: 'Project Approval',
     startDate: '2025-01-01',
     type: 'milestone',
   },
@@ -177,12 +177,14 @@ const milestones = ref([
 </script>
 ```
 
-🎯 **[立即体验 Github在线Demo →](https://nelson820125.github.io/jordium-gantt-vue3/)**
-<span><strong>推荐使用 <a href="https://dovee.cc/a.php?anaxjgyz1ozZq2B">DOVE</a> VPN，快速、稳定。</strong></span> <span style="color:red;">（注意：请合法使用 VPN 资源）</span>
+🎯 **[Try Live Demo on Github →](https://nelson820125.github.io/jordium-gantt-vue3/)**
+<span><strong>Recommended: <a href="https://dovee.cc/a.php?anaxjgyz1ozZq2B">DOVE</a> VPN for fast and stable access.</strong></span> <span style="color:red;">(Note: Please use VPN services legally)</span>
 
-## 🌞 NPM包使用示例
+## 🌞 NPM Package Usage Example
 
-请参考项目下的npm-demo，这是一个独立的项目，可以使用IDE单独浏览和启动，运行前请安装element plus以及jordium-gantt-vue3插件包
+Please refer to the npm-demo folder in the project.
+It is a standalone project that can be opened and run independently using your IDE.
+Before running, make sure to install the Element Plus library and the jordium-gantt-vue3 plugin package.
 
 ```bash
 # npm
@@ -193,243 +195,243 @@ npm run dev
 
 ---
 
-## 组件指南
+## 📖 Component Guide
 
-### GanttChart 组件
+### GanttChart Component
 
-`GanttChart` 是组件库的核心入口，提供了完整的甘特图功能。
+`GanttChart` is the core entry point of the library, providing complete Gantt chart functionality.
 
-#### 基础属性
+#### Basic Props
 
-| 属性名                      | 类型                                                                                      | 默认值  | 说明                                                           |
-| --------------------------- | ----------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------- |
-| `tasks`                     | `Task[]`                                                                                  | `[]`    | 任务数据数组                                                   |
-| `milestones`                | `Task[]`                                                                                  | `[]`    | 里程碑数据数组（注意：类型为 Task[]，需设置 type='milestone'） |
-| `resources` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Resource[]`                                                                              | `[]`    | 资源数据数组（资源计划视图使用）                               |
-| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource'`                                                                    | `'task'` | 视图模式：'task' 任务计划视图 \| 'resource' 资源计划视图      |
-| `showToolbar`               | `boolean`                                                                                 | `true`  | 是否显示工具栏                                                 |
-| `useDefaultDrawer`          | `boolean`                                                                                 | `true`  | 是否使用内置任务编辑抽屉（TaskDrawer）                         |
-| `useDefaultMilestoneDialog` | `boolean`                                                                                 | `true`  | 是否使用内置里程碑编辑对话框（MilestoneDialog）                |
-| `autoSortByStartDate`       | `boolean`                                                                                 | `false` | 是否根据开始时间自动排序任务                                   |
-| `allowDragAndResize`        | `boolean`                                                                                 | `true`  | 是否允许拖拽和调整任务/里程碑大小                              |
-| `enableTaskRowMove`         | `boolean`                                                                                 | `false` | 是否允许拖拽和摆放TaskRow                                      |
-| `enableTaskListContextMenu` | `boolean`                                                                                 | `true`  | 是否启用 TaskList（TaskRow）右键菜单功能。为 `true` 时：未声明 `task-list-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                     |
-| `enableTaskBarContextMenu`  | `boolean`                                                                                 | `true`  | 是否启用 TaskBar 右键菜单功能。为 `true` 时：未声明 `task-bar-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                               |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
-| `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | 语言设置（响应式）。设置后组件内部语言将跟随变化                |
-| `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | 主题模式（响应式）。设置后组件主题将跟随变化                    |
-| `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
-| `fullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 全屏状态控制（响应式）。设置后组件全屏状态将跟随变化            |
-| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 展开/收起所有任务（响应式）。设置后所有任务的展开状态将跟随变化  | 
-| `enableLinkAnchor` ![v1.7.2](https://img.shields.io/badge/v1.7.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否开启Taskbar的关系线锚点，默认值: true  |
-| `pendingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#409eff'` | 待处理任务的TaskBar背景色。支持十六进制颜色值（如 `'#409eff'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
-| `delayTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#f56c6c'` | 已逾期任务的TaskBar背景色。支持十六进制颜色值（如 `'#f56c6c'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
-| `completeTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#909399'` | 已完成任务的TaskBar背景色。支持十六进制颜色值（如 `'#909399'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
-| `ongoingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#e6a23c'` | 进行中任务的TaskBar背景色。支持十六进制颜色值（如 `'#e6a23c'`）。**优先级**：高于系统默认，低于 Task 对象的 `barColor` 属性  |
-| `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 是否显示实际TaskBar（在计划TaskBar下方显示实际执行进度）  |
-| `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用TaskBar悬停提示框（鼠标悬停显示任务详情）  |
-| `enableMilestoneTooltip` ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用里程碑悬停提示框（鼠标悬停显示里程碑名称和日期）  |
-| `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域） |
-| `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar的资源分配标签） |
-| `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许折叠/展开 TaskList 面板。`false` 时强制隐藏 TaskList、SplitterBar 及折叠按钮，Timeline 独占全宽 |
-| `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 控制 TaskList 的显隐状态（响应式）。仅在 `enableTaskListCollapsible=true` 时有效 |
-| `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许 TaskDrawer 自动关闭（外总点击或按 Esc 时自动关闭）。设为 `false` 时禁用自动关闭，仅可通过内部按钮手动关闭 |
+| Prop                        | Type      | Default | Description                                                               |
+| --------------------------- | --------- | ------- | ------------------------------------------------------------------------- |
+| `tasks`                     | `Task[]`  | `[]`    | Array of task data                                                        |
+| `milestones`                | `Task[]`  | `[]`    | Array of milestone data (Note: Type is Task[], must set type='milestone') |
+| `resources` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Resource[]` | `[]` | Array of resource data (used in resource planning view) |
+| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource'` | `'task'` | View mode: 'task' for task planning view \| 'resource' for resource planning view |
+| `showToolbar`               | `boolean` | `true`  | Whether to show the toolbar                                               |
+| `useDefaultDrawer`          | `boolean` | `true`  | Whether to use the built-in task edit drawer (TaskDrawer)                 |
+| `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
+| `autoSortByStartDate`       | `boolean` | `false` | Whether to automatically sort tasks by start date                         |
+| `allowDragAndResize`        | `boolean`                                                                             | `true`  | Whether to allow dragging and resizing tasks/milestones                   |
+| `enableTaskRowMove`         | `boolean`                                                                             | `false` | Whether to allow dragging and dropping TaskRow                            |
+| `enableTaskListContextMenu` | `boolean`                                                                             | `true`  | Whether to enable TaskList (TaskRow) context menu. When `true`: uses built-in menu if `task-list-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled           |
+| `enableTaskBarContextMenu`  | `boolean`                                                                             | `true`  | Whether to enable TaskBar context menu. When `true`: uses built-in menu if `task-bar-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled                      |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
+| `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | Language setting (reactive). Component's internal language will follow changes                |
+| `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | Theme mode (reactive). Component's theme will follow changes                    |
+| `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | Time scale (reactive). Timeline scale will follow changes                  |
+| `fullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Fullscreen state control (reactive). Component's fullscreen state will follow changes            |
+| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Expand/collapse all tasks (reactive). All tasks' expand state will follow changes  |
+| `enableLinkAnchor` ![v1.7.2](https://img.shields.io/badge/v1.7.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable Link Anchor，Default: true  |
+| `pendingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#409eff'` | Background color for pending tasks' TaskBar. Supports hex color values (e.g., `'#409eff'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
+| `delayTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#f56c6c'` | Background color for overdue tasks' TaskBar. Supports hex color values (e.g., `'#f56c6c'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
+| `completeTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#909399'` | Background color for completed tasks' TaskBar. Supports hex color values (e.g., `'#909399'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
+| `ongoingTaskBackgroundColor` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string`                                                                                 | `'#e6a23c'` | Background color for ongoing tasks' TaskBar. Supports hex color values (e.g., `'#e6a23c'`). **Priority**: Higher than system default, lower than Task object's `barColor` property  |
+| `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Whether to display actual TaskBar (shows actual execution progress below planned TaskBar)  |
+| `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable TaskBar hover tooltip (shows task details on mouse hover)  |
+| `enableMilestoneTooltip` ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable milestone hover tooltip (shows milestone name and date on mouse hover)  |
+| `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource conflict visualization layer (shows diagonal stripe background for overload zones in resource view) |
+| `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) |
+| `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow collapsing/expanding the TaskList panel. When `false`: forcibly hides TaskList, SplitterBar and collapse button; Timeline takes full width |
+| `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Controls TaskList visibility (reactive). Only effective when `enableTaskListCollapsible=true` |
+| `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow TaskDrawer to auto-close (closes on outside click or Esc key). Set to `false` to disable auto-close — the drawer can only be closed via its internal close button |
 
-#### TaskListColumn 属性
+#### TaskListColumn Component Props
 
-`TaskListColumn` 组件用于在声明式模式（`taskListColumnRenderMode="declarative"`）下定义任务列表的列。类似于 Element Plus 的 `el-table-column` 组件。
+The `TaskListColumn` component is used to define task list columns in declarative mode (`taskListColumnRenderMode="declarative"`). Similar to Element Plus's `el-table-column` component.
 
-| 属性名     | 类型                           | 默认值   | 说明                                                                                                       |
-| ---------- | ------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `prop`     | `string`                       | -        | 列的属性名，用于访问任务对象的字段。例如：`'name'`、`'assignee'`、`'progress'` 等                          |
-| `label`    | `string`                       | -        | 列的显示标题文本                                                                                           |
-| `width`    | `number \| string`             | -        | 列宽度。数字表示像素值（如 `200`），字符串支持百分比（如 `'20%'`）                                         |
-| `align`    | `'left' \| 'center' \| 'right'` | `'left'` | 列内容对齐方式                                                                                             |
-| `cssClass` | `string`                       | -        | 自定义 CSS 类名，用于列样式定制                                                                            |
+| Prop       | Type                           | Default  | Description                                                                                                                                      |
+| ---------- | ------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `prop`     | `string`                       | -        | Column property name, used to access task object fields. Examples: `'name'`, `'assignee'`, `'progress'`, etc.                                    |
+| `label`    | `string`                       | -        | Column header display text                                                                                                                       |
+| `width`    | `number \| string`             | -        | Column width. Number represents pixels (e.g., `200`), string supports percentage (e.g., `'20%'`)                                                 |
+| `align`    | `'left' \| 'center' \| 'right'` | `'left'` | Column content alignment                                                                                                                         |
+| `cssClass` | `string`                       | -        | Custom CSS class name for column styling                                                                                                         |
 
-**使用示例**：
+**Usage Example**:
 
 ```vue
 <GanttChart 
   :tasks="tasks" 
   task-list-column-render-mode="declarative"
 >
-  <TaskListColumn prop="name" label="任务名称" width="300" />
-  <TaskListColumn prop="assignee" label="负责人" width="150" align="center" />
-  <TaskListColumn prop="progress" label="进度" width="100" align="center" />
-  <TaskListColumn prop="startDate" label="开始日期" width="140" />
-  <TaskListColumn prop="endDate" label="结束日期" width="140" />
+  <TaskListColumn prop="name" label="Task Name" width="300" />
+  <TaskListColumn prop="assignee" label="Assignee" width="150" align="center" />
+  <TaskListColumn prop="progress" label="Progress" width="100" align="center" />
+  <TaskListColumn prop="startDate" label="Start Date" width="140" />
+  <TaskListColumn prop="endDate" label="End Date" width="140" />
 </GanttChart>
 ```
 
-> **💡 提示**：
-> - `TaskListColumn` 组件本身不渲染任何内容，仅用于声明列配置
-> - 必须在 `GanttChart` 组件内部使用，且设置 `task-list-column-render-mode="declarative"`
-> - 列的显示顺序由 `TaskListColumn` 组件的声明顺序决定
-> - 关于列内容自定义和插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
+> **💡 Tips**:
+> - The `TaskListColumn` component itself does not render any content, it only declares column configuration
+> - Must be used inside the `GanttChart` component with `task-list-column-render-mode="declarative"` set
+> - Column display order is determined by the declaration order of `TaskListColumn` components
+> - For detailed column content customization and slot usage, see [Slots](#slots) section
 
-#### TaskListContextMenu 属性
+#### TaskListContextMenu Component Props
 
-`TaskListContextMenu` 组件用于声明式定义 TaskList（TaskRow）的右键菜单。当 `enableTaskListContextMenu` 为 `true` 时生效。
+The `TaskListContextMenu` component is used to declaratively define the context menu for TaskList (TaskRow). Takes effect when `enableTaskListContextMenu` is `true`.
 
-| 属性名     | 类型                   | 默认值      | 说明                                                                                                                   |
-| ---------- | ---------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `taskType` | `string \| string[]`   | `undefined` | 指定哪些任务类型显示此右键菜单。不设置时遵循现有逻辑（所有任务都显示），设置后仅对指定类型任务显示。支持单个类型（如 `'task'`）或多个类型（如 `['task', 'milestone']`） |
+| Prop       | Type                   | Default     | Description                                                                                                                                                                                                                      |
+| ---------- | ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taskType` | `string \| string[]`   | `undefined` | Specifies which task types should display this context menu. When not set, follows existing logic (all tasks show menu). When set, only specified types show menu. Supports single type (e.g., `'task'`) or multiple types (e.g., `['task', 'milestone']`) |
 
-**使用示例**：
+**Usage Examples**:
 
 ```vue
 <GanttChart 
   :tasks="tasks" 
   :enable-task-list-context-menu="true"
 >
-  <!-- 默认行为：所有任务都显示此右键菜单 -->
+  <!-- Default behavior: all tasks show this context menu -->
   <TaskListContextMenu>
     <template #default="scope">
       <div class="custom-menu">
-        <div class="menu-item" @click="editTask(scope.row)">编辑</div>
-        <div class="menu-item" @click="deleteTask(scope.row)">删除</div>
+        <div class="menu-item" @click="editTask(scope.row)">Edit</div>
+        <div class="menu-item" @click="deleteTask(scope.row)">Delete</div>
       </div>
     </template>
   </TaskListContextMenu>
   
-  <!-- 仅对 type='task' 的任务显示此菜单 -->
+  <!-- Only show for tasks with type='task' -->
   <TaskListContextMenu task-type="task">
     <template #default="scope">
       <div class="custom-menu">
-        <div class="menu-item">任务专属菜单</div>
+        <div class="menu-item">Task Specific Menu</div>
       </div>
     </template>
   </TaskListContextMenu>
   
-  <!-- 对多种类型显示菜单 -->
+  <!-- Show for multiple types -->
   <TaskListContextMenu :task-type="['task', 'milestone']">
     <template #default="scope">
       <div class="custom-menu">
-        <div class="menu-item">任务和里程碑菜单</div>
+        <div class="menu-item">Task and Milestone Menu</div>
       </div>
     </template>
   </TaskListContextMenu>
 </GanttChart>
 ```
 
-> **💡 提示**：
-> - `TaskListContextMenu` 组件本身不渲染任何内容，仅用于声明菜单配置
-> - 必须在 `GanttChart` 组件内部使用，且设置 `enable-task-list-context-menu="true"`
-> - 菜单定位和显示状态由内部自动管理，用户只需关心菜单内容的 HTML 结构
-> - 菜单会在点击外部或滚动时自动关闭
-> - 关于插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
+> **💡 Tips**:
+> - The `TaskListContextMenu` component itself does not render any content, it only declares menu configuration
+> - Must be used inside the `GanttChart` component with `enable-task-list-context-menu="true"` set
+> - Menu positioning and visibility are automatically managed internally, users only need to focus on menu content HTML structure
+> - Menu automatically closes when clicking outside or scrolling
+> - For detailed slot usage, see [Slots](#slots) section
 
-#### TaskBarContextMenu 属性
+#### TaskBarContextMenu Component Props
 
-`TaskBarContextMenu` 组件用于声明式定义 TaskBar（时间线任务条）的右键菜单。当 `enableTaskBarContextMenu` 为 `true` 时生效。
+The `TaskBarContextMenu` component is used to declaratively define the context menu for TaskBar (timeline task bars). Takes effect when `enableTaskBarContextMenu` is `true`.
 
-| 属性名     | 类型                   | 默认值      | 说明                                                                                                                   |
-| ---------- | ---------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `taskType` | `string \| string[]`   | `undefined` | 指定哪些任务类型显示此右键菜单。不设置时遵循现有逻辑（所有任务都显示），设置后仅对指定类型任务显示。支持单个类型（如 `'task'`）或多个类型（如 `['task', 'milestone']`） |
+| Prop       | Type                   | Default     | Description                                                                                                                                                                                                                      |
+| ---------- | ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taskType` | `string \| string[]`   | `undefined` | Specifies which task types should display this context menu. When not set, follows existing logic (all tasks show menu). When set, only specified types show menu. Supports single type (e.g., `'task'`) or multiple types (e.g., `['task', 'milestone']`) |
 
-**使用示例**：
+**Usage Examples**:
 
 ```vue
 <GanttChart 
   :tasks="tasks" 
   :enable-task-bar-context-menu="true"
 >
-  <!-- 默认行为：所有任务都显示此右键菜单 -->
+  <!-- Default behavior: all tasks show this context menu -->
   <TaskBarContextMenu>
     <template #default="scope">
       <div class="custom-menu">
-        <div class="menu-item" @click="extendTask(scope.row)">延长任务</div>
-        <div class="menu-item" @click="moveTask(scope.row)">移动任务</div>
+        <div class="menu-item" @click="extendTask(scope.row)">Extend Task</div>
+        <div class="menu-item" @click="moveTask(scope.row)">Move Task</div>
       </div>
     </template>
   </TaskBarContextMenu>
   
-  <!-- 仅对 type='task' 的任务显示此菜单 -->
+  <!-- Only show for tasks with type='task' -->
   <TaskBarContextMenu task-type="task">
     <template #default="scope">
       <div class="custom-menu">
-        <div class="menu-item">任务条专属菜单</div>
+        <div class="menu-item">Task Bar Specific Menu</div>
       </div>
     </template>
   </TaskBarContextMenu>
   
-  <!-- 对多种类型显示菜单 -->
+  <!-- Show for multiple types -->
   <TaskBarContextMenu :task-type="['task', 'story']">
     <template #default="scope">
       <div class="custom-menu">
-        <div class="menu-item">任务和故事菜单</div>
+        <div class="menu-item">Task and Story Menu</div>
       </div>
     </template>
   </TaskBarContextMenu>
 </GanttChart>
 ```
 
-> **💡 提示**：
-> - `TaskBarContextMenu` 组件本身不渲染任何内容，仅用于声明菜单配置
-> - 必须在 `GanttChart` 组件内部使用，且设置 `enable-task-bar-context-menu="true"`
-> - 菜单定位和显示状态由内部自动管理，用户只需关心菜单内容的 HTML 结构
-> - 菜单会在点击外部或滚动时自动关闭
-> - 关于插槽的详细使用方法，请参考 [插槽 (Slots)](#插槽-slots) 章节
+> **💡 Tips**:
+> - The `TaskBarContextMenu` component itself does not render any content, it only declares menu configuration
+> - Must be used inside the `GanttChart` component with `enable-task-bar-context-menu="true"` set
+> - Menu positioning and visibility are automatically managed internally, users only need to focus on menu content HTML structure
+> - Menu automatically closes when clicking outside or scrolling
+> - For detailed slot usage, see [Slots](#slots) section
 
-#### 配置对象属性
+#### Configuration Object Props
 
-完整的配置对象说明请参考 [⚙️ 配置与扩展](#⚙️-配置与扩展) 章节。
+For complete configuration object documentation, see [⚙️ Configuration & Customization](#⚙️-configuration--customization) section.
 
-| 属性名           | 类型                         | 默认值                                                                  | 说明             |
-| ---------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------- |
-| `toolbarConfig`  | `ToolbarConfig`              | `{}`                                                                    | 工具栏配置       |
-| `taskListConfig` | `TaskListConfig`             | `undefined`                                                             | 任务列表配置     |
-| `resourceListConfig` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceListConfig`         | `undefined`                                                             | 资源列表配置     |
-| `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | 任务条样式配置   |
-| `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | 自定义多语言配置 |
-| `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | 工作时间配置     |
+| Prop             | Type                         | Default                                                                 | Description                  |
+| ---------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------------------- |
+| `toolbarConfig`  | `ToolbarConfig`              | `{}`                                                                    | Toolbar configuration        |
+| `taskListConfig` | `TaskListConfig`             | `undefined`                                                             | Task list configuration      |
+| `resourceListConfig` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceListConfig`         | `undefined`                                                             | Resource list configuration  |
+| `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | Task bar style configuration |
+| `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | Custom localization messages |
+| `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | Working hours configuration  |
 
-#### 回调函数属性
+#### Callback Props
 
-| 属性名               | 类型                                 | 说明                                                     |
-| -------------------- | ------------------------------------ | -------------------------------------------------------- |
-| `onTodayLocate`      | `() => void`                         | 工具栏"今天"按钮点击回调                                 |
-| `onExportCsv`        | `() => boolean \| void`              | 工具栏"导出CSV"按钮点击回调，返回 `false` 可阻止默认导出 |
-| `onExportPdf`        | `() => void`                         | 工具栏"导出PDF"按钮点击回调                              |
-| `onLanguageChange`   | `(lang: 'zh-CN' \| 'en-US') => void` | 语言切换回调                                             |
-| `onThemeChange`      | `(isDark: boolean) => void`          | 主题切换回调                                             |
-| `onFullscreenChange` | `(isFullscreen: boolean) => void`    | 全屏切换回调                                             |
-| `onExpandAll`        | `() => void`                         | 工具栏"全部展开"按钮点击回调                             |
-| `onCollapseAll`      | `() => void`                         | 工具栏"全部折叠"按钮点击回调                             |
+| Prop                 | Type                                 | Description                                                                          |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `onTodayLocate`      | `() => void`                         | Toolbar "Today" button click callback                                                |
+| `onExportCsv`        | `() => boolean \| void`              | Toolbar "Export CSV" button click callback, return `false` to prevent default export |
+| `onExportPdf`        | `() => void`                         | Toolbar "Export PDF" button click callback                                           |
+| `onLanguageChange`   | `(lang: 'zh-CN' \| 'en-US') => void` | Language switch callback                                                             |
+| `onThemeChange`      | `(isDark: boolean) => void`          | Theme switch callback                                                                |
+| `onFullscreenChange` | `(isFullscreen: boolean) => void`    | Fullscreen toggle callback                                                           |
+| `onExpandAll`        | `() => void`                         | Toolbar "Expand All" button click callback                                           |
+| `onCollapseAll`      | `() => void`                         | Toolbar "Collapse All" button click callback                                         |
 
-#### 组件事件（Events）
+#### Component Events
 
-完整的事件说明请分别参考：
+For complete event documentation, see:
 
-- **任务相关事件**：参见下方 [任务管理](#任务管理) 章节
-- **里程碑相关事件**：参见下方 [里程碑管理](#里程碑管理) 章节
+- **Task-related events**: See [Task Management](#task-management) section below
+- **Milestone-related events**: See [Milestone Management](#milestone-management) section below
 
-**事件列表总览：**
+**Event List Overview:**
 
-| 事件名                   | 参数                              | 说明                       |
-| ------------------------ | --------------------------------- | -------------------------- |
-| `add-task`               | -                                 | 点击工具栏"添加任务"按钮   |
-| `task-click`             | `(task: Task, event: MouseEvent)` | 点击任务                   |
-| `task-double-click`      | `(task: Task)`                    | 双击任务                   |
-| `task-added`             | `{ task: Task }`                  | 任务添加后触发             |
-| `task-updated`           | `{ task: Task }`                  | 任务更新后触发             |
-| `task-deleted`           | `{ task: Task }`                  | 任务删除后触发             |
-| `taskbar-drag-end`       | `(task: Task)`                    | 拖拽任务结束               |
-| `taskbar-resize-end`     | `(task: Task)`                    | 调整任务大小结束           |
-| `predecessor-added`      | `{ targetTask, newTask }`         | 添加前置任务               |
-| `successor-added`        | `{ targetTask, newTask }`         | 添加后置任务               |
-| `timer-started`          | `(task: Task)`                    | 任务计时器启动             |
-| `timer-stopped`          | `(task: Task)`                    | 任务计时器停止             |
-| `add-milestone`          | -                                 | 点击工具栏"添加里程碑"按钮 |
-| `milestone-saved`        | `(milestone: Task)`               | 里程碑保存                 |
-| `milestone-deleted`      | `{ milestoneId: number }`         | 里程碑删除                 |
-| `milestone-icon-changed` | `{ milestoneId, icon }`           | 里程碑图标变更             |
-| `milestone-drag-end`     | `(milestone: Task)`               | 拖拽里程碑结束             |
-| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） |
-| `taskbar-resource-change` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | 任务跨资源移动事件（资源视图下拖拽任务到另一资源行） |
+| Event Name               | Parameters                        | Description                            |
+| ------------------------ | --------------------------------- | -------------------------------------- |
+| `add-task`               | -                                 | Clicked toolbar "Add Task" button      |
+| `task-click`             | `(task: Task, event: MouseEvent)` | Clicked task                           |
+| `task-double-click`      | `(task: Task)`                    | Double-clicked task                    |
+| `task-added`             | `{ task: Task }`                  | Triggered after task added             |
+| `task-updated`           | `{ task: Task }`                  | Triggered after task updated           |
+| `task-deleted`           | `{ task: Task }`                  | Triggered after task deleted           |
+| `taskbar-drag-end`       | `(task: Task)`                    | Task drag ended                        |
+| `taskbar-resize-end`     | `(task: Task)`                    | Task resize ended                      |
+| `predecessor-added`      | `{ targetTask, newTask }`         | Added predecessor task                 |
+| `successor-added`        | `{ targetTask, newTask }`         | Added successor task                   |
+| `timer-started`          | `(task: Task)`                    | Task timer started                     |
+| `timer-stopped`          | `(task: Task)`                    | Task timer stopped                     |
+| `add-milestone`          | -                                 | Clicked toolbar "Add Milestone" button |
+| `milestone-saved`        | `(milestone: Task)`               | Milestone saved                        |
+| `milestone-deleted`      | `{ milestoneId: number }`         | Milestone deleted                      |
+| `milestone-icon-changed` | `{ milestoneId, icon }`           | Milestone icon changed                 |
+| `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) |
+| `taskbar-resource-change` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | Task moved across resources (dragging task to another resource row in resource view) |
 
-#### 示例1：最简单的甘特图
+#### Example 1: Simplest Gantt Chart
 
 ```vue
 <template>
@@ -446,7 +448,7 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const tasks = ref([
   {
     id: 1,
-    name: '任务1',
+    name: 'Task 1',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
@@ -454,14 +456,14 @@ const tasks = ref([
 ])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 </script>
 ```
 
-#### 示例2：带里程碑的甘特图
+#### Example 2: Gantt Chart with Milestones
 
 ```vue
 <template>
@@ -478,7 +480,7 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const tasks = ref([
   {
     id: 1,
-    name: '项目启动',
+    name: 'Project Kickoff',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
@@ -488,7 +490,7 @@ const tasks = ref([
 const milestones = ref([
   {
     id: 101,
-    name: '项目立项',
+    name: 'Project Approval',
     startDate: '2025-01-01',
     type: 'milestone',
     icon: 'diamond',
@@ -496,25 +498,25 @@ const milestones = ref([
 ])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 </script>
 ```
 
-#### 示例3：隐藏工具栏，自定义控制按钮绑定事件
+#### Example 3: Hide Toolbar, Custom Control Buttons with Event Binding
 
 ```vue
 <template>
   <div>
-    <!-- 自定义控制栏 -->
+    <!-- Custom toolbar -->
     <div class="custom-toolbar">
-      <button @click="addTask">新增任务</button>
-      <button @click="addMilestone">新增里程碑</button>
+      <button @click="addTask">Add Task</button>
+      <button @click="addMilestone">Add Milestone</button>
     </div>
 
-    <!-- 甘特图组件，隐藏内置工具栏 -->
+    <!-- Gantt chart component with hidden built-in toolbar -->
     <div style="height: 600px;">
       <GanttChart
         :tasks="tasks"
@@ -537,15 +539,15 @@ const tasks = ref([])
 const milestones = ref([])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 
 const addTask = () => {
   const newTask = {
     id: Date.now(),
-    name: '新任务',
+    name: 'New Task',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
     progress: 0,
@@ -556,7 +558,7 @@ const addTask = () => {
 const addMilestone = () => {
   const newMilestone = {
     id: Date.now(),
-    name: '新里程碑',
+    name: 'New Milestone',
     startDate: new Date().toISOString().split('T')[0],
     type: 'milestone',
   }
@@ -564,36 +566,36 @@ const addMilestone = () => {
 }
 
 const handleTaskAdded = e => {
-  console.log('任务已添加:', e.task)
+  console.log('Task added:', e.task)
 }
 
 const handleMilestoneSaved = milestone => {
-  console.log('里程碑已保存:', milestone)
+  console.log('Milestone saved:', milestone)
 }
 </script>
 ```
 
-#### 示例4：外部组件控制状态（TimeScale、Fullscreen、Expand/Collapse、Locale、Theme）
+#### Example 4: External Component State Control (TimeScale, Fullscreen, Expand/Collapse, Locale, Theme)
 
-通过响应式Props绑定来控制组件状态，组件状态会自动跟随Props变化。
+Control component state through reactive Props binding. Component state will automatically follow Props changes.
 
 ```vue
 <template>
   <div>
-    <!-- 外部控制面板 -->
+    <!-- External control panel -->
     <div class="control-panel">
-      <button @click="propsFullscreen = !propsFullscreen">切换全屏</button>
-      <button @click="propsExpandAll = !propsExpandAll">展开/收起所有</button>
+      <button @click="propsFullscreen = !propsFullscreen">Toggle Fullscreen</button>
+      <button @click="propsExpandAll = !propsExpandAll">Expand/Collapse All</button>
       <button @click="propsLocale = 'zh-CN'">中文</button>
       <button @click="propsLocale = 'en-US'">English</button>
-      <button @click="propsTimeScale = 'day'">日视图</button>
-      <button @click="propsTimeScale = 'week'">周视图</button>
-      <button @click="propsTimeScale = 'month'">月视图</button>
-      <button @click="propsTheme = 'light'">亮色主题</button>
-      <button @click="propsTheme = 'dark'">暗色主题</button>
+      <button @click="propsTimeScale = 'day'">Day View</button>
+      <button @click="propsTimeScale = 'week'">Week View</button>
+      <button @click="propsTimeScale = 'month'">Month View</button>
+      <button @click="propsTheme = 'light'">Light Theme</button>
+      <button @click="propsTheme = 'dark'">Dark Theme</button>
     </div>
 
-    <!-- 甘特图组件 -->
+    <!-- Gantt chart component -->
     <div style="height: 600px;">
       <GanttChart
         :tasks="tasks"
@@ -614,12 +616,12 @@ import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
 const tasks = ref([
-  { id: 1, name: '任务1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
-  { id: 2, name: '任务2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
+  { id: 1, name: 'Task 1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
+  { id: 2, name: 'Task 2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
 ])
 const milestones = ref([])
 
-// Props控制变量
+// Props control variables
 const propsLocale = ref<'zh-CN' | 'en-US'>('zh-CN')
 const propsTheme = ref<'light' | 'dark'>('light')
 const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
@@ -630,99 +632,99 @@ const propsExpandAll = ref(false)
 
 ---
 
-### 任务管理
+### Task Management
 
-任务是甘特图的核心元素，组件提供了完整的任务 CRUD 操作支持，包括添加、编辑、删除任务，以及丰富的交互事件。
+Tasks are the core elements of the Gantt chart. The component provides complete CRUD operation support for tasks, including adding, editing, deleting tasks, and rich interactive events.
 
-#### Task 数据结构
+#### Task Data Structure
 
-| 字段名             | 类型       | 必填 | 默认值      | 说明                                                                                                                            |
-| ------------------ | ---------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `id`               | `number`   | ✅   | -           | 任务唯一标识符                                                                                                                  |
-| `name`             | `string`   | ✅   | -           | 任务名称                                                                                                                        |
-| `startDate`        | `string`   | -    | -           | 开始日期，格式：'YYYY-MM-DD' 或 'YYYY-MM-DD HH:mm'                                                                              |
-| `endDate`          | `string`   | -    | -           | 结束日期，格式：'YYYY-MM-DD' 或 'YYYY-MM-DD HH:mm'                                                                              |
-| `progress`         | `number`   | -    | `0`         | 任务进度，范围 0-100                                                                                                            |
-| `predecessor`      | `number[]` | -    | -           | 前置任务 ID 数组，标准格式：`[1, 2, 3]`<br/>**兼容格式**：也支持字符串 `'1,2,3'` 或字符串数组 `['1', '2', '3']`，组件会自动解析 |
-| `assignee`         | `string` \| `string[]` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF)   | -    | -           | 任务负责人，用作负责人下拉菜单的值绑定。支持单个负责人（字符串）或多个负责人（字符串数组）                                                                                                                      |
-| `assigneeName`         | `string` \| `string[]` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF)   | -    | -           | 任务负责人姓名，自动从绑定的数据集`assigneeOptions`中获取Label作为显示，如果需要自定义，可以在GanttChart回调事件`task-added`中自定义信息。支持单个姓名（字符串）或多个姓名（字符串数组）                                                                                                                      |
-| `avatar`           | `string` \| `string[]` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF)   | -    | -           | 任务负责人头像 URL。支持单个头像（字符串）或多个头像（字符串数组）                                                                                                              |
-| `estimatedHours`   | `number`   | -    | -           | 预估工时（小时）                                                                                                                |
-| `actualHours`      | `number`   | -    | -           | 实际工时（小时）                                                                                                                |
-| `parentId`         | `number`   | -    | -           | 父任务 ID，用于任务分组                                                                                                         |
-| `children`         | `Task[]`   | -    | -           | 子任务数组                                                                                                                      |
-| `collapsed`        | `boolean`  | -    | `false`     | 子任务是否折叠                                                                                                                  |
-| `isParent`         | `boolean`  | -    | -           | 是否为父任务                                                                                                                    |
-| `type`             | `string`   | -    | -           | 任务类型，'milestone' 表示里程碑，'milestone-group' 表示里程碑分组                                                              |
-| `description`      | `string`   | -    | -           | 任务描述                                                                                                                        |
-| `icon`             | `string`   | -    | `'diamond'` | 任务图标（用于里程碑），可选值：'diamond', 'flag', 'star', 'rocket' 等                                                          |
-| `level`            | `number`   | -    | `0`         | 任务层级（自动计算）                                                                                                            |
-| `isTimerRunning`   | `boolean`  | -    | `false`     | 计时器是否运行中                                                                                                                |
-| `timerStartTime`   | `number`   | -    | -           | 计时开始时间（时间戳）                                                                                                          |
-| `timerEndTime`     | `number`   | -    | -           | 计时结束时间（时间戳）                                                                                                          |
-| `timerStartDesc`   | `string`   | -    | -           | 计时开始时填写的描述                                                                                                            |
-| `timerElapsedTime` | `number`   | -    | `0`         | 已计时的时长（毫秒）                                                                                                            |
-| `isEditable`       | `boolean`  | -    | `true`      | 单个任务是否可编辑（可拖拽、拉伸），优先级高于全局 `allowDragAndResize`                                                         |
-| `[key: string]`    | `unknown`  | -    | -           | 支持自定义属性扩展，可添加任意额外字段                                                                                          |
+| Field              | Type       | Required | Default     | Description                                                                                                                                                                         |
+| ------------------ | ---------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`               | `number`   | ✅       | -           | Unique task identifier                                                                                                                                                              |
+| `name`             | `string`   | ✅       | -           | Task name                                                                                                                                                                           |
+| `startDate`        | `string`   | -        | -           | Start date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                                                                                                                              |
+| `endDate`          | `string`   | -        | -           | End date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                                                                                                                                |
+| `progress`         | `number`   | -        | `0`         | Task progress, range 0-100                                                                                                                                                          |
+| `predecessor`      | `number[]` | -        | -           | Array of predecessor task IDs, standard format: `[1, 2, 3]`<br/>**Compatible formats**: Also supports string `'1,2,3'` or string array `['1', '2', '3']`, component will auto-parse |
+| `assignee`         | `string` \| `string[]` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF)   | -        | -           | Task assignee, used as the value binding for the assignee dropdown menu. Supports single assignee (string) or multiple assignees (string array)                                                                                                              |
+| `assigneeName`     | `string` \| `string[]` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF)   | -        | -           | Task assignee name, automatically obtained from the label in the bound `assigneeOptions` dataset; for custom display, you can set it in the `task-added` callback event of GanttChart. Supports single name (string) or multiple names (string array) |
+| `avatar`           | `string` \| `string[]` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF)   | -        | -           | Avatar URL of task assignee. Supports single avatar (string) or multiple avatars (string array)                                                                                                                                                         |
+| `estimatedHours`   | `number`   | -        | -           | Estimated hours                                                                                                                                                                     |
+| `actualHours`      | `number`   | -        | -           | Actual hours                                                                                                                                                                        |
+| `parentId`         | `number`   | -        | -           | Parent task ID, used for task grouping                                                                                                                                              |
+| `children`         | `Task[]`   | -        | -           | Array of child tasks                                                                                                                                                                |
+| `collapsed`        | `boolean`  | -        | `false`     | Whether child tasks are collapsed                                                                                                                                                   |
+| `isParent`         | `boolean`  | -        | -           | Whether this is a parent task                                                                                                                                                       |
+| `type`             | `string`   | -        | -           | Task type, 'milestone' for milestone, 'milestone-group' for milestone group                                                                                                         |
+| `description`      | `string`   | -        | -           | Task description                                                                                                                                                                    |
+| `icon`             | `string`   | -        | `'diamond'` | Task icon (for milestones), options: 'diamond', 'flag', 'star', 'rocket', etc.                                                                                                      |
+| `level`            | `number`   | -        | `0`         | Task level (auto-calculated)                                                                                                                                                        |
+| `isTimerRunning`   | `boolean`  | -        | `false`     | Whether timer is running                                                                                                                                                            |
+| `timerStartTime`   | `number`   | -        | -           | Timer start time (timestamp)                                                                                                                                                        |
+| `timerEndTime`     | `number`   | -        | -           | Timer end time (timestamp)                                                                                                                                                          |
+| `timerStartDesc`   | `string`   | -        | -           | Description filled when timer starts                                                                                                                                                |
+| `timerElapsedTime` | `number`   | -        | `0`         | Elapsed time (milliseconds)                                                                                                                                                         |
+| `isEditable`       | `boolean`  | -        | `true`      | Whether individual task is editable (draggable, resizable), overrides global `allowDragAndResize`                                                                                   |
+| `[key: string]`    | `unknown`  | -        | -           | Supports custom property extensions, can add any additional fields                                                                                                                  |
 
-> **自定义属性扩展**：Task 接口支持添加任意自定义字段，例如：`priority`、`tags`、`status`、`department` 等业务相关字段。
+> **Custom Property Extensions**: The Task interface supports adding arbitrary custom fields, such as: `priority`, `tags`, `status`, `department`, and other business-related fields.
 >
-> **前置任务字段说明**：
+> **Predecessor Field Notes**:
 >
-> - **标准格式**（推荐）：`predecessor: [1, 2, 3]` - number 数组
-> - **兼容格式1**：`predecessor: '1,2,3'` - 逗号分隔的字符串
-> - **兼容格式2**：`predecessor: ['1', '2', '3']` - 字符串数组
-> - 组件内部会自动将所有格式统一解析为 number 数组
-> - 无前置任务：使用空数组 `[]`、空字符串 `''` 或不设置该字段
+> - **Standard format** (recommended): `predecessor: [1, 2, 3]` - number array
+>   **Compatible format 1**: `predecessor: '1,2,3'` - comma-separated string
+> - **Compatible format 2**: `predecessor: ['1', '2', '3']` - string array
+> - Component will automatically parse all formats into number array
+> - No predecessors: use empty array `[]`, empty string `''`, or don't set this field
 
-#### 任务相关属性
+#### Task-Related Props
 
-| 属性名                | 类型             | 默认值      | 说明                                                           |
-| --------------------- | ---------------- | ----------- | -------------------------------------------------------------- |
-| `tasks`               | `Task[]`         | `[]`        | 任务数据数组                                                   |
-| `useDefaultDrawer`    | `boolean`        | `true`      | 是否使用内置的任务编辑抽屉（TaskDrawer）                       |
-| `taskBarConfig`       | `TaskBarConfig`  | `{}`        | 任务条样式配置，详见 [TaskBarConfig 配置](#taskbarconfig-配置) |
-| `taskListConfig`      | `TaskListConfig` | `undefined` | 任务列表配置，详见 [TaskListConfig 配置](#tasklistconfig-配置) |
-| `autoSortByStartDate` | `boolean`        | `false`     | 是否根据开始时间自动排序任务                                   |
-| `enableTaskRowMove`        | `boolean` | `false`  | 是否允许拖拽和摆放TaskRow   |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
-| `taskListColumnRenderMode` | `'default' \| 'declarative'` | `'default'` | 任务列表列渲染模式。`'default'`：使用 TaskListColumnConfig 配置（兼容模式，将逐渐废弃）；`'declarative'`：使用 TaskListColumn 组件声明式定义列（推荐）。详见 [TaskListColumn 声明式列定义](#tasklistcolumn-声明式列定义) |
-| `taskListRowClassName` | `string \| ((task: Task) => string)` | `undefined` | 自定义任务行的 CSS 类名。可以是字符串或返回字符串的函数。**注意**：行的高度由组件内部统一管理，自定义高度样式不会生效 |
-| `taskListRowStyle` | `CSSProperties \| ((task: Task) => CSSProperties)` | `undefined` | 自定义任务行的内联样式。可以是样式对象或返回样式对象的函数。**注意**：行的高度和宽度由组件内部统一管理，自定义宽高样式不会生效 | 
+| Prop                  | Type             | Default     | Description                                                                                   |
+| --------------------- | ---------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `tasks`               | `Task[]`         | `[]`        | Array of task data                                                                            |
+| `useDefaultDrawer`    | `boolean`        | `true`      | Whether to use built-in task edit drawer (TaskDrawer)                                         |
+| `taskBarConfig`       | `TaskBarConfig`  | `{}`        | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
+| `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
+| `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
+| `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
+| `taskListColumnRenderMode` | `'default' \| 'declarative'` | `'default'` | Task list column render mode. `'default'`: Use TaskListColumnConfig configuration (compatibility mode, will be gradually deprecated); `'declarative'`: Use TaskListColumn component for declarative column definition (recommended). See [TaskListColumn Declarative Column Definition](#tasklistcolumn-declarative-column-definition) |
+| `taskListRowClassName` | `string \| ((task: Task) => string)` | `undefined` | Custom CSS class name for task rows. Can be a string or a function that returns a string. **Note**: Row height is managed internally by the component, custom height styles will not take effect |
+| `taskListRowStyle` | `CSSProperties \| ((task: Task) => CSSProperties)` | `undefined` | Custom inline styles for task rows. Can be a style object or a function that returns a style object. **Note**: Row height and width are managed internally by the component, custom width/height styles will not take effect |
 
-**配置说明**：
+**Configuration Notes**:
 
-- **默认模式**：`useDefaultDrawer=true`（默认），双击任务自动打开内置 TaskDrawer
-- **自定义编辑器**：`useDefaultDrawer=false` 禁用内置抽屉，监听 `@task-double-click` 事件打开自定义编辑器
-- **只读模式**：`useDefaultDrawer=false` 且不监听 `@task-double-click` 事件，用户双击任务无反应
+- **Default mode**: `useDefaultDrawer=true` (default), double-click task to auto-open built-in TaskDrawer
+- **Custom editor**: `useDefaultDrawer=false` disables built-in drawer, listen to `@task-double-click` event to open custom editor
+- **Read-only mode**: `useDefaultDrawer=false` and don't listen to `@task-double-click` event, user double-click task has no response
 
-#### 任务事件
+#### Task Events
 
-> **💡 事件驱动架构**：组件采用纯事件驱动设计，所有用户操作（添加、编辑、删除、拖拽等）都会触发对应事件，方便外部监听和处理。
+> **💡 Event-Driven Architecture**: Component adopts pure event-driven design. All user operations (add, edit, delete, drag, etc.) will trigger corresponding events for easy external listening and handling.
 
-| 事件名               | 参数                                      | 触发时机                   | 说明                                                                                                                       |
-| -------------------- | ----------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `add-task`           | -                                         | 点击工具栏"添加任务"按钮时 | 可用于自定义新增任务逻辑。如 `useDefaultDrawer=true`，组件会自动打开内置 TaskDrawer                                        |
-| `task-click`         | `(task: Task, event: MouseEvent) => void` | 点击任务条时               | 单击任务触发                                                                                                               |
-| `task-double-click`  | `(task: Task) => void`                    | 双击任务条时               | 双击任务时**始终触发**。`useDefaultDrawer=true` 时组件会额外打开内置编辑器，`false` 时不打开。事件触发与属性值无关         |
-| `task-added`         | `{ task: Task }`                          | 任务添加后                 | 通过内置 TaskDrawer 添加任务后触发。**注意**：组件已自动更新 `tasks` 数据，外部只需监听此事件做额外处理（如调用 API 保存） |
-| `task-updated`       | `{ task: Task }`                          | 任务更新后                 | 通过内置 TaskDrawer 或拖拽更新任务后触发。**注意**：组件已自动更新 `tasks` 数据，外部只需监听此事件做额外处理              |
-| `task-deleted`       | `{ task: Task }`                          | 任务删除后                 | 通过内置 TaskDrawer 删除任务后触发。**注意**：组件已自动更新 `tasks` 数据，外部只需监听此事件做额外处理                    |
-| `taskbar-drag-end`   | `(task: Task) => void`                    | 拖拽任务条结束时           | 任务位置变化，startDate 和 endDate 已更新。**注意**：组件已自动更新 `tasks` 数据                                           |
-| `taskbar-resize-end` | `(task: Task) => void`                    | 调整任务条大小结束时       | 任务时长变化，endDate 已更新。**注意**：组件已自动更新 `tasks` 数据                                                        |
-| `predecessor-added`  | `{ targetTask: Task, newTask: Task }`     | 通过右键菜单添加前置任务后 | `targetTask` 是被添加前置任务的任务，`newTask` 是新创建的前置任务                                                          |
-| `successor-added`    | `{ targetTask: Task, newTask: Task }`     | 通过右键菜单添加后置任务后 | `targetTask` 是原任务，`newTask` 是新创建的后置任务（其 predecessor 已包含 targetTask.id）                                 |
-| `timer-started`      | `(task: Task) => void`                    | 任务计时器启动时           | 开始记录任务工时                                                                                                           |
-| `timer-stopped`      | `(task: Task) => void`                    | 任务计时器停止时           | 停止记录任务工时                                                                                                           |
-| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | 拖拽TaskRow结束（可选） | 组件已自动完成数据移动和TaskList/Timeline同步。监听此事件为完全可选，仅用于显示提示、调用API保存等。`position`: 'after'=同级放置，'child'=作为子任务 |
+| Event Name           | Parameters                                | When Triggered                            | Description                                                                                                                                                                                              |
+| -------------------- | ----------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `add-task`           | -                                         | When clicking toolbar "Add Task" button   | Can be used for custom add task logic. If `useDefaultDrawer=true`, component will auto-open built-in TaskDrawer                                                                                          |
+| `task-click`         | `(task: Task, event: MouseEvent) => void` | When clicking task bar                    | Triggered on single-click task                                                                                                                                                                           |
+| `task-double-click`  | `(task: Task) => void`                    | When double-clicking task bar             | Double-click task **always triggers**. When `useDefaultDrawer=true`, component will additionally open built-in editor; when `false`, won't open. Event triggering is independent of property value       |
+| `task-added`         | `{ task: Task }`                          | After task added                          | Triggered after adding task via built-in TaskDrawer. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing (like calling API to save) |
+| `task-updated`       | `{ task: Task }`                          | After task updated                        | Triggered after updating task via built-in TaskDrawer or drag. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing                  |
+| `task-deleted`       | `{ task: Task }`                          | After task deleted                        | Triggered after deleting task via built-in TaskDrawer. **Note**: Component has auto-updated `tasks` data, external only needs to listen to this event for additional processing                          |
+| `taskbar-drag-end`   | `(task: Task) => void`                    | When task bar drag ends                   | Task position changed, startDate and endDate updated. **Note**: Component has auto-updated `tasks` data                                                                                                  |
+| `taskbar-resize-end` | `(task: Task) => void`                    | When task bar resize ends                 | Task duration changed, endDate updated. **Note**: Component has auto-updated `tasks` data                                                                                                                |
+| `predecessor-added`  | `{ targetTask: Task, newTask: Task }`     | After adding predecessor via context menu | `targetTask` is the task to which predecessor is added, `newTask` is the newly created predecessor task                                                                                                  |
+| `successor-added`    | `{ targetTask: Task, newTask: Task }`     | After adding successor via context menu   | `targetTask` is the original task, `newTask` is the newly created successor task (its predecessor already contains targetTask.id)                                                                        |
+| `timer-started`      | `(task: Task) => void`                    | When task timer starts                    | Start recording task hours                                                                                                                                                                               |
+| `timer-stopped`      | `(task: Task) => void`                    | When task timer stops                     | Stop recording task hours                                                                                                                                                                                |
+| `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) | Component has automatically completed data movement and TaskList/Timeline sync via object reference mutation. Listening to this event is completely optional, only for showing messages, calling API, etc. `position`: 'after'=same level, 'child'=as child |
 
-**数据同步说明**：
+**Data Synchronization Notes**:
 
-- ✅ **组件内部自动更新**：所有任务的增删改操作，组件都会自动更新 `props.tasks` 数据
-- ✅ **事件仅做通知**：外部监听事件主要用于：显示提示消息、调用后端 API、更新其他相关数据等
-- ❌ **避免重复操作**：不要在事件处理器中再次修改 `tasks` 数据，否则会导致重复更新
+- ✅ **Component auto-updates internally**: For all task CRUD operations, component will auto-update `props.tasks` data
+- ✅ **Events are for notification only**: External event listeners are mainly for: showing messages, calling backend APIs, updating other related data, etc.
+- ❌ **Avoid duplicate operations**: Don't modify `tasks` data again in event handlers, otherwise it will cause duplicate updates
 
-#### 示例1：基础任务操作
+#### Example 1: Basic Task Operations
 
 ```vue
 <template>
@@ -749,77 +751,77 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const tasks = ref<Task[]>([
   {
     id: 1,
-    name: '项目规划',
+    name: 'Project Planning',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
-    assignee: '张三',
+    assignee: 'Alice',
     estimatedHours: 40,
   },
   {
     id: 2,
-    name: '需求分析',
+    name: 'Requirements Analysis',
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 60,
-    assignee: '李四',
-    predecessor: [1], // 依赖任务1
+    assignee: 'Bob',
+    predecessor: [1], // Depends on task 1
   },
 ])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 
-// 工具栏"添加任务"按钮点击事件
+// Toolbar "Add Task" button click event
 const handleAddTask = () => {
-  console.log('准备新增任务...')
-  // 组件会自动打开 TaskDrawer（如果 useDefaultDrawer=true）
-  // 也可以在这里执行自定义逻辑，如显示提示消息
+  console.log('Preparing to add task...')
+  // Component will auto-open TaskDrawer (if useDefaultDrawer=true)
+  // Can also execute custom logic here, like showing messages
 }
 
-// 任务添加事件（通过内置抽屉添加）
+// Task add event (added via built-in drawer)
 const handleTaskAdded = (e: { task: Task }) => {
-  console.log('新增任务:', e.task)
-  // 注意：组件已自动将任务添加到 tasks 数组
-  // 这里只需调用后端 API 保存即可
+  console.log('Task added:', e.task)
+  // Note: Component has auto-added task to tasks array
+  // Only need to call backend API to save here
   // await api.createTask(e.task)
 }
 
-// 任务更新事件（通过内置抽屉或拖拽更新）
+// Task update event (updated via built-in drawer or drag)
 const handleTaskUpdated = (e: { task: Task }) => {
-  console.log('更新任务:', e.task)
-  // 注意：组件已自动更新 tasks 数组中的任务数据
-  // 这里只需调用后端 API 更新即可
+  console.log('Task updated:', e.task)
+  // Note: Component has auto-updated task data in tasks array
+  // Only need to call backend API to update here
   // await api.updateTask(e.task.id, e.task)
 }
 
-// 任务删除事件
+// Task delete event
 const handleTaskDeleted = (e: { task: Task }) => {
-  console.log('删除任务:', e.task)
-  // 注意：组件已自动从 tasks 数组中移除任务
-  // 这里只需调用后端 API 删除即可
+  console.log('Task deleted:', e.task)
+  // Note: Component has auto-removed task from tasks array
+  // Only need to call backend API to delete here
   // await api.deleteTask(e.task.id)
 }
 
-// 点击任务事件
+// Task click event
 const handleTaskClick = (task: Task) => {
-  console.log('点击任务:', task.name)
+  console.log('Clicked task:', task.name)
 }
 
-// 拖拽任务结束事件
+// Task drag end event
 const handleTaskDragEnd = (task: Task) => {
-  console.log('任务拖拽完成，新日期:', task.startDate, '至', task.endDate)
-  // 可以在这里调用后端 API 保存新的日期
+  console.log('Task drag completed, new dates:', task.startDate, 'to', task.endDate)
+  // Can call backend API here to save new dates
 }
 </script>
 ```
 
-#### 示例2：任务依赖关系（前置任务/后置任务）
+#### Example 2: Task Dependencies (Predecessors/Successors)
 
-任务可以通过 `predecessor` 字段配置前置任务，组件会自动绘制依赖关系连线：
+Tasks can configure predecessors via the `predecessor` field, and the component will automatically draw dependency lines:
 
 ```vue
 <template>
@@ -840,107 +842,107 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const tasks = ref<Task[]>([
   {
     id: 1,
-    name: '需求分析',
+    name: 'Requirements Analysis',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
-    predecessor: [], // 无前置任务
+    predecessor: [], // No predecessors
   },
   {
     id: 2,
-    name: '系统设计',
+    name: 'System Design',
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 80,
-    predecessor: [1], // 依赖任务1（需求分析）
+    predecessor: [1], // Depends on task 1 (Requirements Analysis)
   },
   {
     id: 3,
-    name: '数据库设计',
+    name: 'Database Design',
     startDate: '2025-01-11',
     endDate: '2025-01-18',
     progress: 90,
-    predecessor: [1], // 依赖任务1
+    predecessor: [1], // Depends on task 1
   },
   {
     id: 4,
-    name: '前端开发',
+    name: 'Frontend Development',
     startDate: '2025-01-21',
     endDate: '2025-02-10',
     progress: 60,
-    predecessor: [2], // 依赖任务2（系统设计）
+    predecessor: [2], // Depends on task 2 (System Design)
   },
   {
     id: 5,
-    name: '后端开发',
+    name: 'Backend Development',
     startDate: '2025-01-19',
     endDate: '2025-02-08',
     progress: 70,
-    predecessor: [2, 3], // 同时依赖任务2和3
+    predecessor: [2, 3], // Depends on both task 2 and 3
   },
   {
     id: 6,
-    name: '集成测试',
+    name: 'Integration Testing',
     startDate: '2025-02-11',
     endDate: '2025-02-20',
     progress: 30,
-    predecessor: [4, 5], // 依赖前端和后端开发完成
+    predecessor: [4, 5], // Depends on frontend and backend development completion
   },
 ])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 
-// 通过右键菜单添加前置任务时触发
+// Triggered when adding predecessor via context menu
 const handlePredecessorAdded = (event: { targetTask: Task; newTask: Task }) => {
-  console.log(`任务 [${event.targetTask.name}] 添加了前置任务 [${event.newTask.name}]`)
-  // 组件会自动更新 targetTask 的 predecessor 数组（追加新任务 ID）
-  // 这里可以调用后端 API 保存依赖关系
+  console.log(`Task [${event.targetTask.name}] added predecessor [${event.newTask.name}]`)
+  // Component will auto-update targetTask's predecessor array (append new task ID)
+  // Can call backend API here to save dependency relationship
   // await api.addTaskDependency(event.targetTask.id, event.newTask.id)
 }
 
-// 通过右键菜单添加后置任务时触发
+// Triggered when adding successor via context menu
 const handleSuccessorAdded = (event: { targetTask: Task; newTask: Task }) => {
-  console.log(`任务 [${event.targetTask.name}] 添加了后置任务 [${event.newTask.name}]`)
-  // 组件会自动更新 newTask 的 predecessor 数组（将 targetTask.id 添加进去）
-  // 这里可以调用后端 API 保存依赖关系
+  console.log(`Task [${event.targetTask.name}] added successor [${event.newTask.name}]`)
+  // Component will auto-update newTask's predecessor array (add targetTask.id)
+  // Can call backend API here to save dependency relationship
   // await api.addTaskDependency(event.newTask.id, event.targetTask.id)
 }
 </script>
 ```
 
-**依赖关系说明**：
+**Dependency Relationship Notes**:
 
-- **`predecessor` 字段支持多种格式**：
-  - 标准格式（推荐）：`[1, 2, 3]` - number 数组
-  - 兼容格式1：`'1,2,3'` - 逗号分隔的字符串
-  - 兼容格式2：`['1', '2', '3']` - 字符串数组
-  - 组件会自动解析所有格式
-- 前置任务：必须先完成的任务（例如：设计完成后才能开发）
-- 后置任务：依赖当前任务的任务（当前任务是其他任务的前置任务）
-- 组件会自动绘制依赖关系连线，从前置任务指向依赖它的任务
-- 可以通过内置右键菜单添加/删除前置任务和后置任务
-- 内置菜单删除任务时，组件会自动清理相关的依赖关系引用
-- 无前置任务：使用空数组 `[]`、空字符串 `''` 或不设置 `predecessor` 字段
+- **`predecessor` field supports multiple formats**:
+  - Standard format (recommended): `[1, 2, 3]` - number array
+  - Compatible format 1: `'1,2,3'` - comma-separated string
+  - Compatible format 2: `['1', '2', '3']` - string array
+  - Component will automatically parse all formats
+- Predecessor task: Task that must be completed first (e.g., design must be done before development)
+- Successor task: Task that depends on current task (current task is a predecessor for other tasks)
+- Component will automatically draw dependency lines from predecessor tasks to dependent tasks
+- Can add/delete predecessor and successor tasks via built-in context menu
+- When deleting tasks via built-in menu, component will automatically clean up related dependency references
+- No predecessors: use empty array `[]`, empty string `''`, or don't set `predecessor` field
 
-#### 示例3：隐藏工具栏，使用自定义按钮触发事件
+#### Example 3: Hide Toolbar, Use Custom Buttons to Trigger Events
 
-适用于需要完全自定义控制栏的场景：
+Suitable for scenarios requiring complete custom control bar:
 
 ```vue
 <template>
   <div>
-    <!-- 自定义控制栏 -->
+    <!-- Custom control bar -->
     <div class="custom-toolbar">
-      <button @click="triggerAddTask">新增任务</button>
-      <button @click="triggerAddMilestone">新增里程碑</button>
-      <!-- 其他自定义按钮... -->
+      <button @click="triggerAddTask">Add Task</button>
+      <button @click="triggerAddMilestone">Add Milestone</button>
+      <!-- Other custom buttons... -->
     </div>
 
-    <!-- 甘特图组件，隐藏内置工具栏 -->
+    <!-- Gantt chart component with hidden built-in toolbar -->
     <GanttChart
       :tasks="tasks"
       :milestones="milestones"
@@ -964,47 +966,47 @@ const tasks = ref([])
 const milestones = ref([])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 
-// 自定义按钮触发事件（组件会响应并打开内置编辑器）
+// Custom button triggers event (component will respond and open built-in editor)
 const triggerAddTask = () => {
-  // 直接触发组件的 add-task 事件
-  // 由于 useDefaultDrawer=true，组件会自动打开 TaskDrawer
+  // Directly trigger component's add-task event
+  // Since useDefaultDrawer=true, component will auto-open TaskDrawer
 }
 
 const triggerAddMilestone = () => {
-  // 直接触发组件的 add-milestone 事件
-  // 由于 useDefaultMilestoneDialog=true，组件会自动打开 MilestoneDialog
+  // Directly trigger component's add-milestone event
+  // Since useDefaultMilestoneDialog=true, component will auto-open MilestoneDialog
 }
 
-// 监听事件处理逻辑
+// Listen to event handling logic
 const handleAddTask = () => {
-  console.log('准备新增任务（由自定义按钮触发）')
+  console.log('Preparing to add task (triggered by custom button)')
 }
 
 const handleAddMilestone = () => {
-  console.log('准备新增里程碑（由自定义按钮触发）')
+  console.log('Preparing to add milestone (triggered by custom button)')
 }
 
 const handleTaskAdded = e => {
-  console.log('任务已添加:', e.task)
-  // 调用 API 保存...
+  console.log('Task added:', e.task)
+  // Call API to save...
 }
 </script>
 ```
 
-> **💡 灵活性设计**：
+> **💡 Flexibility Design**:
 >
-> - 显示工具栏 + 默认编辑器：最简单的开箱即用方式
-> - 隐藏工具栏 + 自定义按钮 + 默认编辑器：自定义控制栏样式，保留默认编辑功能
-> - 隐藏工具栏 + 自定义按钮 + 自定义编辑器：完全自定义所有交互逻辑
+> - Show toolbar + default editor: Simplest out-of-the-box approach
+> - Hide toolbar + custom buttons + default editor: Custom control bar style while keeping default edit functionality
+> - Hide toolbar + custom buttons + custom editor: Fully customize all interaction logic
 
-#### 示例4：任务行拖拽排序
+#### Example 4: Task Row Drag and Drop Sorting
 
-允许用户通过拖拽 TaskRow 来调整任务的层级关系和前后顺序：
+Allow users to adjust task hierarchy and order by dragging TaskRow:
 
 ```vue
 <template>
@@ -1027,14 +1029,14 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const tasks = ref<Task[]>([
   {
     id: 1,
-    name: '项目规划',
+    name: 'Project Planning',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
   },
   {
     id: 2,
-    name: '需求分析',
+    name: 'Requirements Analysis',
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 60,
@@ -1042,7 +1044,7 @@ const tasks = ref<Task[]>([
   },
   {
     id: 3,
-    name: '系统设计',
+    name: 'System Design',
     startDate: '2025-01-21',
     endDate: '2025-01-30',
     progress: 40,
@@ -1050,12 +1052,12 @@ const tasks = ref<Task[]>([
 ])
 
 const assigneeOptions = ref([
-  { value: 'zhangsan', label: '张三' },
-  { value: 'lisi', label: '李四' },
-  { value: 'wangwu', label: '王五' },
+  { value: 'alice', label: 'Alice' },
+  { value: 'bob', label: 'Bob' },
+  { value: 'charlie', label: 'Charlie' },
 ])
 
-// 任务行拖拽完成事件（可选）
+// Task row drag completed event (optional)
 const handleTaskRowMoved = async (payload: {
   draggedTask: Task
   targetTask: Task
@@ -1065,16 +1067,16 @@ const handleTaskRowMoved = async (payload: {
 }) => {
   const { draggedTask, targetTask, position, oldParent, newParent } = payload
   
-  // 组件已自动完成任务移动、parentId更新和TaskList/Timeline同步
-  // 监听此事件为完全可选，仅用于：
+  // Component has automatically completed task move, parentId update and TaskList/Timeline sync
+  // Listening to this event is completely optional, only for:
   
-  // 1. 显示自定义提示消息
-  const oldParentName = oldParent?.name || '根目录'
-  const newParentName = newParent?.name || '根目录'
-  const positionText = position === 'after' ? '在目标任务之后' : '作为目标任务的子任务'
-  showMessage(`任务 [${draggedTask.name}] 已从 [${oldParentName}] 移动到 [${newParentName}] (${positionText})`, 'success')
+  // 1. Show custom notification message
+  const oldParentName = oldParent?.name || 'Root'
+  const newParentName = newParent?.name || 'Root'
+  const positionText = position === 'after' ? 'after target task' : 'as child of target task'
+  showMessage(`Task [${draggedTask.name}] moved from [${oldParentName}] to [${newParentName}] (${positionText})`, 'success')
   
-  // 2. 调用后端 API 保存新的任务层级关系
+  // 2. Call backend API to save new task hierarchy
   try {
     await api.updateTaskHierarchy({
       taskId: draggedTask.id,
@@ -1084,84 +1086,84 @@ const handleTaskRowMoved = async (payload: {
       newParentId: newParent?.id,
     })
   } catch (error) {
-    console.error('保存任务层级失败:', error)
-    showMessage('保存失败，请刷新页面', 'error')
+    console.error('Save task hierarchy failed:', error)
+    showMessage('Save failed, please refresh page', 'error')
   }
   
-  // 3. 触发其他业务逻辑（如更新关联数据、记录操作日志等）
+  // 3. Trigger other business logic (like updating related data, recording operation logs, etc.)
   // ...
 }
 </script>
 ```
 
-**拖拽排序说明**：
+**Drag and Drop Sorting Notes**:
 
-- **启用拖拽**：设置 `enable-task-row-move="true"` 启用任务行拖拽功能（默认为 `false`）
-- **拖拽算法**（组件内部自动执行）：
-  - **算法1（放置在后面）**：当目标任务没有子任务时，被拖拽的任务会放置在目标任务之后（同级），`position='after'`
-  - **算法2（作为子任务）**：当目标任务有子任务时，被拖拽的任务会成为目标任务的第一个子任务，`position='child'`
-- **视觉反馈**：
-  - 拖拽时会显示半透明的跟随元素
-  - 悬停在有效目标任务上时显示蓝色边框提示
-  - 无子任务的任务显示蓝色底部边框
-  - 有子任务的任务显示蓝色四周边框
-- **自动同步**：组件内部通过对象引用直接修改 `props.tasks`，自动完成任务移动、`parentId` 更新、`children` 数组调整以及 TaskList/Timeline 同步
-- **事件监听（可选）**：
-  - `task-row-moved` 事件为完全可选，仅用于显示提示、调用API保存、记录日志等额外处理
-  - 无需手动更新 `tasks.value`，组件已自动完成数据同步
-- **事件参数**：
-  - `draggedTask`: 被拖拽的任务
-  - `targetTask`: 目标任务
-  - `position`: 放置位置（'after' 或 'child'）
-  - `oldParent`: 原父任务（null 表示根目录）
-  - `newParent`: 新父任务（null 表示根目录）
-- **限制条件**：
-  - 不能拖拽到自己身上
-  - 不能拖拽到自己的子任务上（避免循环引用）
-  - 里程碑和里程碑分组不能被拖拽
+- **Enable Dragging**: Set `enable-task-row-move="true"` to enable task row dragging (default is `false`)
+- **Dragging Algorithms** (automatically executed by component):
+  - **Algorithm 1 (Place After)**: When target task has no children, dragged task will be placed after target task (same level), `position='after'`
+  - **Algorithm 2 (As Child)**: When target task has children, dragged task will become first child of target task, `position='child'`
+- **Visual Feedback**:
+  - Semi-transparent following element displayed while dragging
+  - Blue border hint shown when hovering over valid target tasks
+  - Tasks without children show blue bottom border
+  - Tasks with children show blue border on all sides
+- **Auto Sync**: Component internally mutates `props.tasks` via object reference, automatically completing task move, `parentId` update, `children` array adjustment, and TaskList/Timeline synchronization
+- **Event Listening (Optional)**:
+  - `task-row-moved` event is completely optional, only used for showing messages, calling API to save, recording logs, etc.
+  - No need to manually update `tasks.value`, component has automatically completed data synchronization
+- **Event Parameters**:
+  - `draggedTask`: The dragged task
+  - `targetTask`: The target task
+  - `position`: Drop position ('after' or 'child')
+  - `oldParent`: Original parent task (null means root)
+  - `newParent`: New parent task (null means root)
+- **Constraints**:
+  - Cannot drag onto itself
+  - Cannot drag onto its own child tasks (avoid circular reference)
+  - Milestones and milestone groups cannot be dragged
 
-### 资源管理 ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF)
+### Resource Management ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF)
 
-资源管理用于管理项目中的人力或设备资源，支持资源视图下的任务分配、资源负载分析、冲突检测等功能。通过 `viewMode="resource"` 属性切换到资源计划视图。
+Resource management is used to manage human resources or equipment in a project, supporting task allocation, resource load analysis, and conflict detection in resource view. Switch to resource planning view using the `viewMode="resource"` prop.
 
-> **核心特性**：
-> - 📊 **资源视图**：按资源维度展示任务分配情况
-> - 🎯 **负载分析**：实时显示资源占用率和超载状态
-> - ⚠️ **冲突检测**：自动检测资源时间冲突（如 A任务:40% + B任务:40% + C任务:30% = 110%超载）
-> - 🎨 **可视化**：斜纹背景标识冲突区域，资源Tab显示占用比例
-> - 🔄 **跨资源移动**：支持拖拽任务到不同资源行进行重新分配
+> **Core Features**:
+> - 📊 **Resource View**: Display task allocation by resource dimension
+> - 🎯 **Load Analysis**: Real-time display of resource utilization and overload status
+> - ⚠️ **Conflict Detection**: Automatically detect resource time conflicts (e.g., Task A:40% + Task B:40% + Task C:30% = 110% overload)
+> - 🎨 **Visualization**: Diagonal stripe background marks conflict zones, resource tabs show utilization percentage
+> - 🔄 **Cross-Resource Move**: Support dragging tasks to different resource rows for reallocation
 >
-> **视图限制**：
-> - ❌ **任务关系线禁用**：资源视图下不显示任务之间的前后置关系线，因为资源视图关注资源分配而非任务依赖关系
-> - ❌ **不支持实际TaskBar**：`showActualTaskbar` 属性在资源视图下无效，不会显示实际执行进度条
+> **View Limitations**:
+> - ❌ **Task Links Disabled**: Resource view does not display predecessor/successor relationship lines between tasks, as resource view focuses on resource allocation rather than task dependencies
+> - ❌ **No Actual TaskBar**: `showActualTaskbar` prop has no effect in resource view, actual execution progress bar will not be displayed
 
-#### Resource 数据结构
+#### Resource Data Structure
 
-| 字段名          | 类型                | 必填 | 默认值 | 说明                                                                                            |
-| --------------- | ------------------- | ---- | ------ | ----------------------------------------------------------------------------------------------- |
-| `id`            | `string \| number`  | ✅   | -      | 资源唯一标识符                                                                                  |
-| `name`          | `string`            | ✅   | -      | 资源名称（如人名、设备名）                                                                      |
-| `type`          | `string`            | -    | -      | 资源类型（如 'developer', 'designer', 'device' 等）                                              |
-| `avatar`        | `string`            | -    | -      | 资源头像 URL                                                                                    |
-| `description`   | `string`            | -    | -      | 资源描述                                                                                        |
-| `department`    | `string`            | -    | -      | 所属部门                                                                                        |
-| `skills`        | `string[]`          | -    | -      | 技能标签数组（如 `['Vue', 'React', 'TypeScript']`）                                             |
-| `capacity`      | `number`            | -    | -      | 资源容量/利用率（0-100），可用于表示资源的整体负载水平                                           |
-| `color`         | `string`            | -    | -      | 自定义资源行左边框颜色（如 `'#ff5733'`），若不设置则使用默认颜色方案                             |
-| `tasks`         | `Task[]`            | -    | `[]`   | 分配给该资源的任务数组，**每个任务需包含 `resources` 字段标注资源占用比例**                      |
-| `[key: string]` | `unknown`           | -    | -      | 支持自定义属性扩展，可添加任意额外字段                                                           |
+| Field           | Type                | Required | Default | Description                                                                                                 |
+| --------------- | ------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `id`            | `string \| number`  | ✅       | -       | Unique resource identifier                                                                                  |
+| `name`          | `string`            | ✅       | -       | Resource name (e.g., person name, device name)                                                              |
+| `type`          | `string`            | -        | -       | Resource type (e.g., 'developer', 'designer', 'device')                                                     |
+| `avatar`        | `string`            | -        | -       | Resource avatar URL                                                                                         |
+| `description`   | `string`            | -        | -       | Resource description                                                                                        |
+| `department`    | `string`            | -        | -       | Department                                                                                                  |
+| `skills`        | `string[]`          | -        | -       | Skill tags array (e.g., `['Vue', 'React', 'TypeScript']`)                                                  |
+| `capacity`      | `number`            | -        | -       | Resource capacity/utilization (0-100), can represent overall load level                                     |
+| `color`         | `string`            | -        | -       | Custom resource row left border color (e.g., `'#ff5733'`), uses default color scheme if not set            |
+| `tasks`         | `Task[]`            | -        | `[]`    | Array of tasks assigned to this resource, **each task needs `resources` field to mark resource utilization** |
+| `[key: string]` | `unknown`           | -        | -       | Support custom property extension, can add any additional fields                                            |
 
-> **自定义属性扩展**：Resource 接口支持添加任意自定义字段，例如：`email`、`phone`、`location`、`workHours` 等业务相关字段。
+> **Custom Property Extension**: Resource interface supports adding any custom fields, e.g., `email`, `phone`, `location`, `workHours`, etc.
 >
-> **任务资源关联说明**：
+> **Task-Resource Association**:
 >
-> - 每个 Resource 包含一个 `tasks` 数组，存储分配给该资源的任务
-> - 每个 Task 应包含 `resources` 字段，标注该任务使用了哪些资源及占用比例
-> - 资源占用比例格式：`task.resources = [{ id: 'resource1', capacity: 60 }, { id: 'resource2', capacity: 40 }]`
-> - `capacity` 范围：20-100，表示该任务占用该资源的百分比
-> - 冲突检测：当同一资源在同一时间段的多个任务 `capacity` 总和 > 100% 时，会显示冲突警告
+> - Each Resource contains a `tasks` array storing tasks assigned to that resource
+> - Each Task should include a `resources` field marking which resources are used and their utilization percentage
+> - Resource utilization format: `task.resources = [{ id: 'resource1', capacity: 60 }, { id: 'resource2', capacity: 40 }]`
+> - `capacity` range: 20-100, representing the percentage of resource used by that task
+> - Conflict detection: When multiple tasks' `capacity` sum > 100% for the same resource in the same time period, a conflict warning is displayed
 
-**Resource 数据示例**：
+**Resource Data Example**:
 
 ```typescript
 import type { Resource, Task } from 'jordium-gantt-vue3'
@@ -1169,112 +1171,112 @@ import type { Resource, Task } from 'jordium-gantt-vue3'
 const resources: Resource[] = [
   {
     id: 'dev-001',
-    name: '张三',
+    name: 'Zhang San',
     type: 'developer',
     avatar: '/avatars/zhangsan.jpg',
-    department: '研发部',
+    department: 'R&D',
     skills: ['Vue', 'TypeScript', 'Node.js'],
-    capacity: 85, // 整体负载水平
+    capacity: 85, // Overall load level
     color: '#409eff',
     tasks: [
       {
         id: 1,
-        name: '前端开发',
+        name: 'Frontend Development',
         startDate: '2026-02-01',
         endDate: '2026-02-10',
         progress: 50,
         resources: [
-          { id: 'dev-001', capacity: 60 }, // 该任务占用张三60%的时间
-          { id: 'dev-002', capacity: 40 }  // 同时占用李四40%的时间
+          { id: 'dev-001', capacity: 60 }, // This task uses 60% of Zhang San's time
+          { id: 'dev-002', capacity: 40 }  // Also uses 40% of Li Si's time
         ]
       },
       {
         id: 2,
-        name: '代码审查',
+        name: 'Code Review',
         startDate: '2026-02-05',
         endDate: '2026-02-08',
         progress: 0,
         resources: [
-          { id: 'dev-001', capacity: 40 } // 该任务占用张三40%的时间
+          { id: 'dev-001', capacity: 40 } // This task uses 40% of Zhang San's time
         ]
       }
-      // 注意：如果两个任务时间重叠，张三在2月5-8日的总占用率为100%（60%+40%），临界值
+      // Note: If two tasks overlap, Zhang San's total utilization on Feb 5-8 is 100% (60%+40%), at threshold
     ]
   },
   {
     id: 'dev-002',
-    name: '李四',
+    name: 'Li Si',
     type: 'developer',
     avatar: '/avatars/lisi.jpg',
-    department: '研发部',
+    department: 'R&D',
     skills: ['React', 'TypeScript'],
     tasks: []
   }
 ]
 ```
 
-**资源冲突检测示例**：
+**Resource Conflict Detection Example**:
 
 ```typescript
-// 场景：张三在同一时间段被分配了3个任务
+// Scenario: Zhang San is assigned 3 tasks in the same time period
 const resource = {
   id: 'dev-001',
-  name: '张三',
+  name: 'Zhang San',
   tasks: [
     {
       id: 1,
-      name: '任务A',
+      name: 'Task A',
       startDate: '2026-02-10',
       endDate: '2026-02-15',
-      resources: [{ id: 'dev-001', capacity: 40 }] // 占用40%
+      resources: [{ id: 'dev-001', capacity: 40 }] // Uses 40%
     },
     {
       id: 2,
-      name: '任务B',
+      name: 'Task B',
       startDate: '2026-02-10',
       endDate: '2026-02-20',
-      resources: [{ id: 'dev-001', capacity: 40 }] // 占用40%
+      resources: [{ id: 'dev-001', capacity: 40 }] // Uses 40%
     },
     {
       id: 3,
-      name: '任务C',
+      name: 'Task C',
       startDate: '2026-02-12',
       endDate: '2026-02-18',
-      resources: [{ id: 'dev-001', capacity: 30 }] // 占用30%
+      resources: [{ id: 'dev-001', capacity: 30 }] // Uses 30%
     }
   ]
 }
 
-// 冲突分析：
-// - 2月10-11日：A(40%) + B(40%) = 80%，未超载
-// - 2月12-15日：A(40%) + B(40%) + C(30%) = 110%，超载！显示冲突警告
-// - 2月16-18日：B(40%) + C(30%) = 70%，未超载
-// - 2月19-20日：B(40%)，未超载
+// Conflict Analysis:
+// - Feb 10-11: A(40%) + B(40%) = 80%, not overloaded
+// - Feb 12-15: A(40%) + B(40%) + C(30%) = 110%, overloaded! Shows conflict warning
+// - Feb 16-18: B(40%) + C(30%) = 70%, not overloaded
+// - Feb 19-20: B(40%), not overloaded
 ```
 
-#### 资源相关属性
+#### Resource-Related Props
 
-| 属性名                | 类型                  | 默认值       | 说明                                                                        |
-| --------------------- | --------------------- | ------------ | --------------------------------------------------------------------------- |
-| `resources`           | `Resource[]`          | `[]`         | 资源数据数组                                                                |
-| `viewMode`            | `'task' \| 'resource'` | `'task'`     | 视图模式：'task' 任务计划视图，'resource' 资源计划视图                      |
-| `resourceListConfig`  | `ResourceListConfig`  | `undefined`  | 资源列表配置，类似 TaskListConfig，用于配置资源列表的列定义、宽度等         |
-| `showConflicts`       | `boolean`             | `true`       | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域）              |
-| `showTaskbarTab`      | `boolean`             | `true`       | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar上的资源占用比例标签）     |
+| Prop                  | Type                   | Default      | Description                                                                                              |
+| --------------------- | ---------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
+| `resources`           | `Resource[]`           | `[]`         | Array of resource data                                                                                   |
+| `viewMode`            | `'task' \| 'resource'` | `'task'`     | View mode: 'task' for task planning view, 'resource' for resource planning view                         |
+| `resourceListConfig`  | `ResourceListConfig`   | `undefined`  | Resource list configuration, similar to TaskListConfig, for configuring resource list columns, width etc |
+| `showConflicts`       | `boolean`              | `true`       | Whether to display resource conflict visualization layer (diagonal stripe background in resource view)   |
+| `showTaskbarTab`      | `boolean`              | `true`       | Whether to display resource tab on TaskBar (resource utilization label on TaskBar in resource view)     |
 
-#### 资源事件
+#### Resource Events
 
-| 事件名                     | 参数                                                                                     | 触发时机                     | 说明                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------- |
-| `taskbar-resource-change`  | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | 任务跨资源拖拽结束时         | 资源视图下拖拽任务到另一资源行时触发，组件已自动更新任务的 `resources` 字段 |
+| Event Name                 | Parameters                                                                                   | Trigger Timing                 | Description                                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `taskbar-resource-change`  | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | When task drag across resources | Triggered when dragging task to another resource row in resource view, component auto-updates task's `resources` field |
 
-**数据同步说明**：
+**Data Sync Notes**:
 
-- ✅ **组件内部自动更新**：资源相关操作（如任务跨资源移动）组件会自动更新 `props.resources` 和任务的 `resources` 字段
-- ✅ **事件仅做通知**：外部监听事件主要用于：显示提示消息、调用后端 API、更新其他相关数据等
-- ❌ **避免重复操作**：不要在事件处理器中再次修改数据，否则会导致重复更新
+- ✅ **Auto Update**: Resource-related operations (like task cross-resource move) are automatically updated by the component in `props.resources` and task's `resources` field
+- ✅ **Events for Notification**: External event listeners are mainly used for: showing messages, calling backend APIs, updating other related data, etc.
+- ❌ **Avoid Duplicate Operations**: Do not modify data again in event handlers, as this causes duplicate updates
 
-#### 示例：资源视图基础用法
+#### Example: Basic Resource View Usage
 
 ```vue
 <template>
@@ -1298,13 +1300,13 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const resources = ref<Resource[]>([
   {
     id: 'dev-001',
-    name: '张三',
+    name: 'Zhang San',
     type: 'developer',
-    department: '研发部',
+    department: 'R&D',
     tasks: [
       {
         id: 1,
-        name: '前端开发',
+        name: 'Frontend Development',
         startDate: '2026-02-01',
         endDate: '2026-02-10',
         progress: 50,
@@ -1315,79 +1317,79 @@ const resources = ref<Resource[]>([
 ])
 
 const handleTaskbarResourceChange = (payload: any) => {
-  console.log('任务资源变更:', payload)
-  // 调用后端API保存资源分配变更
+  console.log('Task resource changed:', payload)
+  // Call backend API to save resource allocation change
   // api.updateTaskResource(payload.task.id, payload.newResourceId)
 }
 </script>
 ```
 
-### 里程碑管理
+### Milestone Management
 
-里程碑用于标记项目中的重要时间节点，如项目启动、阶段完成、产品发布等。组件提供了灵活的里程碑编辑配置，默认使用内置的 MilestoneDialog，也支持完全自定义编辑行为。
+Milestones are used to mark important time points in a project, such as project kickoff, phase completion, product release, etc. The component provides flexible milestone editing configuration, using the built-in MilestoneDialog by default, and also supports fully custom editing behavior.
 
-> **注意**: 里程碑与任务是独立的数据集合，不存在直接关联关系。里程碑通过 `milestones` 属性独立管理。
+> **Note**: Milestones and tasks are independent data collections with no direct association. Milestones are managed independently through the `milestones` prop.
 
-#### Milestone 数据结构
+#### Milestone Data Structure
 
-| 字段名        | 类型     | 必填 | 默认值        | 说明                                                       |
-| ------------- | -------- | ---- | ------------- | ---------------------------------------------------------- |
-| `id`          | `number` | ✅   | -             | 里程碑唯一标识符                                           |
-| `name`        | `string` | ✅   | -             | 里程碑名称                                                 |
-| `startDate`   | `string` | ✅   | -             | 里程碑日期，格式：'YYYY-MM-DD' 或 'YYYY-MM-DD HH:mm'       |
-| `endDate`     | `string` | -    | -             | 结束日期（通常里程碑不需要，自动设置为与 startDate 相同）  |
-| `assignee`    | `string` | -    | -             | 负责人                                                     |
-| `type`        | `string` | ✅   | `'milestone'` | 类型标识，必须设为 'milestone'                             |
-| `icon`        | `string` | -    | `'diamond'`   | 里程碑图标，可选值：'diamond', 'flag', 'star', 'rocket' 等 |
-| `description` | `string` | -    | -             | 里程碑描述                                                 |
+| Field         | Type     | Required | Default       | Description                                                                 |
+| ------------- | -------- | -------- | ------------- | --------------------------------------------------------------------------- |
+| `id`          | `number` | ✅       | -             | Unique milestone identifier                                                 |
+| `name`        | `string` | ✅       | -             | Milestone name                                                              |
+| `startDate`   | `string` | ✅       | -             | Milestone date, format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'                  |
+| `endDate`     | `string` | -        | -             | End date (usually not needed for milestones, auto-set to same as startDate) |
+| `assignee`    | `string` | -        | -             | Assignee                                                                    |
+| `type`        | `string` | ✅       | `'milestone'` | Type identifier, must be set to 'milestone'                                 |
+| `icon`        | `string` | -        | `'diamond'`   | Milestone icon, options: 'diamond', 'flag', 'star', 'rocket', etc.          |
+| `description` | `string` | -        | -             | Milestone description                                                       |
 
-> **注意**：`milestones` 属性的类型为 `Task[]`，需要确保每个里程碑对象的 `type` 字段设置为 `'milestone'`。
+> **Note**: The `milestones` prop type is `Task[]`, ensure each milestone object's `type` field is set to `'milestone'`.
 
-#### 里程碑相关属性
+#### Milestone-Related Props
 
-| 属性名                      | 类型      | 默认值 | 说明                                                     |
-| --------------------------- | --------- | ------ | -------------------------------------------------------- |
-| `milestones`                | `Task[]`  | `[]`   | 里程碑数据数组（类型为 Task[]，需确保 type='milestone'） |
-| `useDefaultMilestoneDialog` | `boolean` | `true` | 是否使用内置的里程碑编辑对话框（MilestoneDialog）        |
+| Prop                        | Type      | Default | Description                                                       |
+| --------------------------- | --------- | ------- | ----------------------------------------------------------------- |
+| `milestones`                | `Task[]`  | `[]`    | Array of milestone data (type is Task[], ensure type='milestone') |
+| `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use built-in milestone edit dialog (MilestoneDialog)   |
 
-**配置说明**：
+**Configuration Notes**:
 
-- **默认模式**：`useDefaultMilestoneDialog=true`（默认），双击里程碑自动打开内置 MilestoneDialog
-- **禁用编辑器**：`useDefaultMilestoneDialog=false`，双击里程碑无反应（组件不打开任何编辑器）
-- **自定义编辑器**：可以监听 `onMilestoneDoubleClick` 回调或相关事件，实现自定义编辑逻辑
+- **Default mode**: `useDefaultMilestoneDialog=true` (default), double-click milestone to auto-open built-in MilestoneDialog
+- **Disable editor**: `useDefaultMilestoneDialog=false`, double-click milestone has no response (component doesn't open any editor)
+- **Custom editor**: Can listen to `onMilestoneDoubleClick` callback or related events to implement custom editing logic
 
-> **💡 里程碑与任务的区别**：
+> **💡 Differences Between Milestones and Tasks**:
 >
-> - 里程碑数据通过 `milestones` 属性独立管理，与 `tasks` 分开
-> - 里程碑对象的 `type` 字段必须设置为 `'milestone'`
-> - 里程碑不支持子任务、依赖关系等复杂结构
-> - 里程碑主要用于标记关键时间节点
+> - Milestone data is managed independently via `milestones` prop, separate from `tasks`
+> - Milestone object's `type` field must be set to `'milestone'`
+> - Milestones don't support child tasks, dependency relationships, and other complex structures
+> - Milestones are mainly used to mark key time points
 
-#### 里程碑回调函数（向后兼容）
+#### Milestone Callbacks (Backward Compatible)
 
-> **⚠️ 已废弃**：请使用新的事件驱动 API（见下方"里程碑事件"章节）
+> **⚠️ Deprecated**: Please use the new event-driven API (see "Milestone Events" section below)
 
-#### 里程碑事件
+#### Milestone Events
 
-> **💡 事件驱动架构**：里程碑管理采用事件驱动设计，推荐使用事件 API 替代回调函数。
+> **💡 Event-Driven Architecture**: Milestone management adopts event-driven design. Using event API is recommended over callback functions.
 
-| 事件名                   | 参数                                    | 触发时机                     | 说明                                                                                                                                   |
-| ------------------------ | --------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `add-milestone`          | -                                       | 点击工具栏"添加里程碑"按钮时 | 可用于自定义新增里程碑逻辑。如 `useDefaultMilestoneDialog=true`，组件会自动打开内置 MilestoneDialog                                    |
-| `milestone-saved`        | `(milestone: Task) => void`             | 里程碑保存后（新增或编辑）   | 通过内置 MilestoneDialog 保存里程碑后触发。**注意**：组件已自动更新 `milestones` 数据，外部只需监听此事件做额外处理（如调用 API 保存） |
-| `milestone-deleted`      | `{ milestoneId: number }`               | 里程碑删除后                 | 通过内置 MilestoneDialog 删除里程碑后触发。**注意**：组件已自动更新 `milestones` 数据，外部只需监听此事件做额外处理                    |
-| `milestone-icon-changed` | `{ milestoneId: number, icon: string }` | 里程碑图标变更后             | 通过内置 MilestoneDialog 修改图标后触发                                                                                                |
-| `milestone-drag-end`     | `(milestone: Task) => void`             | 拖拽里程碑结束时             | 里程碑日期已更新。**注意**：组件已自动更新 `milestones` 数据                                                                           |
+| Event Name               | Parameters                              | When Triggered                               | Description                                                                                                                                                                                                             |
+| ------------------------ | --------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `add-milestone`          | -                                       | When clicking toolbar "Add Milestone" button | Can be used for custom add milestone logic. If `useDefaultMilestoneDialog=true`, component will auto-open built-in MilestoneDialog                                                                                      |
+| `milestone-saved`        | `(milestone: Task) => void`             | After milestone saved (add or edit)          | Triggered after saving milestone via built-in MilestoneDialog. **Note**: Component has auto-updated `milestones` data, external only needs to listen to this event for additional processing (like calling API to save) |
+| `milestone-deleted`      | `{ milestoneId: number }`               | After milestone deleted                      | Triggered after deleting milestone via built-in MilestoneDialog. **Note**: Component has auto-updated `milestones` data, external only needs to listen to this event for additional processing                          |
+| `milestone-icon-changed` | `{ milestoneId: number, icon: string }` | After milestone icon changed                 | Triggered after modifying icon via built-in MilestoneDialog                                                                                                                                                             |
+| `milestone-drag-end`     | `(milestone: Task) => void`             | When milestone drag ends                     | Milestone date updated. **Note**: Component has auto-updated `milestones` data                                                                                                                                          |
 
-**数据同步说明**：
+**Data Synchronization Notes**:
 
-- ✅ **组件内部自动更新**：所有里程碑的增删改操作，组件都会自动更新 `props.milestones` 数据
-- ✅ **事件仅做通知**：外部监听事件主要用于：显示提示消息、调用后端 API、更新其他相关数据等
-- ❌ **避免重复操作**：不要在事件处理器中再次修改 `milestones` 数据，否则会导致重复更新
+- ✅ **Component auto-updates internally**: For all milestone CRUD operations, component will auto-update `props.milestones` data
+- ✅ **Events are for notification only**: External event listeners are mainly for: showing messages, calling backend APIs, updating other related data, etc.
+- ❌ **Avoid duplicate operations**: Don't modify `milestones` data again in event handlers, otherwise it will cause duplicate updates
 
-#### 示例1：使用事件驱动 API（推荐）
+#### Example 1: Using Event-Driven API (Recommended)
 
-使用新的事件 API，组件会自动管理数据，更加简洁：
+Using the new event API, component auto-manages data, more concise:
 
 ```vue
 <template>
@@ -1412,63 +1414,63 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 const milestones = ref<Task[]>([
   {
     id: 101,
-    name: '项目启动',
+    name: 'Project Kickoff',
     startDate: '2025-01-01',
     type: 'milestone',
     icon: 'diamond',
-    assignee: '项目经理',
-    description: '项目正式启动',
+    assignee: 'Project Manager',
+    description: 'Official project kickoff',
   },
   {
     id: 102,
-    name: '需求评审',
+    name: 'Requirements Review',
     startDate: '2025-01-15',
     type: 'milestone',
     icon: 'flag',
   },
 ])
 
-// 工具栏"添加里程碑"按钮点击事件
+// Toolbar "Add Milestone" button click event
 const handleAddMilestone = () => {
-  console.log('准备新增里程碑...')
-  // 组件会自动打开 MilestoneDialog（如果 useDefaultMilestoneDialog=true）
+  console.log('Preparing to add milestone...')
+  // Component will auto-open MilestoneDialog (if useDefaultMilestoneDialog=true)
 }
 
-// 里程碑保存事件（添加或编辑）
+// Milestone save event (add or edit)
 const handleMilestoneSaved = (milestone: Task) => {
-  console.log('里程碑已保存:', milestone)
-  // 注意：组件已自动更新 milestones 数组
-  // 这里只需调用后端 API 保存即可
+  console.log('Milestone saved:', milestone)
+  // Note: Component has auto-updated milestones array
+  // Only need to call backend API to save here
   // await api.saveMilestone(milestone)
 }
 
-// 里程碑删除事件
+// Milestone delete event
 const handleMilestoneDeleted = (e: { milestoneId: number }) => {
-  console.log('里程碑已删除, ID:', e.milestoneId)
-  // 注意：组件已自动从 milestones 数组中移除
-  // 这里只需调用后端 API 删除即可
+  console.log('Milestone deleted, ID:', e.milestoneId)
+  // Note: Component has auto-removed from milestones array
+  // Only need to call backend API to delete here
   // await api.deleteMilestone(e.milestoneId)
 }
 
-// 里程碑图标变更事件
+// Milestone icon change event
 const handleMilestoneIconChanged = (e: { milestoneId: number; icon: string }) => {
-  console.log('里程碑图标已变更:', e.milestoneId, '->', e.icon)
-  // 组件已自动更新图标，这里可以调用 API 保存
+  console.log('Milestone icon changed:', e.milestoneId, '->', e.icon)
+  // Component has auto-updated icon, can call API to save here
   // await api.updateMilestoneIcon(e.milestoneId, e.icon)
 }
 
-// 拖拽里程碑结束事件
+// Milestone drag end event
 const handleMilestoneDrag = (milestone: Task) => {
-  console.log('里程碑拖拽完成，新日期:', milestone.startDate)
-  // 组件已自动更新日期，这里可以调用 API 保存
+  console.log('Milestone drag completed, new date:', milestone.startDate)
+  // Component has auto-updated date, can call API to save here
   // await api.updateMilestoneDate(milestone.id, milestone.startDate)
 }
 </script>
 ```
 
-#### 示例2：使用自定义里程碑编辑对话框
+#### Example 2: Using Custom Milestone Edit Dialog
 
-如果需要完全自定义里程碑编辑界面，可以禁用内置对话框并使用自己的组件：
+If you need to fully customize the milestone editing interface, you can disable the built-in dialog and use your own component:
 
 ```vue
 <template>
@@ -1482,7 +1484,7 @@ const handleMilestoneDrag = (milestone: Task) => {
       @milestone-drag-end="handleMilestoneDrag"
     />
 
-    <!-- 自定义里程碑编辑对话框 -->
+    <!-- Custom Milestone Edit Dialog -->
     <CustomMilestoneDialog
       v-model:visible="customDialogVisible"
       :milestone="editingMilestone"
@@ -1503,12 +1505,12 @@ import type { Task } from 'jordium-gantt-vue3'
 const milestones = ref<Task[]>([
   {
     id: 101,
-    name: '项目启动',
+    name: 'Project Kickoff',
     startDate: '2025-01-01',
     type: 'milestone',
     icon: 'diamond',
-    assignee: '项目经理',
-    description: '项目正式启动',
+    assignee: 'Project Manager',
+    description: 'Official project kickoff',
   },
 ])
 
@@ -1516,128 +1518,133 @@ const customDialogVisible = ref(false)
 const editingMilestone = ref<Task | null>(null)
 const isNewMilestone = ref(false)
 
-// 点击工具栏"添加里程碑"按钮
+// Click toolbar "Add Milestone" button
 const handleAddMilestone = () => {
   editingMilestone.value = null
   isNewMilestone.value = true
   customDialogVisible.value = true
 }
 
-// 双击里程碑时打开自定义对话框
-// 注意：需要监听 Timeline 组件的里程碑双击事件
-// 或者通过外部按钮/列表项触发编辑
+// Open custom dialog when double-clicking milestone
+// Note: Need to listen to Timeline component milestone double-click event
+// or trigger edit via external button/list item
 const openEditDialog = (milestone: Task) => {
   editingMilestone.value = { ...milestone }
   isNewMilestone.value = false
   customDialogVisible.value = true
 }
 
-// 自定义对话框保存事件
+// Custom dialog save event
 const handleCustomDialogSave = (milestone: Task) => {
   if (isNewMilestone.value) {
-    // 新增里程碑
+    // Add milestone
     const newMilestone = {
       ...milestone,
-      id: Date.now(), // 生成新 ID
+      id: Date.now(), // Generate new ID
       type: 'milestone',
     }
     milestones.value.push(newMilestone)
 
-    // 调用后端 API 保存
+    // Call backend API to save
     // await api.createMilestone(newMilestone)
   } else {
-    // 更新现有里程碑
+    // Update existing milestone
     const index = milestones.value.findIndex(m => m.id === milestone.id)
     if (index !== -1) {
       milestones.value[index] = { ...milestone }
     }
 
-    // 调用后端 API 更新
+    // Call backend API to update
     // await api.updateMilestone(milestone)
   }
 
   customDialogVisible.value = false
 }
 
-// 自定义对话框删除事件
+// Custom dialog delete event
 const handleCustomDialogDelete = (milestoneId: number) => {
   const index = milestones.value.findIndex(m => m.id === milestoneId)
   if (index !== -1) {
     milestones.value.splice(index, 1)
   }
 
-  // 调用后端 API 删除
+  // Call backend API to delete
   // await api.deleteMilestone(milestoneId)
 
   customDialogVisible.value = false
 }
 
-// 以下事件处理器仍然有效（用于拖拽等操作）
+// Following event handlers are still valid (for drag operations, etc.)
 const handleMilestoneSaved = (milestone: Task) => {
-  console.log('里程碑已保存（通过其他方式）:', milestone)
+  console.log('Milestone saved (via other method):', milestone)
 }
 
 const handleMilestoneDeleted = (e: { milestoneId: number }) => {
-  console.log('里程碑已删除（通过其他方式）:', e.milestoneId)
+  console.log('Milestone deleted (via other method):', e.milestoneId)
 }
 
 const handleMilestoneDrag = (milestone: Task) => {
-  console.log('里程碑拖拽完成:', milestone.startDate)
-  // 调用 API 更新日期
+  console.log('Milestone drag completed:', milestone.startDate)
+  // Call API to update date
   // await api.updateMilestoneDate(milestone.id, milestone.startDate)
 }
 </script>
 ```
 
-**自定义对话框组件示例** (`CustomMilestoneDialog.vue` - 使用 Element Plus)：
+**Custom Dialog Component Example** (`CustomMilestoneDialog.vue` - Using Element Plus)：
 
-> **注意**：以下示例使用 Element Plus UI 框架。你也可以使用其他 UI 框架（如 Ant Design Vue、Naive UI 等）或原生 HTML 实现。
+> **Note**: The following examplesUsing Element Plus UI framework. You can also use other UI frameworks (such as Ant Design Vue, Naive UI, etc.) or native HTML implementation.
 
 ```vue
 <template>
   <el-dialog
     v-model="dialogVisible"
-    :title="isNew ? '新增里程碑' : '编辑里程碑'"
+    :title="isNew ? 'Add milestone' : 'Edit Milestone'"
     width="500px"
     @close="handleClose"
   >
     <el-form :model="form" label-width="100px">
-      <el-form-item label="里程碑名称">
-        <el-input v-model="form.name" placeholder="请输入里程碑名称" />
+      <el-form-item label="Milestone Name">
+        <el-input v-model="form.name" placeholder="Please enter milestone name" />
       </el-form-item>
 
-      <el-form-item label="日期">
+      <el-form-item label="Date">
         <el-date-picker
           v-model="form.startDate"
           type="date"
-          placeholder="选择日期"
+          placeholder="Select date"
           value-format="YYYY-MM-DD"
         />
       </el-form-item>
 
-      <el-form-item label="负责人">
-        <el-input v-model="form.assignee" placeholder="请输入负责人" />
+      <el-form-item label="Assignee">
+        <el-input v-model="form.assignee" placeholder="Please enter assignee" />
       </el-form-item>
 
-      <el-form-item label="图标">
-        <el-select v-model="form.icon" placeholder="选择图标">
-          <el-option label="钻石" value="diamond" />
-          <el-option label="旗帜" value="flag" />
-          <el-option label="星星" value="star" />
-          <el-option label="火箭" value="rocket" />
+      <el-form-item label="Icon">
+        <el-select v-model="form.icon" placeholder="Select icon">
+          <el-option label="Diamond" value="diamond" />
+          <el-option label="Flag" value="flag" />
+          <el-option label="Star" value="star" />
+          <el-option label="Rocket" value="rocket" />
         </el-select>
       </el-form-item>
 
-      <el-form-item label="描述">
-        <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述" />
+      <el-form-item label="Description">
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="3"
+          placeholder="Please enter description"
+        />
       </el-form-item>
     </el-form>
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button v-if="!isNew" type="danger" @click="handleDelete"> 删除 </el-button>
-        <el-button @click="handleClose">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button v-if="!isNew" type="danger" @click="handleDelete"> Delete </el-button>
+        <el-button @click="handleClose">Cancel</el-button>
+        <el-button type="primary" @click="handleSave">Save</el-button>
       </div>
     </template>
   </el-dialog>
@@ -1677,10 +1684,10 @@ watch(
     dialogVisible.value = val
     if (val) {
       if (props.milestone) {
-        // 编辑模式，填充数据
+        // Edit mode, fill data
         form.value = { ...props.milestone }
       } else {
-        // 新增模式，重置表单
+        // Add mode, reset form
         form.value = {
           id: 0,
           name: '',
@@ -1705,123 +1712,123 @@ const handleClose = () => {
 
 const handleSave = () => {
   if (!form.value.name || !form.value.startDate) {
-    alert('请填写必填项')
+    alert('Please fill required fields')
     return
   }
   emit('save', { ...form.value })
 }
 
 const handleDelete = () => {
-  if (confirm('确定要删除这个里程碑吗？')) {
+  if (confirm('Are you sure to delete this milestone?')) {
     emit('delete', form.value.id)
   }
 }
 </script>
 ```
 
-> **💡 自定义对话框说明**：
+> **💡 Custom Dialog Notes**:
 >
-> - 设置 `use-default-milestone-dialog="false"` 禁用内置对话框
-> - 监听 `@add-milestone` 事件打开自定义对话框
-> - 需要手动管理 `milestones` 数组的增删改
-> - 仍然可以监听其他事件（如 `@milestone-drag-end`）处理拖拽等操作
-> - 适合需要复杂表单验证、特殊 UI 设计或额外字段的场景
+> - Set `use-default-milestone-dialog="false"` to disable built-in dialog
+> - Listen to `@add-milestone` event to open custom dialog
+> - Need to manually manage `milestones` array CRUD operations
+> - Can still listen to other events (like `@milestone-drag-end`) to handle drag operations
+> - Suitable for scenarios requiring complex form validation, special UI design, or additional fields
 
 ---
 
-## ⚙️ 配置与扩展
+## ⚙️ Configuration & Customization
 
-本章节详细介绍 GanttChart 组件的配置选项和扩展能力，包括组件配置、主题与国际化、自定义扩展三个部分。
+This section details the configuration options and extension capabilities of the GanttChart component, including Component Configuration, Theme & Internationalization, and Custom Extensions.
 
-### 任务类型定义
+### Task Type Definition
 
-任务类型（`type` 字段）用于区分不同类型的任务，组件内部会根据类型执行不同的逻辑判断。
+Task type (`type` field) is used to distinguish different types of tasks, and the component internally executes different logic based on the type.
 
-#### 内置任务类型
+#### Built-in Task Types
 
-| 类型值  | 说明       | 默认值 |
-| ------- | ---------- | ------ |
-| `story` | 用户故事   | -      |
-| `task`  | 普通任务   | ✅     |
-| `bug`   | 缺陷/问题  | -      |
+| Type    | Description   | Default |
+| ------- | ------------- | ------- |
+| `story` | User Story    | -       |
+| `task`  | Regular Task  | ✅      |
+| `bug`   | Bug/Issue     | -       |
 
-#### 功能区分
+#### Feature Differences
 
-不同任务类型在组件中具有不同的功能特性：
+Different task types have different functional characteristics in the component:
 
-| 功能             | story | task | bug |
-| ---------------- | ----- | ---- | --- |
-| 可作为上级任务   | ✅    | ✅   | ❌  |
-| 可作为前置任务   | ❌    | ✅   | ❌  |
-| 支持计时器       | ❌    | ✅   | ✅  |
-| 自动视为父任务   | ✅    | ❌   | ❌  |
-| 删除时特殊提示   | ✅    | ❌   | ❌  |
+| Feature              | story | task | bug |
+| -------------------- | ----- | ---- | --- |
+| Can be parent task   | ✅    | ✅   | ❌  |
+| Can be predecessor   | ❌    | ✅   | ❌  |
+| Timer support        | ❌    | ✅   | ✅  |
+| Auto parent task     | ✅    | ❌   | ❌  |
+| Special delete hint  | ✅    | ❌   | ❌  |
 
-#### 注意事项
+#### Important Notes
 
-> ⚠️ **重要提示**
+> ⚠️ **Important**
 >
-> 1. 任务类型值为组件内置判断使用，**请勿随意修改**这些枚举值
-> 2. 客制化 TaskDrawer 时，必须保持 `story`、`task`、`bug` 这三个枚举值
-> 3. 如需添加其他业务标签，建议使用自定义属性字段，例如：`customType`、`category`、`label` 等
+> 1. Task type values are used for internal component logic, **do not modify** these enum values arbitrarily
+> 2. When customizing TaskDrawer, you must maintain these three enum values: `story`, `task`, `bug`
+> 3. For additional business labels, use custom property fields such as: `customType`, `category`, `label`, etc.
 
-**示例：使用自定义标签**
+**Example: Using Custom Labels**
 
 ```typescript
 const tasks = ref([
   {
     id: 1,
-    name: '需求分析',
-    type: 'task', // 保持组件内置类型
-    customType: 'requirement', // 自定义业务类型
-    category: 'analysis', // 自定义分类
+    name: 'Requirements Analysis',
+    type: 'task', // Keep built-in component type
+    customType: 'requirement', // Custom business type
+    category: 'analysis', // Custom category
     startDate: '2025-01-01',
     endDate: '2025-01-10',
   },
 ])
 ```
 
-### 组件配置
+### Component Configuration
 
-#### ToolbarConfig（工具栏配置）
+#### ToolbarConfig (Toolbar Configuration)
 
-自定义工具栏显示的功能按钮和时间刻度选项。
+Customize the toolbar functional buttons and time scale options.
 
-**类型定义：**
+**Type Definition:**
 
-| 字段名                | 类型              | 默认值                                                | 说明                                                                                                  |
-| --------------------- | ----------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `showAddTask`         | `boolean`         | `true`                                                | 显示"添加任务"按钮                                                                                    |
-| `showAddMilestone`    | `boolean`         | `true`                                                | 显示"添加里程碑"按钮                                                                                  |
-| `showTodayLocate`     | `boolean`         | `true`                                                | 显示"定位到今天"按钮                                                                                  |
-| `showExportCsv`       | `boolean`         | `true`                                                | 显示"导出 CSV"按钮                                                                                    |
-| `showExportPdf`       | `boolean`         | `true`                                                | 显示"导出 PDF"按钮                                                                                    |
-| `showLanguage`        | `boolean`         | `true`                                                | 显示"语言切换"按钮（中/英文）                                                                         |
-| `showTheme`           | `boolean`         | `true`                                                | 显示"主题切换"按钮（亮色/暗色）                                                                       |
-| `showFullscreen`      | `boolean`         | `true`                                                | 显示"全屏"按钮                                                                                        |
-| `showTimeScale`       | `boolean`         | `true`                                                | 显示时间刻度按钮组（控制整组按钮的显隐）                                                              |
-| `timeScaleDimensions` | `TimelineScale[]` | `['hour', 'day', 'week', 'month', 'quarter', 'year']` | 设置时间刻度按钮组要显示的维度，可选值：`'hour'`、`'day'`、`'week'`、`'month'`、`'quarter'`、`'year'` |
-| `defaultTimeScale`    | `TimelineScale`   | `'week'`                                              | 默认选中的时间刻度                                                                                    |
-| `showExpandCollapse`  | `boolean`         | `true`                                                | 显示"全部展开/折叠"按钮（用于父子任务树形结构）                                                       |
-| `showViewMode` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`         | `true`                                                | 显示 Task / Resource 视图切换按钮组                                                                   |
+| Field                 | Type              | Default                                               | Description                                                                                                  |
+| --------------------- | ----------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `showAddTask`         | `boolean`         | `true`                                                | Show "Add Task" button                                                                                       |
+| `showAddMilestone`    | `boolean`         | `true`                                                | Show "Add Milestone" button                                                                                  |
+| `showTodayLocate`     | `boolean`         | `true`                                                | Show "Locate to Today" button                                                                                |
+| `showExportCsv`       | `boolean`         | `true`                                                | Show "Export CSV" button                                                                                     |
+| `showExportPdf`       | `boolean`         | `true`                                                | Show "Export PDF" button                                                                                     |
+| `showLanguage`        | `boolean`         | `true`                                                | Show "Language Switch" button (Chinese/English)                                                              |
+| `showTheme`           | `boolean`         | `true`                                                | Show "Theme Switch" button (Light/Dark)                                                                      |
+| `showFullscreen`      | `boolean`         | `true`                                                | Show "Fullscreen" button                                                                                     |
+| `showTimeScale`       | `boolean`         | `true`                                                | Show time scale button group (controls entire group visibility)                                              |
+| `timeScaleDimensions` | `TimelineScale[]` | `['hour', 'day', 'week', 'month', 'quarter', 'year']` | Set time scale dimensions to display, options: `'hour'`, `'day'`, `'week'`, `'month'`, `'quarter'`, `'year'` |
+| `defaultTimeScale`    | `TimelineScale`   | `'week'`                                              | Default selected time scale                                                                                  |
+| `showExpandCollapse`  | `boolean`         | `true`                                                | Show "Expand All/Collapse All" button (for parent-child task tree structure)                                 |
+| `showViewMode` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`         | `true`                                                | Show Task / Resource view mode toggle button group                                                           |
 
-**TimelineScale 类型说明：**
+**TimelineScale Type Description:**
 
 ```typescript
 type TimelineScale = 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
 
-// 也可以使用常量形式
+// Can also use constant form
 import { TimelineScale } from 'jordium-gantt-vue3'
 
-TimelineScale.HOUR // 'hour' - 小时视图
-TimelineScale.DAY // 'day' - 日视图
-TimelineScale.WEEK // 'week' - 周视图
-TimelineScale.MONTH // 'month' - 月视图
-TimelineScale.QUARTER // 'quarter' - 季度视图
-TimelineScale.YEAR // 'year' - 年视图
+TimelineScale.HOUR // 'hour' - Hour view
+TimelineScale.DAY // 'day' - Day view
+TimelineScale.WEEK // 'week' - Week view
+TimelineScale.MONTH // 'month' - Month view
+TimelineScale.QUARTER // 'quarter' - Quarter view
+TimelineScale.YEAR // 'year' - Year view
 ```
 
-**示例1：完整配置（显示所有功能）**
+**Example 1: Complete Configuration (Show All Features)**
 
 ```vue
 <template>
@@ -1834,17 +1841,17 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
-  showAddTask: true, // 显示添加任务按钮
-  showAddMilestone: true, // 显示添加里程碑按钮
-  showTodayLocate: true, // 显示定位到今天按钮
-  showExportCsv: true, // 显示导出CSV按钮
-  showExportPdf: true, // 显示导出PDF按钮
-  showLanguage: true, // 显示语言切换按钮
-  showTheme: true, // 显示主题切换按钮
-  showFullscreen: true, // 显示全屏按钮
-  showTimeScale: true, // 显示时间刻度按钮组
+  showAddTask: true, // Show add task button
+  showAddMilestone: true, // Show add milestone button
+  showTodayLocate: true, // Show locate to today button
+  showExportCsv: true, // Show export CSV button
+  showExportPdf: true, // Show export PDF button
+  showLanguage: true, // Show language switch button
+  showTheme: true, // Show theme switch button
+  showFullscreen: true, // Show fullscreen button
+  showTimeScale: true, // Show time scale button group
   timeScaleDimensions: [
-    // 显示所有时间刻度维度
+    // Show all time scale dimensions
     'hour',
     'day',
     'week',
@@ -1852,41 +1859,41 @@ const toolbarConfig: ToolbarConfig = {
     'quarter',
     'year',
   ],
-  defaultTimeScale: 'week', // 默认选中周视图
-  showExpandCollapse: true, // 显示展开/折叠按钮
+  defaultTimeScale: 'week', // Default week view
+  showExpandCollapse: true, // Show expand/collapse button
 }
 </script>
 ```
 
-**示例2：精简配置（只显示常用功能）**
+**Example 2: Simplified Configuration (Show Common Features Only)**
 
 ```vue
 <script setup lang="ts">
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
-  showAddTask: true, // 保留添加任务
-  showAddMilestone: true, // 保留添加里程碑
-  showTodayLocate: true, // 保留定位今天
-  showExportCsv: false, // 隐藏导出CSV
-  showExportPdf: false, // 隐藏导出PDF
-  showLanguage: false, // 隐藏语言切换（固定使用一种语言）
-  showTheme: true, // 保留主题切换
-  showFullscreen: true, // 保留全屏
-  showTimeScale: true, // 显示时间刻度
+  showAddTask: true, // Keep add task
+  showAddMilestone: true, // Keep add milestone
+  showTodayLocate: true, // Keep locate today
+  showExportCsv: false, // Hide export CSV
+  showExportPdf: false, // Hide export PDF
+  showLanguage: false, // Hide language switch (fixed to one language)
+  showTheme: true, // Keep theme switch
+  showFullscreen: true, // Keep fullscreen
+  showTimeScale: true, // Show time scale
   timeScaleDimensions: [
-    // 只显示日/周/月三种刻度
+    // Only show day/week/month scales
     'day',
     'week',
     'month',
   ],
-  defaultTimeScale: 'week', // 默认周视图
-  showExpandCollapse: true, // 保留展开/折叠
+  defaultTimeScale: 'week', // Default week view
+  showExpandCollapse: true, // Keep expand/collapse
 }
 </script>
 ```
 
-**示例3：使用 TimelineScale 常量**
+**Example 3: Using TimelineScale Constants**
 
 ```vue
 <script setup lang="ts">
@@ -1901,87 +1908,67 @@ const toolbarConfig: ToolbarConfig = {
     TimelineScale.MONTH,
     TimelineScale.QUARTER,
   ],
-  defaultTimeScale: TimelineScale.MONTH, // 默认月视图
+  defaultTimeScale: TimelineScale.MONTH, // Default month view
 }
 </script>
 ```
 
-**示例4：极简配置（适合嵌入式使用）**
+**Example 4: Minimal Configuration (Suitable for Embedded Use)**
 
 ```vue
 <script setup lang="ts">
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
-  showAddTask: false, // 隐藏所有编辑按钮
+  showAddTask: false, // Hide all edit buttons
   showAddMilestone: false,
-  showTodayLocate: true, // 只保留导航功能
+  showTodayLocate: true, // Only keep navigation features
   showExportCsv: false,
   showExportPdf: false,
   showLanguage: false,
   showTheme: false,
   showFullscreen: false,
-  showTimeScale: true, // 保留时间刻度切换
+  showTimeScale: true, // Keep time scale switch
   timeScaleDimensions: ['week', 'month'],
   defaultTimeScale: 'month',
-  showExpandCollapse: false, // 隐藏展开/折叠
+  showExpandCollapse: false, // Hide expand/collapse
 }
 </script>
 ```
 
-> **💡 配置建议**：
+> **💡 Configuration Recommendations**：
 >
-> - **默认配置**：不传 `toolbar-config` 时，所有按钮默认显示
-> - **按需显示**：根据业务需求隐藏不需要的功能按钮
-> - **时间刻度**：`timeScaleDimensions` 控制显示哪些时间维度，建议选择 2-4 个常用维度
-> - **响应式布局**：工具栏会自动适配容器宽度，按钮过多时会折叠到更多菜单中
+> - **Default configuration**：When not passed, all buttons are shown by default
+> - **Show as needed**: Hide unnecessary feature buttons based on business requirements
+> - **Time scale**：`timeScaleDimensions` controls which time dimensions to display, recommend selecting 2-4 common dimensions
+> - **Responsive layout**：toolbar will automatically adapt to container width, excessive buttons will collapse into more menu
 
-#### TaskListConfig（任务列表配置）
+#### TaskListConfig（Task List Configuration）
 
-自定义任务列表的显示列、宽度限制等。任务列表位于甘特图左侧，显示任务的详细信息。
+Customize task list display columns, width limits, etc. Task list is located on the left side of the Gantt chart, showing detailed task information.
 
-**类型定义：**
+**Type Definition：**
 
-| 字段名           | 类型                     | 默认值  | 说明                                                                           |
-| ---------------- | ------------------------ | ------- | ------------------------------------------------------------------------------ |
-| `columns`        | `TaskListColumnConfig[]` | 默认8列 | 任务列表的列配置数组，定义显示哪些列及其属性                                   |
-| `showAllColumns` | `boolean`                | `true`  | 是否显示所有列。`true` 时忽略 `columns` 中的 `visible` 设置                    |
-| `defaultWidth`   | `number \| string`       | `320`   | 默认展开宽度。支持像素数字（如 `320`）或百分比字符串（如 `'30%'`）             |
-| `minWidth`       | `number \| string`       | `280`   | 最小宽度。支持像素数字（如 `280`）或百分比字符串（如 `'20%'`）。不能小于 280px |
-| `maxWidth`       | `number \| string`       | `1160`  | 最大宽度。支持像素数字（如 `1160`）或百分比字符串（如 `'80%'`）                |
-| `showTaskIcon`       | `boolean`       | `true`  | 是否展示任务图标                |
+| Field            | Type                     | Default           | Description                                                                                                      |
+| ---------------- | ------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `columns`        | `TaskListColumnConfig[]` | Default 8 columns | Task list column configuration array, defines which columns to display and their properties                      |
+| `showAllColumns` | `boolean`                | `true`            | Whether to show all columns. When `true`, ignores `visible` setting in `columns`                                 |
+| `defaultWidth`   | `number \| string`       | `320`             | Default expanded width. Supports pixel number (like `320`) or percentage string (like `'30%'`)                   |
+| `minWidth`       | `number \| string`       | `280`             | Minimum width. Supports pixel number (like `280`) or percentage string (like `'20%'`). Cannot be less than 280px |
+| `maxWidth`       | `number \| string`       | `1160`            | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`)                           |
+| `showTaskIcon`       | `boolean`       | `true`  | Whether to show Tasks' icons                |
 
-**TaskListColumnConfig 类型定义：**
+**TaskListColumnConfig Type Definition：**
 
-| 字段名     | 类型      | 必填 | 说明                                                             |
-| ---------- | --------- | ---- | ---------------------------------------------------------------- |
-| `key`      | `string`  | ✅   | 列的唯一标识符，用于访问 Task 对象中的字段，也用于国际化         |
-| `label`    | `string`  | -    | 列的显示标签（表头文字）                                         |
-| `cssClass` | `string`  | -    | 自定义 CSS 类名                                                  |
-| `width`    | `number`  | -    | 列宽度（单位：像素）                                             |
-| `visible`  | `boolean` | -    | 是否显示该列，默认 `true`。当 `showAllColumns=true` 时此设置无效 |
+| Field      | Type      | Required | Description                                                                                     |
+| ---------- | --------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `key`      | `string`  | ✅       | Unique column identifier, used to access fields in Task object and for internationalization     |
+| `label`    | `string`  | -        | Column display label (header text)                                                              |
+| `cssClass` | `string`  | -        | Custom CSS class name                                                                           |
+| `width`    | `number`  | -        | Column width (unit: pixels)                                                                     |
+| `visible`  | `boolean` | -        | Whether to show this column, default `true`. This setting is invalid when `showAllColumns=true` |
 
-**示例1：基础配置（调整宽度）**
-
-```vue
-<template>
-  <GanttChart :tasks="tasks" :task-list-config="taskListConfig" />
-</template>
-
-<script setup lang="ts">
-import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
-import type { TaskListConfig } from 'jordium-gantt-vue3'
-
-const taskListConfig: TaskListConfig = {
-  defaultWidth: 450, // 默认宽度450px（比默认值320px更宽）
-  minWidth: 300, // 最小宽度300px
-  maxWidth: 1200, // 最大宽度1200px
-}
-</script>
-```
-
-**示例2：使用百分比宽度**
+**Example1：Basic Configuration (Adjust Width)**
 
 ```vue
 <template>
@@ -1994,16 +1981,36 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
-  defaultWidth: '25%', // 默认占容器宽度的25%
-  minWidth: '15%', // 最小占15%
-  maxWidth: '60%', // 最大占60%
+  defaultWidth: 450, // Default width 450px (wider than default 320px)
+  minWidth: 300, // Minimum width 300px
+  maxWidth: 1200, // Maximum width 1200px
 }
 </script>
 ```
 
-**示例3：自定义显示列（标准配置）**
+**Example2：Using Percentage Width**
 
-根据业务需求，可以自定义要显示的列、列宽度和显示顺序。建议先定义列配置数组，再赋值给 `columns` 属性。
+```vue
+<template>
+  <GanttChart :tasks="tasks" :task-list-config="taskListConfig" />
+</template>
+
+<script setup lang="ts">
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import type { TaskListConfig } from 'jordium-gantt-vue3'
+
+const taskListConfig: TaskListConfig = {
+  defaultWidth: '25%', // Default 25% of container width
+  minWidth: '15%', // Minimum 15%
+  maxWidth: '60%', // Maximum 60%
+}
+</script>
+```
+
+**Example3：Custom Display Columns (Standard Configuration)**
+
+Based on business requirements, you can customize columns to display, column widths, and display order. Recommend defining column configuration array first, then assign to `columns` prop.
 
 ```vue
 <template>
@@ -2015,15 +2022,15 @@ import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
-// 定义要显示的列配置
+// Define column configuration to display
 const columns: TaskListColumnConfig[] = [
-  { key: 'predecessor', label: '前置任务', visible: true },
-  { key: 'assignee', label: '负责人', visible: true },
-  { key: 'startDate', label: '开始日期', visible: true },
-  { key: 'endDate', label: '结束日期', visible: true },
-  { key: 'estimatedHours', label: '预估工时', visible: true },
-  { key: 'actualHours', label: '实际工时', visible: true },
-  { key: 'progress', label: '进度', visible: true },
+  { key: 'predecessor', label: 'Predecessors', visible: true },
+  { key: 'assignee', label: 'Assignee', visible: true },
+  { key: 'startDate', label: 'Start Date', visible: true },
+  { key: 'endDate', label: 'End Date', visible: true },
+  { key: 'estimatedHours', label: 'Estimated Hours', visible: true },
+  { key: 'actualHours', label: 'Actual Hours', visible: true },
+  { key: 'progress', label: 'Progress', visible: true },
 ]
 
 const taskListConfig: TaskListConfig = {
@@ -2035,19 +2042,19 @@ const taskListConfig: TaskListConfig = {
 </script>
 ```
 
-**示例4：精简列配置**
+**Example4：Simplified Column Configuration**
 
-只显示核心信息列，适合空间有限或需要简洁展示的场景。
+Only show core information columns, suitable for scenarios with limited space or requiring concise display.
 
 ```vue
 <script setup lang="ts">
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
-// 定义精简列配置
+// Define simplified Column Configuration
 const columns: TaskListColumnConfig[] = [
-  { key: 'name', label: '任务', visible: true },
-  { key: 'assignee', label: '负责人', width: 80, visible: true },
-  { key: 'progress', label: '进度', width: 60, visible: true },
+  { key: 'name', label: 'Task', visible: true },
+  { key: 'assignee', label: 'Assignee', width: 80, visible: true },
+  { key: 'progress', label: 'Progress', width: 60, visible: true },
 ]
 
 const taskListConfig: TaskListConfig = {
@@ -2055,29 +2062,29 @@ const taskListConfig: TaskListConfig = {
   defaultWidth: 350,
   minWidth: 280,
   maxWidth: 500,
-  showAllColumns: false, // 只显示 visible=true 的列
+  showAllColumns: false, // Only show columns with visible=true
 }
 </script>
 ```
 
-**示例5：自定义业务列**
+**Example5：Custom Business Columns**
 
-添加业务相关的自定义列，需要确保 Task 对象中包含对应字段。
+Add business-related custom columns, ensure Task object contains corresponding fields.
 
 ```vue
 <script setup lang="ts">
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
-// 定义包含自定义列的配置
+// Define configuration with custom columns
 const columns: TaskListColumnConfig[] = [
-  { key: 'name', label: '任务名称', visible: true },
-  { key: 'priority', label: '优先级', width: 80, visible: true }, // 自定义列
-  { key: 'department', label: '部门', width: 100, visible: true }, // 自定义列
-  { key: 'status', label: '状态', width: 80, visible: true }, // 自定义列
-  { key: 'assignee', label: '负责人', visible: true },
-  { key: 'startDate', label: '开始日期', visible: true },
-  { key: 'endDate', label: '结束日期', visible: true },
-  { key: 'progress', label: '进度', visible: true },
+  { key: 'name', label: 'Task Name', visible: true },
+  { key: 'priority', label: 'Priority', width: 80, visible: true }, // Custom column
+  { key: 'department', label: 'Department', width: 100, visible: true }, // Custom column
+  { key: 'status', label: 'Status', width: 80, visible: true }, // Custom column
+  { key: 'assignee', label: 'Assignee', visible: true },
+  { key: 'startDate', label: 'Start Date', visible: true },
+  { key: 'endDate', label: 'End Date', visible: true },
+  { key: 'progress', label: 'Progress', visible: true },
 ]
 
 const taskListConfig: TaskListConfig = {
@@ -2086,9 +2093,9 @@ const taskListConfig: TaskListConfig = {
 </script>
 ```
 
-**示例6：动态列配置**
+**Example6：Dynamic Column Configuration**
 
-配合 `ref` 和 `computed` 实现列的动态显示/隐藏和宽度调整。
+Combine `ref` and `computed` to achieve dynamic show/hide and width adjustment of columns.
 
 ```vue
 <template>
@@ -2101,26 +2108,26 @@ import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
-// 定义可动态配置的列
+// Define dynamically configurable columns
 const availableColumns = ref<TaskListColumnConfig[]>([
-  { key: 'predecessor', label: '前置任务', visible: true },
-  { key: 'assignee', label: '负责人', visible: true },
-  { key: 'startDate', label: '开始日期', visible: true },
-  { key: 'endDate', label: '结束日期', visible: true },
-  { key: 'estimatedHours', label: '预估工时', visible: true },
-  { key: 'actualHours', label: '实际工时', visible: true },
-  { key: 'progress', label: '进度', visible: true },
-  { key: 'custom', label: '自定义列', visible: true, width: 120 },
+  { key: 'predecessor', label: 'Predecessors', visible: true },
+  { key: 'assignee', label: 'Assignee', visible: true },
+  { key: 'startDate', label: 'Start Date', visible: true },
+  { key: 'endDate', label: 'End Date', visible: true },
+  { key: 'estimatedHours', label: 'Estimated Hours', visible: true },
+  { key: 'actualHours', label: 'Actual Hours', visible: true },
+  { key: 'progress', label: 'Progress', visible: true },
+  { key: 'custom', label: 'Custom column', visible: true, width: 120 },
 ])
 
-// 定义宽度配置
+// Define width configuration
 const taskListWidth = ref({
   defaultWidth: 450,
   minWidth: 300,
   maxWidth: 1200,
 })
 
-// 使用计算属性动态生成配置
+// Use computed property to dynamically generate configuration
 const taskListConfig = computed<TaskListConfig>(() => ({
   columns: availableColumns.value,
   defaultWidth: taskListWidth.value.defaultWidth,
@@ -2130,39 +2137,39 @@ const taskListConfig = computed<TaskListConfig>(() => ({
 </script>
 ```
 
-> **💡 配置说明**：
+> **💡 Configuration Notes**：
 >
-> - **默认行为**：不传 `task-list-config` 时，显示所有 8 个默认列，宽度为 320px
-> - **宽度单位**：支持像素（`number`）和百分比（`string`，如 `'30%'`）两种方式
-> - **百分比计算**：基于甘特图容器的总宽度，响应式调整
-> - **列顺序**：`columns` 数组的顺序决定列的显示顺序
-> - **列配置规范**：建议先定义 `TaskListColumnConfig[]` 类型的列数组，再赋值给 `columns` 属性
-> - **自定义列支持**：Task 接口通过 `[key: string]: unknown` 索引签名支持任意自定义字段，组件会通过 `task[column.key]` 动态读取列值，无需修改 Task 接口即可添加自定义列
-> - **动态配置**：配合 `ref` 和 `computed` 可实现列的动态显示/隐藏和宽度调整
-> - **最小宽度限制**：`minWidth` 不能小于 280px，这是保证基本可用性的最小值
+> - **Default behavior**：When not passed, show all 8 default columns with width of 320px
+> - **Width units**：Supports pixel (`number`) and percentage (`string`, like `'30%'`) methods
+> - **Percentage calculation**：Based on total width of Gantt chart container, responsive adjustment
+> - **Column order**: `columns` array order determines column display order
+> - **Column configuration standards**：Recommend defining `TaskListColumnConfig[]` type column array first, then assign to `columns` prop
+> - **Custom column support**：Task interface supports arbitrary custom fields through `[key: string]: unknown` index signature, component will dynamically read column values through `task[column.key]`, no need to modify Task interface to add custom columns
+> - **Dynamic configuration**：Combine `ref` and `computed` to achieve dynamic show/hide and width adjustment of columns
+> - **Minimum width limit**: `minWidth` cannot be less than 280px, this is the minimum value to ensure basic usability
 
-#### TaskBarConfig（任务条配置）
+#### TaskBarConfig (Task Bar Configuration)
 
-控制任务条的显示内容和交互行为。
+Controls task bar display content and interaction behavior。
 
-**配置字段：**
+**Configuration Fields：**
 
-| 字段名              | 类型      | 默认值  | 说明                            |
-| ------------------- | --------- | ------- | ------------------------------- |
-| `showAvatar`        | `boolean` | `true`  | 是否展示头像                    |
-| `showTitle`         | `boolean` | `true`  | 是否展示标题文字                |
-| `showProgress`      | `boolean` | `true`  | 是否展示进度文字                |
-| `dragThreshold`     | `number`  | `5`     | 拖拽触发阈值（像素）            |
-| `resizeHandleWidth` | `number`  | `5`     | 拉伸手柄宽度（像素），最大 15px |
-| `enableDragDelay`   | `boolean` | `false` | 是否启用拖拽延迟（防止误触）    |
-| `dragDelayTime`     | `number`  | `150`   | 拖拽延迟时间（毫秒）            |
+| Field               | Type      | Default | Description                                               |
+| ------------------- | --------- | ------- | --------------------------------------------------------- |
+| `showAvatar`        | `boolean` | `true`  | Whether to show avatar                                    |
+| `showTitle`         | `boolean` | `true`  | Whether to show title text                                |
+| `showProgress`      | `boolean` | `true`  | Whether to show progress text                             |
+| `dragThreshold`     | `number`  | `5`     | Drag trigger threshold (pixels)                           |
+| `resizeHandleWidth` | `number`  | `5`     | Resize handle width (pixels), max 15px                    |
+| `enableDragDelay`   | `boolean` | `false` | Whether to enable drag delay (prevent accidental trigger) |
+| `dragDelayTime`     | `number`  | `150`   | Drag delay time (milliseconds)                            |
 
-> **💡 编辑权限控制**：
+> **💡 Edit Permission Control**：
 >
-> - **全局控制**：使用 `<GanttChart :allow-drag-and-resize="false" />` 禁用所有任务的拖拽/拉伸
-> - **单个任务控制**：设置任务对象的 `isEditable: false` 属性单独控制某个任务
+> - **Global control**: Use `<GanttChart :allow-drag-and-resize="false" />` to disable drag/resize for all tasks
+> - **Individual task control**: Set task object `isEditable: false` property to control individual task
 
-**示例1：完整配置**
+**Example1：Complete Configuration**
 
 ```vue
 <template>
@@ -2186,9 +2193,9 @@ const taskBarConfig: TaskBarConfig = {
 </script>
 ```
 
-**示例2：全局只读模式**
+**Example2：Global Read-Only Mode**
 
-禁用所有任务的编辑操作。
+Disable edit operations for all tasks.
 
 ```vue
 <template>
@@ -2196,9 +2203,9 @@ const taskBarConfig: TaskBarConfig = {
 </template>
 ```
 
-**示例3：单个任务只读**
+**Example3：Individual Task Read-Only**
 
-仅某些任务不可编辑，其他任务正常。
+Only certain tasks are non-editable, other tasks are normal.
 
 ```vue
 <script setup lang="ts">
@@ -2207,25 +2214,25 @@ import type { Task } from 'jordium-gantt-vue3'
 const tasks: Task[] = [
   {
     id: 1,
-    name: '可编辑任务',
+    name: 'Editable Task',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
-    // isEditable 默认为 true
+    // isEditable default is true
   },
   {
     id: 2,
-    name: '只读任务（已锁定）',
+    name: 'Read-Only Task (Locked)',
     startDate: '2025-01-05',
     endDate: '2025-01-15',
-    isEditable: false, // 此任务不可拖拽/拉伸
+    isEditable: false, // This task cannot be dragged/resized
   },
 ]
 </script>
 ```
 
-**示例4：精简显示**
+**Example4：Simplified Display**
 
-仅显示任务条，隐藏头像、标题和进度文字。
+Only show task bar, hide avatar, title and progress text.
 
 ```vue
 <script setup lang="ts">
@@ -2239,9 +2246,9 @@ const taskBarConfig: TaskBarConfig = {
 </script>
 ```
 
-**示例5：防误触配置**
+**Example5：Anti-Accidental Touch Configuration**
 
-移动端或触摸屏场景下，增加拖拽阈值和延迟时间。
+In mobile or touch screen scenarios, increase drag threshold and delay time.
 
 ```vue
 <script setup lang="ts">
@@ -2259,139 +2266,139 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 </script>
 ```
 
-#### Timeline 容器自动填充配置
+#### Timeline Container Auto-Fill Configuration
 
-组件内置了智能的时间线范围计算逻辑，确保无论任务数据量多少、任务持续时间长短，时间线始终能够填充满容器宽度，提供最佳的视觉体验。
+The component has built-in intelligent timeline range calculation logic, ensuring that regardless of task data volume or task duration, the timeline always fills the container width, providing the best visual experience.
 
-**核心设计思路：**
+**Core Design Principles:**
 
-1. **基础缓冲机制**：在任务的实际时间范围基础上，根据不同视图添加固定的缓冲区
+1. **Base Buffer Mechanism**: Add fixed buffers based on the actual time range of tasks, varying by view type
 
-   - 小时视图：任务范围前后各 ±1 天
-   - 日视图：任务范围前后各 ±30 天
-   - 周视图：任务范围前后各 ±8 周（约2个月）
-   - 月视图：任务范围前后各 ±1 年
-   - 季度视图：任务范围前后各 ±1 年
-   - 年视图：任务范围前后各 ±1 年
+   - Hour view：±1 day task range
+   - Day view: ±30 days before/after task range
+   - Week view: ±8 weeks (approx. 2 months) before/after task range
+   - Month view: ±1 year before/after task range
+   - Quarter view: ±1 year before/after task range
+   - Year view: ±1 year before/after task range
 
-2. **容器宽度适配**：基础缓冲后，如果计算出的时间线宽度小于容器宽度，会自动扩展范围
+2. **Container Width Adaptation**: After base buffering, if calculated timeline width is less than container width, automatically extend the range
 
-   - 计算容器需要的时间单位数（天/周/月/季度/年）
-   - 在基础范围两侧**对称扩展**，确保时间线填充满容器
+   - Calculate time units (days/weeks/months/quarters/years) needed for container
+   - **Symmetrically extend** on both sides of base range to ensure timeline fills container
 
-3. **空数据处理**：当没有任务数据时，根据容器宽度和时间刻度计算合理的时间范围
+3. **Empty Data Handling**: When no task data exists, calculate reasonable time range based on container width and time scale
 
-   - 以当前日期为中心
-   - 根据容器宽度动态计算需要显示的时间跨度
-   - 确保最小显示范围（如日视图至少60天，周视图至少20周等）
+   - Center on current date
+   - Dynamically calculate time span to display based on container width
+   - Ensure minimum display range (e.g., at least 60 days for day view, at least 20 weeks for week view)
 
-4. **视图切换独立计算**：每次切换时间刻度时，都会独立重新计算该视图的最佳时间范围
-   - 避免不同视图共享缓存导致的范围不合理
-   - 每个视图都能获得最优的显示效果
+4. **Independent Calculation on View Switch**: Each time scale switch triggers independent recalculation of optimal time range for that view
+   - Avoid unreasonable ranges caused by different views sharing cache
+   - Each view gets optimal display effect
 
-**各视图计算模式对照表：**
+**Calculation Pattern Reference Table:**
 
-| 视图     | 单位宽度             | 基础缓冲 | 空数据最小范围 | 容器自动填充？ |
-| -------- | -------------------- | -------- | -------------- | -------------- |
-| 小时视图 | 30px/时              | ±1天     | 3天            | ✅             |
-| 日视图   | 30px/天              | ±30天    | 60天           | ✅             |
-| 周视图   | 60px/周              | ±2月     | 20周           | ✅             |
-| 月视图   | 60px/月              | ±1年     | 3年            | ✅             |
-| 季度视图 | 60px/季度 (240px/年) | ±1年     | 5年            | ✅             |
-| 年视图   | 360px/年             | ±1年     | 5年            | ✅             |
+| View         | Unit Width                | Base Buffer | Empty Data Min Range | Container Auto-Fill? |
+| ------------ | ------------------------- | ----------- | -------------------- | -------------------- |
+| Hour View    | 30px/hour                 | ±1 day      | 3 days               | ✅                   |
+| Day View     | 30px/day                  | ±30 days    | 60 days              | ✅                   |
+| Week View    | 60px/week                 | ±2 months   | 20 weeks             | ✅                   |
+| Month View   | 60px/month                | ±1 year     | 3 years              | ✅                   |
+| Quarter View | 60px/quarter (240px/year) | ±1 year     | 5 years              | ✅                   |
+| Year View    | 360px/year                | ±1 year     | 5 years              | ✅                   |
 
-**实际应用场景：**
+**Practical Application Scenarios:**
 
-- **短期任务**（如1周项目， 分辨率1080）：
+- **Short-term Tasks** (e.g., 1-week project):
 
-  - 不会导致时间线过窄，自动扩展到填充满容器
-  - 日视图：1周(7天×30px=210px) → 扩展至 ≥1200px（约40天）
-  - 周视图：1周(60px) → 扩展至 ≥1200px（约20周）
+  - Won't result in narrow timeline, automatically extends to fill container
+  - Day view: 1 week (7 days × 30px = 210px) → Extends to ≥1200px (approx. 40 days)
+  - Week view: 1 week (60px) → Extends to ≥1200px (approx. 20 weeks)
 
-- **长期项目**（如2年项目）：
+- **Long-term Projects** (e.g., 2-year project):
 
-  - 添加固定缓冲后，自动适配容器
-  - 月视图：24个月 + 缓冲 → 如需要则扩展至容器宽度
-  - 季度视图：8个季度 + 缓冲 → 如需要则扩展至容器宽度
+  - After adding fixed buffer, automatically adapts to container
+  - Month view: 24 months + buffer → Extends to container width if needed
+  - Quarter view: 8 quarters + buffer → Extends to container width if needed
 
-- **空白看板**（无任务数据）：
-  - 日视图：以今天为中心，显示至少60天
-  - 周视图：以今天为中心，显示至少20周
-  - 月视图：显示至少3年
-  - 季度/年视图：显示至少5年
+- **Empty Board** (no task data):
+  - Day view: Centered on today, displays at least 60 days
+  - Week view: Centered on today, displays at least 20 weeks
+  - Month view: Displays at least 3 years
+  - Quarter/Year view: Displays at least 5 years
 
-> **💡 自动化优势**：
+> **💡 Automation Advantages**:
 >
-> - 无需手动设置 `startDate` 和 `endDate`，组件会自动计算最优范围
-> - 响应式容器宽度变化，时间线自动重新计算
-> - 不同视图独立优化，切换视图时自动调整到最佳显示效果
-> - 避免出现时间线过窄或留白过多的问题
-> - 适用不同分辨率展示
+> - No need to manually set `startDate` and `endDate`, component automatically calculates optimal range
+> - Responsive to container width changes, timeline automatically recalculates
+> - Different views independently optimized, auto-adjusts to best display effect when switching views
+> - Avoids issues with timeline being too narrow or having excessive whitespace
+> - Suitable for displaying at different resolutions
 
-### Expose 方法
+### Expose Methods
 
-GanttChart 组件通过 `defineExpose` 暴露了一系列方法，允许父组件通过模板引用 (`ref`) 直接调用这些方法来控制组件行为。这种命令式的控制方式适合需要精确控制时机的场景。
+The GanttChart component exposes a series of methods through `defineExpose`, allowing parent components to directly call these methods via template references (`ref`) to control component behavior. This imperative control approach is suitable for scenarios requiring precise timing control.
 
-#### 可用的 Expose 方法
+#### Available Expose Methods
 
-| 方法名 | 参数 | 返回值 | 说明 |
+| Method | Parameters | Return Value | Description |
 | --- | --- | --- | --- |
-| `setLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `locale: 'zh-CN' \| 'en-US'` | `void` | 设置组件语言 |
-| `currentLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'zh-CN' \| 'en-US'` | 获取当前语言设置 |
-| `setTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `mode: 'light' \| 'dark'` | `void` | 设置主题模式 |
-| `currentTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'light' \| 'dark'` | 获取当前主题模式 |
-| `setTimeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `scale: TimelineScale` | `void` | 设置时间刻度（`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`） |
-| `zoomIn` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 缩小时间刻度（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
-| `zoomOut` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 放大时间刻度（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
-| `currentScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `TimelineScale` | 获取当前时间刻度 |
-| `toggleFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 切换全屏状态 |
-| `enterFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 进入全屏模式 |
-| `exitFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 退出全屏模式 |
-| `isFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | 获取当前是否处于全屏状态 |
-| `toggleExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 切换展开/收起所有任务 |
-| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 展开所有任务 |
-| `collapseAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 收起所有任务 |
-| `isExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | 获取当前是否全部展开 |
-| `scrollToToday` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 滚动到今天的位置 |
-| `scrollToTask` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `taskId: number \| string` | `void` | 滚动到指定任务（任务会自动展开到可见状态） |
-| `scrollToDate` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `date: string \| Date` | `void` | 滚动到指定日期位置（格式：`'YYYY-MM-DD'` 或 Date 对象） |
-| `getTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | 获取 TaskList 当前可见状态 |
-| `setTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `visible: boolean` | `void` | 命令式设置 TaskList 显隐（仅 `enableTaskListCollapsible=true` 时生效） |
-| `toggleTaskList` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | 带动画切换 TaskList 展开/收起状态 |
+| `setLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `locale: 'zh-CN' \| 'en-US'` | `void` | Set component language |
+| `currentLocale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'zh-CN' \| 'en-US'` | Get current language setting |
+| `setTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `mode: 'light' \| 'dark'` | `void` | Set theme mode |
+| `currentTheme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `'light' \| 'dark'` | Get current theme mode |
+| `setTimeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `scale: TimelineScale` | `void` | Set time scale (`'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`) |
+| `zoomIn` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | zoom in time scale（`'year' -> 'quarter' -> 'month' -> 'week' -> 'day' -> 'hour'`） |
+| `zoomOut` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | zoom out time scale（`'hour' -> 'day' -> 'week' -> 'month' -> 'quarter' -> 'year'`） |
+| `currentScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `TimelineScale` | Get current time scale |
+| `toggleFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle fullscreen state |
+| `enterFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Enter fullscreen mode |
+| `exitFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Exit fullscreen mode |
+| `isFullscreen` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get current fullscreen state |
+| `toggleExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle expand/collapse all tasks |
+| `expandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Expand all tasks |
+| `collapseAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Collapse all tasks |
+| `isExpandAll` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get current expand all state |
+| `scrollToToday` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Scroll to today's position |
+| `scrollToTask` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `taskId: number \| string` | `void` | Scroll to specified task (task will auto-expand to visible state) |
+| `scrollToDate` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `date: string \| Date` | `void` | Scroll to specified date position (format: `'YYYY-MM-DD'` or Date object) |
+| `getTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get the current visibility state of TaskList |
+| `setTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `visible: boolean` | `void` | Imperatively set TaskList visibility (only effective when `enableTaskListCollapsible=true`) |
+| `toggleTaskList` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle TaskList expand/collapse state with animation |
 
-#### 使用示例
+#### Usage Example
 
-**基础用法：命令式控制**
+**Basic Usage: Imperative Control**
 
 ```vue
 <template>
   <div>
-    <!-- 外部控制按钮 -->
+    <!-- External control buttons -->
     <div class="control-panel">
       <button @click="handleSetLocale('zh-CN')">中文</button>
       <button @click="handleSetLocale('en-US')">English</button>
-      <button @click="handleSetTheme('light')">亮色主题</button>
-      <button @click="handleSetTheme('dark')">暗色主题</button>
-      <button @click="handleSetTimeScale('day')">日视图</button>
-      <button @click="handleSetTimeScale('week')">周视图</button>
-      <button @click="handleSetTimeScale('month')">月视图</button>
-      <button @click="ganttRef?.toggleFullscreen()">切换全屏</button>
-      <button @click="ganttRef?.toggleExpandAll()">展开/收起所有</button>
-      <button @click="ganttRef?.scrollToToday()">定位到今天</button>
-      <button @click="handleScrollToTask">滚动到任务2</button>
-      <button @click="handleScrollToDate">滚动到2025-06-01</button>
+      <button @click="handleSetTheme('light')">Light Theme</button>
+      <button @click="handleSetTheme('dark')">Dark Theme</button>
+      <button @click="handleSetTimeScale('day')">Day View</button>
+      <button @click="handleSetTimeScale('week')">Week View</button>
+      <button @click="handleSetTimeScale('month')">Month View</button>
+      <button @click="ganttRef?.toggleFullscreen()">Toggle Fullscreen</button>
+      <button @click="ganttRef?.toggleExpandAll()">Expand/Collapse All</button>
+      <button @click="ganttRef?.scrollToToday()">Locate Today</button>
+      <button @click="handleScrollToTask">Scroll to Task 2</button>
+      <button @click="handleScrollToDate">Scroll to 2025-06-01</button>
     </div>
 
-    <!-- 状态显示 -->
+    <!-- Status display -->
     <div class="status-panel">
-      <p>当前语言: {{ currentLang }}</p>
-      <p>当前主题: {{ currentThemeMode }}</p>
-      <p>当前刻度: {{ currentTimeScale }}</p>
-      <p>全屏状态: {{ isFullscreenMode ? '是' : '否' }}</p>
-      <p>展开状态: {{ isAllExpanded ? '全部展开' : '部分收起' }}</p>
+      <p>Current Language: {{ currentLang }}</p>
+      <p>Current Theme: {{ currentThemeMode }}</p>
+      <p>Current Scale: {{ currentTimeScale }}</p>
+      <p>Fullscreen: {{ isFullscreenMode ? 'Yes' : 'No' }}</p>
+      <p>Expand State: {{ isAllExpanded ? 'All Expanded' : 'Partially Collapsed' }}</p>
     </div>
 
-    <!-- 甘特图组件 -->
+    <!-- Gantt chart component -->
     <div style="height: 600px;">
       <GanttChart
         ref="ganttRef"
@@ -2408,47 +2415,47 @@ import { GanttChart } from 'jordium-gantt-vue3'
 import type { TimelineScale } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 
-// 组件引用
+// Component reference
 const ganttRef = ref<InstanceType<typeof GanttChart>>()
 
-// 状态变量
+// State variables
 const currentLang = ref<'zh-CN' | 'en-US'>('zh-CN')
 const currentThemeMode = ref<'light' | 'dark'>('light')
 const currentTimeScale = ref<TimelineScale>('week')
 const isFullscreenMode = ref(false)
 const isAllExpanded = ref(true)
 
-// 任务数据
+// Task data
 const tasks = ref([
-  { id: 1, name: '任务1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
-  { id: 2, name: '任务2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
+  { id: 1, name: 'Task 1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
+  { id: 2, name: 'Task 2', startDate: '2025-01-05', endDate: '2025-01-15', progress: 30 },
 ])
 const milestones = ref([])
 
-// 语言控制
+// Language control
 const handleSetLocale = (locale: 'zh-CN' | 'en-US') => {
   ganttRef.value?.setLocale(locale)
   currentLang.value = ganttRef.value?.currentLocale() || locale
 }
 
-// 主题控制
+// Theme control
 const handleSetTheme = (mode: 'light' | 'dark') => {
   ganttRef.value?.setTheme(mode)
   currentThemeMode.value = ganttRef.value?.currentTheme() || mode
 }
 
-// 时间刻度控制
+// Time scale control
 const handleSetTimeScale = (scale: TimelineScale) => {
   ganttRef.value?.setTimeScale(scale)
   currentTimeScale.value = ganttRef.value?.currentScale() || scale
 }
 
-// 滚动到指定任务
+// Scroll to specified task
 const handleScrollToTask = () => {
   ganttRef.value?.scrollToTask(2)
 }
 
-// 滚动到指定日期
+// Scroll to specified date
 const handleScrollToDate = () => {
   ganttRef.value?.scrollToDate('2025-06-01')
 }
@@ -2475,31 +2482,31 @@ const handleScrollToDate = () => {
 </style>
 ```
 
-#### 最佳实践
+#### Best Practices
 
-1. **命令式 vs 响应式**
-   - 使用 **Expose 方法**：需要精确控制调用时机，如按钮点击、特定事件触发
-   - 使用 **Props 绑定**：状态需要跟随数据源自动更新，如与 URL 参数同步
+1. **Imperative vs Reactive**
+   - Use **Expose Methods**: When you need precise control over timing, such as button clicks or specific event triggers
+   - Use **Props Binding**: When state needs to automatically update following data source, such as syncing with URL parameters
 
-2. **获取状态**
-   - 提供了成对的 getter 方法（如 `currentLocale()`、`currentTheme()`）
-   - 可在调用 setter 后立即获取最新状态进行验证
+2. **Getting State**
+   - Provides paired getter methods (like `currentLocale()`, `currentTheme()`)
+   - Can immediately get the latest state for verification after calling setters
 
-3. **错误处理**
-   - 调用前检查 `ref` 是否已挂载：`ganttRef.value?.methodName()`
-   - 在 `onMounted` 生命周期之后调用更安全
+3. **Error Handling**
+   - Check if `ref` is mounted before calling: `ganttRef.value?.methodName()`
+   - Safer to call after `onMounted` lifecycle
 
-**完整示例可参考：**
-- npm-demo 项目：`npm-demo/src/components/GanttTest.vue`
-- npm-webpack-demo 项目：`npm-webpack-demo/src/App.vue`
+**Complete examples can be found in:**
+- npm-demo project: `npm-demo/src/components/GanttTest.vue`
+- npm-webpack-demo project: `npm-webpack-demo/src/App.vue`
 
 ---
 
-### 主题与国际化
+### Theme & Internationalization
 
-#### 主题切换
+#### Theme Switching
 
-组件内置亮色和暗色两种主题，可通过工具栏按钮切换，也可监听切换事件：
+Component has built-in light and dark themes, can switch via toolbar button, also can listen to switch events:
 
 ```vue
 <template>
@@ -2508,47 +2515,47 @@ const handleScrollToDate = () => {
 
 <script setup lang="ts">
 const handleThemeChange = (isDark: boolean) => {
-  console.log('主题切换为:', isDark ? '暗色' : '亮色')
-  // 可在此保存用户偏好设置到 localStorage
+  console.log('Theme switched to:', isDark ? 'dark' : 'light')
+  // Can save user preference settings to localStorage here
   localStorage.setItem('gantt-theme', isDark ? 'dark' : 'light')
 }
 </script>
 ```
 
-#### 自定义主题变量
+#### Custom Theme Variables
 
-通过覆盖 CSS 变量实现主题自定义：
+Customize theme by overriding CSS variables:
 
 ```css
-/* 自定义亮色主题 */
+/* Customize light theme */
 :root {
-  /* 主色调 */
+  /* Primary colors */
   --gantt-primary-color: #409eff;
   --gantt-success-color: #67c23a;
   --gantt-warning-color: #e6a23c;
   --gantt-danger-color: #f56c6c;
 
-  /* 背景色 */
+  /* Background colors */
   --gantt-bg-primary: #ffffff;
   --gantt-bg-secondary: #f5f7fa;
   --gantt-bg-hover: #ecf5ff;
 
-  /* 文字颜色 */
+  /* Text colors */
   --gantt-text-primary: #303133;
   --gantt-text-secondary: #606266;
   --gantt-text-placeholder: #c0c4cc;
 
-  /* 边框颜色 */
+  /* Border colors */
   --gantt-border-color: #dcdfe6;
   --gantt-border-color-light: #e4e7ed;
 
-  /* 任务条颜色 */
+  /* Task bar colors */
   --gantt-task-bg: #409eff;
   --gantt-task-border: #66b1ff;
   --gantt-task-text: #ffffff;
 }
 
-/* 自定义暗色主题 */
+/* Customize dark theme */
 .dark {
   --gantt-bg-primary: #1a1a1a;
   --gantt-bg-secondary: #2c2c2c;
@@ -2566,9 +2573,9 @@ const handleThemeChange = (isDark: boolean) => {
 }
 ```
 
-#### 语言切换
+#### Language Switching
 
-组件内置中文（zh-CN）和英文（en-US）两种语言，可通过工具栏按钮切换：
+Component has built-in Chinese (zh-CN) and English (en-US), can switch via toolbar button:
 
 ```vue
 <template>
@@ -2577,16 +2584,16 @@ const handleThemeChange = (isDark: boolean) => {
 
 <script setup lang="ts">
 const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
-  console.log('语言切换为:', lang)
-  // 可在此保存用户偏好设置到 localStorage
+  console.log('Language switched to:', lang)
+  // Can save user preference settings to localStorage here
   localStorage.setItem('gantt-language', lang)
 }
 </script>
 ```
 
-#### 自定义翻译
+#### Custom Translations
 
-通过 `localeMessages` 属性传入自定义多语言文本，组件内部会自动合并到默认翻译中：
+Pass custom multilingual text via the `localeMessages` prop, which will be automatically merged into the default translations:
 
 ```vue
 <template>
@@ -2596,23 +2603,23 @@ const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
 <script setup lang="ts">
 const customMessages = {
   "zh-CN": {
-    // 任务列表相关
-    taskName: '任务名称（自定义）',
-    startDate: '开始日期',
-    endDate: '结束日期',
-    duration: '工期',
-    progress: '完成度',
-    predecessor: '前置任务',
-    assignee: '负责人',
-    estimatedHours: '预估工时',
-    actualHours: '实际工时',
+    // Task list related
+    taskName: 'Task Name (Custom)',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    duration: 'Duration',
+    progress: 'Completion',
+    predecessor: 'Predecessors',
+    assignee: 'Assignee',
+    estimatedHours: 'Estimated Hours',
+    actualHours: 'Actual Hours',
 
-    // 自定义字段（支持嵌套结构）
-    department: '部门',
-    status: '状态',
+    // Custom fields (supports nested structure)
+    department: 'Department',
+    status: 'Status',
     gantt: {
-      planEndDate: '计划结束时间',
-      planStartDate: '计划开始时间'
+      planEndDate: 'Plan End Date',
+      planStartDate: 'Plan Start Date'
     }
   },
   "en-US": {
@@ -2627,19 +2634,19 @@ const customMessages = {
 </script>
 ```
 
-> **💡 提示**：
+> **💡 Tip**:
 >
-> - `localeMessages` 采用**深度合并**策略，只需传递需要覆盖或新增的字段即可
-> - 支持嵌套对象结构，如 `gantt.planEndDate`
-> - 完整的内置翻译键请参考组件源码中的 `useI18n.ts`
+> - `localeMessages` uses a **deep merge** strategy, only pass fields that need to be overridden or added
+> - Supports nested object structures, such as `gantt.planEndDate`
+> - For complete built-in translation keys, please refer to `useI18n.ts` in the component source code
 
-##### 在自定义插槽中使用翻译
+##### Using Translations in Custom Slots
 
-组件导出了 `useI18n` composable，可在自定义插槽中访问翻译文本，支持两种访问方式：
+The component exports the `useI18n` composable, which can be used in custom slots to access translation text. It supports two access methods:
 
-**方式一：引用式访问（`t.field`）**
+**Method 1: Reactive Access (`t.field`)**
 
-通过响应式对象直接访问翻译文本，语法简洁，适合模板中使用：
+Access translation text directly through a reactive object, with concise syntax, suitable for use in templates:
 
 ```vue
 <script setup>
@@ -2649,7 +2656,7 @@ const { t } = useI18n()
 
 const customMessages = {
   'zh-CN': {
-    department: '部门'
+    department: 'Department'
   }
 }
 </script>
@@ -2657,8 +2664,8 @@ const customMessages = {
 <template>
   <GanttChart :tasks="tasks" :locale-messages="customMessages" />
   
-  <!-- 引用式：直接通过 t 对象访问 -->
-  <TaskListColumn prop="startDate" label="开始时间" width="250">
+  <!-- Reactive access: directly through the t object -->
+  <TaskListColumn prop="startDate" label="Start Date" width="250">
     <template #header>
       <strong style="color: #1890ff;">{{ t.department }}</strong>
     </template>
@@ -2666,9 +2673,9 @@ const customMessages = {
 </template>
 ```
 
-**方式二：函数式访问（`getTranslation()`）**
+**Method 2: Function Access (`getTranslation()`)**
 
-支持嵌套键和默认值，适合访问深层结构或动态键：
+Supports nested keys and default values, suitable for accessing deep structures or dynamic keys:
 
 ```vue
 <script setup>
@@ -2677,9 +2684,9 @@ import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
 const { getTranslation } = useI18n()
 
 const customMessages = {
-  'zh-CN': {
+  'en-US': {
     gantt: {
-      planEndDate: '计划结束时间'
+      planEndDate: 'Plan End Date'
     }
   }
 }
@@ -2688,19 +2695,19 @@ const customMessages = {
 <template>
   <GanttChart :tasks="tasks" :locale-messages="customMessages" />
   
-  <!-- 函数式：支持嵌套键和默认值 -->
+  <!-- Function access: supports nested keys and default values -->
   <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate')" width="250" />
 </template>
 ```
 
-**完整示例（结合语言切换）：**
+**Complete Example (with Language Switching):**
 
 ```vue
 <script setup>
 import { ref } from 'vue'
 import { GanttChart, TaskListColumn, useI18n } from 'jordium-gantt-vue3'
 
-// 自定义多语言配置
+// Custom multilingual configuration
 const customMessages = {
   'zh-CN': {
     department: '部门',
@@ -2716,46 +2723,46 @@ const customMessages = {
   }
 }
 
-// 使用 useI18n 访问翻译
+// Use useI18n to access translations
 const { t, getTranslation, locale, setLocale } = useI18n()
 const tasks = ref([...])
 
-// 语言切换
+// Language switching
 const switchLanguage = () => {
   setLocale(locale.value === 'zh-CN' ? 'en-US' : 'zh-CN')
 }
 </script>
 
 <template>
-  <button @click="switchLanguage">切换语言</button>
+  <button @click="switchLanguage">Switch Language</button>
   
   <GanttChart :tasks="tasks" :locale-messages="customMessages" />
   
-  <!-- 引用式：直接通过 t 对象访问 -->
-  <TaskListColumn prop="startDate" label="开始时间" width="250">
+  <!-- Reactive access: directly through the t object -->
+  <TaskListColumn prop="startDate" label="Start Date" width="250">
     <template #header>
       <strong style="color: #1890ff;">{{ t.department }}</strong>
     </template>
   </TaskListColumn>
   
-  <!-- 函数式：支持嵌套键和默认值 -->
+  <!-- Function access: supports nested keys and default values -->
   <TaskListColumn prop="endDate" :label="getTranslation('gantt.planEndDate')" width="250" />
 </template>
 ```
 
-**`useI18n` API 说明：**
+**`useI18n` API Reference:**
 
-| 导出项 | 类型 | 说明 |
-|--------|------|------|
-| `t` | `Ref<object>` | 响应式翻译对象，通过 `t.key` 或 `t.nested.key` 访问翻译文本 |
-| `getTranslation(key, defaultValue?)` | `Function` | 函数式访问翻译文本<br>• `key`: 翻译键，支持嵌套路径（如 `'gantt.planEndDate'`）<br>• `defaultValue`: 可选，找不到翻译时返回的默认值<br>• 返回：翻译文本、默认值或 key 本身 |
-| `formatTranslation(key, params)` | `Function` | 格式化带参数的翻译文本<br>• `key`: 翻译键<br>• `params`: 参数对象，如 `{ name: '任务1' }`<br>• 返回：替换占位符后的文本（如 `'任务{name}'` → `'任务任务1'`） |
-| `locale` | `Ref<string>` | 当前语言（`'zh-CN'` 或 `'en-US'`） |
-| `setLocale(locale)` | `Function` | 切换语言，会自动更新所有使用 `useI18n` 的组件 |
-| `formatYearMonth(year, month)` | `Function` | 格式化年月显示<br>• 中文：`formatYearMonth(2024, 3)` → `'2024年03月'`<br>• 英文：`formatYearMonth(2024, 3)` → `'2024/03'` |
-| `formatMonth(month)` | `Function` | 格式化月份显示<br>• 中文：`formatMonth(3)` → `'3月'`<br>• 英文：`formatMonth(3)` → `'03'` |
+| Export | Type | Description |
+|--------|------|-------------|
+| `t` | `Ref<object>` | Reactive translation object, access via `t.key` or `t.nested.key` |
+| `getTranslation(key, defaultValue?)` | `Function` | Function-based access to translation text<br>• `key`: Translation key, supports nested paths (e.g., `'gantt.planEndDate'`)<br>• `defaultValue`: Optional, default value returned when translation is not found<br>• Returns: Translation text, default value, or the key itself |
+| `formatTranslation(key, params)` | `Function` | Format translation text with parameters<br>• `key`: Translation key<br>• `params`: Parameter object, e.g., `{ name: 'Task1' }`<br>• Returns: Text with placeholders replaced (e.g., `'Task {name}'` → `'Task Task1'`) |
+| `locale` | `Ref<string>` | Current language (`'zh-CN'` or `'en-US'`) |
+| `setLocale(locale)` | `Function` | Switch language, automatically updates all components using `useI18n` |
+| `formatYearMonth(year, month)` | `Function` | Format year-month display<br>• Chinese: `formatYearMonth(2024, 3)` → `'2024年03月'`<br>• English: `formatYearMonth(2024, 3)` → `'2024/03'` |
+| `formatMonth(month)` | `Function` | Format month display<br>• Chinese: `formatMonth(3)` → `'3月'`<br>• English: `formatMonth(3)` → `'03'` |
 
-**使用示例：**
+**Usage Examples:**
 
 ```vue
 <script setup>
@@ -2763,68 +2770,68 @@ import { useI18n } from 'jordium-gantt-vue3'
 
 const { t, getTranslation, formatTranslation, formatYearMonth, formatMonth } = useI18n()
 
-// 1. 基础访问
-const text1 = t.taskName  // '任务名称'
-const text2 = getTranslation('gantt.planEndDate', '计划结束')  // '计划结束时间' 或默认值
+// 1. Basic access
+const text1 = t.taskName  // 'Task Name'
+const text2 = getTranslation('gantt.planEndDate', 'Plan End')  // 'Plan End Date' or default value
 
-// 2. 带参数的翻译
-const message = formatTranslation('taskNotFound', { id: '123' })  // '未找到要更新的任务，ID：123'
+// 2. Translation with parameters
+const message = formatTranslation('taskNotFound', { id: '123' })  // 'Task not found for update, ID: 123'
 
-// 3. 日期格式化
-const yearMonth = formatYearMonth(2024, 3)  // '2024年03月' (zh-CN) 或 '2024/03' (en-US)
-const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
+// 3. Date formatting
+const yearMonth = formatYearMonth(2024, 3)  // '2024年03月' (zh-CN) or '2024/03' (en-US)
+const month = formatMonth(3)  // '3月' (zh-CN) or '03' (en-US)
 </script>
 ```
 
-> **💡 使用提示**：
+> **💡 Usage Tips**:
 >
-> - **引用式** (`t.key`)：语法简洁，适合模板中直接使用
-> - **函数式** (`getTranslation('nested.key', 'default')`)：支持嵌套键和默认值，适合访问深层结构
-> - 通过 `localeMessages` 属性传入自定义翻译，再通过 `useI18n` 访问并翻译
-> - 语言切换通过 `setLocale()` 实现，所有组件会自动响应更新
+> - **Reactive access** (`t.key`): Concise syntax, suitable for direct use in templates
+> - **Function access** (`getTranslation('nested.key', 'default')`): Supports nested keys and default values, suitable for accessing deep structures
+> - Pass custom translations via the `localeMessages` prop, then access via `useI18n` to translate
+> - Language switching is implemented via `setLocale()`, all components will automatically respond to updates
 
-### 自定义扩展
+### Custom Extensions
 
-#### 插槽 (Slots)
+#### Slots (Slots)
 
-组件提供了插槽支持，允许自定义任务内容的渲染。
+Component provides slots support, allowing custom task content rendering。
 
-##### `taskbar-tooltip` 插槽 ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF)
+##### `taskbar-tooltip` Slot ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF)
 
-用于完全替换 TaskBar 的内置悬停 Tooltip 内容。启用后内置样式不再渲染，由消费方完全控制。
+Fully replaces the built-in TaskBar hover tooltip content. When used, the built-in tooltip is no longer rendered — the consumer has complete control.
 
-> **前提条件**：需设置 `:enable-taskbar-tooltip="true"`（默认已开启）
+> **Prerequisite**: Requires `:enable-taskbar-tooltip="true"` (enabled by default)
 
-**插槽作用域参数（`TaskbarTooltipSlotScope`）：**
+**Slot scope parameters (`TaskbarTooltipSlotScope`):**
 
-> 组件通过 `<slot :task="..." :task-status="..." />` 提供数据，消费者可用整体对象 `scope` 接收，也可按需解构——所有参数均为**可选**。`task` 是完整的任务对象，自定义字段（如 `task.myField`）均可直接访问。
+> The component provides data via `<slot :task="..." :task-status="..." />`. The consumer can receive the whole `scope` object or destructure only what's needed — all parameters are **optional**. `task` is the raw task object from your `:tasks` / `:resources` data, including any custom fields.
 
-| 参数名 | 类型 | 说明 |
+| Param | Type | Description |
 | --- | --- | --- |
-| `task` | `Task` | 当前悬停的任务对象，包含完整的任务数据 |
-| `taskStatus` | `{ color: string; label: string }` | 由组件计算好的任务状态（颜色 + 文本），辅助快速显示状态 |
-| `resourcePercent` | `number \| null` | 资源占比百分比（资源视图有效，任务视图为 `null`） |
+| `task` | `Task` | The currently hovered task object with complete task data |
+| `taskStatus` | `{ color: string; label: string }` | Pre-computed task status (color + label) for quick display |
+| `resourcePercent` | `number \| null` | Resource usage percentage (valid in resource view; `null` in task view) |
 
-**三种写法完全等价：**
+**All three patterns are equivalent:**
 
 ```vue
-<!-- 写法一：整体 scope 对象接收 -->
+<!-- Pattern 1: whole scope object -->
 <template #taskbar-tooltip="scope">
   {{ scope.task.name }}
 </template>
 
-<!-- 写法二：只解构需要的字段 -->
+<!-- Pattern 2: destructure only what you need -->
 <template #taskbar-tooltip="{ task }">
   {{ task.name }}
 </template>
 
-<!-- 写法三：解构全部字段 -->
+<!-- Pattern 3: destructure all fields -->
 <template #taskbar-tooltip="{ task, taskStatus, resourcePercent }">
   ...
 </template>
 ```
 
-**示例——仅展示任务名称（最简用法）：**
+**Example — minimal usage (task name only):**
 
 ```vue
 <GanttChart :tasks="tasks">
@@ -2834,7 +2841,7 @@ const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
 </GanttChart>
 ```
 
-**示例——利用全部作用域参数：**
+**Example — using full scope:**
 
 ```vue
 <GanttChart :tasks="tasks">
@@ -2843,10 +2850,10 @@ const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
       <div class="tooltip-title" :style="{ borderColor: taskStatus.color }">
         {{ task.name }}
       </div>
-      <div>状态：{{ taskStatus.label }}</div>
-      <div>开始：{{ task.startDate }}</div>
-      <div>结束：{{ task.endDate }}</div>
-      <div v-if="resourcePercent !== null">资源占比：{{ resourcePercent }}%</div>
+      <div>Status: {{ taskStatus.label }}</div>
+      <div>Start: {{ task.startDate }}</div>
+      <div>End: {{ task.endDate }}</div>
+      <div v-if="resourcePercent !== null">Resource: {{ resourcePercent }}%</div>
     </div>
   </template>
 </GanttChart>
@@ -2854,26 +2861,26 @@ const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
 
 ---
 
-##### `milestone-tooltip` 插槽 ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF)
+##### `milestone-tooltip` Slot ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF)
 
-用于完全替换里程碑的内置悬停 Tooltip 内容。启用后内置气泡样式不再渲染，由消费方完全控制。
+Fully replaces the built-in milestone hover Tooltip content. When used, the built-in tooltip is no longer rendered — the consumer has complete control.
 
-> **前提条件**：需设置 `:enable-milestone-tooltip="true"`（默认已开启）
+> **Prerequisite**: Requires `:enable-milestone-tooltip="true"` (enabled by default)
 
-**插槽作用域参数（`MilestoneTooltipSlotScope`）：**
+**Slot scope parameters (`MilestoneTooltipSlotScope`):**
 
-| 参数名 | 类型 | 说明 |
+| Param | Type | Description |
 | --- | --- | --- |
-| `milestone` | `Milestone` | 当前悬停的里程碑对象，包含里程碑完整数据 |
+| `milestone` | `Milestone` | The currently hovered milestone object with complete milestone data |
 
-**示例：**
+**Example:**
 
 ```vue
 <GanttChart :tasks="tasks">
   <template #milestone-tooltip="{ milestone }">
     <div class="my-milestone-tooltip">
       <div class="title">{{ milestone.name }}</div>
-      <div>目标日期：{{ milestone.startDate }}</div>
+      <div>Target Date: {{ milestone.startDate }}</div>
     </div>
   </template>
 </GanttChart>
@@ -2881,58 +2888,58 @@ const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
 
 ---
 
-##### `custom-task-content` 插槽
+##### `custom-task-content` Slots
 
-用于自定义任务在任务列表（TaskRow）和时间轴（TaskBar）中的显示内容。
+Used to customize task display content in task list (TaskRow) and timeline (TaskBar).
 
-**插槽参数：**
+**Slot Parameters：**
 
-| 参数名 | 类型                         | 来源 | 说明             |
-| ------ | ---------------------------- | ---- | ---------------- |
-| `type` | `'task-row'` \| `'task-bar'` | 通用 | 插槽调用位置标识 |
-| `task` | `Task`                       | 通用 | 当前任务对象     |
+| Parameter | Type                         | Source | Description                   |
+| --------- | ---------------------------- | ------ | ----------------------------- |
+| `type`    | `'task-row'` \| `'task-bar'` | Common | Slot call position identifier |
+| `task`    | `Task`                       | Common | Current task object           |
 
-**TaskRow 特有参数（当 `type === 'task-row'` 时）：**
+**TaskRow specific parameters (when `type === 'task-row'`):**
 
-| 参数名           | 类型                             | 说明             |
-| ---------------- | -------------------------------- | ---------------- |
-| `isRowContent`   | `boolean`                        | 标识为行内容     |
-| `level`          | `number`                         | 任务层级         |
-| `indent`         | `string`                         | 缩进样式         |
-| `isHovered`      | `boolean`                        | 是否悬停         |
-| `hoveredTaskId`  | `number \| null`                 | 当前悬停任务ID   |
-| `isParent`       | `boolean`                        | 是否为父任务     |
-| `hasChildren`    | `boolean`                        | 是否有子任务     |
-| `collapsed`      | `boolean`                        | 是否折叠         |
-| `formattedTimer` | `string`                         | 格式化的计时文本 |
-| `timerRunning`   | `boolean`                        | 计时器是否运行   |
-| `timerElapsed`   | `number`                         | 已计时时长       |
-| `isOvertime`     | `number \| boolean \| undefined` | 是否超时         |
-| `overdueDays`    | `number`                         | 逾期天数         |
-| `overtimeText`   | `string`                         | 超时文本         |
-| `overdueText`    | `string`                         | 逾期文本         |
-| `daysText`       | `string`                         | 天数文本         |
-| `progressClass`  | `string`                         | 进度CSS类名      |
+| Parameter        | Type                             | Description               |
+| ---------------- | -------------------------------- | ------------------------- |
+| `isRowContent`   | `boolean`                        | Identified as row content |
+| `level`          | `number`                         | Task level                |
+| `indent`         | `string`                         | Indent style              |
+| `isHovered`      | `boolean`                        | Whether hovering          |
+| `hoveredTaskId`  | `number \| null`                 | Current hovering task ID  |
+| `isParent`       | `boolean`                        | Whether parent task       |
+| `hasChildren`    | `boolean`                        | Whether has child tasks   |
+| `collapsed`      | `boolean`                        | Whether collapsed         |
+| `formattedTimer` | `string`                         | Formatted timer text      |
+| `timerRunning`   | `boolean`                        | Whether timer is running  |
+| `timerElapsed`   | `number`                         | Elapsed time              |
+| `isOvertime`     | `number \| boolean \| undefined` | Whether overtime          |
+| `overdueDays`    | `number`                         | Overdue days              |
+| `overtimeText`   | `string`                         | Overtime text             |
+| `overdueText`    | `string`                         | Overdue text              |
+| `daysText`       | `string`                         | Days text                 |
+| `progressClass`  | `string`                         | Progress CSS class name   |
 
-**TaskBar 特有参数（当 `type === 'task-bar'` 时）：**
+**TaskBar specific parameters (when `type === 'task-bar'`):**
 
-| 参数名             | 类型            | 说明                                                                               |
-| ------------------ | --------------- | ---------------------------------------------------------------------------------- |
-| `status`           | `object`        | 任务状态对象，包含 `type`, `color`, `bgColor`, `borderColor`                       |
-| `statusType`       | `string`        | 状态类型：`'completed'`, `'delayed'`, `'in-progress'`, `'not-started'`, `'parent'` |
-| `isParent`         | `boolean`       | 是否为父任务                                                                       |
-| `progress`         | `number`        | 任务进度（0-100）                                                                  |
-| `currentTimeScale` | `TimelineScale` | 当前时间刻度                                                                       |
-| `rowHeight`        | `number`        | 行高（像素）                                                                       |
-| `dayWidth`         | `number`        | 每天宽度（像素）                                                                   |
+| Parameter          | Type            | Description                                                                          |
+| ------------------ | --------------- | ------------------------------------------------------------------------------------ |
+| `status`           | `object`        | TaskStatus object, contains `type`, `color`, `bgColor`, `borderColor`                |
+| `statusType`       | `string`        | StatusType：`'completed'`, `'delayed'`, `'in-progress'`, `'not-started'`, `'parent'` |
+| `isParent`         | `boolean`       | Whether parent task                                                                  |
+| `progress`         | `number`        | TaskProgress（0-100）                                                                |
+| `currentTimeScale` | `TimelineScale` | Current time scale                                                                   |
+| `rowHeight`        | `number`        | Row height (pixels)                                                                  |
+| `dayWidth`         | `number`        | Width per day (pixels)                                                               |
 
-**使用示例：**
+**Usage Example：**
 
 ```vue
 <template>
   <GanttChart :tasks="tasks">
     <template #custom-task-content="slotProps">
-      <!-- 根据类型渲染不同内容 -->
+      <!-- Render different content based on type -->
       <CustomTaskContent :task="slotProps.task" :type="slotProps.type" :status="slotProps.status" />
     </template>
   </GanttChart>
@@ -2948,7 +2955,7 @@ import CustomTaskContent from './CustomTaskContent.vue'
 const tasks = ref<Task[]>([
   {
     id: 1,
-    name: '<strong>重要任务</strong>',
+    name: '<strong>Important Task</strong>',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 50,
@@ -2957,7 +2964,7 @@ const tasks = ref<Task[]>([
 </script>
 ```
 
-**自定义内容组件示例：**
+**Custom Content Component Example：**
 
 ```vue
 <!-- CustomTaskContent.vue -->
@@ -2980,12 +2987,12 @@ const props = defineProps<Props>()
 
 <template>
   <div class="custom-task-content">
-    <!-- TaskRow 中的渲染 -->
+    <!-- Rendering in TaskRow -->
     <div v-if="type === 'task-row'" class="task-row-content">
       <span v-html="task.name" />
     </div>
 
-    <!-- TaskBar 中的渲染 -->
+    <!-- Rendering in TaskBar -->
     <div v-else-if="type === 'task-bar'" class="task-bar-content">
       <div class="task-icon" :style="{ color: status?.color }">📌</div>
       <span class="task-title" v-html="task.name" />
@@ -3028,37 +3035,37 @@ const props = defineProps<Props>()
 </style>
 ```
 
-> **💡 使用场景**：
+> **💡 Usage Scenarios**：
 >
-> - 支持 HTML 格式的任务名称
-> - 添加自定义图标、标签或徽章
-> - 根据任务状态显示不同样式
-> - 集成第三方富文本渲染
-> - 显示额外的业务信息
+> - Support HTML formatted task names
+> - Add custom icons, tags or badges
+> - Display different styles based on task status
+> - Integrate third-party rich text rendering
+> - Display additional business information
 
-> **⚠️ 注意事项**：
+> **⚠️ Notes**：
 >
-> - 插槽内容会同时在 TaskRow 和 TaskBar 中渲染
-> - 需要根据 `type` 参数区分渲染位置
-> - TaskRow 和 TaskBar 的可用空间不同，需要适配布局
-> - 避免在插槽内容中使用过于复杂的组件，可能影响性能
+> - Slot content will be rendered in both TaskRow and TaskBar
+> - Need to distinguish rendering position based on `type` parameter
+> - TaskRow and TaskBar have different available space, need to adapt layout
+> - Avoid using overly complex components in slot content, may affect performance
 
-##### TaskListContextMenu 插槽
+##### TaskListContextMenu Slots
 
-用于自定义 TaskRow（任务列表行）的右键菜单内容。
+Used to customize the context menu content for TaskRow (task list row).
 
-**菜单显示逻辑：**
-- 当 `enableTaskListContextMenu=true` 且**未声明** TaskListContextMenu 组件时 → 使用**系统内置**的右键菜单
-- 当 `enableTaskListContextMenu=true` 且**声明了** TaskListContextMenu 组件时 → 使用**自定义**的右键菜单
-- 当 `enableTaskListContextMenu=false` 时 → 右键菜单**完全禁用**（无论是否声明组件）
+**Menu Display Logic:**
+- When `enableTaskListContextMenu=true` and TaskListContextMenu component is **not declared** → Uses **built-in** context menu
+- When `enableTaskListContextMenu=true` and TaskListContextMenu component is **declared** → Uses **custom** context menu
+- When `enableTaskListContextMenu=false` → Context menu is **completely disabled** (regardless of component declaration)
 
-**插槽列表：**
+**Slot List:**
 
-| 插槽名    | 参数                              | 说明                                                                                           |
-| --------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `default` | `scope: { row: Task, $index: number }`   | 自定义TaskRow的右键菜单。通过 `scope.row` 访问当前任务对象，通过 `scope.$index` 访问任务索引。 |
+| Slot Name | Parameters                        | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `default` | `scope: { row: Task, $index: number }`   | Custom Task List Context Menu content. Access current task object via `scope.row`, access task index via `scope.$index`.  |
 
-**使用示例：**
+**Usage Example:**
 
 ```vue
 <template>
@@ -3069,15 +3076,15 @@ const props = defineProps<Props>()
     <TaskListContextMenu>
       <template #default="scope">
         <div class="custom-menu">
-          <div class="custom-item" @click="handleEdit('extend', scope.row)">
-            ✏️ 编辑任务
+          <div class="menu-item" @click="handleEdit(task); onClose()">
+            ✏️ Edit Task
           </div>
-          <div class="custom-item" @click="handleDelete('move', scope.row)">
-            🗑️ 删除任务
+          <div class="menu-item" @click="handleDelete(task); onClose()">
+            🗑️ Delete Task
           </div>
-          <div class="custom-divider"></div>
-          <div class="custom-item" @click="handleDuplicate('copy', scope.row)">
-            📄 复制任务
+          <div class="menu-divider"></div>
+          <div class="menu-item" @click="handleDuplicate(task); onClose()">
+            📄 Duplicate Task
           </div>
         </div>
       </template>
@@ -3094,15 +3101,15 @@ import type { Task } from 'jordium-gantt-vue3'
 const tasks = ref<Task[]>([])
 
 const handleEdit = (task: Task) => {
-  console.log('编辑任务:', task)
+  console.log('Edit task:', task)
 }
 
 const handleDelete = (task: Task) => {
-  console.log('删除任务:', task)
+  console.log('Delete task:', task)
 }
 
 const handleDuplicate = (task: Task) => {
-  console.log('复制任务:', task)
+  console.log('Duplicate task:', task)
 }
 </script>
 
@@ -3135,22 +3142,22 @@ const handleDuplicate = (task: Task) => {
 </style>
 ```
 
-##### TaskBarContextMenu 插槽
+##### TaskBarContextMenu Slots
 
-用于自定义 TaskBar（时间轴任务条）的右键菜单内容。
+Used to customize the context menu content for TaskBar (timeline task bar).
 
-**菜单显示逻辑：**
-- 当 `enableTaskBarContextMenu=true` 且**未声明** TaskBarContextMenu 组件时 → 使用**系统内置**的右键菜单
-- 当 `enableTaskBarContextMenu=true` 且**声明了** TaskBarContextMenu 组件时 → 使用**自定义**的右键菜单
-- 当 `enableTaskBarContextMenu=false` 时 → 右键菜单**完全禁用**（无论是否声明组件）
+**Menu Display Logic:**
+- When `enableTaskBarContextMenu=true` and TaskBarContextMenu component is **not declared** → Uses **built-in** context menu
+- When `enableTaskBarContextMenu=true` and TaskBarContextMenu component is **declared** → Uses **custom** context menu
+- When `enableTaskBarContextMenu=false` → Context menu is **completely disabled** (regardless of component declaration)
 
-**插槽列表：**
+**Slot List:**
 
-| 插槽名    | 参数                              | 说明                                                                                           |
-| --------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `default` | `scope: { row: Task, $index: number }`   | 自定义TaskBar的右键菜单。通过 `scope.row` 访问当前任务对象，通过 `scope.$index` 访问任务索引。 |
+| Slot Name | Parameters                        | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `default` | `scope: { row: Task, $index: number }`   | Custom Task Bar Context Menu content. Access current task object via `scope.row`, access task index via `scope.$index`.  |
 
-**使用示例：**
+**Usage Example:**
 
 ```vue
 <template>
@@ -3162,14 +3169,14 @@ const handleDuplicate = (task: Task) => {
       <template #default="scope">
         <div class="custom-context-menu">
           <div class="menu-item" @click="handleViewDetails(scope.row)">
-            👁️ 查看详情
+            👁️ View Details
           </div>
           <div class="menu-item" @click="handleAdjustTime(scope.row)">
-            ⏰ 调整时间
+            ⏰ Adjust Time
           </div>
           <div class="menu-divider"></div>
           <div class="menu-item" @click="handleSetDependency(scope.row)">
-            🔗 设置依赖
+            🔗 Set Dependency
           </div>
         </div>
       </template>
@@ -3186,15 +3193,15 @@ import type { Task } from 'jordium-gantt-vue3'
 const tasks = ref<Task[]>([])
 
 const handleViewDetails = (task: Task) => {
-  console.log('查看详情:', task)
+  console.log('View details:', task)
 }
 
 const handleAdjustTime = (task: Task) => {
-  console.log('调整时间:', task)
+  console.log('Adjust time:', task)
 }
 
 const handleSetDependency = (task: Task) => {
-  console.log('设置依赖:', task)
+  console.log('Set dependency:', task)
 }
 </script>
 
@@ -3227,36 +3234,36 @@ const handleSetDependency = (task: Task) => {
 </style>
 ```
 
-> **💡 使用场景**：
+> **💡 Usage Scenarios**：
 >
-> - 自定义右键菜单样式和布局
-> - 添加业务特定的操作项
-> - 根据任务状态动态显示菜单项
-> - 添加权限控制逻辑
-> - 集成第三方 UI 组件库的菜单组件
+> - Customize context menu styles and layouts
+> - Add business-specific operations
+> - Dynamically show menu items based on task status
+> - Add permission control logic
+> - Integrate third-party UI component library menus
 
-> **⚠️ 注意事项**：
+> **⚠️ Notes**：
 >
-> - 当 `enableTaskListContextMenu=false` 或 `enableTaskBarContextMenu=false` 时，即使声明了组件也不会显示菜单
-> - 右键菜单会在滚动或点击菜单外部时自动关闭
-> - 推荐使用 `<Teleport to="body">` 将菜单渲染到 body 下，避免定位和层级问题
-> - 记得在菜单项点击后调用 `onClose()` 关闭菜单
-> - TaskRow 和 TaskBar 的右键菜单是独立的，可以分别自定义
-> - 默认情况下，系统会提供内置的右键菜单，包含常用操作
-> - 声明式组件不会渲染任何内容，仅用于传递配置
+> - When `enableTaskListContextMenu=false` or `enableTaskBarContextMenu=false`, the menu will not be displayed even if the component is declared
+> - Context menus will automatically close when scrolling or clicking outside the menu
+> - Recommended to use `<Teleport to="body">` to render the menu under body to avoid positioning and z-index issues
+> - Remember to call `onClose()` after menu item clicks to close the menu
+> - TaskRow and TaskBar context menus are independent and can be customized separately
+> - By default, the system provides a built-in context menu with common operations
+> - Declarative components do not render any content, only used for passing configuration
 
-##### TaskListColumn 插槽
+##### TaskListColumn Slots
 
-`TaskListColumn` 组件提供了两个插槽，用于自定义任务列表的列头和单元格内容。必须在声明式模式（`taskListColumnRenderMode="declarative"`）下使用。
+The `TaskListColumn` component provides two slots for customizing task list column headers and cell content. Must be used in declarative mode (`taskListColumnRenderMode="declarative"`).
 
-**插槽列表：**
+**Slot List:**
 
-| 插槽名    | 参数                              | 说明                                                                                           |
-| --------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `header`  | -                                 | 自定义列表头内容。如果未提供此插槽，将显示 `label` 属性                                        |
-| `default` | `scope: { row: Task, $index: number }`   | 自定义列单元格内容。通过 `scope.row` 访问当前任务对象，通过 `scope.$index` 访问任务索引。如果未提供此插槽，将显示 `prop` 对应的字段值 |
+| Slot Name | Parameters                        | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `header`  | -                                 | Custom column header content. If not provided, the `label` prop will be displayed                     |
+| `default` | `scope: { row: Task, $index: number }`   | Custom column cell content. Access current task object via `scope.row`, access task index via `scope.$index`. If not provided, the value of `prop` field is shown |
 
-**使用示例：**
+**Usage Example:**
 
 ```vue
 <template>
@@ -3264,21 +3271,21 @@ const handleSetDependency = (task: Task) => {
     :tasks="tasks" 
     task-list-column-render-mode="declarative"
   >
-    <!-- 基础列定义，不使用插槽 -->
-    <TaskListColumn prop="name" label="任务名称" width="300" />
+    <!-- Basic column definition without slots -->
+    <TaskListColumn prop="name" label="Task Name" width="300" />
     
-    <!-- 使用 header 插槽自定义列表头 -->
+    <!-- Custom column header using header slot -->
     <TaskListColumn prop="assignee" width="150" align="center">
       <template #header>
         <div style="display: flex; align-items: center; gap: 4px; color: #409eff;">
           <span>👤</span>
-          <span>负责人</span>
+          <span>Assignee</span>
         </div>
       </template>
     </TaskListColumn>
     
-    <!-- 使用 default 插槽自定义单元格内容 -->
-    <TaskListColumn prop="progress" label="进度" width="150" align="center">
+    <!-- Custom cell content using default slot -->
+    <TaskListColumn prop="progress" label="Progress" width="150" align="center">
       <template #default="scope">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div 
@@ -3306,10 +3313,10 @@ const handleSetDependency = (task: Task) => {
       </template>
     </TaskListColumn>
     
-    <!-- 同时使用 header 和 default 插槽 -->
+    <!-- Using both header and default slots -->
     <TaskListColumn prop="startDate" width="160">
       <template #header>
-        <div style="color: #67c23a; font-weight: bold;">📅 开始日期</div>
+        <div style="color: #67c23a; font-weight: bold;">📅 Start Date</div>
       </template>
       <template #default="scope">
         <div style="display: flex; align-items: center; gap: 4px;">
@@ -3319,8 +3326,8 @@ const handleSetDependency = (task: Task) => {
       </template>
     </TaskListColumn>
     
-    <!-- 根据数据动态渲染样式 -->
-    <TaskListColumn prop="status" label="状态" width="120" align="center">
+    <!-- Dynamic styling based on data -->
+    <TaskListColumn prop="status" label="Status" width="120" align="center">
       <template #default="scope">
         <span 
           :style="{
@@ -3332,7 +3339,7 @@ const handleSetDependency = (task: Task) => {
                        scope.row.progress > 0 ? '#409eff' : '#909399'
           }"
         >
-          {{ scope.row.progress >= 100 ? '已完成' : scope.row.progress > 0 ? '进行中' : '未开始' }}
+          {{ scope.row.progress >= 100 ? 'Completed' : scope.row.progress > 0 ? 'In Progress' : 'Not Started' }}
         </span>
       </template>
     </TaskListColumn>
@@ -3348,24 +3355,24 @@ import type { Task } from 'jordium-gantt-vue3'
 const tasks = ref<Task[]>([
   {
     id: 1,
-    name: '项目规划',
-    assignee: '张三',
+    name: 'Project Planning',
+    assignee: 'John',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
   },
   {
     id: 2,
-    name: '需求分析',
-    assignee: '李四',
+    name: 'Requirements Analysis',
+    assignee: 'Jane',
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 60,
   },
   {
     id: 3,
-    name: '开发实施',
-    assignee: '王五',
+    name: 'Development',
+    assignee: 'Bob',
     startDate: '2025-01-21',
     endDate: '2025-02-10',
     progress: 0,
@@ -3374,37 +3381,37 @@ const tasks = ref<Task[]>([
 </script>
 ```
 
-> **💡 使用场景**：
+> **💡 Usage Scenarios**:
 >
-> - 自定义列表头图标、样式或排序按钮
-> - 显示进度条、状态标签等可视化组件
-> - 根据任务数据动态调整样式和内容
-> - 添加操作按钮（编辑、删除等）
-> - 集成第三方UI组件（如评分、标签选择器等）
+> - Custom column header icons, styles, or sorting buttons
+> - Display visual components like progress bars, status badges
+> - Dynamically adjust styles and content based on task data
+> - Add action buttons (edit, delete, etc.)
+> - Integrate third-party UI components (ratings, tag selectors, etc.)
 
-> **⚠️ 注意事项**：
+> **⚠️ Notes**:
 >
-> - 插槽必须在 `task-list-column-render-mode="declarative"` 模式下使用
-> - `default` 插槽接收 `scope` 参数，通过 `scope.row` 访问当前任务对象（Task类型），通过 `scope.$index` 访问索引
-> - 推荐使用 `scope.row` 而不是解构 `{ row }`，以保持代码的清晰性和一致性
-> - `scope.$index` 为当前任务在可见列表中的索引（非全局索引）
-> - 插槽内容会在每个任务行中渲染，避免过于复杂的组件以保证性能
-> - 列宽固定后，插槽内容应考虑溢出处理（如文本省略、自动换行等）
+> - Slots must be used in `task-list-column-render-mode="declarative"` mode
+> - The `default` slot receives a `scope` parameter, access current task object via `scope.row` (Task type), access index via `scope.$index`
+> - Recommended to use `scope.row` instead of destructuring `{ row }` for code clarity and consistency
+> - `scope.$index` is the index of the current task in the visible list (not global index)
+> - Slot content is rendered in each task row, avoid overly complex components for performance
+> - When column width is fixed, slot content should consider overflow handling (text ellipsis, auto-wrap, etc.)
 
-##### TaskListColumnConfig 列插槽（即将废弃）
+##### TaskListColumnConfig Column Slots (Deprecated Soon)
 
-> **⚠️ 重要提示**：此插槽方式基于 `TaskListColumnConfig` 配置，**即将废弃**。强烈建议使用上述 [TaskListColumn 插槽](#tasklistcolumn-插槽) 的声明式方式，以获得更好的类型提示和代码可维护性。
+> **⚠️ Important Notice**: This slot approach based on `TaskListColumnConfig` configuration is **deprecated and will be removed soon**. Strongly recommend using the declarative approach with [TaskListColumn Slots](#tasklistcolumn-slots) above for better type hints and code maintainability.
 
-在默认模式（`taskListColumnRenderMode="default"`）下，可以通过插槽自定义 `TaskListColumnConfig` 中定义的列。插槽名称基于列配置中的 `key` 属性。
+In default mode (`taskListColumnRenderMode="default"`), you can customize columns defined in `TaskListColumnConfig` via slots. Slot names are based on the `key` property in column configuration.
 
-**插槽列表：**
+**Slot List:**
 
-| 插槽名模式      | 参数                                           | 说明                                                                                           |
-| --------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `header-{key}`  | -                                              | 自定义指定列的表头内容。`{key}` 为 `TaskListColumnConfig` 中定义的 `key` 值                    |
-| `column-{key}`  | `{ task: Task, column: TaskListColumnConfig, value: any }` | 自定义指定列的单元格内容。`task` 为当前任务对象，`column` 为列配置，`value` 为该列的值         |
+| Slot Pattern    | Parameters                                     | Description                                                                                           |
+| --------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `header-{key}`  | -                                              | Custom header content for specified column. `{key}` is the `key` value defined in `TaskListColumnConfig` |
+| `column-{key}`  | `{ task: Task, column: TaskListColumnConfig, value: any }` | Custom cell content for specified column. `task` is current task object, `column` is column config, `value` is the column's value |
 
-**使用示例：**
+**Usage Example:**
 
 ```vue
 <template>
@@ -3413,15 +3420,15 @@ const tasks = ref<Task[]>([
     :task-list-config="taskListConfig"
     task-list-column-render-mode="default"
   >
-    <!-- 自定义 'name' 列的表头 -->
+    <!-- Custom 'name' column header -->
     <template #header-name>
       <div style="display: flex; align-items: center; gap: 6px;">
         <img src="/avatar.png" width="32" height="32" style="border-radius: 50%;" />
-        <strong style="font-size: 14px;">任务名称</strong>
+        <strong style="font-size: 14px;">Task Name</strong>
       </div>
     </template>
     
-    <!-- 自定义 'name' 列的单元格内容 -->
+    <!-- Custom 'name' column cell content -->
     <template #column-name="{ task, column, value }">
       <div style="display: flex; align-items: center; gap: 6px;">
         <img src="/user-avatar.png" width="20" height="20" style="border-radius: 50%;" />
@@ -3442,7 +3449,7 @@ const tasks = ref<Task[]>([
       </div>
     </template>
     
-    <!-- 自定义其他列，例如自定义字段 'custom' -->
+    <!-- Custom other columns, e.g., custom field 'custom' -->
     <template #column-custom="{ task, column, value }">
       <div style="display: flex; align-items: center; gap: 4px;">
         <span
@@ -3486,65 +3493,65 @@ import type { Task, TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-v
 const tasks = ref<Task[]>([
   {
     id: 1,
-    name: '项目规划',
+    name: 'Project Planning',
     startDate: '2025-01-01',
     endDate: '2025-01-10',
     progress: 100,
     priority: 1,
-    custom: 50000, // 自定义字段
+    custom: 50000, // Custom field
   },
   {
     id: 2,
-    name: '需求分析',
+    name: 'Requirements Analysis',
     startDate: '2025-01-11',
     endDate: '2025-01-20',
     progress: 60,
-    custom: '重要', // 自定义字段
+    custom: 'Important', // Custom field
   },
 ])
 
-// 定义列配置
+// Define column configuration
 const taskListConfig = ref<TaskListConfig>({
   columns: [
-    { key: 'taskName', label: '任务名称', visible: true, width: 300 },
-    { key: 'assignee', label: '负责人', visible: true, width: 150 },
-    { key: 'progress', label: '进度', visible: true, width: 100 },
-    { key: 'custom', label: '自定义', visible: true, width: 150 }, // 自定义列
+    { key: 'taskName', label: 'Task Name', visible: true, width: 300 },
+    { key: 'assignee', label: 'Assignee', visible: true, width: 150 },
+    { key: 'progress', label: 'Progress', visible: true, width: 100 },
+    { key: 'custom', label: 'Custom', visible: true, width: 150 }, // Custom column
   ],
 })
 </script>
 ```
 
-> **💡 使用说明**：
+> **💡 Usage Notes**:
 >
-> - 插槽名称格式：`header-{key}` 和 `column-{key}`，其中 `{key}` 对应 `TaskListColumnConfig.key`
-> - `column-{key}` 插槽接收三个参数：
->   - `task`：当前任务对象（Task类型）
->   - `column`：当前列配置对象（TaskListColumnConfig类型）
->   - `value`：当前单元格的值（自动从 `task[column.key]` 获取）
-> - 可以混合使用插槽和默认渲染，只为需要自定义的列定义插槽
+> - Slot name format: `header-{key}` and `column-{key}`, where `{key}` corresponds to `TaskListColumnConfig.key`
+> - `column-{key}` slot receives three parameters:
+>   - `task`: Current task object (Task type)
+>   - `column`: Current column configuration object (TaskListColumnConfig type)
+>   - `value`: Current cell value (automatically obtained from `task[column.key]`)
+> - You can mix slots and default rendering, only define slots for columns that need customization
 
-> **⚠️ 迁移建议**：
+> **⚠️ Migration Recommendation**:
 >
-> - **强烈建议迁移到声明式模式**：使用 `task-list-column-render-mode="declarative"` 和 `TaskListColumn` 组件
-> - 声明式模式提供更好的类型提示、代码组织和可维护性
-> - 此配置式插槽方式将在未来版本中移除，请尽快迁移
-> - 迁移示例请参考 [TaskListColumn 插槽](#tasklistcolumn-插槽) 章节
+> - **Strongly recommend migrating to declarative mode**: Use `task-list-column-render-mode="declarative"` with `TaskListColumn` component
+> - Declarative mode provides better type hints, code organization, and maintainability
+> - This configuration-based slot approach will be removed in future versions, please migrate soon
+> - For migration examples, see [TaskListColumn Slots](#tasklistcolumn-slots) section
 
 ---
 
-## ❓ 常见问题
+## ❓ FAQ
 
-### 如何集成到现有项目？
+### How to integrate into existing project?
 
-1. 安装依赖
-2. 引入组件和样式
-3. 传入数据
-4. 监听事件处理业务逻辑
+1. Install dependencies
+2. Import component and styles
+3. Pass in data
+4. Listen to events and handle business logic
 
-详见 [快速开始](#-快速开始) 章节。
+See [Contributing Guide](CONTRIBUTING.md) for details.
 
-### 支持哪些浏览器？
+### Which browsers are supported?
 
 - Chrome >= 90
 - Firefox >= 88
@@ -3553,157 +3560,161 @@ const taskListConfig = ref<TaskListConfig>({
 
 ---
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 jordium-gantt-vue3/
-├── src/                           # 源代码
-│   ├── components/                # Vue 组件
-│   │   ├── GanttChart.vue         # 甘特图主组件
-│   │   ├── GanttToolbar.vue       # 工具栏组件
-│   │   ├── Timeline.vue           # 时间轴组件
-│   │   ├── TaskBar.vue            # 任务条组件
-│   │   ├── TaskRow.vue            # 任务行组件
-│   │   ├── TaskDrawer.vue         # 任务编辑抽屉
-│   │   ├── MilestonePoint.vue     # 里程碑点组件
-│   │   ├── MilestoneDialog.vue    # 里程碑编辑对话框
-│   │   ├── TaskContextMenu.vue    # 右键菜单组件
-│   │   ├── TaskList/              # 任务列表模块（模块化重构）
-│   │   │   ├── TaskList.vue       # 任务列表主组件
-│   │   │   ├── TaskListColumn.vue # 声明式列组件
-│   │   │   ├── index.ts           # 模块导出
-│   │   │   └── composables/       # 任务列表相关组合式函数
-│   │   │       ├── useTaskListLayout.ts          # 虚拟滚动和布局计算
-│   │   │       ├── useTaskListColumns.ts         # 列配置管理
-│   │   │       ├── useTaskListResize.ts          # 容器尺寸管理
-│   │   │       ├── useTaskListEventHandlers.ts   # 事件处理逻辑
-│   │   │       └── useTaskParentCalculation.ts   # 父任务数据计算
-│   │   └── index.ts               # 组件统一导出
-│   ├── models/                    # 数据模型
-│   │   ├── classes/               # 类定义
-│   │   │   ├── Task.ts            # 任务类
-│   │   │   ├── Milestone.ts       # 里程碑类
-│   │   │   └── Language.ts        # 语言配置类
-│   │   ├── configs/               # 配置接口
-│   │   │   ├── TaskListConfig.ts  # 任务列表配置
-│   │   │   ├── TaskBarConfig.ts   # 任务条配置
-│   │   │   ├── TimelineConfig.ts  # 时间轴配置
-│   │   │   └── ToolbarConfig.ts   # 工具栏配置
-│   │   └── types/                 # 类型定义
-│   │       ├── TimelineDataTypes.ts # 时间轴数据类型
-│   │       ├── TimelineScale.ts   # 时间刻度类型
-│   │       └── TimelineCompat.ts  # 兼容性类型
-│   ├── composables/               # 全局组合式函数
-│   │   ├── useI18n.ts             # 国际化
-│   │   ├── useMessage.ts          # 消息提示
-│   │   ├── useTaskRowDrag.ts      # 任务行拖拽
-│   │   └── useTaskListColumns.ts  # 列配置（已迁移至 TaskList/composables）
-│   ├── styles/                    # 样式文件
-│   │   ├── app.css                # 主样式
-│   │   ├── list.css               # 列表样式
-│   │   ├── theme-variables.css    # 主题变量
-│   │   └── index.ts               # 样式导出
-│   ├── utils/                     # 工具函数
-│   │   ├── canvasUtils.ts         # Canvas 工具
-│   │   ├── perfMonitor.ts         # 性能监控
-│   │   ├── predecessorUtils.ts    # 前置任务工具
-│   │   └── taskTreeUtils.ts       # 任务树工具
-│   └── index.ts                   # 主入口文件
-├── demo/                          # 在线演示代码
-│   ├── App.vue                    # 演示应用
-│   ├── data.json                  # 示例数据
-│   ├── locales/                   # 多语言文件
+├── src/                           # Source code
+│   ├── components/                # Vue components
+│   │   ├── GanttChart.vue         # Main Gantt chart component
+│   │   ├── GanttToolbar.vue       # Toolbar component
+│   │   ├── Timeline.vue           # Timeline component
+│   │   ├── TaskBar.vue            # Task bar component
+│   │   ├── TaskRow.vue            # Task row component
+│   │   ├── TaskDrawer.vue         # Task editing drawer
+│   │   ├── MilestonePoint.vue     # Milestone point component
+│   │   ├── MilestoneDialog.vue    # Milestone editing dialog
+│   │   ├── TaskContextMenu.vue    # Context menu component
+│   │   ├── TaskList/              # Task list module (modular refactoring)
+│   │   │   ├── TaskList.vue       # Task list main component
+│   │   │   ├── TaskListColumn.vue # Declarative column component
+│   │   │   ├── index.ts           # Module exports
+│   │   │   └── composables/       # Task list related composables
+│   │   │       ├── useTaskListLayout.ts          # Virtual scrolling and layout calculation
+│   │   │       ├── useTaskListColumns.ts         # Column configuration management
+│   │   │       ├── useTaskListResize.ts          # Container size management
+│   │   │       ├── useTaskListEventHandlers.ts   # Event handling logic
+│   │   │       └── useTaskParentCalculation.ts   # Parent task data calculation
+│   │   └── index.ts               # Unified component exports
+│   ├── models/                    # Data models
+│   │   ├── classes/               # Class definitions
+│   │   │   ├── Task.ts            # Task class
+│   │   │   ├── Milestone.ts       # Milestone class
+│   │   │   └── Language.ts        # Language configuration class
+│   │   ├── configs/               # Configuration interfaces
+│   │   │   ├── TaskListConfig.ts  # Task list configuration
+│   │   │   ├── TaskBarConfig.ts   # Task bar configuration
+│   │   │   ├── TimelineConfig.ts  # Timeline configuration
+│   │   │   └── ToolbarConfig.ts   # Toolbar configuration
+│   │   └── types/                 # Type definitions
+│   │       ├── TimelineDataTypes.ts # Timeline data types
+│   │       ├── TimelineScale.ts   # Timeline scale types
+│   │       └── TimelineCompat.ts  # Compatibility types
+│   ├── composables/               # Global composables
+│   │   ├── useI18n.ts             # Internationalization
+│   │   ├── useMessage.ts          # Message notifications
+│   │   ├── useTaskRowDrag.ts      # Task row dragging
+│   │   └── useTaskListColumns.ts  # Column configuration (migrated to TaskList/composables)
+│   ├── styles/                    # Style files
+│   │   ├── app.css                # Main styles
+│   │   ├── list.css               # List styles
+│   │   ├── theme-variables.css    # Theme variables
+│   │   └── index.ts               # Style exports
+│   ├── utils/                     # Utility functions
+│   │   ├── canvasUtils.ts         # Canvas utilities
+│   │   ├── perfMonitor.ts         # Performance monitoring
+│   │   ├── predecessorUtils.ts    # Predecessor task utilities
+│   │   └── taskTreeUtils.ts       # Task tree utilities
+│   └── index.ts                   # Main entry file
+├── demo/                          # Online demo code
+│   ├── App.vue                    # Demo application
+│   ├── data.json                  # Sample data
+│   ├── locales/                   # Locale files
 │   └── ...
-├── docs/                          # 文档
-│   └── TaskList-重构测试清单.md   # 重构文档
-├── npm-demo/                      # NPM 包使用示例
-├── npm-webpack-demo/              # Webpack 集成示例
-├── public/                        # 公共资源
-│   └── assets/                    # 静态资源
-└── package.json                   # 项目配置
+├── docs/                          # Documentation
+│   └── TaskList-重构测试清单.md   # Refactoring documentation
+├── npm-demo/                      # NPM package usage example
+├── npm-webpack-demo/              # Webpack integration example
+├── public/                        # Public assets
+│   └── assets/                    # Static resources
+└── package.json                   # Project configuration
 ```
 
-### 模块化设计亮点
+### Modular Design Highlights
 
-#### TaskList 模块化重构
+#### TaskList Modular Refactoring
 
-TaskList 组件经过深度重构，采用模块化设计，提升了代码可维护性：
+The TaskList component has been deeply refactored with a modular design, improving code maintainability:
 
-**重构成果：**
-- 主组件从 686 行精简至 361 行（-47%）
-- 逻辑按职责分离到 5 个专门的 composables
-- 每个模块职责单一，便于测试和维护
+**Refactoring Results:**
+- Main component reduced from 686 lines to 361 lines (-47%)
+- Logic separated into 5 specialized composables by responsibility
+- Each module has a single responsibility, easy to test and maintain
 
-**Composables 职责划分：**
-- `useTaskListLayout` - 虚拟滚动和布局计算
-- `useTaskListColumns` - 列配置管理和样式计算
-- `useTaskListResize` - 容器尺寸监听和 ResizeObserver 管理
-- `useTaskListEventHandlers` - 全局事件处理和滚动同步
-- `useTaskParentCalculation` - 父任务数据计算和任务树遍历
+**Composables Responsibility Division:**
+- `useTaskListLayout` - Virtual scrolling and layout calculation
+- `useTaskListColumns` - Column configuration management and style calculation
+- `useTaskListResize` - Container size monitoring and ResizeObserver management
+- `useTaskListEventHandlers` - Global event handling and scroll synchronization
+- `useTaskParentCalculation` - Parent task data calculation and task tree traversal
 
 ---
 
-## 🔗 相关链接
+## 🔗 Related Links
 
-- **在线演示**: [https://nelson820125.github.io/jordium-gantt-vue3/](https://nelson820125.github.io/jordium-gantt-vue3/)
+- **Live Demo**: [https://nelson820125.github.io/jordium-gantt-vue3/](https://nelson820125.github.io/jordium-gantt-vue3/)
 - **GitHub**: [https://github.com/nelson820125/jordium-gantt-vue3](https://github.com/nelson820125/jordium-gantt-vue3)
 - **npm**: [https://www.npmjs.com/package/jordium-gantt-vue3](https://www.npmjs.com/package/jordium-gantt-vue3)
-- **更新日志**: [CHANGELOG.md](./CHANGELOG.md)
-- **贡献指南**: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- **Changelog**: [CHANGELOG.md](./CHANGELOG.md)
+- **Contributing Guide**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Welcome to submit Issues and Pull Requests!
 
-详细的贡献指南请查看 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+For detailed contributing guide, please see [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-### 贡献者
+### Contributors
 
-感谢所有为本项目做出贡献的开发者！
+Thanks to all developers who contributed to this project！
 
-查看完整的 [贡献者名单](./CONTRIBUTORS.md)。
+View the complete [Contributors list](./CONTRIBUTORS.md)。
 
 ---
 
 ## � Troubleshooting
 
-常见问题与解决方案请参阅 [Troubleshooting.md](./Troubleshooting.md)。
+For common issues and solutions, please refer to [Troubleshooting-EN.md](./Troubleshooting-EN.md).
 
 ---
 
-## �📄 开源协议
+## �📄 Open Source License
 
 [MIT License](./LICENSE) © 2025 JORDIUM.COM
 
 ---
 
-## ❤️ 赞助支持
+## ❤️ Sponsor & Support
 
-请作者喝杯咖啡☕，作者更有动力持续维护！
+Buy the author a coffee ☕ — it keeps the motivation going and the project moving forward!
 
 <p align="center">
-  <a href="https://afdian.com/a/nelsonli" target="_blank">
-    <img src="https://img.shields.io/badge/爱发电-赞助作者-946ce6?style=for-the-badge&logo=buymeacoffee&logoColor=white" alt="爱发电赞助" />
+  <a href="https://ko-fi.com/nelsonli" target="_blank">
+    <img src="https://img.shields.io/badge/Ko--fi-Sponsor-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi" />
   </a>
   &nbsp;
-  <a href="https://ko-fi.com/nelsonli" target="_blank">
-    <img src="https://img.shields.io/badge/Ko--fi-赞助-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi" />
+  <a href="https://afdian.com/a/nelsonli" target="_blank">
+    <img src="https://img.shields.io/badge/Afdian-Sponsor-946ce6?style=for-the-badge&logo=buymeacoffee&logoColor=white" alt="Afdian" />
   </a>
 </p>
 
+<details>
+<summary>☕ Scan to donate via WeChat Pay / Alipay (click to expand)</summary>
+<br>
 <p align="center">
-  <img src="public/assets/wechat-pay.png" width="180" alt="微信赞助" />
+  <img src="public/assets/wechat-pay.png" width="160" alt="WeChat Pay" />
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="public/assets/alipay.jpg" width="180" alt="支付宝赞助" />
+  <img src="public/assets/alipay.jpg" width="160" alt="Alipay" />
 </p>
-<p align="center"><sub>微信 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;支付宝</sub></p>
+<p align="center"><sub>WeChat Pay &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Alipay</sub></p>
+</details>
 
-> 🙏 也可以直接给项目点个 **⭐ Star**，对开源作者来说同样是很大的鼓励！
+> 🙏 A **⭐ Star** on GitHub is also a wonderful way to show support — it helps others discover this project!
 
 ---
 
 <p align="center">
-  如果这个项目对你有帮助，请给一个 ⭐️ 支持一下！
+  If this project helps you, please give it a ⭐️ to support it!
 </p>
