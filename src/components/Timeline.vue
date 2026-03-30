@@ -6209,7 +6209,7 @@ const handleAddSuccessor = (task: Task) => {
       <!-- 默认内容：保留原有文字气泡样式 -->
       <template v-else>
         <div class="milestone-sticky-tooltip-content">
-          {{ milestoneTooltipState.milestone?.name }} &ndash; {{ formatTooltipDate(milestoneTooltipState.milestone?.startDate) + 1111111111}}"
+          {{ milestoneTooltipState.milestone?.name }} &ndash; {{ formatTooltipDate(milestoneTooltipState.milestone?.startDate) }}"
         </div>
       </template>
       <!-- 箭头：仅绑定动态的 top 坐标，其余方向和配色均由 CSS 类控制 -->
