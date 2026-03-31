@@ -516,22 +516,35 @@ const taskBarStyle = computed(() => {
   // v1.9.0 资源视图拖拽时，优先使用精确的像素位置
   if (viewMode.value === 'resource' && tempTaskPixelLeft.value !== null) {
     left = tempTaskPixelLeft.value
-    // 计算宽度（基于日期）
-    const startDate = createLocalDate(currentStartDate)
-    const endDate = createLocalDate(currentEndDate)
-    if (startDate && endDate) {
-      const startDateOnly = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate()
-      )
-      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-      const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
-      const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
-      const duration = daysDiff === 0 ? 1 : daysDiff + 1
-      width = duration * props.dayWidth
+    if (props.currentTimeScale === TimelineScale.HOUR) {
+      // 小时视图：宽度按分钟精度计算，与拖拽时的日期换算保持一致
+      const startDate = createLocalDate(currentStartDate)
+      const endDate = createLocalDate(currentEndDate)
+      if (startDate && endDate) {
+        const durationMinutes = getMinutesDiff(startDate, endDate)
+        const pixelPerMinute = 40 / 60
+        width = Math.max(4, durationMinutes * pixelPerMinute)
+      } else {
+        width = 40 // 默认1小时宽度
+      }
     } else {
-      width = props.dayWidth // 默认宽度
+      // 非小时视图：计算宽度（基于日期）
+      const startDate = createLocalDate(currentStartDate)
+      const endDate = createLocalDate(currentEndDate)
+      if (startDate && endDate) {
+        const startDateOnly = new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate()
+        )
+        const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+        const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
+        const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
+        const duration = daysDiff === 0 ? 1 : daysDiff + 1
+        width = duration * props.dayWidth
+      } else {
+        width = props.dayWidth // 默认宽度
+      }
     }
   } else if (props.currentTimeScale === TimelineScale.HOUR) {
     // 小时视图：按分钟精确计算位置（需要考虑时间部分）
@@ -1449,52 +1462,96 @@ const handleMouseMove = (e: MouseEvent) => {
         // 计算相对于timeline body的位置
         const relativeX = taskBarNewLeft - bodyRect.left + scrollLeft
 
-        // 保存精确的像素位置，避免通过日期往返计算导致的精度损失
-        tempTaskPixelLeft.value = relativeX
+        if (props.currentTimeScale === TimelineScale.HOUR) {
+          // 小时视图：15分钟步进
+          // 使用 dragStartLeft + deltaX（与任务视图一致），避免 dragPreviewOffsetX 依赖
+          // stale DOM 导致拉伸后再拖拽产生大范围跳移的问题
+          const pixelPerMinute = 40 / 60
+          const pixelPer15Minutes = pixelPerMinute * 15
+          const snappedLeft =
+            Math.round(Math.max(0, dragStartLeft.value + deltaX) / pixelPer15Minutes) *
+            pixelPer15Minutes
+          // 保存对齐后的像素位置（供 taskBarStyle 使用）
+          tempTaskPixelLeft.value = snappedLeft
 
-        // 使用与任务视图相同的日期计算算法
-        let newStartDate: Date | null = null
+          const newStartMinutes = Math.round(snappedLeft / pixelPerMinute)
+          const baseStartOfDay = new Date(props.startDate)
+          baseStartOfDay.setHours(0, 0, 0, 0)
+          const newStartDate = addMinutesToDate(baseStartOfDay, newStartMinutes)
 
-        if (
-          props.timelineData &&
-          (props.currentTimeScale === TimelineScale.DAY ||
-            props.currentTimeScale === TimelineScale.MONTH ||
-            props.currentTimeScale === TimelineScale.QUARTER ||
-            props.currentTimeScale === TimelineScale.YEAR)
-        ) {
-          // 有timelineData时，使用精确的日期计算
-          newStartDate = calculateDateFromPosition(
-            relativeX,
-            props.timelineData,
-            props.currentTimeScale
-          )
-        }
+          // 保持原始任务时长（分钟精度，避免按天取整拉伸任务）
+          const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+          const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+          let originalDurationMinutes: number
+          // 只要 startDate 或 endDate 任一含时间部分（如拉伸后只有 endDate 带时间），就使用分钟精度
+          const hasTimeComponent =
+            (props.task.startDate && props.task.startDate.includes(' ')) ||
+            (props.task.endDate && props.task.endDate.includes(' '))
+          if (!hasTimeComponent) {
+            const timeDiffMs = originalEndDate.getTime() - originalStartDate.getTime()
+            const daysDiff = Math.max(1, Math.round(timeDiffMs / (1000 * 60 * 60 * 24)) + 1)
+            originalDurationMinutes = daysDiff * 24 * 60
+          } else {
+            originalDurationMinutes = getMinutesDiff(originalStartDate, originalEndDate)
+          }
+          const newEndDate = addMinutesToDate(newStartDate, originalDurationMinutes)
 
-        if (!newStartDate) {
-          // 没有timelineData或计算失败，使用简单算法
-          newStartDate = addDaysToLocalDate(props.startDate, relativeX / props.dayWidth)
-        }
+          dragTooltipContent.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: formatDateToLocalString(newEndDate),
+          }
+          tempTaskData.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: formatDateToLocalString(newEndDate),
+          }
+        } else {
+          // 非小时视图：保存精确像素位置，按天计算日期
+          tempTaskPixelLeft.value = relativeX
 
-        // 计算任务持续时间（天数）
-        const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
-        const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
-        const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
-        const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+          // 使用与任务视图相同的日期计算算法
+          let newStartDate: Date | null = null
 
-        // 计算新的结束日期
-        const newEndDate = new Date(newStartDate)
-        newEndDate.setDate(newEndDate.getDate() + Math.max(0, duration))
+          if (
+            props.timelineData &&
+            (props.currentTimeScale === TimelineScale.DAY ||
+              props.currentTimeScale === TimelineScale.MONTH ||
+              props.currentTimeScale === TimelineScale.QUARTER ||
+              props.currentTimeScale === TimelineScale.YEAR)
+          ) {
+            // 有timelineData时，使用精确的日期计算
+            newStartDate = calculateDateFromPosition(
+              relativeX,
+              props.timelineData,
+              props.currentTimeScale
+            )
+          }
 
-        // 更新拖拽提示框内容
-        dragTooltipContent.value = {
-          startDate: formatDateToLocalString(newStartDate),
-          endDate: formatDateToLocalString(newEndDate),
-        }
+          if (!newStartDate) {
+            // 没有timelineData或计算失败，使用简单算法
+            newStartDate = addDaysToLocalDate(props.startDate, relativeX / props.dayWidth)
+          }
 
-        // v1.9.0 更新tempTaskData，让TaskBar有视觉移动效果（同行和跨行都需要）
-        tempTaskData.value = {
-          startDate: formatDateToLocalString(newStartDate),
-          endDate: formatDateToLocalString(newEndDate),
+          // 计算任务持续时间（天数）
+          const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+          const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
+          const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
+          const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+
+          // 计算新的结束日期
+          const newEndDate = new Date(newStartDate)
+          newEndDate.setDate(newEndDate.getDate() + Math.max(0, duration))
+
+          // 更新拖拽提示框内容
+          dragTooltipContent.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: formatDateToLocalString(newEndDate),
+          }
+
+          // v1.9.0 更新tempTaskData，让TaskBar有视觉移动效果（同行和跨行都需要）
+          tempTaskData.value = {
+            startDate: formatDateToLocalString(newStartDate),
+            endDate: formatDateToLocalString(newEndDate),
+          }
         }
       }
       // 资源视图直接返回，不执行后续的任务视图逻辑
@@ -1521,15 +1578,18 @@ const handleMouseMove = (e: MouseEvent) => {
       const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
       const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
 
-      // 如果原始任务是日期格式，转换为当天的时间范围
+      // 只要 startDate 或 endDate 任一含时间部分（如拉伸后只有 endDate 带时间），就使用分钟精度
       let originalDurationMinutes: number
-      if (props.task.startDate && !props.task.startDate.includes(' ')) {
-        // 纯日期格式，默认按天计算（一天 = 1440 分钟）
+      const hasTimeComponent =
+        (props.task.startDate && props.task.startDate.includes(' ')) ||
+        (props.task.endDate && props.task.endDate.includes(' '))
+      if (!hasTimeComponent) {
+        // 纯日期格式，按天计算时长
         const timeDiffMs = originalEndDate.getTime() - originalStartDate.getTime()
         const daysDiff = Math.max(1, Math.round(timeDiffMs / (1000 * 60 * 60 * 24)) + 1)
-        originalDurationMinutes = daysDiff * 24 * 60 // 天数转分钟
+        originalDurationMinutes = daysDiff * 24 * 60
       } else {
-        // 包含时间格式，按实际时间差计算
+        // startDate 或 endDate 含时间，按实际分钟差计算
         originalDurationMinutes = getMinutesDiff(originalStartDate, originalEndDate)
       }
 

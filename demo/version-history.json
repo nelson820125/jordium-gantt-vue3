@@ -653,5 +653,17 @@
       "🔧 Optimized: Optimized internal interfaces",
       "🔧 Fixed: Upgraded vulnerabilities in third-party packages, jspdf & flatted"
     ]
+  },
+  {
+    "version": "1.10.4",
+    "date": "2026-03-31",
+    "notes": [
+      "🔧 修复：删除里程碑tooltip中的'11111111111'信息",
+      "🔧 修复：修复小时视图下，Taskbar拖拽精度计算问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自matthias-muehlich@github和mmwwsh@gitee的使用与反馈</span>",
+      "🔧 Fixed: Removed '11111111111' information from milestone tooltip",
+      "🔧 Fixed: Fixed Taskbar drag precision calculation issue in hourly view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to matthias-muehlich@github and mmwwsh@gitee for their use and feedback</span>"
+    ]
   }
 ]
