@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Enhancement
 - 🔧 修复：删除里程碑tooltip中的'11111111111'信息
 - 🔧 修复：修复小时视图下，Taskbar拖拽精度计算问题
+- 🔧 修复：三方包弱点升级
 - 🔧 Fixed: Removed '11111111111' information from milestone tooltip
 - 🔧 Fixed: Fixed Taskbar drag precision calculation issue in hourly view
+- 🔧 Fixed: Upgraded vulnerabilities in third-party packages
 
 ## [1.10.3] - 2026-03-24
 
