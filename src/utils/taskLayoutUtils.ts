@@ -5,12 +5,16 @@ import type { Task } from '../models/classes/Task'
  * 用于处理资源视图下的任务换行布局
  */
 
+// 15分钟毫秒数（小时视图精度单位）
+const FIFTEEN_MINUTES_MS = 15 * 60 * 1000
+
 /**
  * 检测两个任务是否存在时间交集
  * 注意：endDate包含当天，所以 task1(2025-01-28~2025-01-29) 和 task2(2025-01-29~2025-01-30)
  * 在 2025-01-29 这天是重叠的，应该换行显示
+ * @param timeScale 当前时间刻度，小时视图('hour')下使用15分钟精度判断
  */
-export function hasTimeOverlap(task1: Task, task2: Task): boolean {
+export function hasTimeOverlap(task1: Task, task2: Task, timeScale?: string): boolean {
   // 获取任务的开始和结束日期（时间戳）
   const start1 = task1.startDate ? new Date(task1.startDate).getTime() : null
   const end1 = task1.endDate ? new Date(task1.endDate).getTime() : null
@@ -22,7 +26,16 @@ export function hasTimeOverlap(task1: Task, task2: Task): boolean {
     return false
   }
 
-  // endDate包含当天，需要+1天来判断交集
+  if (timeScale === 'hour') {
+    // 小时视图：按15分钟粒度取整后做精确区间判断，避免+1天偏移导致同天不重叠任务被错误分行
+    const s1 = Math.floor(start1 / FIFTEEN_MINUTES_MS) * FIFTEEN_MINUTES_MS
+    const e1 = Math.ceil(end1 / FIFTEEN_MINUTES_MS) * FIFTEEN_MINUTES_MS
+    const s2 = Math.floor(start2 / FIFTEEN_MINUTES_MS) * FIFTEEN_MINUTES_MS
+    const e2 = Math.ceil(end2 / FIFTEEN_MINUTES_MS) * FIFTEEN_MINUTES_MS
+    return e1 > s2 && e2 > s1
+  }
+
+  // 日/周/月/季度/年视图：endDate包含当天，需要+1天来判断交集
   // 例如：task1结束于2025-01-29，task2开始于2025-01-29
   // end1Plus = 2025-01-30，start2 = 2025-01-29
   // 判断：end1Plus(2025-01-30) > start2(2025-01-29) 为true，所以它们重叠
@@ -44,6 +57,7 @@ export function hasTimeOverlap(task1: Task, task2: Task): boolean {
 export function assignTaskRows(
   tasks: Task[],
   baseRowHeight = 51,
+  timeScale?: string
 ): {
   taskRowMap: Map<string | number, number>
   rowHeights: number[]
@@ -76,7 +90,7 @@ export function assignTaskRows(
       // 检查当前任务是否与该行的所有任务都不冲突
       let hasConflict = false
       for (const taskInRow of tasksInRow) {
-        if (hasTimeOverlap(task, taskInRow)) {
+        if (hasTimeOverlap(task, taskInRow, timeScale)) {
           hasConflict = true
           break
         }
@@ -108,9 +122,10 @@ export function assignTaskRows(
     // v1.9.1: 所有TaskBar都是固定41px高度，每行都有底部padding
     // 第一行：padding-top(5px) + TaskBar高度(41px) + padding-bottom(5px) = 51px
     // 后续行：TaskBar高度(41px) + padding-bottom(5px) = 46px
-    const rowHeight = i === 0
-      ? 5 + baseTaskBarHeight + 5  // 第一行：5 + 41 + 5 = 51px
-      : baseTaskBarHeight + 5       // 后续行：41 + 5 = 46px
+    const rowHeight =
+      i === 0
+        ? 5 + baseTaskBarHeight + 5 // 第一行：5 + 41 + 5 = 51px
+        : baseTaskBarHeight + 5 // 后续行：41 + 5 = 46px
 
     rowHeights.push(rowHeight)
   }
@@ -139,9 +154,15 @@ export function calculateMaxRows(tasks: Task[]): number {
 export function calculateResourceTaskLayout(
   tasks: Task[],
   currentResourceId?: string | number,
-  baseRowHeight = 51,
-): Map<string | number, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }> {
-  const resourceLayoutMap = new Map<string | number, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>()
+  baseRowHeight = 51
+): Map<
+  string | number,
+  { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+> {
+  const resourceLayoutMap = new Map<
+    string | number,
+    { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+  >()
 
   if (!currentResourceId) {
     return resourceLayoutMap

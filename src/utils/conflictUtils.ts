@@ -55,13 +55,14 @@ export interface TimeIntersection {
 export function detectConflicts(
   tasks: Task[],
   resourceId: string | number,
+  timeScale?: string
 ): ConflictZone[] {
   // v1.9.10 过滤出包含指定资源的任务
   // 注意：如果任务没有resources字段或为空，视为100%分配给该资源（资源视图中任务必然属于某个资源）
-  const resourceTasks = tasks.filter((task) => {
+  const resourceTasks = tasks.filter(task => {
     // 如果没有resources字段或为空，视为100%分配
     if (!task.resources || task.resources.length === 0) return true
-    return task.resources.some((r) => String(r.id) === String(resourceId))
+    return task.resources.some(r => String(r.id) === String(resourceId))
   })
 
   if (resourceTasks.length < 2) {
@@ -74,10 +75,10 @@ export function detectConflicts(
   // 根据任务数量选择算法
   if (resourceTasks.length > 100) {
     // 使用区间树算法（O(n log n)）
-    result = detectConflictsWithIntervalTree(resourceTasks, resourceId)
+    result = detectConflictsWithIntervalTree(resourceTasks, resourceId, timeScale)
   } else {
     // 使用暴力遍历（O(n²)）
-    result = detectConflictsBruteForce(resourceTasks, resourceId)
+    result = detectConflictsBruteForce(resourceTasks, resourceId, timeScale)
   }
 
   return result
@@ -89,6 +90,7 @@ export function detectConflicts(
 function detectConflictsBruteForce(
   tasks: Task[],
   resourceId: string | number,
+  timeScale?: string
 ): ConflictZone[] {
   const conflictZones: ConflictZone[] = []
   const processedIntervals = new Set<string>() // 用于去重
@@ -100,37 +102,39 @@ function detectConflictsBruteForce(
       const task2 = tasks[j]
 
       // 检查时间是否重叠
-      const intersection = getTimeIntersection(task1, task2)
+      const intersection = getTimeIntersection(task1, task2, timeScale)
       if (!intersection) continue
 
       // 收集该时间段内的所有任务
-      // 🔧 修复：使用本地日期格式，避免toISOString的UTC时区问题
-      const formatLocalDate = (date: Date): string => {
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        return `${year}-${month}-${day}`
+      // 将intersection的Date对象转换为字符串格式传入getTimeIntersection
+      const fmtDate = (d: Date): string => {
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const hour = String(d.getHours()).padStart(2, '0')
+        const min = String(d.getMinutes()).padStart(2, '0')
+        // 小时视图保留时分精度，其他视图只需日期
+        return timeScale === 'hour'
+          ? `${year}-${month}-${day} ${hour}:${min}`
+          : `${year}-${month}-${day}`
       }
-
-      const overlappingTasks = tasks.filter((task) => {
+      const overlappingTasks = tasks.filter(task => {
         const taskIntersection = getTimeIntersection(
-          {
-            startDate: formatLocalDate(intersection.start),
-            endDate: formatLocalDate(intersection.end),
-          } as Task,
+          { startDate: fmtDate(intersection.start), endDate: fmtDate(intersection.end) },
           task,
+          timeScale
         )
         return taskIntersection !== null
       })
 
       // 计算总投入比例
       let totalPercent = 0
-      const taskDetails = overlappingTasks.map((task) => {
+      const taskDetails = overlappingTasks.map(task => {
         // v1.9.10 如果没有resources字段，默认100%；否则查找对应资源的capacity
         // 这确保了资源视图中未明确指定占比的任务被正确计入冲突检测
-        const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
+        const resource = task.resources?.find(r => String(r.id) === String(resourceId))
         const capacity =
-          !task.resources || task.resources.length === 0 ? 100 : (resource?.capacity || 0)
+          !task.resources || task.resources.length === 0 ? 100 : resource?.capacity || 0
         totalPercent += capacity
         return {
           id: task.id!,
@@ -146,14 +150,20 @@ function detectConflictsBruteForce(
 
       // 计算冲突范围：所有参与冲突的任务在intersection范围内的并集
       // 过滤出有资源分配的任务（没有resources字段视为100%分配）
-      const tasksWithResource = overlappingTasks.filter((task) => {
+      const tasksWithResource = overlappingTasks.filter(task => {
         if (!task.resources || task.resources.length === 0) return true
-        const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
+        const resource = task.resources?.find(r => String(r.id) === String(resourceId))
         return resource && resource.capacity && resource.capacity > 0
       })
 
       // v1.9.6 修复：精确计算真正超载的时间段
       // 收集所有任务的时间边界点（开始和结束时间）
+      // 小时视图用分钟精度，其他视图用天精度
+      const DAY_MS = 24 * 60 * 60 * 1000
+      const isHourView = timeScale === 'hour'
+      // 日期边界偏移：日视图 endDate 包含当天所以 +1天；小时视图直接用精确时间
+      const endBoundaryOffset = isHourView ? 0 : DAY_MS
+
       const timePoints = new Set<number>()
       for (const task of tasksWithResource) {
         const taskStart = parseDate(task.startDate)
@@ -163,8 +173,7 @@ function detectConflictsBruteForce(
           const overlapStart = Math.max(taskStart.getTime(), intersection.start.getTime())
           const overlapEnd = Math.min(taskEnd.getTime(), intersection.end.getTime())
           timePoints.add(overlapStart)
-          // endDate是包含当天的，所以需要+1天作为结束边界
-          timePoints.add(overlapEnd + 24 * 60 * 60 * 1000)
+          timePoints.add(overlapEnd + endBoundaryOffset)
         }
       }
 
@@ -184,12 +193,13 @@ function detectConflictsBruteForce(
           const taskEnd = parseDate(task.endDate)
           if (!taskStart || !taskEnd) continue
 
-          // 检查任务是否在这个时间段内活跃（endDate是包含的，所以需要+1天）
-          const taskEndInclusive = taskEnd.getTime() + 24 * 60 * 60 * 1000
+          // 检查任务是否在这个时间段内活跃
+          // 日视图：endDate包含当天，+1天作为不含边界；小时视图：直接用精确时间
+          const taskEndInclusive = taskEnd.getTime() + endBoundaryOffset
           if (taskStart.getTime() <= segmentStart && taskEndInclusive > segmentStart) {
-            const resource = task.resources?.find((r) => String(r.id) === String(resourceId))
+            const resource = task.resources?.find(r => String(r.id) === String(resourceId))
             const capacity =
-              !task.resources || task.resources.length === 0 ? 100 : (resource?.capacity || 0)
+              !task.resources || task.resources.length === 0 ? 100 : resource?.capacity || 0
             segmentPercent += capacity
           }
         }
@@ -212,8 +222,8 @@ function detectConflictsBruteForce(
           realEnd = overloadedIntervals[k].end
         }
       }
-      // realEnd是边界点（下一天的开始），需要-1天得到实际的endDate
-      realEnd = realEnd - 24 * 60 * 60 * 1000
+      // realEnd是边界点。日视图：需要-1天得到实际endDate（包含当天语义）；小时视图：直接使用
+      realEnd = isHourView ? realEnd : realEnd - DAY_MS
 
       // 创建区间标识符用于去重（避免多个任务对产生相同的冲突区间）
       const intervalKey = `${realStart}-${realEnd}`
@@ -280,7 +290,7 @@ function mergeConflictZones(zones: ConflictZone[]): ConflictZone[] {
  */
 function mergeTasks(
   tasks1: ConflictZone['tasks'],
-  tasks2: ConflictZone['tasks'],
+  tasks2: ConflictZone['tasks']
 ): ConflictZone['tasks'] {
   const taskMap = new Map<string | number, ConflictZone['tasks'][0]>()
 
@@ -319,6 +329,7 @@ function mergeTasks(
 export function getTimeIntersection(
   task1: Task | { startDate?: string; endDate?: string },
   task2: Task | { startDate?: string; endDate?: string },
+  timeScale?: string
 ): TimeIntersection | null {
   // 解析日期
   const start1 = parseDate(task1.startDate)
@@ -331,7 +342,17 @@ export function getTimeIntersection(
     return null
   }
 
-  // endDate包含当天，需要+1天来判断交集
+  if (timeScale === 'hour') {
+    // 小时视图：直接用精确时间戳比较，无需+1天
+    if (start1.getTime() >= end2.getTime() || start2.getTime() >= end1.getTime()) {
+      return null
+    }
+    const intersectionStart = new Date(Math.max(start1.getTime(), start2.getTime()))
+    const intersectionEnd = new Date(Math.min(end1.getTime(), end2.getTime()))
+    return { start: intersectionStart, end: intersectionEnd }
+  }
+
+  // 日/周/月等视图：endDate包含当天，需要+1天来判断交集
   const end1Plus = new Date(end1.getTime() + 24 * 60 * 60 * 1000)
   const end2Plus = new Date(end2.getTime() + 24 * 60 * 60 * 1000)
 
@@ -361,9 +382,7 @@ export function getTimeIntersection(
  * getConflictLevel(130) // 'medium'
  * getConflictLevel(160) // 'severe'
  */
-export function getConflictLevel(
-  totalPercent: number,
-): 'light' | 'medium' | 'severe' {
+export function getConflictLevel(totalPercent: number): 'light' | 'medium' | 'severe' {
   if (totalPercent > 150) {
     return 'severe' // 严重冲突
   } else if (totalPercent > 120) {
@@ -507,7 +526,7 @@ class IntervalTree {
     node: IntervalTreeNode | null,
     start: number,
     end: number,
-    result: Task[],
+    result: Task[]
   ): void {
     if (!node) return
 
@@ -534,6 +553,7 @@ class IntervalTree {
 function detectConflictsWithIntervalTree(
   tasks: Task[],
   resourceId: string | number,
+  timeScale?: string
 ): ConflictZone[] {
   // 构建区间树（O(n log n)）
   const tree = new IntervalTree()
@@ -558,10 +578,10 @@ function detectConflictsWithIntervalTree(
 
     // 计算总投入比例
     let totalPercent = 0
-    const taskDetails = overlappingTasks.map((t) => {
+    const taskDetails = overlappingTasks.map(t => {
       // 如果没有resources字段，默认100%；否则查找对应资源的percent
-      const resource = t.resources?.find((r) => String(r.id) === String(resourceId))
-      const capacity = !t.resources || t.resources.length === 0 ? 100 : (resource?.capacity || 0)
+      const resource = t.resources?.find(r => String(r.id) === String(resourceId))
+      const capacity = !t.resources || t.resources.length === 0 ? 100 : resource?.capacity || 0
       totalPercent += capacity
       return {
         id: t.id!,
@@ -575,23 +595,28 @@ function detectConflictsWithIntervalTree(
 
     // v1.9.6 修复：精确计算真正超载的时间段
     // 过滤出有资源分配的任务
-    const tasksWithResource = overlappingTasks.filter((t) => {
+    const tasksWithResource = overlappingTasks.filter(t => {
       if (!t.resources || t.resources.length === 0) return true
-      const resource = t.resources?.find((r) => String(r.id) === String(resourceId))
+      const resource = t.resources?.find(r => String(r.id) === String(resourceId))
       return resource && resource.capacity && resource.capacity > 0
     })
+
+    // 小时视图用分钟精度，其他视图用天精度
+    const DAY_MS_IT = 24 * 60 * 60 * 1000
+    const isHourViewIT = timeScale === 'hour'
+    const endBoundaryOffsetIT = isHourViewIT ? 0 : DAY_MS_IT
 
     // 收集所有任务的时间边界点
     const timePoints = new Set<number>()
     timePoints.add(start.getTime()) // 当前任务的开始
-    timePoints.add(end.getTime() + 24 * 60 * 60 * 1000) // 当前任务的结束+1天
+    timePoints.add(end.getTime() + endBoundaryOffsetIT) // 当前任务的结束边界
 
     for (const t of tasksWithResource) {
       const tStart = parseDate(t.startDate)
       const tEnd = parseDate(t.endDate)
       if (tStart && tEnd) {
         timePoints.add(tStart.getTime())
-        timePoints.add(tEnd.getTime() + 24 * 60 * 60 * 1000)
+        timePoints.add(tEnd.getTime() + endBoundaryOffsetIT)
       }
     }
 
@@ -612,10 +637,10 @@ function detectConflictsWithIntervalTree(
         if (!tStart || !tEnd) continue
 
         // 检查任务是否在这个时间段内活跃
-        const tEndInclusive = tEnd.getTime() + 24 * 60 * 60 * 1000
+        const tEndInclusive = tEnd.getTime() + endBoundaryOffsetIT
         if (tStart.getTime() <= segmentStart && tEndInclusive > segmentStart) {
-          const resource = t.resources?.find((r) => String(r.id) === String(resourceId))
-          const capacity = !t.resources || t.resources.length === 0 ? 100 : (resource?.capacity || 0)
+          const resource = t.resources?.find(r => String(r.id) === String(resourceId))
+          const capacity = !t.resources || t.resources.length === 0 ? 100 : resource?.capacity || 0
           segmentPercent += capacity
         }
       }
@@ -637,8 +662,8 @@ function detectConflictsWithIntervalTree(
         realEnd = overloadedIntervals[k].end
       }
     }
-    // realEnd是边界点（下一天的开始），需要-1天得到实际的endDate
-    realEnd = realEnd - 24 * 60 * 60 * 1000
+    // realEnd是边界点。日视图：-1天得到实际endDate（包含当天语义）；小时视图：直接使用
+    realEnd = isHourViewIT ? realEnd : realEnd - DAY_MS_IT
 
     // 去重
     const intervalKey = `${realStart}-${realEnd}`

@@ -70,10 +70,13 @@ function cancelPendingConflictUpdate() {
 function scheduleConflictUpdate(fn: () => void, timeout = 500) {
   cancelPendingConflictUpdate()
   if (typeof requestIdleCallback !== 'undefined') {
-    _conflictIdleHandle = requestIdleCallback(() => {
-      _conflictIdleHandle = null
-      fn()
-    }, { timeout })
+    _conflictIdleHandle = requestIdleCallback(
+      () => {
+        _conflictIdleHandle = null
+        fn()
+      },
+      { timeout }
+    )
   } else {
     // Safari / 旧浏览器兜底：使用 rAF，同样将压力分散到渲染帧后
     _conflictIdleHandle = requestAnimationFrame(() => {
@@ -128,33 +131,40 @@ const canvasStyle = computed(() => ({
 }))
 
 // 监听任务列表变化
-watch(() => props.tasks, () => {
-  if (isDraggingTaskBar.value) {
-    // 拖拽进行中：标记需要重算，等拖拽结束后再执行
-    needsRecalculation.value = true
-  } else {
-    // 拖拽结束后的已提交数据变更：isDraggingTaskBar 已先于数据更新变为 false，
-    // 此处直接触发增量/全量重算，避免冲突层不刷新。
-    scheduleConflictUpdate(() => {
-      if (lastChangedTaskId.value !== null) {
-        recalculateConflictsIncremental(lastChangedTaskId.value)
-        lastChangedTaskId.value = null
-      } else {
-        texturePatterns.value = { light: null, medium: null, severe: null }
-        coordsCache.clear()
-        recalculateConflicts()
-      }
-    })
-  }
-}, { deep: true })
+watch(
+  () => props.tasks,
+  () => {
+    if (isDraggingTaskBar.value) {
+      // 拖拽进行中：标记需要重算，等拖拽结束后再执行
+      needsRecalculation.value = true
+    } else {
+      // 拖拽结束后的已提交数据变更：isDraggingTaskBar 已先于数据更新变为 false，
+      // 此处直接触发增量/全量重算，避免冲突层不刷新。
+      scheduleConflictUpdate(() => {
+        if (lastChangedTaskId.value !== null) {
+          recalculateConflictsIncremental(lastChangedTaskId.value)
+          lastChangedTaskId.value = null
+        } else {
+          texturePatterns.value = { light: null, medium: null, severe: null }
+          coordsCache.clear()
+          recalculateConflicts()
+        }
+      })
+    }
+  },
+  { deep: true }
+)
 
 // v1.9.9 监听renderLimit变化，TaskBar渐进式渲染时重新计算冲突
-watch(() => props.renderLimit, () => {
-  scheduleConflictUpdate(recalculateConflicts)
-})
+watch(
+  () => props.renderLimit,
+  () => {
+    scheduleConflictUpdate(recalculateConflicts)
+  }
+)
 
 // 监听拖拽状态变化
-watch(isDraggingTaskBar, (dragging) => {
+watch(isDraggingTaskBar, dragging => {
   if (!dragging && needsRecalculation.value) {
     scheduleConflictUpdate(() => {
       // 检查是否可以使用增量更新（单个TaskBar变化且有ID记录）
@@ -173,7 +183,7 @@ watch(isDraggingTaskBar, (dragging) => {
 })
 
 // v1.9.5 P2-4优化 - 监听Split Bar拖拽状态变化
-watch(isSplitBarDragging, (dragging) => {
+watch(isSplitBarDragging, dragging => {
   if (!dragging && needsRecalculation.value) {
     scheduleConflictUpdate(() => {
       // 拖拽结束后清空缓存并重新计算，清空纹理缓存避免颜色问题
@@ -186,7 +196,7 @@ watch(isSplitBarDragging, (dragging) => {
 })
 
 // 监听Timeline拖拽状态变化 - 拖拽开始时立即清除Canvas
-watch(isDraggingTimeline, (dragging) => {
+watch(isDraggingTimeline, dragging => {
   if (dragging) {
     // 拖拽开始时立即清除Canvas，同时取消待执行的重算
     cancelPendingConflictUpdate()
@@ -213,33 +223,40 @@ watch([canvasWidth, canvasHeight], () => {
 })
 
 // 监听timelineData和currentTimeScale变化
-watch([() => props.timelineData, () => props.currentTimeScale], () => {
-  // v1.9.4 BUG修复 - 视图切换时清空坐标缓存
-  coordsCache.clear()
-  // v1.9.7 Bug修复 - 视图切换时清空纹理缓存
-  texturePatterns.value = { light: null, medium: null, severe: null }
-  // idle 错峰：切换 timescale 时 N 个实例同时触发，分散到空闲帧避免卡顿
-  scheduleConflictUpdate(recalculateConflicts)
-}, { deep: true })
+watch(
+  [() => props.timelineData, () => props.currentTimeScale],
+  () => {
+    // v1.9.4 BUG修复 - 视图切换时清空坐标缓存
+    coordsCache.clear()
+    // v1.9.7 Bug修复 - 视图切换时清空纹理缓存
+    texturePatterns.value = { light: null, medium: null, severe: null }
+    // idle 错峰：切换 timescale 时 N 个实例同时触发，分散到空闲帧避免卡顿
+    scheduleConflictUpdate(recalculateConflicts)
+  },
+  { deep: true }
+)
 
 // v1.9.6 监听scrollLeft变化，滚动停止后重新计算可视区域的冲突
 // v1.9.9 恢复防抖机制：避免滚动时频繁重绘Canvas导致性能问题
 let scrollTimer: ReturnType<typeof setTimeout> | null = null
-watch(() => props.scrollLeft, () => {
-  // 清除之前的定时器
-  if (scrollTimer) {
-    clearTimeout(scrollTimer)
+watch(
+  () => props.scrollLeft,
+  () => {
+    // 清除之前的定时器
+    if (scrollTimer) {
+      clearTimeout(scrollTimer)
+    }
+
+    // 滚动时仅清空Canvas，避免闪烁
+    clearCanvas()
+
+    // 50ms防抖：滚动停止后重新计算和绘制冲突区域
+    scrollTimer = setTimeout(() => {
+      recalculateConflicts()
+      scrollTimer = null
+    }, 50)
   }
-
-  // 滚动时仅清空Canvas，避免闪烁
-  clearCanvas()
-
-  // 50ms防抖：滚动停止后重新计算和绘制冲突区域
-  scrollTimer = setTimeout(() => {
-    recalculateConflicts()
-    scrollTimer = null
-  }, 50)
-})
+)
 
 // 增量重新计算冲突（仅计算与变化TaskBar相关的冲突）
 function recalculateConflictsIncremental(changedTaskId: string | number) {
@@ -266,7 +283,7 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
   })
 
   // 只对受影响的任务进行冲突检测
-  const newConflicts = detectConflicts(affectedTasks, props.resourceId)
+  const newConflicts = detectConflicts(affectedTasks, props.resourceId, props.currentTimeScale)
 
   // 找出哪些旧的冲突区域需要被移除（不再涉及受影响的任务）
   const affectedTaskIds = new Set(affectedTasks.map(t => t.id))
@@ -276,78 +293,83 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
   })
 
   // 合并未变化的冲突和新计算的冲突
-  const allConflicts = [...unchangedConflicts.map(z => ({
-    startDate: z.startDate,
-    endDate: z.endDate,
-    tasks: z.tasks,
-    totalPercent: z.totalPercent,
-    level: z.level,
-  })), ...newConflicts]
+  const allConflicts = [
+    ...unchangedConflicts.map(z => ({
+      startDate: z.startDate,
+      endDate: z.endDate,
+      tasks: z.tasks,
+      totalPercent: z.totalPercent,
+      level: z.level,
+    })),
+    ...newConflicts,
+  ]
 
   // 转换为Canvas坐标（与全量计算相同的逻辑）
-  conflictZones.value = allConflicts.map((zone) => {
-    const cacheKey = `${zone.startDate.getTime()}-${zone.endDate.getTime()}`
-    let left: number, width: number
+  conflictZones.value = allConflicts
+    .map(zone => {
+      const cacheKey = `${zone.startDate.getTime()}-${zone.endDate.getTime()}`
+      let left: number, width: number
 
-    if (coordsCache.has(cacheKey)) {
-      const cached = coordsCache.get(cacheKey)!
-      left = cached.left
-      width = cached.width
-    } else {
-      const coords = calculatePosition(zone.startDate, zone.endDate)
-      left = coords.left
-      width = coords.width
-      coordsCache.set(cacheKey, { left, width })
-    }
+      if (coordsCache.has(cacheKey)) {
+        const cached = coordsCache.get(cacheKey)!
+        left = cached.left
+        width = cached.width
+      } else {
+        const coords = calculatePosition(zone.startDate, zone.endDate)
+        left = coords.left
+        width = coords.width
+        coordsCache.set(cacheKey, { left, width })
+      }
 
-    const scrollLeft = props.scrollLeft || 0
-    const viewportWidth = props.containerWidth || 1920
-    const viewportLeft = left - scrollLeft
-    const viewportRight = viewportLeft + width
+      const scrollLeft = props.scrollLeft || 0
+      const viewportWidth = props.containerWidth || 1920
+      const viewportLeft = left - scrollLeft
+      const viewportRight = viewportLeft + width
 
-    if (viewportRight <= 0 || viewportLeft >= viewportWidth) {
-      return null
-    }
+      if (viewportRight <= 0 || viewportLeft >= viewportWidth) {
+        return null
+      }
 
-    const canvasLeft = Math.max(0, viewportLeft)
-    const canvasRight = Math.min(viewportWidth, viewportRight)
-    const canvasWidth = canvasRight - canvasLeft
+      const canvasLeft = Math.max(0, viewportLeft)
+      const canvasRight = Math.min(viewportWidth, viewportRight)
+      const canvasWidth = canvasRight - canvasLeft
 
-    let top = 0
-    let height = props.height
+      let top = 0
+      let height = props.height
 
-    if (props.taskRowMap && props.rowHeights && zone.tasks.length > 0) {
-      const rowNumbers: number[] = []
-      for (const task of zone.tasks) {
-        const rowNum = props.taskRowMap.get(task.id)
-        if (rowNum !== undefined) {
-          rowNumbers.push(rowNum)
+      if (props.taskRowMap && props.rowHeights && zone.tasks.length > 0) {
+        const rowNumbers: number[] = []
+        for (const task of zone.tasks) {
+          const rowNum = props.taskRowMap.get(task.id)
+          if (rowNum !== undefined) {
+            rowNumbers.push(rowNum)
+          }
+        }
+
+        if (rowNumbers.length > 0) {
+          const minRow = Math.min(...rowNumbers)
+          const maxRow = Math.max(...rowNumbers)
+          top = 0
+          for (let i = 0; i < minRow; i++) {
+            top += props.rowHeights[i] || 51
+          }
+          height = 0
+          for (let i = minRow; i <= maxRow; i++) {
+            height += props.rowHeights[i] || 51
+          }
+          height = Math.max(1, height - 10)
         }
       }
 
-      if (rowNumbers.length > 0) {
-        const minRow = Math.min(...rowNumbers)
-        const maxRow = Math.max(...rowNumbers)
-        top = 0
-        for (let i = 0; i < minRow; i++) {
-          top += props.rowHeights[i] || 51
-        }
-        height = 0
-        for (let i = minRow; i <= maxRow; i++) {
-          height += props.rowHeights[i] || 51
-        }
-        height = Math.max(1, height - 10)
+      return {
+        ...zone,
+        left: canvasLeft,
+        width: canvasWidth,
+        top,
+        height,
       }
-    }
-
-    return {
-      ...zone,
-      left: canvasLeft,
-      width: canvasWidth,
-      top,
-      height,
-    }
-  }).filter(z => z !== null) as ConflictZone[]
+    })
+    .filter(z => z !== null) as ConflictZone[]
 
   // 使用增量重绘
   renderConflictsIncremental()
@@ -357,100 +379,107 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
 function recalculateConflicts() {
   // v1.9.9 优化：只计算已渲染的TaskBar的冲突
   // 如果设置了renderLimit，则只取前N个任务进行冲突检测
-  const tasksToCheck = props.renderLimit !== undefined && props.renderLimit > 0
-    ? props.tasks.slice(0, props.renderLimit)
-    : props.tasks
+  const tasksToCheck =
+    props.renderLimit !== undefined && props.renderLimit > 0
+      ? props.tasks.slice(0, props.renderLimit)
+      : props.tasks
 
   // 调用冲突检测算法
-  const conflicts = detectConflicts(tasksToCheck, props.resourceId)
+  const conflicts = detectConflicts(tasksToCheck, props.resourceId, props.currentTimeScale)
 
   // v1.9.4 P1优化 - 使用坐标缓存
-  conflictZones.value = conflicts.map((zone) => {
-    // 生成缓存key（基于时间戳避免日期对象比较）
-    const cacheKey = `${zone.startDate.getTime()}-${zone.endDate.getTime()}`
+  conflictZones.value = conflicts
+    .map(zone => {
+      // 生成缓存key（基于时间戳避免日期对象比较）
+      const cacheKey = `${zone.startDate.getTime()}-${zone.endDate.getTime()}`
 
-    let left: number, width: number
+      let left: number, width: number
 
-    // 尝试从缓存获取坐标
-    if (coordsCache.has(cacheKey)) {
-      const cached = coordsCache.get(cacheKey)!
-      left = cached.left
-      width = cached.width
-    } else {
-      // 缓存未命中，重新计算并缓存
-      const coords = calculatePosition(zone.startDate, zone.endDate)
-      left = coords.left
-      width = coords.width
-      coordsCache.set(cacheKey, { left, width })
-    }
+      // 尝试从缓存获取坐标
+      if (coordsCache.has(cacheKey)) {
+        const cached = coordsCache.get(cacheKey)!
+        left = cached.left
+        width = cached.width
+      } else {
+        // 缓存未命中，重新计算并缓存
+        const coords = calculatePosition(zone.startDate, zone.endDate)
+        left = coords.left
+        width = coords.width
+        coordsCache.set(cacheKey, { left, width })
+      }
 
-    // 转换为相对于可视区域的坐标
-    const scrollLeft = props.scrollLeft || 0
-    const viewportWidth = props.containerWidth || 1920
+      // 转换为相对于可视区域的坐标
+      const scrollLeft = props.scrollLeft || 0
+      const viewportWidth = props.containerWidth || 1920
 
-    // 计算冲突区域在可视区域中的位置
-    const viewportLeft = left - scrollLeft
-    const viewportRight = viewportLeft + width
+      // 计算冲突区域在可视区域中的位置
+      const viewportLeft = left - scrollLeft
+      const viewportRight = viewportLeft + width
 
-    // 如果冲突区域完全在可视区域外，跳过
-    if (viewportRight <= 0 || viewportLeft >= viewportWidth) {
-      return null
-    }
+      // 如果冲突区域完全在可视区域外，跳过
+      if (viewportRight <= 0 || viewportLeft >= viewportWidth) {
+        return null
+      }
 
-    // 计算在Canvas上的绘制坐标（相对于Canvas左边界）
-    // Canvas通过CSS定位在scrollLeft位置，所以绘制时使用viewport相对坐标
-    const canvasLeft = Math.max(0, viewportLeft)
-    const canvasRight = Math.min(viewportWidth, viewportRight)
-    const canvasWidth = canvasRight - canvasLeft
+      // 计算在Canvas上的绘制坐标（相对于Canvas左边界）
+      // Canvas通过CSS定位在scrollLeft位置，所以绘制时使用viewport相对坐标
+      const canvasLeft = Math.max(0, viewportLeft)
+      const canvasRight = Math.min(viewportWidth, viewportRight)
+      const canvasWidth = canvasRight - canvasLeft
 
-    // v1.9.5 修复：根据冲突任务所在的行号计算正确的top和height
-    let top = 0
-    let height = props.height
+      // v1.9.5 修复：根据冲突任务所在的行号计算正确的top和height
+      let top = 0
+      let height = props.height
 
-    if (props.taskRowMap && props.rowHeights && zone.tasks.length > 0) {
-      // 找到所有冲突任务的行号
-      const rowNumbers: number[] = []
-      for (const task of zone.tasks) {
-        const rowNum = props.taskRowMap.get(task.id)
-        if (rowNum !== undefined) {
-          rowNumbers.push(rowNum)
+      if (props.taskRowMap && props.rowHeights && zone.tasks.length > 0) {
+        // 找到所有冲突任务的行号
+        const rowNumbers: number[] = []
+        for (const task of zone.tasks) {
+          const rowNum = props.taskRowMap.get(task.id)
+          if (rowNum !== undefined) {
+            rowNumbers.push(rowNum)
+          }
+        }
+
+        if (rowNumbers.length > 0) {
+          // 找到最小和最大行号
+          const minRow = Math.min(...rowNumbers)
+          const maxRow = Math.max(...rowNumbers)
+
+          // 计算top：从第一行的顶部开始（相对于Canvas内部坐标）
+          // Canvas本身已有topOffset，所以这里直接累加行高即可
+          top = 0
+          for (let i = 0; i < minRow; i++) {
+            top += props.rowHeights[i] || 51
+          }
+
+          // 计算height：从minRow到maxRow所有行的高度之和
+          height = 0
+          for (let i = minRow; i <= maxRow; i++) {
+            height += props.rowHeights[i] || 51
+          }
+          // 减去底部边距（约2.5px），让冲突区域不超出TaskBar底部边界
+          height = Math.max(1, height - 10)
         }
       }
 
-      if (rowNumbers.length > 0) {
-        // 找到最小和最大行号
-        const minRow = Math.min(...rowNumbers)
-        const maxRow = Math.max(...rowNumbers)
-
-        // 计算top：从第一行的顶部开始（相对于Canvas内部坐标）
-        // Canvas本身已有topOffset，所以这里直接累加行高即可
-        top = 0
-        for (let i = 0; i < minRow; i++) {
-          top += props.rowHeights[i] || 51
-        }
-
-        // 计算height：从minRow到maxRow所有行的高度之和
-        height = 0
-        for (let i = minRow; i <= maxRow; i++) {
-          height += props.rowHeights[i] || 51
-        }
-        // 减去底部边距（约2.5px），让冲突区域不超出TaskBar底部边界
-        height = Math.max(1, height - 10)
+      return {
+        ...zone,
+        left: canvasLeft,
+        width: canvasWidth,
+        top,
+        height,
       }
-    }
-
-    return {
-      ...zone,
-      left: canvasLeft,
-      width: canvasWidth,
-      top,
-      height,
-    }
-  }).filter(z => z !== null) as ConflictZone[]
+    })
+    .filter(z => z !== null) as ConflictZone[]
 
   // v1.9.4 P1优化 - 增量重绘
   // v1.9.5 修复：如果纹理缓存被清空，使用全量重绘避免颜色变淡
-  if (!texturePatterns.value.light && !texturePatterns.value.medium && !texturePatterns.value.severe) {
+  if (
+    !texturePatterns.value.light &&
+    !texturePatterns.value.medium &&
+    !texturePatterns.value.severe
+  ) {
     renderConflicts()
   } else {
     renderConflictsIncremental()
@@ -469,8 +498,12 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
     timelineStartOfDay.setHours(0, 0, 0, 0)
 
     // 计算开始和结束时间相对于时间线开始的总分钟数
-    const startMinutesTotal = Math.floor((startDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60))
-    const endMinutesTotal = Math.floor((endDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60))
+    const startMinutesTotal = Math.floor(
+      (startDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60)
+    )
+    const endMinutesTotal = Math.floor(
+      (endDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60)
+    )
 
     // 每小时40px，每分钟40/60 = 2/3 px
     const pixelPerMinute = 40 / 60
@@ -497,7 +530,7 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
     const startPosition = calculatePositionFromTimelineData(
       startDateOnly,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     // 计算结束位置：为结束日期添加一天来获取正确的结束位置
@@ -506,7 +539,7 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
     let endPosition = calculatePositionFromTimelineData(
       nextDay,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
@@ -520,24 +553,18 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
         dayWidth = 180 / 182
       }
       endPosition =
-        calculatePositionFromTimelineData(
-          endDateOnly,
-          props.timelineData,
-          props.currentTimeScale,
-        ) + dayWidth
+        calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
+        dayWidth
     }
 
     left = startPosition
     width = Math.max(endPosition - startPosition, 4)
-  } else if (
-    props.timelineData &&
-    props.currentTimeScale === TimelineScale.DAY
-  ) {
+  } else if (props.timelineData && props.currentTimeScale === TimelineScale.DAY) {
     // 日视图：使用timelineData精确定位
     const startPosition = calculatePositionFromTimelineData(
       startDateOnly,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     const nextDay = new Date(endDateOnly)
@@ -545,15 +572,13 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
     let endPosition = calculatePositionFromTimelineData(
       nextDay,
       props.timelineData,
-      props.currentTimeScale,
+      props.currentTimeScale
     )
 
     if (endPosition === startPosition) {
-      endPosition = calculatePositionFromTimelineData(
-        endDateOnly,
-        props.timelineData,
-        props.currentTimeScale,
-      ) + 30 // 日视图每天30px
+      endPosition =
+        calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
+        30 // 日视图每天30px
     }
 
     left = startPosition
@@ -561,7 +586,7 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
   } else {
     // 其他情况：基于日期的简单计算
     const startDiff = Math.floor(
-      (startDateOnly.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24),
+      (startDateOnly.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
 
     const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
@@ -603,7 +628,7 @@ function toLocalDateOnly(date: Date | string): Date {
 function calculatePositionFromTimelineData(
   targetDate: Date,
   timelineData: Array<any>,
-  timeScale: TimelineScale,
+  timeScale: TimelineScale
 ): number {
   let cumulativePosition = 0
 
@@ -635,11 +660,11 @@ function calculatePositionFromTimelineData(
         if (targetDate >= quarterStart && targetDate <= quarterEnd) {
           const quarterWidth = 60
           const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           const dayWidth = quarterWidth / daysInQuarter
           const dayInQuarter = Math.ceil(
-            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInQuarter * dayWidth
         }
@@ -655,12 +680,11 @@ function calculatePositionFromTimelineData(
 
         if (targetDate >= weekStart && targetDate <= weekEnd) {
           const weekWidth = 60
-          const daysInWeek = Math.ceil(
-            (weekEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24),
-          ) + 1
+          const daysInWeek =
+            Math.ceil((weekEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
           const dayWidth = weekWidth / daysInWeek
           const dayInWeek = Math.ceil(
-            (targetDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInWeek * dayWidth
         }
@@ -689,12 +713,11 @@ function calculatePositionFromTimelineData(
 
         if (targetDate >= halfYearStart && targetDate <= halfYearEnd) {
           const halfYearWidth = 180
-          const daysInHalfYear = Math.ceil(
-            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
-          ) + 1
+          const daysInHalfYear =
+            Math.ceil((halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
           const dayWidth = halfYearWidth / daysInHalfYear
           const dayInHalfYear = Math.ceil(
-            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
+            (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInHalfYear * dayWidth
         }
@@ -718,7 +741,7 @@ function renderConflictsIncremental() {
   // 检测变化的区域
   const { added, removed, changed } = detectChangedZones(
     previousConflictZones.value,
-    conflictZones.value,
+    conflictZones.value
   )
 
   // 如果变化区域很多（> 50%），直接全量重绘更高效
@@ -759,7 +782,7 @@ function renderConflictsIncremental() {
 // v1.9.4 检测发生变化的冲突区域
 function detectChangedZones(
   oldZones: ConflictZone[],
-  newZones: ConflictZone[],
+  newZones: ConflictZone[]
 ): {
   added: ConflictZone[]
   removed: ConflictZone[]
@@ -771,10 +794,10 @@ function detectChangedZones(
 
   // 为快速查找创建 Map
   const oldZonesMap = new Map(
-    oldZones.map(z => [`${z.startDate.getTime()}-${z.endDate.getTime()}`, z]),
+    oldZones.map(z => [`${z.startDate.getTime()}-${z.endDate.getTime()}`, z])
   )
   const newZonesMap = new Map(
-    newZones.map(z => [`${z.startDate.getTime()}-${z.endDate.getTime()}`, z]),
+    newZones.map(z => [`${z.startDate.getTime()}-${z.endDate.getTime()}`, z])
   )
 
   // 查找新增和变化的区域
@@ -875,18 +898,18 @@ function drawTextureBackground(ctx: CanvasRenderingContext2D, zone: ConflictZone
   let alpha: number
 
   switch (zone.level) {
-  case 'light':
-    color = 'rgba(255,220,0,' // 浅黄
-    alpha = 0.12  // 降低透明度
-    break
-  case 'medium':
-    color = 'rgba(255,165,0,' // 橙色
-    alpha = 0.15  // 降低透明度
-    break
-  case 'severe':
-    color = 'rgba(255,69,0,' // 红色
-    alpha = 0.18  // 降低透明度
-    break
+    case 'light':
+      color = 'rgba(255,220,0,' // 浅黄
+      alpha = 0.12 // 降低透明度
+      break
+    case 'medium':
+      color = 'rgba(255,165,0,' // 橙色
+      alpha = 0.15 // 降低透明度
+      break
+    case 'severe':
+      color = 'rgba(255,69,0,' // 红色
+      alpha = 0.18 // 降低透明度
+      break
   }
 
   // 绘制斜线纹理
@@ -897,7 +920,10 @@ function drawTextureBackground(ctx: CanvasRenderingContext2D, zone: ConflictZone
 }
 
 // 获取或创建纹理pattern（性能优化）
-function getTexturePattern(ctx: CanvasRenderingContext2D, level: 'light' | 'medium' | 'severe'): CanvasPattern | null {
+function getTexturePattern(
+  ctx: CanvasRenderingContext2D,
+  level: 'light' | 'medium' | 'severe'
+): CanvasPattern | null {
   // 如果已有缓存，直接返回
   if (texturePatterns.value[level]) {
     return texturePatterns.value[level]
@@ -913,20 +939,20 @@ function getTexturePattern(ctx: CanvasRenderingContext2D, level: 'light' | 'medi
   // 根据等级选择颜色（降低透明度使斜线更淡）
   let color: string
   switch (level) {
-  case 'light':
-    color = 'rgba(255,220,0,0.25)'  // 降低透明度
-    break
-  case 'medium':
-    color = 'rgba(255,165,0,0.3)'   // 降低透明度
-    break
-  case 'severe':
-    color = 'rgba(255,69,0,0.35)'   // 降低透明度
-    break
+    case 'light':
+      color = 'rgba(255,220,0,0.25)' // 降低透明度
+      break
+    case 'medium':
+      color = 'rgba(255,165,0,0.3)' // 降低透明度
+      break
+    case 'severe':
+      color = 'rgba(255,69,0,0.35)' // 降低透明度
+      break
   }
 
   // 绘制45度斜线
   patternCtx.strokeStyle = color
-  patternCtx.lineWidth = 1  // 使用细线条
+  patternCtx.lineWidth = 1 // 使用细线条
   patternCtx.beginPath()
   patternCtx.moveTo(0, 10)
   patternCtx.lineTo(10, 0)

@@ -140,22 +140,34 @@ provide('gantt-data-source', currentDataSource)
 provide('gantt-list-config', currentListConfig)
 
 // v1.9.5 提供showConflicts配置给Timeline组件
-provide('gantt-show-conflicts', computed(() => props.showConflicts))
+provide(
+  'gantt-show-conflicts',
+  computed(() => props.showConflicts)
+)
 
 // v1.9.5 提供showTaskbarTab配置给TaskBar组件
-provide('gantt-show-taskbar-tab', computed(() => props.showTaskbarTab))
+provide(
+  'gantt-show-taskbar-tab',
+  computed(() => props.showTaskbarTab)
+)
 
 // v2.0 性能优化：资源视图布局缓存（避免重复计算）
-const resourceLayoutCache = new Map<string, {
-  layout: { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number },
-  hash: string
-}>()
+const resourceLayoutCache = new Map<
+  string,
+  {
+    layout: { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+    hash: string
+  }
+>()
 
 // v2.0 性能优化：资源视图冲突缓存
-const resourceConflictCache = new Map<string, {
-  conflicts: Set<number | string>,
-  hash: string
-}>()
+const resourceConflictCache = new Map<
+  string,
+  {
+    conflicts: Set<number | string>
+    hash: string
+  }
+>()
 
 // v2.0 工具函数：计算任务哈希（用于检测是否需要重新计算布局）
 const getTasksHash = (tasks: Task[]): string => {
@@ -164,7 +176,10 @@ const getTasksHash = (tasks: Task[]): string => {
 
 // 计算资源视图下的任务布局信息（v2.0 优化：方案1增量更新 + 方案2缓存机制）
 const resourceTaskLayouts = computed(() => {
-  const layouts = new Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>()
+  const layouts = new Map<
+    string,
+    { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+  >()
 
   if (currentViewMode.value === 'resource') {
     const resources = currentDataSource.value as Resource[]
@@ -174,7 +189,8 @@ const resourceTaskLayouts = computed(() => {
     if (updateTaskTrigger.value >= 0) {
       // v2.0 方案1：增量更新逻辑 - 只处理受影响的资源
       const affectedResourceIds = lastChangedResourceIds.value
-      const shouldDoIncrementalUpdate = affectedResourceIds.size > 0 && affectedResourceIds.size < resources.length * 0.3
+      const shouldDoIncrementalUpdate =
+        affectedResourceIds.size > 0 && affectedResourceIds.size < resources.length * 0.3
 
       if (shouldDoIncrementalUpdate) {
         // 🎯 增量更新：只重新计算受影响的资源（性能提升100倍）
@@ -206,16 +222,17 @@ const resourceTaskLayouts = computed(() => {
 
           // v2.0 方案2：检查缓存
           const tasksHash = getTasksHash(tasks)
+          const cacheHash = `${currentTimeScale.value}:${tasksHash}`
           const cached = resourceLayoutCache.get(resourceId)
 
-          if (cached && cached.hash === tasksHash) {
+          if (cached && cached.hash === cacheHash) {
             layouts.set(resourceId, cached.layout)
           } else {
-            const layout = assignTaskRows(tasks, baseRowHeight)
+            const layout = assignTaskRows(tasks, baseRowHeight, currentTimeScale.value)
             layouts.set(resourceId, layout)
             resourceLayoutCache.set(resourceId, {
               layout,
-              hash: tasksHash,
+              hash: cacheHash,
             })
           }
         })
@@ -236,16 +253,17 @@ const resourceTaskLayouts = computed(() => {
 
           // v2.0 方案2：检查缓存
           const tasksHash = getTasksHash(tasks)
+          const cacheHash = `${currentTimeScale.value}:${tasksHash}`
           const cached = resourceLayoutCache.get(resourceId)
 
-          if (cached && cached.hash === tasksHash) {
+          if (cached && cached.hash === cacheHash) {
             layouts.set(resourceId, cached.layout)
           } else {
-            const layout = assignTaskRows(tasks, baseRowHeight)
+            const layout = assignTaskRows(tasks, baseRowHeight, currentTimeScale.value)
             layouts.set(resourceId, layout)
             resourceLayoutCache.set(resourceId, {
               layout,
-              hash: tasksHash,
+              hash: cacheHash,
             })
           }
         })
@@ -288,7 +306,8 @@ const resourceConflicts = computed(() => {
   if (updateTaskTrigger.value >= 0) {
     // v2.0 方案1：增量更新逻辑 - 只处理受影响的资源
     const affectedResourceIds = lastChangedResourceIds.value
-    const shouldDoIncrementalUpdate = affectedResourceIds.size > 0 && affectedResourceIds.size < resources.length * 0.3
+    const shouldDoIncrementalUpdate =
+      affectedResourceIds.size > 0 && affectedResourceIds.size < resources.length * 0.3
 
     if (shouldDoIncrementalUpdate) {
       // 🎯 增量更新：只重新计算受影响的资源
@@ -311,14 +330,15 @@ const resourceConflicts = computed(() => {
 
         // v2.0 方案2：检查缓存
         const tasksHash = getTasksHash(tasks)
+        const conflictCacheHash = `${currentTimeScale.value}:${tasksHash}`
         const cached = resourceConflictCache.get(resourceId)
 
-        if (cached && cached.hash === tasksHash) {
+        if (cached && cached.hash === conflictCacheHash) {
           if (cached.conflicts.size > 0) {
             conflictsMap.set(resourceId, cached.conflicts)
           }
         } else {
-          const conflictZones = detectConflicts(tasks, resource.id)
+          const conflictZones = detectConflicts(tasks, resource.id, currentTimeScale.value)
 
           if (conflictZones.length > 0) {
             const conflicts = new Set<number | string>()
@@ -333,12 +353,12 @@ const resourceConflicts = computed(() => {
             }
             resourceConflictCache.set(resourceId, {
               conflicts,
-              hash: tasksHash,
+              hash: conflictCacheHash,
             })
           } else {
             resourceConflictCache.set(resourceId, {
               conflicts: new Set(),
-              hash: tasksHash,
+              hash: conflictCacheHash,
             })
           }
         }
@@ -353,14 +373,15 @@ const resourceConflicts = computed(() => {
 
         // v2.0 方案2：检查缓存
         const tasksHash = getTasksHash(tasks)
+        const conflictCacheHash = `${currentTimeScale.value}:${tasksHash}`
         const cached = resourceConflictCache.get(resourceId)
 
-        if (cached && cached.hash === tasksHash) {
+        if (cached && cached.hash === conflictCacheHash) {
           if (cached.conflicts.size > 0) {
             conflictsMap.set(resourceId, cached.conflicts)
           }
         } else {
-          const conflictZones = detectConflicts(tasks, resource.id)
+          const conflictZones = detectConflicts(tasks, resource.id, currentTimeScale.value)
 
           if (conflictZones.length > 0) {
             const conflicts = new Set<number | string>()
@@ -375,12 +396,12 @@ const resourceConflicts = computed(() => {
             }
             resourceConflictCache.set(resourceId, {
               conflicts,
-              hash: tasksHash,
+              hash: conflictCacheHash,
             })
           } else {
             resourceConflictCache.set(resourceId, {
               conflicts: new Set(),
-              hash: tasksHash,
+              hash: conflictCacheHash,
             })
           }
         }
@@ -399,14 +420,26 @@ provide('resourceConflicts', resourceConflicts)
 // 提供 slots 给子组件（TaskList 和 TaskRow）
 provide('gantt-column-slots', slots)
 // 提供 slot 存在标志（TaskBar 磁吸气泡注入）
-provide('gantt-has-taskbar-tooltip-slot', computed(() => !!slots['taskbar-tooltip']))
+provide(
+  'gantt-has-taskbar-tooltip-slot',
+  computed(() => !!slots['taskbar-tooltip'])
+)
 
 // 提供右键菜单配置给子组件
-provide('enable-task-list-context-menu', computed(() => props.enableTaskListContextMenu))
-provide('enable-task-bar-context-menu', computed(() => props.enableTaskBarContextMenu))
+provide(
+  'enable-task-list-context-menu',
+  computed(() => props.enableTaskListContextMenu)
+)
+provide(
+  'enable-task-bar-context-menu',
+  computed(() => props.enableTaskBarContextMenu)
+)
 
 // 提供 LinkAnchor 配置给子组件
-provide('enable-link-anchor', computed(() => props.enableLinkAnchor))
+provide(
+  'enable-link-anchor',
+  computed(() => props.enableLinkAnchor)
+)
 
 // 检测系统主题偏好
 const detectSystemTheme = (): 'light' | 'dark' => {
@@ -423,10 +456,14 @@ const currentThemeMode = ref<'light' | 'dark'>('light')
 provide('gantt-theme', currentThemeMode)
 
 // 使用声明式右键菜单 composables
-const { hasDeclarativeContextMenu: hasDeclarativeTaskListContextMenu, declarativeContextMenu: declarativeTaskListContextMenu } =
-  useTaskListContextMenu(slots)
-const { hasDeclarativeContextMenu: hasDeclarativeTaskBarContextMenu, declarativeContextMenu: declarativeTaskBarContextMenu } =
-  useTaskBarContextMenu(slots)
+const {
+  hasDeclarativeContextMenu: hasDeclarativeTaskListContextMenu,
+  declarativeContextMenu: declarativeTaskListContextMenu,
+} = useTaskListContextMenu(slots)
+const {
+  hasDeclarativeContextMenu: hasDeclarativeTaskBarContextMenu,
+  declarativeContextMenu: declarativeTaskBarContextMenu,
+} = useTaskBarContextMenu(slots)
 
 // 计算是否使用自定义 TaskList 右键菜单（声明式方式）
 const hasTaskListContextMenuSlot = computed(() => hasDeclarativeTaskListContextMenu.value)
@@ -659,7 +696,7 @@ const getTaskListMinWidth = () => {
   const configMinWidth = parseWidthValue(
     props.taskListConfig?.minWidth,
     ganttContainerWidth.value,
-    DEFAULT_TASK_LIST_MIN_WIDTH,
+    DEFAULT_TASK_LIST_MIN_WIDTH
   )
   return Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH) // 确保不小于280px
 }
@@ -669,7 +706,7 @@ const getTaskListMaxWidth = () => {
   return parseWidthValue(
     props.taskListConfig?.maxWidth,
     ganttContainerWidth.value,
-    DEFAULT_TASK_LIST_MAX_WIDTH,
+    DEFAULT_TASK_LIST_MAX_WIDTH
   )
 }
 
@@ -678,7 +715,7 @@ const getTaskListDefaultWidth = () => {
   return parseWidthValue(
     props.taskListConfig?.defaultWidth,
     ganttContainerWidth.value,
-    DEFAULT_TASK_LIST_WIDTH,
+    DEFAULT_TASK_LIST_WIDTH
   )
 }
 
@@ -729,7 +766,7 @@ watch(
       }
     }
   },
-  { immediate: false, deep: true },
+  { immediate: false, deep: true }
 )
 
 // Timeline组件的引用
@@ -759,7 +796,7 @@ watch(
   () => {
     // props变化时清空增量追踪，执行全量更新
     triggerFullUpdate()
-  },
+  }
 )
 
 // v1.9.9 监听props.resources变化，自动触发Timeline更新
@@ -769,7 +806,16 @@ watch(
   () => {
     // props变化时清空增量追踪，执行全量更新
     triggerFullUpdate()
-  },
+  }
+)
+
+// 监听resource.tasks数量变化：捕获外部直接push/pop到某个资源tasks数组的情况
+// 仅跟踪每个资源的tasks长度，避免深度监听的性能开销
+watch(
+  () => props.resources?.map(r => r.tasks.length),
+  () => {
+    triggerFullUpdate()
+  }
 )
 
 // 时间刻度状态
@@ -793,7 +839,7 @@ watch(
       // v1.9.7 emit视图模式变化事件
       emit('view-mode-changed', newMode)
     }
-  },
+  }
 )
 
 // 计算是否显示关闭按钮
@@ -811,7 +857,7 @@ watch(
       newTimeline.updateTimeScale(currentTimeScale.value)
     }
   },
-  { once: true }, // 只执行一次，避免不必要的重复调用
+  { once: true } // 只执行一次，避免不必要的重复调用
 )
 
 const dragging = ref(false)
@@ -851,8 +897,10 @@ function onMouseDown(e: MouseEvent) {
   taskListBodyProposedWidth.value = window.innerWidth * 0.8 - 6 // 减去splitter宽度
 
   // 获取左侧面板的最小宽度
-  taskListBodyWidthLimit.value = Math.min(taskListBodyProposedWidth.value,
-    taskListBodyWidthLimit.value)
+  taskListBodyWidthLimit.value = Math.min(
+    taskListBodyProposedWidth.value,
+    taskListBodyWidthLimit.value
+  )
 
   // 广播拖拽开始事件，通知其他组件暂停悬停效果
   window.dispatchEvent(new CustomEvent('splitter-drag-start'))
@@ -964,22 +1012,24 @@ function onMouseDown(e: MouseEvent) {
 
 // TaskList显示/隐藏状态管理
 // 初始值：enableTaskListCollapsible=false 时强制隐藏；否则使用 taskListVisible prop 的值
-const isTaskListVisible = ref(props.enableTaskListCollapsible ? (props.taskListVisible ?? true) : false)
+const isTaskListVisible = ref(
+  props.enableTaskListCollapsible ? (props.taskListVisible ?? true) : false
+)
 
 // 响应 taskListVisible prop 变化（仅在 enableTaskListCollapsible=true 时生效）
 watch(
   () => props.taskListVisible,
-  (newVal) => {
+  newVal => {
     if (props.enableTaskListCollapsible) {
       isTaskListVisible.value = newVal ?? true
     }
-  },
+  }
 )
 
 // 响应 enableTaskListCollapsible prop 变化
 watch(
   () => props.enableTaskListCollapsible,
-  (newVal) => {
+  newVal => {
     if (!newVal) {
       // 禁用折叠功能时，强制隐藏 TaskList
       isTaskListVisible.value = false
@@ -987,7 +1037,7 @@ watch(
       // 恢复折叠功能时，还原为 taskListVisible prop 的值
       isTaskListVisible.value = props.taskListVisible ?? true
     }
-  },
+  }
 )
 
 // 动画状态管理
@@ -1032,7 +1082,7 @@ const toggleTaskList = () => {
       window.dispatchEvent(
         new CustomEvent('timeline-container-resized', {
           detail: { source: 'manual-task-list-toggle' },
-        }),
+        })
       )
     })
   }, 400)
@@ -1051,7 +1101,7 @@ const handleToggleTaskList = (event: CustomEvent) => {
     window.dispatchEvent(
       new CustomEvent('timeline-container-resized', {
         detail: { source: 'task-list-toggle' },
-      }),
+      })
     )
   })
 }
@@ -1059,15 +1109,15 @@ const handleToggleTaskList = (event: CustomEvent) => {
 // --- 事件链路：监听 Timeline 传递上来的拖拽/拉伸事件，更新数据并通过 emit 暴露 ---
 function handleTaskBarDragEnd(event: CustomEvent) {
   const updatedTask = event.detail
-  // 更新任务数据并同步到资源视图
-  updateTaskAndSyncToResources(updatedTask)
+  // 更新任务数据并同步到资源视图（拖拽只改日期，不移动资源归属）
+  updateTaskAndSyncToResources(updatedTask, true)
   updateTaskTrigger.value++
   emit('taskbar-drag-end', updatedTask)
 }
 function handleTaskBarResizeEnd(event: CustomEvent) {
   const updatedTask = event.detail
-  // 更新任务数据并同步到资源视图
-  updateTaskAndSyncToResources(updatedTask)
+  // 更新任务数据并同步到资源视图（拉伸只改日期，不移动资源归属）
+  updateTaskAndSyncToResources(updatedTask, true)
   updateTaskTrigger.value++
   emit('taskbar-resize-end', updatedTask)
 }
@@ -1127,7 +1177,7 @@ const handleTaskCollapseChange = (task: Task) => {
   const updateTaskCollapsedState = (
     tasks: Task[],
     targetId: number,
-    collapsed: boolean,
+    collapsed: boolean
   ): boolean => {
     for (const t of tasks) {
       if (t.id === targetId) {
@@ -1203,9 +1253,11 @@ const handleTaskRowMoved = (payload: {
 
   // 通知 TaskList 更新父级任务数据
   nextTick(() => {
-    window.dispatchEvent(new CustomEvent('task-updated', {
-      detail: result.movedTask,
-    }))
+    window.dispatchEvent(
+      new CustomEvent('task-updated', {
+        detail: result.movedTask,
+      })
+    )
   })
 
   // 向外传递事件，让外部组件进行额外处理（完全可选）
@@ -1313,7 +1365,7 @@ const getIsExpandAll = (): boolean => {
 // 监听 Props expandAll 变化
 watch(
   () => props.expandAll,
-  (newValue) => {
+  newValue => {
     if (newValue !== undefined) {
       if (newValue) {
         expandAllTasks()
@@ -1322,7 +1374,7 @@ watch(
       }
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 处理TaskDrawer请求任务列表
@@ -1368,7 +1420,7 @@ watch(
       notifyTaskListUpdated()
     })
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 onMounted(() => {
@@ -1402,7 +1454,7 @@ onUnmounted(() => {
   window.removeEventListener('fullscreen-toggle', handleFullscreenToggle as EventListener)
   window.removeEventListener(
     'milestone-icon-changed',
-    handleMilestoneIconChangeEvent as EventListener,
+    handleMilestoneIconChangeEvent as EventListener
   )
   window.removeEventListener('milestone-deleted', handleMilestoneDeleted as EventListener)
   window.removeEventListener('milestone-data-changed', handleMilestoneDataChanged as EventListener)
@@ -1436,7 +1488,7 @@ const currentTheme = (): string => {
 // 监听 Props theme 变化
 watch(
   () => props.theme,
-  (newTheme) => {
+  newTheme => {
     // 只在组件已挂载后处理
     if (!ganttRootRef.value) return
 
@@ -1445,7 +1497,7 @@ watch(
     if (targetTheme !== currentThemeMode.value) {
       setTheme(targetTheme)
     }
-  },
+  }
 )
 
 // 监听系统主题变化（仅在未明确设置theme时生效）
@@ -1746,7 +1798,7 @@ const timelineDateRange = computed(() => {
 
   if (currentViewMode.value === 'resource' && props.resources) {
     // 资源视图：从 resource.tasks 提取日期，避免传入基于任务视图的错误范围
-    for (const resource of (props.resources as Resource[])) {
+    for (const resource of props.resources as Resource[]) {
       if (resource.tasks && Array.isArray(resource.tasks)) {
         allTasks = allTasks.concat(flattenTasks(resource.tasks as Task[]))
       }
@@ -1791,7 +1843,7 @@ const timelineDateRange = computed(() => {
     taskMaxDate,
     currentTimeScale.value,
     minColumns,
-    columnWidth,
+    columnWidth
   )
 
   return { min, max }
@@ -1812,258 +1864,258 @@ function applyBufferAndFillContainer(
   taskMax: Date,
   scale: TimelineScale,
   minColumns: number,
-  columnWidth: number,
+  columnWidth: number
 ): { min: Date; max: Date } {
   let min: Date
   let max: Date
 
   switch (scale) {
-  case TimelineScale.HOUR: {
-    // 小时视图：±1天
-    min = new Date(taskMin.getTime() - 24 * 60 * 60 * 1000)
-    max = new Date(taskMax.getTime() + 24 * 60 * 60 * 1000)
-    // 确保至少有 minColumns 小时
-    const currentHours = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60))
-    if (currentHours < minColumns) {
-      const needHours = minColumns - currentHours
-      const expandEach = Math.ceil(needHours / 2)
-      min = new Date(min.getTime() - expandEach * 60 * 60 * 1000)
-      max = new Date(max.getTime() + expandEach * 60 * 60 * 1000)
+    case TimelineScale.HOUR: {
+      // 小时视图：±1天
+      min = new Date(taskMin.getTime() - 24 * 60 * 60 * 1000)
+      max = new Date(taskMax.getTime() + 24 * 60 * 60 * 1000)
+      // 确保至少有 minColumns 小时
+      const currentHours = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60))
+      if (currentHours < minColumns) {
+        const needHours = minColumns - currentHours
+        const expandEach = Math.ceil(needHours / 2)
+        min = new Date(min.getTime() - expandEach * 60 * 60 * 1000)
+        max = new Date(max.getTime() + expandEach * 60 * 60 * 1000)
+      }
+      break
     }
-    break
-  }
-  case TimelineScale.DAY: {
-    // 日视图：±15天，显示 buffer 日期所在月份的完整月份
+    case TimelineScale.DAY: {
+      // 日视图：±15天，显示 buffer 日期所在月份的完整月份
 
-    // 1. 计算 buffer 日期
-    const minBufferDate = new Date(taskMin)
-    minBufferDate.setDate(minBufferDate.getDate() - 15)
+      // 1. 计算 buffer 日期
+      const minBufferDate = new Date(taskMin)
+      minBufferDate.setDate(minBufferDate.getDate() - 15)
 
-    const maxBufferDate = new Date(taskMax)
-    maxBufferDate.setDate(maxBufferDate.getDate() + 15)
+      const maxBufferDate = new Date(taskMax)
+      maxBufferDate.setDate(maxBufferDate.getDate() + 15)
 
-    // 2. 获取 buffer 日期所在月份的第一天和最后一天
-    min = new Date(minBufferDate.getFullYear(), minBufferDate.getMonth(), 1)
-    max = new Date(maxBufferDate.getFullYear(), maxBufferDate.getMonth() + 1, 0)
+      // 2. 获取 buffer 日期所在月份的第一天和最后一天
+      min = new Date(minBufferDate.getFullYear(), minBufferDate.getMonth(), 1)
+      max = new Date(maxBufferDate.getFullYear(), maxBufferDate.getMonth() + 1, 0)
 
-    // 3. 确保至少有 minColumns 天
-    const currentDays = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60 * 24))
-    if (currentDays < minColumns) {
-      const needDays = minColumns - currentDays
-      const expandMonths = Math.ceil(needDays / 30) // 按月扩展
+      // 3. 确保至少有 minColumns 天
+      const currentDays = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60 * 24))
+      if (currentDays < minColumns) {
+        const needDays = minColumns - currentDays
+        const expandMonths = Math.ceil(needDays / 30) // 按月扩展
 
-      // 向前扩展整月
-      const newMinMonth = min.getMonth() - expandMonths
-      const newMinYear = min.getFullYear() + Math.floor(newMinMonth / 12)
-      const normalizedMinMonth = ((newMinMonth % 12) + 12) % 12
-      min = new Date(newMinYear, normalizedMinMonth, 1)
+        // 向前扩展整月
+        const newMinMonth = min.getMonth() - expandMonths
+        const newMinYear = min.getFullYear() + Math.floor(newMinMonth / 12)
+        const normalizedMinMonth = ((newMinMonth % 12) + 12) % 12
+        min = new Date(newMinYear, normalizedMinMonth, 1)
 
-      // 向后扩展整月
-      const newMaxMonth = max.getMonth() + expandMonths + 1
-      const newMaxYear = max.getFullYear() + Math.floor(newMaxMonth / 12)
-      const normalizedMaxMonth = ((newMaxMonth % 12) + 12) % 12
-      max = new Date(newMaxYear, normalizedMaxMonth, 0)
+        // 向后扩展整月
+        const newMaxMonth = max.getMonth() + expandMonths + 1
+        const newMaxYear = max.getFullYear() + Math.floor(newMaxMonth / 12)
+        const normalizedMaxMonth = ((newMaxMonth % 12) + 12) % 12
+        max = new Date(newMaxYear, normalizedMaxMonth, 0)
+      }
+      break
     }
-    break
-  }
-  case TimelineScale.WEEK: {
-    // 周视图：确保铺满容器，按整月扩展
+    case TimelineScale.WEEK: {
+      // 周视图：确保铺满容器，按整月扩展
 
-    // 工具函数：获取某日期所在周的周一
-    const getMonday = (date: Date): Date => {
-      const d = new Date(date)
-      const day = d.getDay() || 7
-      d.setDate(d.getDate() - (day - 1))
-      return d
-    }
+      // 工具函数：获取某日期所在周的周一
+      const getMonday = (date: Date): Date => {
+        const d = new Date(date)
+        const day = d.getDay() || 7
+        d.setDate(d.getDate() - (day - 1))
+        return d
+      }
 
-    // 工具函数：获取某月第一个周一在该月的周（该月最小日期作为周一的周）
-    const getFirstMondayOfMonth = (year: number, month: number): Date => {
-      let day = 1
-      while (day <= 31) {
-        const date = new Date(year, month, day)
-        if (date.getMonth() !== month) break // 超出该月
-        const monday = getMonday(date)
-        if (monday.getMonth() === month) {
-          return monday
+      // 工具函数：获取某月第一个周一在该月的周（该月最小日期作为周一的周）
+      const getFirstMondayOfMonth = (year: number, month: number): Date => {
+        let day = 1
+        while (day <= 31) {
+          const date = new Date(year, month, day)
+          if (date.getMonth() !== month) break // 超出该月
+          const monday = getMonday(date)
+          if (monday.getMonth() === month) {
+            return monday
+          }
+          day++
         }
-        day++
+        return new Date(year, month, 1) // 兜底
       }
-      return new Date(year, month, 1) // 兜底
-    }
 
-    // 工具函数：获取某月最后一个周一在该月的周（该月最大日期作为周一的周）
-    const getLastMondayOfMonth = (year: number, month: number): Date => {
-      const lastDay = new Date(year, month + 1, 0).getDate()
-      for (let day = lastDay; day >= 1; day--) {
-        const date = new Date(year, month, day)
-        const monday = getMonday(date)
-        if (monday.getMonth() === month) {
-          return monday
+      // 工具函数：获取某月最后一个周一在该月的周（该月最大日期作为周一的周）
+      const getLastMondayOfMonth = (year: number, month: number): Date => {
+        const lastDay = new Date(year, month + 1, 0).getDate()
+        for (let day = lastDay; day >= 1; day--) {
+          const date = new Date(year, month, day)
+          const monday = getMonday(date)
+          if (monday.getMonth() === month) {
+            return monday
+          }
+        }
+        return new Date(year, month, 1) // 兜底
+      }
+
+      // 工具函数：获取某月的所有周（周一在该月的周）
+      const getWeeksOfMonth = (year: number, month: number): Date[] => {
+        const weeks: Date[] = []
+        const firstMonday = getFirstMondayOfMonth(year, month)
+        const lastMonday = getLastMondayOfMonth(year, month)
+        const current = new Date(firstMonday)
+        while (current <= lastMonday) {
+          weeks.push(new Date(current))
+          current.setDate(current.getDate() + 7)
+        }
+        return weeks
+      }
+
+      // 1. 获取最早TaskBar/Milestone的最小开始日期所在周的周一
+      const minMonday = getMonday(taskMin)
+      const minYear = minMonday.getFullYear()
+      const minMonth = minMonday.getMonth()
+
+      // 2. 基于第一周周一往前追加一个完整月份的周数作为baseBuffer
+      const prevMonth = minMonth === 0 ? 11 : minMonth - 1
+      const prevYear = minMonth === 0 ? minYear - 1 : minYear
+      const prevMonthWeeks = getWeeksOfMonth(prevYear, prevMonth)
+
+      // 3. 获取最晚TaskBar/Milestone的最大开始日期所在周的周一
+      const maxMonday = getMonday(taskMax)
+      const maxYear = maxMonday.getFullYear()
+      const maxMonth = maxMonday.getMonth()
+
+      // 4. 基于最后一周周日往后追加一个完整月份的周数作为baseBuffer
+      const nextMonth = maxMonth === 11 ? 0 : maxMonth + 1
+      const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
+      const nextMonthWeeks = getWeeksOfMonth(nextYear, nextMonth)
+
+      // 初始weeks：前buffer月 + 最小月到最大月之间所有月 + 后buffer月
+      let weeks: Date[] = []
+
+      // 添加前buffer月
+      weeks.push(...prevMonthWeeks)
+
+      // 添加最小月到最大月之间的所有月份的周
+      let currentYear = minYear
+      let currentMonth = minMonth
+      while (currentYear < maxYear || (currentYear === maxYear && currentMonth <= maxMonth)) {
+        const monthWeeks = getWeeksOfMonth(currentYear, currentMonth)
+        weeks.push(...monthWeeks)
+        currentMonth++
+        if (currentMonth > 11) {
+          currentMonth = 0
+          currentYear++
         }
       }
-      return new Date(year, month, 1) // 兜底
-    }
 
-    // 工具函数：获取某月的所有周（周一在该月的周）
-    const getWeeksOfMonth = (year: number, month: number): Date[] => {
-      const weeks: Date[] = []
-      const firstMonday = getFirstMondayOfMonth(year, month)
-      const lastMonday = getLastMondayOfMonth(year, month)
-      const current = new Date(firstMonday)
-      while (current <= lastMonday) {
-        weeks.push(new Date(current))
-        current.setDate(current.getDate() + 7)
+      // 添加后buffer月
+      weeks.push(...nextMonthWeeks)
+
+      // 5. 判断是否填满容器，不够则继续扩展前后的完整月份
+      const weekWidth = 60 // 周视图：每周60px
+      let totalWidth = weeks.length * weekWidth
+      while (totalWidth < minColumns * columnWidth) {
+        // 前面扩展一个完整月
+        const firstWeek = weeks[0]
+        const firstYear = firstWeek.getFullYear()
+        const firstMonth = firstWeek.getMonth()
+        const extendPrevMonth = firstMonth === 0 ? 11 : firstMonth - 1
+        const extendPrevYear = firstMonth === 0 ? firstYear - 1 : firstYear
+        const extendPrevWeeks = getWeeksOfMonth(extendPrevYear, extendPrevMonth)
+        weeks = [...extendPrevWeeks, ...weeks]
+        totalWidth = weeks.length * weekWidth
+
+        if (totalWidth >= minColumns * columnWidth) break
+
+        // 后面扩展一个完整月
+        const lastWeek = weeks[weeks.length - 1]
+        const lastYear = lastWeek.getFullYear()
+        const lastMonth = lastWeek.getMonth()
+        const extendNextMonth = lastMonth === 11 ? 0 : lastMonth + 1
+        const extendNextYear = lastMonth === 11 ? lastYear + 1 : lastYear
+        const extendNextWeeks = getWeeksOfMonth(extendNextYear, extendNextMonth)
+        weeks = [...weeks, ...extendNextWeeks]
+        totalWidth = weeks.length * weekWidth
       }
-      return weeks
+
+      // 6. 计算最终 min/max
+      min = new Date(weeks[0])
+      max = new Date(weeks[weeks.length - 1])
+      max.setDate(max.getDate() + 6) // 该周的周日
+
+      break
     }
-
-    // 1. 获取最早TaskBar/Milestone的最小开始日期所在周的周一
-    const minMonday = getMonday(taskMin)
-    const minYear = minMonday.getFullYear()
-    const minMonth = minMonday.getMonth()
-
-    // 2. 基于第一周周一往前追加一个完整月份的周数作为baseBuffer
-    const prevMonth = minMonth === 0 ? 11 : minMonth - 1
-    const prevYear = minMonth === 0 ? minYear - 1 : minYear
-    const prevMonthWeeks = getWeeksOfMonth(prevYear, prevMonth)
-
-    // 3. 获取最晚TaskBar/Milestone的最大开始日期所在周的周一
-    const maxMonday = getMonday(taskMax)
-    const maxYear = maxMonday.getFullYear()
-    const maxMonth = maxMonday.getMonth()
-
-    // 4. 基于最后一周周日往后追加一个完整月份的周数作为baseBuffer
-    const nextMonth = maxMonth === 11 ? 0 : maxMonth + 1
-    const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
-    const nextMonthWeeks = getWeeksOfMonth(nextYear, nextMonth)
-
-    // 初始weeks：前buffer月 + 最小月到最大月之间所有月 + 后buffer月
-    let weeks: Date[] = []
-
-    // 添加前buffer月
-    weeks.push(...prevMonthWeeks)
-
-    // 添加最小月到最大月之间的所有月份的周
-    let currentYear = minYear
-    let currentMonth = minMonth
-    while (currentYear < maxYear || (currentYear === maxYear && currentMonth <= maxMonth)) {
-      const monthWeeks = getWeeksOfMonth(currentYear, currentMonth)
-      weeks.push(...monthWeeks)
-      currentMonth++
-      if (currentMonth > 11) {
-        currentMonth = 0
-        currentYear++
+    case TimelineScale.MONTH: {
+      // 月视图：±1年
+      min = new Date(taskMin.getFullYear() - 1, taskMin.getMonth(), 1)
+      max = new Date(taskMax.getFullYear() + 1, taskMax.getMonth() + 1, 0)
+      // 确保至少有 minColumns 月
+      const currentMonths =
+        (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth())
+      if (currentMonths < minColumns) {
+        const needMonths = minColumns - currentMonths
+        const expandEach = Math.ceil(needMonths / 2)
+        min = new Date(min.getFullYear(), min.getMonth() - expandEach, 1)
+        max = new Date(max.getFullYear(), max.getMonth() + expandEach + 1, 0)
       }
+      break
     }
+    case TimelineScale.QUARTER: {
+      // 季度视图：以今日为中心，±2年 buffer，不够则继续扩展
+      const today = new Date()
+      const todayYear = today.getFullYear()
 
-    // 添加后buffer月
-    weeks.push(...nextMonthWeeks)
+      // 1. 先确保包含任务范围 + ±2年 buffer
+      const taskMinYear = taskMin.getFullYear()
+      const taskMaxYear = taskMax.getFullYear()
 
-    // 5. 判断是否填满容器，不够则继续扩展前后的完整月份
-    const weekWidth = 60 // 周视图：每周60px
-    let totalWidth = weeks.length * weekWidth
-    while (totalWidth < minColumns * columnWidth) {
-      // 前面扩展一个完整月
-      const firstWeek = weeks[0]
-      const firstYear = firstWeek.getFullYear()
-      const firstMonth = firstWeek.getMonth()
-      const extendPrevMonth = firstMonth === 0 ? 11 : firstMonth - 1
-      const extendPrevYear = firstMonth === 0 ? firstYear - 1 : firstYear
-      const extendPrevWeeks = getWeeksOfMonth(extendPrevYear, extendPrevMonth)
-      weeks = [...extendPrevWeeks, ...weeks]
-      totalWidth = weeks.length * weekWidth
+      min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
+      max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
 
-      if (totalWidth >= minColumns * columnWidth) break
+      // 2. 检查是否能填充容器
+      const currentQuarters = (max.getFullYear() - min.getFullYear() + 1) * 4
+      if (currentQuarters < minColumns) {
+        // 需要扩展，以1年（4个季度）为单位
+        const needQuarters = minColumns - currentQuarters
+        const expandYears = Math.ceil(needQuarters / 4)
 
-      // 后面扩展一个完整月
-      const lastWeek = weeks[weeks.length - 1]
-      const lastYear = lastWeek.getFullYear()
-      const lastMonth = lastWeek.getMonth()
-      const extendNextMonth = lastMonth === 11 ? 0 : lastMonth + 1
-      const extendNextYear = lastMonth === 11 ? lastYear + 1 : lastYear
-      const extendNextWeeks = getWeeksOfMonth(extendNextYear, extendNextMonth)
-      weeks = [...weeks, ...extendNextWeeks]
-      totalWidth = weeks.length * weekWidth
+        // 以今日为中心扩展
+        const expandEach = Math.ceil(expandYears / 2)
+        min = new Date(min.getFullYear() - expandEach, 0, 1)
+        max = new Date(max.getFullYear() + expandEach, 11, 31)
+      }
+      break
     }
+    case TimelineScale.YEAR: {
+      // 年度视图：以今日为中心，±2年 buffer，不够则继续扩展（与季度视图逻辑一致）
+      const today = new Date()
+      const todayYear = today.getFullYear()
 
-    // 6. 计算最终 min/max
-    min = new Date(weeks[0])
-    max = new Date(weeks[weeks.length - 1])
-    max.setDate(max.getDate() + 6) // 该周的周日
+      // 1. 先确保包含任务范围 + ±2年 buffer
+      const taskMinYear = taskMin.getFullYear()
+      const taskMaxYear = taskMax.getFullYear()
 
-    break
-  }
-  case TimelineScale.MONTH: {
-    // 月视图：±1年
-    min = new Date(taskMin.getFullYear() - 1, taskMin.getMonth(), 1)
-    max = new Date(taskMax.getFullYear() + 1, taskMax.getMonth() + 1, 0)
-    // 确保至少有 minColumns 月
-    const currentMonths =
-      (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth())
-    if (currentMonths < minColumns) {
-      const needMonths = minColumns - currentMonths
-      const expandEach = Math.ceil(needMonths / 2)
-      min = new Date(min.getFullYear(), min.getMonth() - expandEach, 1)
-      max = new Date(max.getFullYear(), max.getMonth() + expandEach + 1, 0)
+      min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
+      max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
+
+      // 2. 检查是否能填充容器（年度视图每年2个半年，每个半年是一列）
+      const currentHalfYears = (max.getFullYear() - min.getFullYear() + 1) * 2
+      if (currentHalfYears < minColumns) {
+        // 需要扩展，以1年（2个半年）为单位
+        const needHalfYears = minColumns - currentHalfYears
+        const expandYears = Math.ceil(needHalfYears / 2)
+
+        // 以今日为中心扩展
+        const expandEach = Math.ceil(expandYears / 2)
+        min = new Date(min.getFullYear() - expandEach, 0, 1)
+        max = new Date(max.getFullYear() + expandEach, 11, 31)
+      }
+      break
     }
-    break
-  }
-  case TimelineScale.QUARTER: {
-    // 季度视图：以今日为中心，±2年 buffer，不够则继续扩展
-    const today = new Date()
-    const todayYear = today.getFullYear()
-
-    // 1. 先确保包含任务范围 + ±2年 buffer
-    const taskMinYear = taskMin.getFullYear()
-    const taskMaxYear = taskMax.getFullYear()
-
-    min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
-    max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
-
-    // 2. 检查是否能填充容器
-    const currentQuarters = (max.getFullYear() - min.getFullYear() + 1) * 4
-    if (currentQuarters < minColumns) {
-      // 需要扩展，以1年（4个季度）为单位
-      const needQuarters = minColumns - currentQuarters
-      const expandYears = Math.ceil(needQuarters / 4)
-
-      // 以今日为中心扩展
-      const expandEach = Math.ceil(expandYears / 2)
-      min = new Date(min.getFullYear() - expandEach, 0, 1)
-      max = new Date(max.getFullYear() + expandEach, 11, 31)
-    }
-    break
-  }
-  case TimelineScale.YEAR: {
-    // 年度视图：以今日为中心，±2年 buffer，不够则继续扩展（与季度视图逻辑一致）
-    const today = new Date()
-    const todayYear = today.getFullYear()
-
-    // 1. 先确保包含任务范围 + ±2年 buffer
-    const taskMinYear = taskMin.getFullYear()
-    const taskMaxYear = taskMax.getFullYear()
-
-    min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
-    max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
-
-    // 2. 检查是否能填充容器（年度视图每年2个半年，每个半年是一列）
-    const currentHalfYears = (max.getFullYear() - min.getFullYear() + 1) * 2
-    if (currentHalfYears < minColumns) {
-      // 需要扩展，以1年（2个半年）为单位
-      const needHalfYears = minColumns - currentHalfYears
-      const expandYears = Math.ceil(needHalfYears / 2)
-
-      // 以今日为中心扩展
-      const expandEach = Math.ceil(expandYears / 2)
-      min = new Date(min.getFullYear() - expandEach, 0, 1)
-      max = new Date(max.getFullYear() + expandEach, 11, 31)
-    }
-    break
-  }
-  default:
-    min = taskMin
-    max = taskMax
+    default:
+      min = taskMin
+      max = taskMax
   }
 
   return { min, max }
@@ -2160,12 +2212,12 @@ const currentScale = (): string => {
 // 监听 Props timeScale 变化
 watch(
   () => props.timeScale,
-  (newScale) => {
+  newScale => {
     if (newScale && newScale !== currentTimeScale.value) {
       handleTimeScaleChange(newScale)
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 处理关闭高亮
@@ -2450,7 +2502,7 @@ const handleFullscreenToggle = (event: CustomEvent) => {
     window.dispatchEvent(
       new CustomEvent('timeline-container-resized', {
         detail: { source: 'fullscreen-toggle' },
-      }),
+      })
     )
   }, 500) // 比动画时间稍长一点，确保完全完成
 }
@@ -2469,7 +2521,7 @@ const enterFullscreen = () => {
       window.dispatchEvent(
         new CustomEvent('timeline-container-resized', {
           detail: { source: 'fullscreen-toggle' },
-        }),
+        })
       )
     }, 500)
   }
@@ -2488,7 +2540,7 @@ const exitFullscreen = () => {
       window.dispatchEvent(
         new CustomEvent('timeline-container-resized', {
           detail: { source: 'fullscreen-toggle' },
-        }),
+        })
       )
     }, 500)
   }
@@ -2515,7 +2567,7 @@ const getIsFullscreen = (): boolean => {
 // 监听 Props fullscreen 变化
 watch(
   () => props.fullscreen,
-  (newValue) => {
+  newValue => {
     if (newValue !== undefined && newValue !== isFullscreen.value) {
       if (newValue) {
         enterFullscreen()
@@ -2524,7 +2576,7 @@ watch(
       }
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 更新或添加里程碑到列表中
@@ -2773,14 +2825,14 @@ const setLocale = (locale: 'zh-CN' | 'en-US') => {
 // 监听 Props locale 变化
 watch(
   () => props.locale,
-  (newLocale) => {
+  newLocale => {
     if (newLocale && newLocale !== i18nLocale.value) {
       // 导入 setLocale 方法
       const { setLocale } = useI18n()
       setLocale(newLocale)
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 窗口大小变化处理函数
@@ -2815,7 +2867,7 @@ watch(
       })
     }
   },
-  { deep: true },
+  { deep: true }
 )
 
 // 右键菜单状态管理
@@ -2885,7 +2937,7 @@ function handleToolbarAddTask() {
 // 监听TaskDrawer、TaskList、Timeline的计时事件，统一处理
 const handleStartTimer = (task: Task) => {
   // 任务树内状态同步，同时同步到资源视图
-  updateTaskStateInTree(task.id, (t) => {
+  updateTaskStateInTree(task.id, t => {
     t.isTimerRunning = true
     t.timerStartTime = task.timerStartTime || Date.now()
     t.timerEndTime = undefined
@@ -2898,7 +2950,7 @@ const handleStartTimer = (task: Task) => {
 
 const handleStopTimer = (task: Task) => {
   // 任务树内状态同步，同时同步到资源视图
-  updateTaskStateInTree(task.id, (t) => {
+  updateTaskStateInTree(task.id, t => {
     if (t.isTimerRunning && t.timerStartTime !== undefined) {
       const elapsed = t.timerElapsedTime || 0
       t.timerElapsedTime = elapsed + (Date.now() - t.timerStartTime)
@@ -2907,11 +2959,7 @@ const handleStopTimer = (task: Task) => {
     t.isTimerRunning = false
 
     // 同步更新TaskDrawer中的任务
-    if (
-      taskDrawerVisible.value &&
-      taskDrawerTask.value &&
-      taskDrawerTask.value.id === task.id
-    ) {
+    if (taskDrawerVisible.value && taskDrawerTask.value && taskDrawerTask.value.id === task.id) {
       taskDrawerTask.value.isTimerRunning = false
       taskDrawerTask.value.timerEndTime = Date.now()
     }
@@ -3069,7 +3117,8 @@ const updateTaskInTree = (tasks: Task[], updatedTask: Task): boolean => {
 }
 
 // v1.9.0 更新任务并同步到资源视图
-const updateTaskAndSyncToResources = (updatedTask: Task) => {
+// skipResourceMove: 为 true 时跳过基于 assignee 的资源迁移（用于拖拽/拉伸场景，只更新日期，不移动资源归属）
+const updateTaskAndSyncToResources = (updatedTask: Task, skipResourceMove = false) => {
   // v2.0 方案1：记录变更的任务和资源ID（增量更新）
   lastChangedTaskId.value = updatedTask.id
   const affectedResourceIds = new Set<string | number>()
@@ -3101,8 +3150,8 @@ const updateTaskAndSyncToResources = (updatedTask: Task) => {
 
     // 如果找到了任务
     if (oldResource && oldTaskIndex !== -1) {
-      // 如果责任人变了，需要移动任务
-      if (updatedTask.assignee && updatedTask.assignee !== oldResourceId) {
+      // 如果责任人变了，需要移动任务（skipResourceMove 为 true 时跳过，如拖拽/拉伸只改日期不改归属）
+      if (!skipResourceMove && updatedTask.assignee && updatedTask.assignee !== oldResourceId) {
         // 从原资源中移除
         oldResource.tasks.splice(oldTaskIndex, 1)
 
@@ -3207,6 +3256,8 @@ function handleTaskDrawerSubmit(task: Task) {
     }
     // v1.9.0 新增任务时同步到资源视图
     addTaskToResource(task)
+    // 新增任务后强制触发 Timeline 重新计算布局与队列（与编辑路径保持一致）
+    updateTaskTrigger.value++
 
     // emit 新增任务事件
     emit('task-added', { task })
@@ -3310,7 +3361,12 @@ function handleLinkDeleted(event: {
 }
 
 // v1.9.0 资源视图垂直拖拽结束事件
-function handleResourceDragEnd(event: { task: Task; sourceResourceIndex: number; targetResourceIndex: number; targetResource: Resource }) {
+function handleResourceDragEnd(event: {
+  task: Task
+  sourceResourceIndex: number
+  targetResourceIndex: number
+  targetResource: Resource
+}) {
   emit('resource-drag-end', event)
 }
 
@@ -3539,11 +3595,7 @@ defineExpose({
         </Timeline>
 
         <!-- 关闭聚焦按钮 - 固定在gantt-panel-right底部居中 -->
-        <div
-          v-if="showCloseButton"
-          class="focus-close-button"
-          @click.stop="handleClearHighlight"
-        >
+        <div v-if="showCloseButton" class="focus-close-button" @click.stop="handleClearHighlight">
           <svg
             class="close-icon"
             viewBox="0 0 24 24"

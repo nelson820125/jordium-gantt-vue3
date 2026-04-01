@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.5] - 2026-04-01
+
+### Enhancement
+- 🔧 修复：修复资源视图的小时维度下，同一天内Taskbar冲突计算错误
+- 🔧 Fixed: Fixed Taskbar conflict calculation error in hourly view of resource view
+
 ## [1.10.4] - 2026-03-31
 
 ### Enhancement

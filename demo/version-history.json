@@ -667,5 +667,15 @@
       "🔧 Fixed: Upgraded vulnerabilities in third-party packages",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to matthias-muehlich@github and mmwwsh@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.10.5",
+    "date": "2026-04-01",
+    "notes": [
+      "🔧 修复：修复资源视图的小时维度下，同一天内Taskbar冲突计算错误",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自mmwwsh@gitee的使用与反馈</span>",
+      "🔧 Fixed: Fixed Taskbar conflict calculation error in hourly view of resource view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to mmwwsh@gitee for their use and feedback</span>"
+    ]
   }
 ]

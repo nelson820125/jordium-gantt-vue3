@@ -177,7 +177,7 @@ interface Props {
   // v1.9.0 资源视图：每个子行的高度数组（换行布局）
   rowHeights?: number[]
   // v1.9.2 资源列表（用于查找资源名称等信息）
-  resources?: Array<{ id: string | number; name: string; color?: string }>
+  resources?: Array<{ id: string | number; name: string; color?: string; avatar?: string }>
 }
 
 interface TaskStatus {
@@ -998,6 +998,16 @@ const slotPayload = computed(() => ({
 
 // 处理avatar数组和assignee生成头像
 const avatarList = computed(() => {
+  // 在资源视图中，使用当前资源的头像（不依赖task.avatar/assignee，避免跨行拖拽后头像不更新的问题）
+  if (viewMode.value === 'resource' && props.currentResourceId && props.resources) {
+    const resource = props.resources.find(r => String(r.id) === String(props.currentResourceId))
+    if (resource) {
+      if (resource.avatar) return [resource.avatar]
+      if (resource.name) return [{ isText: true, name: resource.name }]
+      return []
+    }
+  }
+
   const avatar = props.task.avatar
   const assignee = props.task.assignee
 
@@ -3442,7 +3452,10 @@ const handleAnchorDragEnd = (anchorEvent: {
       <!-- 头像和标题放置在实际TaskBar尾部外面 -->
       <div class="actual-bar-trailing">
         <!-- 实际TaskBar的多头像容器 -->
-        <div v-if="barConfig.showAvatar && avatarList.length > 0" class="actual-avatars-container">
+        <div
+          v-if="barConfig.showAvatar && viewMode !== 'resource' && avatarList.length > 0"
+          class="actual-avatars-container"
+        >
           <div
             v-for="(avatarItem, index) in avatarList"
             :key="index"
@@ -3642,6 +3655,7 @@ const handleAnchorDragEnd = (anchorEvent: {
         <div
           v-if="
             barConfig.showAvatar &&
+            viewMode !== 'resource' &&
             !(showActualTaskbar && hasActualProgress) &&
             avatarList.length > 0
           "
