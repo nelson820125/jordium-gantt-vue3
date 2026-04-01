@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick, shallowRef, inject, provide, reactive } from 'vue'
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  computed,
+  watch,
+  nextTick,
+  shallowRef,
+  inject,
+  provide,
+  reactive,
+} from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import TaskBar from './TaskBar.vue'
 import MilestonePoint from './MilestonePoint.vue'
@@ -18,7 +29,10 @@ import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
-import type { TooltipShowPayload, MilestoneTooltipShowPayload } from '../models/types/TimelineDataTypes'
+import type {
+  TooltipShowPayload,
+  MilestoneTooltipShowPayload,
+} from '../models/types/TimelineDataTypes'
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 import { computeTaskViewLogicalPosition } from '../utils/taskPositionUtils' // 逻辑坐标种子填充
 
@@ -97,7 +111,16 @@ const emit = defineEmits<{
   'successor-added': [{ targetTask: Task; newTask: Task }] // 后置任务已添加
   delete: [task: Task, deleteChildren?: boolean]
   'link-deleted': [{ sourceTaskId: number; targetTaskId: number; updatedTask: Task }] // 链接已删除
-  'resource-drag-end': [{ task: Task; sourceResourceIndex: number; targetResourceIndex: number; targetResource: Resource; newStartDate?: string; newEndDate?: string }] // v1.9.0 资源视图垂直拖拽结束
+  'resource-drag-end': [
+    {
+      task: Task
+      sourceResourceIndex: number
+      targetResourceIndex: number
+      targetResource: Resource
+      newStartDate?: string
+      newEndDate?: string
+    },
+  ] // v1.9.0 资源视图垂直拖拽结束
 }>()
 
 // 多语言
@@ -112,7 +135,10 @@ const t = (key: string): string => {
 const { viewMode, dataSource } = useViewMode()
 
 // v1.9.0 从 GanttChart 注入资源冲突信息（由 GanttChart 计算并响应 updateTaskTrigger）
-const resourceConflicts = inject<ComputedRef<Map<string, Set<number>>>>('resourceConflicts', computed(() => new Map()))
+const resourceConflicts = inject<ComputedRef<Map<string, Set<number>>>>(
+  'resourceConflicts',
+  computed(() => new Map())
+)
 
 // TaskBar渲染key，用于在容器变化时强制重新渲染
 const taskBarRenderKey = ref(0)
@@ -176,7 +202,10 @@ const isSplitBarDragging = inject<Ref<boolean>>('isSplitBarDragging', ref(false)
 const isTaskListToggling = inject<Ref<boolean>>('isTaskListToggling', ref(false))
 
 // v1.9.5 注入showConflicts配置
-const showConflicts = inject<ComputedRef<boolean>>('gantt-show-conflicts', computed(() => true))
+const showConflicts = inject<ComputedRef<boolean>>(
+  'gantt-show-conflicts',
+  computed(() => true)
+)
 
 // 纵向虚拟滚动相关状态（需要在useResourceLayout之前定义）
 const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
@@ -191,8 +220,14 @@ const timelineBodyHeight = ref(0) // 容器高度状态管理
 
 // v1.9.9 优化：注入GanttChart提供的资源布局，避免重复计算
 // GanttChart已经计算并provide了resourceTaskLayouts和resourceRowPositions
-const resourceTaskLayouts = inject<ComputedRef<Map<string | number, any>>>('resourceTaskLayouts', computed(() => new Map()))
-const resourceRowPositions = inject<ComputedRef<Map<string | number, number>>>('resourceRowPositions', computed(() => new Map()))
+const resourceTaskLayouts = inject<ComputedRef<Map<string | number, any>>>(
+  'resourceTaskLayouts',
+  computed(() => new Map())
+)
+const resourceRowPositions = inject<ComputedRef<Map<string | number, number>>>(
+  'resourceRowPositions',
+  computed(() => new Map())
+)
 
 // ─── Singleton Tooltip 状态（方案 B：Timeline 统一渲染）─────────────────────────────────
 // 注入 TaskList 宽度，用于 Tooltip 定位边界保护
@@ -239,23 +274,23 @@ const handleTooltipShow = (payload: TooltipShowPayload) => {
   tooltipState.resourcePercent = resourcePercent
   tooltipState.hasResourceConflict = hasResourceConflict
 
-  const TW = 250          // tooltip 固定宽度（与 CSS width:250px 保持一致）
+  const TW = 250 // tooltip 固定宽度（与 CSS width:250px 保持一致）
   const TH = estimateTaskTooltipHeight(resourcePercent, hasResourceConflict)
-  const GAP = 15   // tooltip 与目标元素之间的间距
-  const PAD = 7           // tooltip 与面板 / 视窗边缘的安全距离
+  const GAP = 15 // tooltip 与目标元素之间的间距
+  const PAD = 7 // tooltip 与面板 / 视窗边缘的安全距离
 
   const panelRect = timelinePanelElement.value?.getBoundingClientRect()
-  const panelLeft  = panelRect ? panelRect.left  : ganttTaskListWidth.value
+  const panelLeft = panelRect ? panelRect.left : ganttTaskListWidth.value
   const panelRight = panelRect ? panelRect.right : window.innerWidth
   const viewH = window.innerHeight
 
-  const targetCX = targetRect.left + targetRect.width  / 2
-  const targetCY = targetRect.top  + targetRect.height / 2
+  const targetCX = targetRect.left + targetRect.width / 2
+  const targetCY = targetRect.top + targetRect.height / 2
 
   // ── 判断气泡停靠场景 ────────────────────────────────────────────────────────
   // 当 TaskBar 滑出面板左/右边缘时，气泡显示在面板边框处
   // 判断依据：目标元素中心是否在面板内 60px 缓冲范围外
-  const dockLeft  = targetCX < panelLeft  + 60
+  const dockLeft = targetCX < panelLeft + 60
   const dockRight = targetCX > panelRight - 60
 
   let left: number, top: number, arrowOffset: number
@@ -264,41 +299,41 @@ const handleTooltipShow = (payload: TooltipShowPayload) => {
   if (dockLeft) {
     // ── 左侧停靠：tooltip 显示在气泡右侧，垂直居中 ──────────────────────────
     // CSS 对 placement-right 应用 translateY(-50%)，故 top 为目标垂直中心，限制在视窗内
-    placement   = 'right'
-    left        = targetRect.right + GAP
-    top         = Math.max(PAD + TH / 2, Math.min(viewH - PAD - TH / 2, targetCY))
+    placement = 'right'
+    left = targetRect.right + GAP
+    top = Math.max(PAD + TH / 2, Math.min(viewH - PAD - TH / 2, targetCY))
     arrowOffset = Math.max(10, Math.min(TH - 10, targetCY - top + TH / 2))
   } else if (dockRight) {
     // ── 右侧停靠：tooltip 显示在气泡左侧，垂直居中 ──────────────────────────
     // CSS 对 placement-left 应用 translateY(-50%)，故 top 为目标垂直中心，限制在视窗内
-    placement   = 'left'
-    left        = targetRect.left - TW - GAP
-    top         = Math.max(PAD + TH / 2, Math.min(viewH - PAD - TH / 2, targetCY))
+    placement = 'left'
+    left = targetRect.left - TW - GAP
+    top = Math.max(PAD + TH / 2, Math.min(viewH - PAD - TH / 2, targetCY))
     arrowOffset = Math.max(10, Math.min(TH - 10, targetCY - top + TH / 2))
   } else {
     // ── 正常可见状态：tooltip 显示在任务条上方或下方 ─────────────────────────
     // 水平方向：以目标中心为准，限制在面板内
-    left        = Math.max(panelLeft + PAD, Math.min(panelRight - TW - PAD, targetCX - TW / 2))
+    left = Math.max(panelLeft + PAD, Math.min(panelRight - TW - PAD, targetCX - TW / 2))
     arrowOffset = Math.max(10, Math.min(TW - 10, targetCX - left))
 
-    const spaceAbove = targetRect.top    - PAD
+    const spaceAbove = targetRect.top - PAD
     const spaceBelow = viewH - targetRect.bottom - PAD
     if (spaceAbove >= TH + GAP || spaceAbove >= spaceBelow) {
       // CSS 对 placement-above 应用 translateY(-100%)，故 top 为目标顶边小间距处
       // 无论卡片实际高度多少，底部始终贴靠到目标上方
       placement = 'above'
-      top       = targetRect.top - GAP
+      top = targetRect.top - GAP
     } else {
       // CSS 对 placement-below 无 transform，top 直接为目标底部 + 间距
       placement = 'below'
-      top       = targetRect.bottom + GAP
+      top = targetRect.bottom + GAP
     }
   }
 
-  tooltipState.placement    = placement
-  tooltipState.position     = { left, top }
-  tooltipState.arrowOffset  = arrowOffset
-  tooltipState.visible      = true
+  tooltipState.placement = placement
+  tooltipState.position = { left, top }
+  tooltipState.arrowOffset = arrowOffset
+  tooltipState.visible = true
 }
 
 /** TaskBar 鼠标离开 / 拖拽 / Tab悬停时触发 */
@@ -325,9 +360,9 @@ const handleMilestoneTooltipShow = (payload: MilestoneTooltipShowPayload) => {
   milestoneTooltipState.milestoneColor = milestoneColor
 
   const tooltipWidth = 220
-  const gap = 8           // tooltip 与元素之间的间距
-  const edgePadding = 8   // tooltip 与视窗边缘的最小间距
-  const estimatedH = 34   // tooltip 估算高度：padding(8+8) + 单行文字(12px×1.4≈17px) ≈ 33px
+  const gap = 8 // tooltip 与元素之间的间距
+  const edgePadding = 8 // tooltip 与视窗边缘的最小间距
+  const estimatedH = 34 // tooltip 估算高度：padding(8+8) + 单行文字(12px×1.4≈17px) ≈ 33px
   const viewportW = window.innerWidth
   const viewportH = window.innerHeight
 
@@ -980,7 +1015,11 @@ const taskIdMap = new Map<number, Task>()
 const ENABLE_PERF_MONITOR = false
 
 // 开始连接线拖拽
-const handleLinkDragStart = (event: { task: Task; type: 'predecessor' | 'successor'; mouseEvent: MouseEvent }) => {
+const handleLinkDragStart = (event: {
+  task: Task
+  type: 'predecessor' | 'successor'
+  mouseEvent: MouseEvent
+}) => {
   dragLinkMode.value = event.type
   linkDragSourceTask.value = event.task
 
@@ -1044,7 +1083,7 @@ const processLinkDragFrame = () => {
       currentDragX,
       currentDragY,
       nonReactiveIsValidTarget,
-      nonReactiveErrorMessage,
+      nonReactiveErrorMessage
     )
   }
 }
@@ -1169,7 +1208,10 @@ const ANCHOR_TOLERANCE = 4 // 碰撞容差（px），扩大点击区域
 
 // 🚀 目标检测辅助函数（提取重复逻辑）
 // 返回 { taskId: number, anchorType: 'left' | 'right' } 或 null
-const detectTargetTaskId = (mouseX: number, mouseY: number): { taskId: number; anchorType: 'left' | 'right' } | null => {
+const detectTargetTaskId = (
+  mouseX: number,
+  mouseY: number
+): { taskId: number; anchorType: 'left' | 'right' } | null => {
   // 使用缓存的 rect
   if (!cachedBodyRect) {
     cachedBodyRect = bodyContentRef.value!.getBoundingClientRect()
@@ -1234,7 +1276,7 @@ const updateTargetTaskState = (foundTarget: Task | null, anchorType?: 'left' | '
         linkDragSourceTask.value,
         foundTarget,
         dragLinkMode.value!,
-        anchorType,
+        anchorType
       )
       nonReactiveIsValidTarget = validation.valid
       nonReactiveErrorMessage = validation.error || ''
@@ -1268,7 +1310,7 @@ const validateLink = (
   sourceTask: Task,
   targetTask: Task,
   mode: 'predecessor' | 'successor',
-  targetAnchorType?: 'left' | 'right',
+  targetAnchorType?: 'left' | 'right'
 ): { valid: boolean; error?: string } => {
   // 0. 检查触点方向是否正确
   if (targetAnchorType) {
@@ -1452,7 +1494,7 @@ const startLinkAutoScroll = () => {
           currentDragX,
           currentDragY,
           nonReactiveIsValidTarget,
-          nonReactiveErrorMessage,
+          nonReactiveErrorMessage
         )
       }
     }
@@ -1611,23 +1653,27 @@ const debouncedContainerWidth = ref(0)
 let scrollDebounceTimer: number | null = null
 let visibleTimeRangeCallCount = 0
 
-watch([timelineScrollLeft, timelineContainerWidth], ([newScrollLeft, newWidth]) => {
-  if (scrollDebounceTimer) {
-    clearTimeout(scrollDebounceTimer)
-  }
+watch(
+  [timelineScrollLeft, timelineContainerWidth],
+  ([newScrollLeft, newWidth]) => {
+    if (scrollDebounceTimer) {
+      clearTimeout(scrollDebounceTimer)
+    }
 
-  scrollDebounceTimer = window.setTimeout(() => {
-    debouncedScrollLeft.value = newScrollLeft
-    debouncedContainerWidth.value = newWidth
-    scrollDebounceTimer = null
-  }, 100) // 增加到100ms，减少触发频率
+    scrollDebounceTimer = window.setTimeout(() => {
+      debouncedScrollLeft.value = newScrollLeft
+      debouncedContainerWidth.value = newWidth
+      scrollDebounceTimer = null
+    }, 100) // 增加到100ms，减少触发频率
 
-  // 首次立即更新
-  if (debouncedScrollLeft.value === 0 && debouncedContainerWidth.value === 0) {
-    debouncedScrollLeft.value = newScrollLeft
-    debouncedContainerWidth.value = newWidth
-  }
-}, { immediate: true })
+    // 首次立即更新
+    if (debouncedScrollLeft.value === 0 && debouncedContainerWidth.value === 0) {
+      debouncedScrollLeft.value = newScrollLeft
+      debouncedContainerWidth.value = newWidth
+    }
+  },
+  { immediate: true }
+)
 
 // v1.9.5 P2-1优化 - 计算水平方向可见的时间范围（用于TaskBar过滤）
 const visibleTimeRange = computed(() => {
@@ -1675,7 +1721,12 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
     // 日视图：每天30px
     const days = scrollPosition / 30
     return new Date(timelineStart.getTime() + days * 24 * 60 * 60 * 1000)
-  } else if (scale === TimelineScale.WEEK || scale === TimelineScale.MONTH || scale === TimelineScale.QUARTER || scale === TimelineScale.YEAR) {
+  } else if (
+    scale === TimelineScale.WEEK ||
+    scale === TimelineScale.MONTH ||
+    scale === TimelineScale.QUARTER ||
+    scale === TimelineScale.YEAR
+  ) {
     // v1.9.6 Sprint2(P1) - 周/月/季/年视图：使用timelineData精确计算（避免累积误差）
     const data = timelineData.value as any
     if (!data || data.length === 0) {
@@ -1690,7 +1741,10 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
         const weeks = periodData.weeks || []
         for (const week of weeks) {
           const weekWidth = 60
-          if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + weekWidth) {
+          if (
+            scrollPosition >= cumulativePosition &&
+            scrollPosition < cumulativePosition + weekWidth
+          ) {
             // 找到目标周，计算周内具体日期
             const offsetInWeek = scrollPosition - cumulativePosition
             const dayWidth = weekWidth / 7
@@ -1708,7 +1762,10 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
       // 月视图：遍历每个月找到对应位置
       for (const periodData of data) {
         const monthWidth = 60
-        if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + monthWidth) {
+        if (
+          scrollPosition >= cumulativePosition &&
+          scrollPosition < cumulativePosition + monthWidth
+        ) {
           // 找到目标月，计算月内具体日期
           const offsetInMonth = scrollPosition - cumulativePosition
           const daysInMonth = periodData.monthData?.dayCount || 30
@@ -1724,12 +1781,17 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
         const quarters = (periodData as any).quarters || []
         for (const quarter of quarters) {
           const quarterWidth = 60
-          if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + quarterWidth) {
+          if (
+            scrollPosition >= cumulativePosition &&
+            scrollPosition < cumulativePosition + quarterWidth
+          ) {
             // 找到目标季度，计算季度内具体日期
             const offsetInQuarter = scrollPosition - cumulativePosition
             const quarterStart = new Date(quarter.startDate)
             const quarterEnd = new Date(quarter.endDate)
-            const daysInQuarter = Math.ceil((quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24))
+            const daysInQuarter = Math.ceil(
+              (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
+            )
             const dayWidth = quarterWidth / daysInQuarter
             const dayOffset = Math.floor(offsetInQuarter / dayWidth)
             return new Date(quarterStart.getTime() + dayOffset * 24 * 60 * 60 * 1000)
@@ -1743,12 +1805,17 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
         const halfYears = (periodData as any).halfYears || []
         for (const halfYear of halfYears) {
           const halfYearWidth = 180
-          if (scrollPosition >= cumulativePosition && scrollPosition < cumulativePosition + halfYearWidth) {
+          if (
+            scrollPosition >= cumulativePosition &&
+            scrollPosition < cumulativePosition + halfYearWidth
+          ) {
             // 找到目标半年，计算半年内具体日期
             const offsetInHalfYear = scrollPosition - cumulativePosition
             const halfYearStart = new Date(halfYear.startDate)
             const halfYearEnd = new Date(halfYear.endDate)
-            const daysInHalfYear = Math.ceil((halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24))
+            const daysInHalfYear = Math.ceil(
+              (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
+            )
             const dayWidth = halfYearWidth / daysInHalfYear
             const dayOffset = Math.floor(offsetInHalfYear / dayWidth)
             return new Date(halfYearStart.getTime() + dayOffset * 24 * 60 * 60 * 1000)
@@ -1759,7 +1826,9 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
     }
 
     // 如果没找到匹配位置，返回最后一个日期
-    console.warn(`[Sprint2-Debug] scrollPosition=${scrollPosition} exceeds timelineData range (cumulative=${cumulativePosition}), returning end date`)
+    console.warn(
+      `[Sprint2-Debug] scrollPosition=${scrollPosition} exceeds timelineData range (cumulative=${cumulativePosition}), returning end date`
+    )
     return timelineEnd
   }
 
@@ -1867,7 +1936,10 @@ watch(
   ([newVisible, mode]) => {
     if (mode !== 'task') {
       // 切换到其他视图时清理状态
-      if (_taskBatchRafId !== null) { cancelAnimationFrame(_taskBatchRafId); _taskBatchRafId = null }
+      if (_taskBatchRafId !== null) {
+        cancelAnimationFrame(_taskBatchRafId)
+        _taskBatchRafId = null
+      }
       _taskBatchQueue = []
       _taskRenderedIds.clear()
       taskRenderedItems.value = []
@@ -1898,7 +1970,10 @@ watch(
     const toAdd = newVisible.filter(t => !_taskRenderedIds.has(t.task.id))
 
     // 取消上一帧未完成的批次
-    if (_taskBatchRafId !== null) { cancelAnimationFrame(_taskBatchRafId); _taskBatchRafId = null }
+    if (_taskBatchRafId !== null) {
+      cancelAnimationFrame(_taskBatchRafId)
+      _taskBatchRafId = null
+    }
     _taskBatchQueue = toAdd
 
     // 立即渲染第一批（保证当帧无闪烁）
@@ -1910,7 +1985,10 @@ watch(
     if (_taskBatchQueue.length > 0) {
       const step = () => {
         const batch = _taskBatchQueue.splice(0, TASK_VIEW_BATCH_SIZE)
-        if (batch.length === 0) { _taskBatchRafId = null; return }
+        if (batch.length === 0) {
+          _taskBatchRafId = null
+          return
+        }
         batch.forEach(t => _taskRenderedIds.add(t.task.id))
         taskRenderedItems.value = visibleTasks.value.filter(t => _taskRenderedIds.has(t.task.id))
         _taskBatchRafId = _taskBatchQueue.length > 0 ? requestAnimationFrame(step) : null
@@ -1918,7 +1996,7 @@ watch(
       _taskBatchRafId = requestAnimationFrame(step)
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // v1.9.6 Sprint2(P1+P4) - 资源视图TaskBar分批渲染队列（优化：批次从20改为5）
@@ -2021,7 +2099,8 @@ const rebuildResourceTaskQueues = () => {
   // 原因：月度视图中每月天数不同（28-31天），使用固定30天计算会导致跨月时间范围误差
   // 例如：2月只有28天，但计算时用30天，会导致部分TaskBar被错误过滤
   const scale = currentTimeScale.value
-  const usePixelLevelFilter = scale === TimelineScale.HOUR || scale === TimelineScale.DAY || scale === TimelineScale.WEEK
+  const usePixelLevelFilter =
+    scale === TimelineScale.HOUR || scale === TimelineScale.DAY || scale === TimelineScale.WEEK
 
   let viewportStartTime: number
   let viewportEndTime: number
@@ -2074,15 +2153,15 @@ const rebuildResourceTaskQueues = () => {
     const visibleTasks = skipHorizontalFilter
       ? originalTasks
       : originalTasks.filter(task => {
-        if (!task.startDate || !task.endDate) {
-          return false
-        }
-        const taskStartTime = new Date(task.startDate).getTime()
-        const taskEndTime = new Date(task.endDate).getTime()
+          if (!task.startDate || !task.endDate) {
+            return false
+          }
+          const taskStartTime = new Date(task.startDate).getTime()
+          const taskEndTime = new Date(task.endDate).getTime()
 
-        // 超精确过滤：TaskBar必须在像素级别的可见范围内
-        return taskEndTime >= viewportStartTime && taskStartTime <= viewportEndTime
-      })
+          // 超精确过滤：TaskBar必须在像素级别的可见范围内
+          return taskEndTime >= viewportStartTime && taskStartTime <= viewportEndTime
+        })
 
     // v1.9.6 Sprint2(P5) - 更新渲染缓存：记录所有TaskBar的状态
     originalTasks.forEach((task, idx) => {
@@ -2100,10 +2179,10 @@ const rebuildResourceTaskQueues = () => {
         taskId,
         resourceId,
         rendered: isRendered,
-        timestamp: isRendered ?
-          (existingCache ?
-            existingCache.timestamp
-            : currentTimestamp)
+        timestamp: isRendered
+          ? existingCache
+            ? existingCache.timestamp
+            : currentTimestamp
           : currentTimestamp,
       })
     })
@@ -2111,9 +2190,9 @@ const rebuildResourceTaskQueues = () => {
     // v1.9.6 Sprint4 - 优化：移除 backgroundTasks，只保留 visibleTasks
     // 这样可以避免后续的 background 渲染阶段渲染不可见的 TaskBar
     queues.set(resourceId, {
-      tasks: visibleTasks,  // 只保留可见任务，不包含 backgroundTasks
+      tasks: visibleTasks, // 只保留可见任务，不包含 backgroundTasks
       visibleCount: visibleTasks.length,
-      totalCount: visibleTasks.length,  // totalCount = visibleCount，禁用 background 阶段
+      totalCount: visibleTasks.length, // totalCount = visibleCount，禁用 background 阶段
       originalTasks,
     })
 
@@ -2123,7 +2202,7 @@ const rebuildResourceTaskQueues = () => {
 
     if (previousLimit !== undefined && previousLimit >= visibleTasks.length) {
       // 如果之前已经渲染超过当前可见数量，直接继承
-      initialLimit = Math.min(previousLimit, visibleTasks.length)  // v1.9.6 Sprint4 - 修复：使用 visibleTasks.length
+      initialLimit = Math.min(previousLimit, visibleTasks.length) // v1.9.6 Sprint4 - 修复：使用 visibleTasks.length
     } else {
       // 否则按批次大小逐步渲染
       initialLimit = Math.min(RESOURCE_BATCH_SIZE, visibleTasks.length)
@@ -2143,13 +2222,13 @@ const rebuildResourceTaskQueues = () => {
 watch(
   () => [viewMode.value, currentTimeScale.value, visibleTimeRange.value, visibleResources.value],
   () => rebuildResourceTaskQueues(),
-  { immediate: true },
+  { immediate: true }
 )
 
 // v1.9.6 Sprint2(P5) - 监控渲染限制变化，标记已渲染的TaskBar
 watch(
   () => resourceTaskRenderLimits.value,
-  (newLimits) => {
+  newLimits => {
     if (viewMode.value !== 'resource') return
 
     const cache = new Map(taskBarRenderCache.value)
@@ -2178,7 +2257,7 @@ watch(
       taskBarRenderCache.value = cache
     }
   },
-  { deep: false },
+  { deep: false }
 )
 
 // v1.9.5 P2-1优化 - 资源视图的可见资源及其水平过滤后的任务
@@ -2213,17 +2292,17 @@ const visibleResourcesWithFilteredTasks = computed(() => {
       renderTasks = skipHorizontalFilter
         ? originalTasks
         : originalTasks.filter((task: Task) => {
-          // 跳过没有时间信息的任务
-          if (!task.startDate || !task.endDate) {
-            return false
-          }
+            // 跳过没有时间信息的任务
+            if (!task.startDate || !task.endDate) {
+              return false
+            }
 
-          const taskStart = new Date(task.startDate)
-          const taskEnd = new Date(task.endDate)
+            const taskStart = new Date(task.startDate)
+            const taskEnd = new Date(task.endDate)
 
-          // 任务结束日期 >= 可见开始日期 && 任务开始日期 <= 可见结束日期
-          return taskEnd >= visibleStartDate && taskStart <= visibleEndDate
-        })
+            // 任务结束日期 >= 可见开始日期 && 任务开始日期 <= 可见结束日期
+            return taskEnd >= visibleStartDate && taskStart <= visibleEndDate
+          })
     }
 
     totalFilteredTasks += renderTasks.length
@@ -2401,7 +2480,7 @@ const totalTimelineWidth = computed(() => {
   if (scale === TimelineScale.WEEK) {
     let totalWeeks = 0
     for (const month of cachedData) {
-      totalWeeks += (month.weeks?.length || 0)
+      totalWeeks += month.weeks?.length || 0
     }
     return totalWeeks * 60
   }
@@ -2419,7 +2498,7 @@ const totalTimelineWidth = computed(() => {
   // 日视图
   let totalDays = 0
   for (const month of cachedData) {
-    totalDays += (month.days?.length || 0)
+    totalDays += month.days?.length || 0
   }
   return totalDays * 30
 })
@@ -2456,7 +2535,7 @@ const computeAllMilestonesPositions = () => {
         const milestoneDate = new Date(milestone.startDate || '')
         if (!isNaN(milestoneDate.getTime())) {
           const startDiff = Math.floor(
-            (milestoneDate.getTime() - timelineStart) / (1000 * 60 * 60 * 24),
+            (milestoneDate.getTime() - timelineStart) / (1000 * 60 * 60 * 24)
           )
           const left = startDiff * 30 + 15 - 12 // 30是dayWidth，12是图标半径
 
@@ -2546,7 +2625,7 @@ const getOtherMilestonesInfo = (currentId: number) => {
 }
 
 // v1.9.5 P2-4优化 - 监听Split Bar拖拽结束，执行清理工作
-watch(isSplitBarDragging, (dragging) => {
+watch(isSplitBarDragging, dragging => {
   if (!dragging) {
     // v1.9.9 拖拽结束后，手动触发一次容器尺寸更新（因为拖拽期间ResizeObserver被暂停）
     // 设置 skip 标志：拖拽不改变日期范围，只更新 sticky/bubble
@@ -2555,7 +2634,9 @@ watch(isSplitBarDragging, (dragging) => {
       if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
         skipTimelineRangeUpdate = true
         timelineContainerWidth.value = newWidth
-        nextTick(() => { skipTimelineRangeUpdate = false })
+        nextTick(() => {
+          skipTimelineRangeUpdate = false
+        })
       }
     }
 
@@ -2590,7 +2671,7 @@ const handleSplitterDragEnd = () => {
 
 // 监听 TaskList toggle 结束，手动更新 Timeline 内部容器宽度
 // 跳过日期范围重算，只让 sticky/bubble 重算和 TaskBar 重渲染生效
-watch(isTaskListToggling, (toggling) => {
+watch(isTaskListToggling, toggling => {
   if (!toggling) {
     // toggle 结束：读取 .timeline 滚动容器的真实新宽度
     // 使用 skip 标志，避免 watch(timelineContainerWidth) 触发 debouncedUpdateTimelineRange
@@ -2599,7 +2680,9 @@ watch(isTaskListToggling, (toggling) => {
       if (Math.abs(newWidth - timelineContainerWidth.value) > 1) {
         skipTimelineRangeUpdate = true
         timelineContainerWidth.value = newWidth
-        nextTick(() => { skipTimelineRangeUpdate = false })
+        nextTick(() => {
+          skipTimelineRangeUpdate = false
+        })
       }
     }
   }
@@ -2642,7 +2725,7 @@ const handleTaskRowHover = (taskId: number | string | null) => {
   window.dispatchEvent(
     new CustomEvent('timeline-task-hover', {
       detail: taskId,
-    }),
+    })
   )
 }
 
@@ -2717,7 +2800,7 @@ const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
   window.dispatchEvent(
     new CustomEvent('milestone-data-updated', {
       detail: { milestone: updatedMilestone },
-    }),
+    })
   )
 }
 
@@ -3092,7 +3175,7 @@ watch(
       clearTimelineCache()
       timelineData.value = generateTimelineData()
     }
-  },
+  }
 )
 
 // v1.9.6 Phase1 - 监听timelineData和时间刻度变化，自动重建位置缓存
@@ -3107,7 +3190,7 @@ watch(
       positionCache.buildCache(newData as any[], newScale)
     }
   },
-  { immediate: true }, // 立即执行，确保初始化时也构建缓存
+  { immediate: true } // 立即执行，确保初始化时也构建缓存
 )
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
@@ -3121,7 +3204,7 @@ watch(
         hasInitialAutoScroll = true
       })
     }
-  },
+  }
   // 优化：移除 deep: true，因为监听的是基础类型（startDate/endDate）和 shallowRef（timelineData）
   // 不需要深度监听，可减少 90% 的监听开销
 )
@@ -3148,7 +3231,7 @@ const scrollToTodayCenter = (retry = 0) => {
     startNormalized = new Date(
       yearRange.startDate.getFullYear(),
       yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
+      yearRange.startDate.getDate()
     )
   } else if (currentTimeScale.value === TimelineScale.MONTH) {
     // 月视图使用 getMonthTimelineRange
@@ -3156,13 +3239,13 @@ const scrollToTodayCenter = (retry = 0) => {
     startNormalized = new Date(
       monthRange.startDate.getFullYear(),
       monthRange.startDate.getMonth(),
-      monthRange.startDate.getDate(),
+      monthRange.startDate.getDate()
     )
   } else {
     startNormalized = new Date(
       timelineStart.getFullYear(),
       timelineStart.getMonth(),
-      timelineStart.getDate(),
+      timelineStart.getDate()
     )
   }
 
@@ -3235,7 +3318,7 @@ const scrollToTodayCenter = (retry = 0) => {
     }
 
     const dayOffset = Math.floor(
-      (todayNormalized.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24),
+      (todayNormalized.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)
     )
     const daysInQuarter =
       Math.floor((endOfQuarter.getTime() - startOfQuarter.getTime()) / (1000 * 60 * 60 * 24)) + 1
@@ -3494,7 +3577,7 @@ const scrollToToday = () => {
   const startNormalized = new Date(
     timelineStart.getFullYear(),
     timelineStart.getMonth(),
-    timelineStart.getDate(),
+    timelineStart.getDate()
   )
 
   // 计算今天距离时间线开始日期的天数
@@ -3549,7 +3632,7 @@ const scrollToDate = (date: Date | string) => {
   const targetNormalized = new Date(
     targetDate.getFullYear(),
     targetDate.getMonth(),
-    targetDate.getDate(),
+    targetDate.getDate()
   )
 
   // 根据不同的时间刻度使用不同的起始日期
@@ -3562,20 +3645,20 @@ const scrollToDate = (date: Date | string) => {
     startNormalized = new Date(
       yearRange.startDate.getFullYear(),
       yearRange.startDate.getMonth(),
-      yearRange.startDate.getDate(),
+      yearRange.startDate.getDate()
     )
   } else if (currentTimeScale.value === TimelineScale.MONTH) {
     const monthRange = getMonthTimelineRange()
     startNormalized = new Date(
       monthRange.startDate.getFullYear(),
       monthRange.startDate.getMonth(),
-      monthRange.startDate.getDate(),
+      monthRange.startDate.getDate()
     )
   } else {
     startNormalized = new Date(
       timelineStart.getFullYear(),
       timelineStart.getMonth(),
-      timelineStart.getDate(),
+      timelineStart.getDate()
     )
   }
 
@@ -3621,7 +3704,7 @@ const scrollToDate = (date: Date | string) => {
     const quarterStartMonth = targetQuarter * 3
     const quarterStartDate = new Date(targetYear, quarterStartMonth, 1)
     const daysIntoQuarter = Math.floor(
-      (targetNormalized.getTime() - quarterStartDate.getTime()) / (1000 * 60 * 60 * 24),
+      (targetNormalized.getTime() - quarterStartDate.getTime()) / (1000 * 60 * 60 * 24)
     )
     const avgDaysInQuarter = 91 // 平均每季度91天
     datePosition += (daysIntoQuarter / avgDaysInQuarter) * quarterWidth
@@ -3639,7 +3722,7 @@ const scrollToDate = (date: Date | string) => {
     // 计算年内的天数偏移
     const yearStartDate = new Date(targetYear, 0, 1)
     const daysIntoYear = Math.floor(
-      (targetNormalized.getTime() - yearStartDate.getTime()) / (1000 * 60 * 60 * 24),
+      (targetNormalized.getTime() - yearStartDate.getTime()) / (1000 * 60 * 60 * 24)
     )
     const daysInYear = 365 // 不考虑闰年的简化处理
     datePosition += (daysIntoYear / daysInYear) * yearWidth
@@ -3694,7 +3777,7 @@ const updateTask = (updatedTask: Task) => {
   window.dispatchEvent(
     new CustomEvent('task-updated', {
       detail: updatedTask,
-    }),
+    })
   )
 
   perfMonitor2.end('updateTask')
@@ -3776,7 +3859,12 @@ function _runSeedChunk(deadline?: IdleDeadline) {
     }
 
     const pos = computeTaskViewLogicalPosition(
-      task, _seedIndex, scale as any, positionCache, dw, baseStart,
+      task,
+      _seedIndex,
+      scale as any,
+      positionCache,
+      dw,
+      baseStart
     )
     if (pos) chunkResult[task.id as number] = pos
     _seedIndex++
@@ -3808,10 +3896,10 @@ function scheduleSeedFill(overwrite: boolean) {
   cancelPendingSeedFill()
   if (tasks.value.length === 0 || viewMode.value !== 'task') return
 
-  _seedTaskSnapshot = [...tasks.value]  // 快照，防止异步期间响应式变化干扰
+  _seedTaskSnapshot = [...tasks.value] // 快照，防止异步期间响应式变化干扰
   _seedIndex = 0
   _seedOverwrite = overwrite
-  _seedScale = currentTimeScale.value   // 决调根据调度时的刻度快照计算
+  _seedScale = currentTimeScale.value // 决调根据调度时的刻度快照计算
   _seedDayWidth = dayWidth.value
   _seedBaseStart = timelineStartDate.value
 
@@ -3904,7 +3992,10 @@ function updateSvgSize() {
 // 原因2优化：批量合并 handleBarMounted 更新，避免每个 TaskBar 挂载都触发一次响应式变化
 // 原来：N 个 TaskBar 挂载 → N 次 taskBarPositions spread 内存复制 + N 次 GanttLinks RAF
 // 现在：N 个 TaskBar 挂载 → 1 次合并写入 + 1 次 GanttLinks 重绘
-const _pendingBarUpdates: Record<number, { left: number; top: number; width: number; height: number }> = {}
+const _pendingBarUpdates: Record<
+  number,
+  { left: number; top: number; width: number; height: number }
+> = {}
 let _barUpdateScheduled = false
 
 function handleBarMounted(payload: {
@@ -3952,7 +4043,7 @@ function handleBarMounted(payload: {
 }
 
 // 滚动停止时统一 flush 滚动期间积累的 bar 位置更新
-watch(isTimelineScrolling, (scrolling) => {
+watch(isTimelineScrolling, scrolling => {
   if (scrolling) return
   if (Object.keys(_pendingBarUpdates).length === 0) return
   _barUpdateScheduled = false
@@ -4016,7 +4107,7 @@ const handleTaskBarContextMenu = (event: { task: Task; position: { x: number; y:
   window.dispatchEvent(
     new CustomEvent('context-menu', {
       detail: event,
-    }),
+    })
   )
 }
 
@@ -4062,7 +4153,7 @@ onMounted(() => {
   // 监听TaskList的垂直滚动事件
   window.addEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener,
+    handleTaskListVerticalScroll as EventListener
   )
   // 监听语言变化
   window.addEventListener('locale-changed', handleLocaleChange as EventListener)
@@ -4072,7 +4163,7 @@ onMounted(() => {
   // 监听Timeline容器resize事件（TaskList切换等）
   window.addEventListener(
     'timeline-container-resized',
-    handleTimelineContainerResized as EventListener,
+    handleTimelineContainerResized as EventListener
   )
 
   // 监听里程碑点击定位事件
@@ -4204,7 +4295,9 @@ const handleTaskListVerticalScroll = (event: CustomEvent) => {
     _isSyncingScrollFromTaskList = true
     timelineBodyElement.value.scrollTop = scrollTop
     // scroll 事件会同步触发，Promise.resolve 在其后执行，确保标志在返回相义务后重置
-    Promise.resolve().then(() => { _isSyncingScrollFromTaskList = false })
+    Promise.resolve().then(() => {
+      _isSyncingScrollFromTaskList = false
+    })
   }
 }
 
@@ -4242,7 +4335,7 @@ const handleTimelineBodyScroll = (event: Event) => {
     window.dispatchEvent(
       new CustomEvent('timeline-vertical-scroll', {
         detail: { scrollTop },
-      }),
+      })
     )
   }
 }
@@ -4270,7 +4363,7 @@ watch(
       updateSvgSize()
     })
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 优化：监听任务变化，更新任务 ID Map 缓存
@@ -4286,7 +4379,7 @@ watch(
     }
     newTasks.forEach(addTaskToMap)
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 拖拽滑动相关状态
@@ -4326,7 +4419,9 @@ const handleTaskBarHighlighted = () => {
     if (target) {
       const isOnTaskBar = target.closest('.task-bar')
       const isOnResizeHandle = target.closest('.resize-handle-left, .resize-handle-right')
-      const isOnInteractive = target.closest('button, input, select, textarea, .custom-task-content')
+      const isOnInteractive = target.closest(
+        'button, input, select, textarea, .custom-task-content'
+      )
 
       if (isOnTaskBar || isOnResizeHandle || isOnInteractive) {
         document.removeEventListener('mousemove', handleNextMouseMove)
@@ -4413,7 +4508,11 @@ const handleResourceTaskBarDrop = (event: Event) => {
   const newEndDate = customEvent.detail.calculatedEndDate
 
   // 如果目标行与源行不同，发送事件给父组件（demo）处理
-  if (targetRowIndex !== sourceRowIndex && targetRowIndex >= 0 && targetRowIndex < resources.length) {
+  if (
+    targetRowIndex !== sourceRowIndex &&
+    targetRowIndex >= 0 &&
+    targetRowIndex < resources.length
+  ) {
     const targetResource = resources[targetRowIndex]
 
     // 发送事件给父组件，让demo显示确认对话框
@@ -4423,7 +4522,7 @@ const handleResourceTaskBarDrop = (event: Event) => {
       targetResourceIndex: targetRowIndex,
       targetResource,
       newStartDate, // v1.9.0 新的开始日期
-      newEndDate,   // v1.9.0 新的结束日期
+      newEndDate, // v1.9.0 新的结束日期
     })
   }
 }
@@ -4492,7 +4591,9 @@ const handleMouseDown = (event: MouseEvent) => {
 
   // 获取并缓存timeline-body元素的scrollTop（支持垂直滚动）
   if (!timelineBodyElement.value && timelineContainer.value) {
-    timelineBodyElement.value = timelineContainer.value.querySelector('.timeline-body') as HTMLElement
+    timelineBodyElement.value = timelineContainer.value.querySelector(
+      '.timeline-body'
+    ) as HTMLElement
   }
   startScrollTop.value = timelineBodyElement.value?.scrollTop || 0
 
@@ -4676,7 +4777,7 @@ const startAutoScroll = (direction: 'left' | 'right') => {
     window.dispatchEvent(
       new CustomEvent('timeline-auto-scroll', {
         detail: { scrollDelta: newScrollLeft - currentScrollLeft },
-      }),
+      })
     )
 
     autoScrollTimer = window.setTimeout(scroll, 16) // 约60fps
@@ -4741,7 +4842,7 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
             targetRowIndex,
             mouseY: relativeY,
           },
-        }),
+        })
       )
     }
   }
@@ -4777,14 +4878,14 @@ onUnmounted(() => {
   window.removeEventListener('task-list-hover', handleTaskListHover as EventListener)
   window.removeEventListener(
     'task-list-vertical-scroll',
-    handleTaskListVerticalScroll as EventListener,
+    handleTaskListVerticalScroll as EventListener
   )
   window.removeEventListener('locale-changed', handleLocaleChange as EventListener)
   window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
   window.removeEventListener('splitter-drag-end', handleSplitterDragEnd as EventListener)
   window.removeEventListener(
     'timeline-container-resized',
-    handleTimelineContainerResized as EventListener,
+    handleTimelineContainerResized as EventListener
   )
   window.removeEventListener('milestone-click-locate', handleMilestoneClickLocate as EventListener)
   window.removeEventListener('drag-boundary-check', handleDragBoundaryCheck as EventListener)
@@ -5044,7 +5145,7 @@ watch(
       }
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 监听timelineData或容器宽度变化，强制TaskBar重新渲染（优化：使用防抖）
@@ -5076,30 +5177,27 @@ watch([timelineData, timelineContainerWidth], () => {
 })
 
 // 监听viewMode和dataSource变化，刷新缓存和时间线
-watch(
-  [viewMode, dataSource],
-  ([newViewMode], [oldViewMode]) => {
-    invalidateTaskDateRangeCache()
-    const viewModeChanged = newViewMode !== oldViewMode
-    if (newViewMode === 'task') {
-      // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
-      // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
-      // 若不重置则 scrollToTodayCenter 不会被触发，今日标记将出现在视口之外
+watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
+  invalidateTaskDateRangeCache()
+  const viewModeChanged = newViewMode !== oldViewMode
+  if (newViewMode === 'task') {
+    // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
+    // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
+    // 若不重置则 scrollToTodayCenter 不会被触发，今日标记将出现在视口之外
+    hasInitialAutoScroll = false
+    debouncedUpdateTimelineRange()
+  } else if (newViewMode === 'resource') {
+    if (viewModeChanged) {
+      // 切换到资源视图：基于资源任务重算日期范围，重算完成后由 watch([timelineData,...]) 触发滚到今日
+      // 重置 hasInitialAutoScroll，确保 watch([timelineData, timelineConfig...]) 在重算完成后能滚到今日
+      // 不在此处直接调用 scrollToTodayCenter()，因为 debouncedUpdateTimelineRange 有 50ms 延迟，
+      // nextTick 会在 50ms 之前就执行，导致用旧的 task 视图坐标滚到错误位置
       hasInitialAutoScroll = false
+      forceTimelineRangeInResourceView = true
       debouncedUpdateTimelineRange()
-    } else if (newViewMode === 'resource') {
-      if (viewModeChanged) {
-        // 切换到资源视图：基于资源任务重算日期范围，重算完成后由 watch([timelineData,...]) 触发滚到今日
-        // 重置 hasInitialAutoScroll，确保 watch([timelineData, timelineConfig...]) 在重算完成后能滚到今日
-        // 不在此处直接调用 scrollToTodayCenter()，因为 debouncedUpdateTimelineRange 有 50ms 延迟，
-        // nextTick 会在 50ms 之前就执行，导致用旧的 task 视图坐标滚到错误位置
-        hasInitialAutoScroll = false
-        forceTimelineRangeInResourceView = true
-        debouncedUpdateTimelineRange()
-      }
     }
-  },
-)
+  }
+})
 
 // 监听tasks变化，清理不再存在的任务的位置信息
 watch(
@@ -5120,7 +5218,8 @@ watch(
     for (const taskIdStr in taskBarPositions.value) {
       // 对象键本身就是字符串，直接与 string Set 比较，避免 parseInt 对非数字 ID 返回 NaN
       if (currentTaskIdStrs.has(taskIdStr)) {
-        newPositions[taskIdStr as unknown as number] = taskBarPositions.value[taskIdStr as unknown as number]
+        newPositions[taskIdStr as unknown as number] =
+          taskBarPositions.value[taskIdStr as unknown as number]
       }
     }
     taskBarPositions.value = newPositions
@@ -5128,13 +5227,14 @@ watch(
     const newAllPositions: Record<number, BarPosition> = {}
     for (const taskIdStr in allBarPositions.value) {
       if (currentTaskIdStrs.has(taskIdStr)) {
-        newAllPositions[taskIdStr as unknown as number] = allBarPositions.value[taskIdStr as unknown as number]
+        newAllPositions[taskIdStr as unknown as number] =
+          allBarPositions.value[taskIdStr as unknown as number]
       }
     }
     allBarPositions.value = newAllPositions
     // 为新增任务异步补充种子坐标
     scheduleSeedFill(false)
-  },
+  }
 )
 
 // 处理里程碑点击定位事件
@@ -6010,7 +6110,7 @@ const handleAddSuccessor = (task: Task) => {
               :class="{ 'task-row-hovered': hoveredTaskId === resource.id }"
               :style="{
                 top: `${resourceRowPositions?.get(resource.id) || 0}px`,
-                height: `${resourceTaskLayouts?.get(resource.id)?.totalHeight || 51}px`
+                height: `${resourceTaskLayouts?.get(resource.id)?.totalHeight || 51}px`,
               }"
               @mouseenter="handleTaskRowHover(resource.id)"
               @mouseleave="handleTaskRowHover(null)"
@@ -6018,12 +6118,14 @@ const handleAddSuccessor = (task: Task) => {
               <!-- 为资源下的每个任务渲染 TaskBar -->
               <template v-if="(resource as any).tasks && (resource as any).tasks.length > 0">
                 <TaskBar
-                  v-for="(task) in (resource as any).tasks"
+                  v-for="task in (resource as any).tasks"
                   :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                   :task="task"
                   :row-index="originalIndex"
                   :row-height="51"
-                  :task-sub-row="resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0"
+                  :task-sub-row="
+                    resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0
+                  "
                   :row-heights="resourceTaskLayouts?.get(resource.id)?.rowHeights || [51]"
                   :day-width="dayWidth"
                   :start-date="
@@ -6060,10 +6162,12 @@ const handleAddSuccessor = (task: Task) => {
                     linkDragTargetTask?.id === task.id && isValidLinkTarget === false
                   "
                   :all-tasks="tasks"
-                  :has-resource-conflict="resourceConflicts.get(String(resource.id))?.has(task.id) || false"
+                  :has-resource-conflict="
+                    resourceConflicts.get(String(resource.id))?.has(task.id) || false
+                  "
                   :conflict-tasks="getConflictTasksForTask(resource.id, task.id)"
                   :current-resource-id="resource.id"
-                  :resources="dataSource"
+                  :resources="dataSource as Resource[]"
                   @update:task="updateTask"
                   @bar-mounted="handleBarMounted"
                   @click="handleTaskBarClick(task, $event)"
@@ -6139,12 +6243,15 @@ const handleAddSuccessor = (task: Task) => {
     <div
       v-if="tooltipState.visible"
       class="task-hover-tooltip"
-      :class="[`placement-${tooltipState.placement}`, { 'tooltip-custom-slot': $slots['taskbar-tooltip'] }]"
+      :class="[
+        `placement-${tooltipState.placement}`,
+        { 'tooltip-custom-slot': $slots['taskbar-tooltip'] },
+      ]"
       :style="{
-        left:            `${tooltipState.position.left}px`,
-        top:             `${tooltipState.position.top}px`,
+        left: `${tooltipState.position.left}px`,
+        top: `${tooltipState.position.top}px`,
         '--arrow-offset': `${tooltipState.arrowOffset}px`,
-        '--tt-color':    tooltipState.taskStatus.color,
+        '--tt-color': tooltipState.taskStatus.color,
       }"
     >
       <!-- 自定义 slot -->
@@ -6162,19 +6269,31 @@ const handleAddSuccessor = (task: Task) => {
           <div class="hover-tooltip-title">{{ tooltipState.task?.name }}</div>
           <div class="hover-tooltip-row">
             <span class="hover-tooltip-label">{{ t('plannedStartDate') }}:</span>
-            <span class="hover-tooltip-value">{{ formatTooltipDate(tooltipState.task?.startDate) }}</span>
+            <span class="hover-tooltip-value">{{
+              formatTooltipDate(tooltipState.task?.startDate)
+            }}</span>
           </div>
           <div class="hover-tooltip-row">
             <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
-            <span class="hover-tooltip-value">{{ formatTooltipDate(tooltipState.task?.endDate) }}</span>
+            <span class="hover-tooltip-value">{{
+              formatTooltipDate(tooltipState.task?.endDate)
+            }}</span>
           </div>
           <div class="hover-tooltip-row">
             <span class="hover-tooltip-label">{{ t('actualStartDate') }}:</span>
-            <span class="hover-tooltip-value">{{ tooltipState.task?.actualStartDate ? formatTooltipDate(tooltipState.task.actualStartDate) : '-' }}</span>
+            <span class="hover-tooltip-value">{{
+              tooltipState.task?.actualStartDate
+                ? formatTooltipDate(tooltipState.task.actualStartDate)
+                : '-'
+            }}</span>
           </div>
           <div class="hover-tooltip-row">
             <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
-            <span class="hover-tooltip-value">{{ tooltipState.task?.actualEndDate ? formatTooltipDate(tooltipState.task.actualEndDate) : '-' }}</span>
+            <span class="hover-tooltip-value">{{
+              tooltipState.task?.actualEndDate
+                ? formatTooltipDate(tooltipState.task.actualEndDate)
+                : '-'
+            }}</span>
           </div>
         </div>
       </template>
@@ -6193,7 +6312,7 @@ const handleAddSuccessor = (task: Task) => {
         { 'milestone-tooltip-custom': $slots['milestone-tooltip'] },
       ]"
       :style="{
-        left: `${milestoneTooltipState.position.x + ($slots['milestone-tooltip'] ? 0 : (milestoneTooltipState.arrowDirection === 'left' ? 0 : 50))}px`,
+        left: `${milestoneTooltipState.position.x + ($slots['milestone-tooltip'] ? 0 : milestoneTooltipState.arrowDirection === 'left' ? 0 : 50)}px`,
         top: `${milestoneTooltipState.position.y}px`,
         '--ms-color': milestoneTooltipState.milestoneColor,
         maxWidth: `${$slots['milestone-tooltip'] ? '280px' : '180px'}`,
@@ -6201,15 +6320,13 @@ const handleAddSuccessor = (task: Task) => {
     >
       <!-- 有自定义 slot -->
       <template v-if="$slots['milestone-tooltip']">
-        <slot
-          name="milestone-tooltip"
-          :milestone="milestoneTooltipState.milestone"
-        />
+        <slot name="milestone-tooltip" :milestone="milestoneTooltipState.milestone" />
       </template>
       <!-- 默认内容：保留原有文字气泡样式 -->
       <template v-else>
         <div class="milestone-sticky-tooltip-content">
-          {{ milestoneTooltipState.milestone?.name }} &ndash; {{ formatTooltipDate(milestoneTooltipState.milestone?.startDate) }}"
+          {{ milestoneTooltipState.milestone?.name }} &ndash;
+          {{ formatTooltipDate(milestoneTooltipState.milestone?.startDate) }}"
         </div>
       </template>
       <!-- 箭头：仅绑定动态的 top 坐标，其余方向和配色均由 CSS 类控制 -->
@@ -6224,7 +6341,7 @@ const handleAddSuccessor = (task: Task) => {
 /* ─── Singleton Tooltip CSS ─────────────────────────────────────────────────── */
 .task-hover-tooltip {
   position: fixed;
-  width: 250px;              /* 固定宽度，与 JS TW=250 保持一致 */
+  width: 250px; /* 固定宽度，与 JS TW=250 保持一致 */
   background-color: var(--tt-color, rgba(0, 0, 0, 0.85));
   color: white;
   padding: 10px 14px;
@@ -6233,7 +6350,7 @@ const handleAddSuccessor = (task: Task) => {
   z-index: 999999999;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
-  overflow: visible;         /* 允许箭头伸出容器边缘 */
+  overflow: visible; /* 允许箭头伸出容器边缘 */
 }
 
 /*
@@ -6243,10 +6360,18 @@ const handleAddSuccessor = (task: Task) => {
  *   right  → JS top = 垂直中心（已限制），用 translateY(-50%) 垂直居中
  *   left   → 同 right
  */
-.placement-above { transform: translateY(-100%); }
-.placement-below { transform: none; }
-.placement-right { transform: translateY(-50%); }
-.placement-left  { transform: translateY(-50%); }
+.placement-above {
+  transform: translateY(-100%);
+}
+.placement-below {
+  transform: none;
+}
+.placement-right {
+  transform: translateY(-50%);
+}
+.placement-left {
+  transform: translateY(-50%);
+}
 
 /* ── 箭头基础样式 ────────────────────────────────────────────────────────── */
 .tt-arrow {
@@ -6272,9 +6397,9 @@ const handleAddSuccessor = (task: Task) => {
   bottom: -7px;
   left: 50%;
   transform: translateX(-50%);
-  border-left:   7px solid transparent;
-  border-right:  7px solid transparent;
-  border-top:    7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
   border-bottom: 0;
 }
 
@@ -6287,8 +6412,8 @@ const handleAddSuccessor = (task: Task) => {
   top: -7px;
   left: 50%;
   transform: translateX(-50%);
-  border-left:   7px solid transparent;
-  border-right:  7px solid transparent;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
   border-bottom: 7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
   border-top: 0;
 }
@@ -6302,9 +6427,9 @@ const handleAddSuccessor = (task: Task) => {
   left: -7px;
   top: 50%;
   transform: translateY(-50%);
-  border-top:    7px solid transparent;
+  border-top: 7px solid transparent;
   border-bottom: 7px solid transparent;
-  border-right:  7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
+  border-right: 7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
   border-left: 0;
 }
 
@@ -6317,9 +6442,9 @@ const handleAddSuccessor = (task: Task) => {
   right: -7px;
   top: 50%;
   transform: translateY(-50%);
-  border-top:    7px solid transparent;
+  border-top: 7px solid transparent;
   border-bottom: 7px solid transparent;
-  border-left:   7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
+  border-left: 7px solid var(--tt-color, rgba(0, 0, 0, 0.85));
   border-right: 0;
 }
 
@@ -7470,7 +7595,9 @@ const handleAddSuccessor = (task: Task) => {
   border-radius: 6px;
   font-size: 12px;
   z-index: 999999999;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.2);
   pointer-events: none;
   backdrop-filter: blur(4px);
   overflow: visible; /* 允许箭头伸出容器边缘 */
@@ -7490,19 +7617,19 @@ const handleAddSuccessor = (task: Task) => {
 /* 箭头指向左（tooltip 在元素右侧） */
 .arrow-left .ms-arrow {
   left: -6px;
-  border-top:    6px solid transparent;
+  border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
-  border-right:  6px solid var(--ms-color, rgba(0, 0, 0, 0.9));
-  border-left:   0;
+  border-right: 6px solid var(--ms-color, rgba(0, 0, 0, 0.9));
+  border-left: 0;
 }
 
 /* 箭头指向右（tooltip 在元素左侧） */
 .arrow-right .ms-arrow {
   right: -6px;
-  border-top:    6px solid transparent;
+  border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
-  border-left:   6px solid var(--ms-color, rgba(0, 0, 0, 0.9));
-  border-right:  0;
+  border-left: 6px solid var(--ms-color, rgba(0, 0, 0, 0.9));
+  border-right: 0;
 }
 
 /* 使用自定义 slot 时移除容器样式，避免白色卡片被黑色背景包裹 */
