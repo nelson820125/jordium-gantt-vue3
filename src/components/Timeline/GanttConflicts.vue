@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, inject, type Ref } from 'vue'
 import { detectConflicts, type ConflictZone } from '../../utils/conflictUtils'
 import type { Task } from '../../models/classes/Task'
-import { TimelineScale } from '../../models/types/TimelineScale'
+import { TimelineScale, SCALE_CONFIGS } from '../../models/types/TimelineScale'
 
 interface Props {
   /** 当前资源的所有任务 */
@@ -505,8 +505,8 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
       (endDate.getTime() - timelineStartOfDay.getTime()) / (1000 * 60)
     )
 
-    // 每小时40px，每分钟40/60 = 2/3 px
-    const pixelPerMinute = 40 / 60
+    // 每小时SCALE_CONFIGS['hour'].cellWidth px，每分钟cellWidth/60 px
+    const pixelPerMinute = SCALE_CONFIGS['hour'].cellWidth / 60
 
     left = Math.max(0, startMinutesTotal * pixelPerMinute)
     width = Math.max(4, (endMinutesTotal - startMinutesTotal) * pixelPerMinute)
@@ -544,17 +544,9 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
 
     // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
     if (endPosition === startPosition) {
-      let dayWidth = 60 / 30 // 默认月视图
-      if (props.currentTimeScale === TimelineScale.WEEK) {
-        dayWidth = 60 / 7
-      } else if (props.currentTimeScale === TimelineScale.QUARTER) {
-        dayWidth = 60 / 90
-      } else if (props.currentTimeScale === TimelineScale.YEAR) {
-        dayWidth = 180 / 182
-      }
       endPosition =
         calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
-        dayWidth
+        props.dayWidth
     }
 
     left = startPosition
@@ -578,7 +570,7 @@ function calculatePosition(startDate: Date, endDate: Date): { left: number; widt
     if (endPosition === startPosition) {
       endPosition =
         calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
-        30 // 日视图每天30px
+        props.dayWidth // 日视图每天宽度
     }
 
     left = startPosition
@@ -645,11 +637,11 @@ function calculatePositionFromTimelineData(
           dayDate.getMonth() === targetDate.getMonth() &&
           dayDate.getDate() === targetDate.getDate()
         ) {
-          return cumulativePosition + i * 30
+          return cumulativePosition + i * props.dayWidth
         }
       }
 
-      cumulativePosition += days.length * 30
+      cumulativePosition += days.length * props.dayWidth
     } else if (timeScale === TimelineScale.QUARTER) {
       const quarters = periodData.quarters || []
 
@@ -658,7 +650,7 @@ function calculatePositionFromTimelineData(
         const quarterEnd = toLocalDateOnly(quarter.endDate)
 
         if (targetDate >= quarterStart && targetDate <= quarterEnd) {
-          const quarterWidth = 60
+          const quarterWidth = props.dayWidth * 90
           const daysInQuarter = Math.ceil(
             (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
@@ -669,7 +661,7 @@ function calculatePositionFromTimelineData(
           return cumulativePosition + dayInQuarter * dayWidth
         }
 
-        cumulativePosition += 60
+        cumulativePosition += props.dayWidth * 90
       }
     } else if (timeScale === TimelineScale.WEEK) {
       const weeks = periodData.weeks || []
@@ -679,7 +671,7 @@ function calculatePositionFromTimelineData(
         const weekEnd = toLocalDateOnly(week.weekEnd)
 
         if (targetDate >= weekStart && targetDate <= weekEnd) {
-          const weekWidth = 60
+          const weekWidth = props.dayWidth * 7
           const daysInWeek =
             Math.ceil((weekEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
           const dayWidth = weekWidth / daysInWeek
@@ -689,21 +681,21 @@ function calculatePositionFromTimelineData(
           return cumulativePosition + dayInWeek * dayWidth
         }
 
-        cumulativePosition += 60
+        cumulativePosition += props.dayWidth * 7
       }
     } else if (timeScale === TimelineScale.MONTH) {
       const monthStart = new Date(periodData.year, periodData.month - 1, 1)
       const monthEnd = new Date(periodData.year, periodData.month, 0)
 
       if (targetDate >= monthStart && targetDate <= monthEnd) {
-        const monthWidth = 60
+        const monthWidth = props.dayWidth * 30
         const daysInMonth = periodData.monthData?.dayCount || 30
         const dayWidth = monthWidth / daysInMonth
         const dayInMonth = targetDate.getDate()
         return cumulativePosition + (dayInMonth - 1) * dayWidth
       }
 
-      cumulativePosition += 60
+      cumulativePosition += props.dayWidth * 30
     } else if (timeScale === TimelineScale.YEAR) {
       const halfYears = periodData.halfYears || []
 
@@ -712,7 +704,7 @@ function calculatePositionFromTimelineData(
         const halfYearEnd = toLocalDateOnly(halfYear.endDate)
 
         if (targetDate >= halfYearStart && targetDate <= halfYearEnd) {
-          const halfYearWidth = 180
+          const halfYearWidth = props.dayWidth * (365 / 2)
           const daysInHalfYear =
             Math.ceil((halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
           const dayWidth = halfYearWidth / daysInHalfYear
@@ -722,7 +714,7 @@ function calculatePositionFromTimelineData(
           return cumulativePosition + dayInHalfYear * dayWidth
         }
 
-        cumulativePosition += 180
+        cumulativePosition += props.dayWidth * (365 / 2)
       }
     }
   }

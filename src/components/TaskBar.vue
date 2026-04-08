@@ -13,7 +13,7 @@ import {
   type Ref,
 } from 'vue'
 import type { Task } from '../models/classes/Task'
-import { TimelineScale } from '../models/types/TimelineScale'
+import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
 import TaskContextMenu from './TaskContextMenu.vue'
 import LinkAnchor from './LinkAnchor.vue'
 import TaskBarTab from './Timeline/TaskBarTab.vue'
@@ -377,14 +377,10 @@ const getMinutesDiff = (startDate: Date, endDate: Date): number => {
   return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
 }
 
-// 计算是否应该禁用拖拽和调整大小（年度视图下禁用或任务不可编辑时禁用）
+// 计算是否应该禁用拖拽和调整大小（任务不可编辑时禁用）
 const isInteractionDisabled = computed(() => {
   // 检查任务的 isEditable 属性
-  if (props.task.isEditable === false) {
-    return true
-  }
-  // 年度视图下禁用
-  return props.currentTimeScale === TimelineScale.YEAR
+  return props.task.isEditable === false
 })
 
 // 拖拽状态
@@ -411,6 +407,7 @@ const dragPreviewPosition = ref({ x: 0, y: 0 })
 const dragPreviewOffsetX = ref(0) // 鼠标在TaskBar内的X偏移量，用于保持预览对齐
 const dragEndX = ref(0) // 记录松开鼠标时的X位置，用于计算新日期
 const tempTaskPixelLeft = ref<number | null>(null) // 资源视图拖拽时的精确像素位置
+const taskDragPixelLeft = ref<number | null>(null) // 任务视图拖拽时的精确像素位置（用于丝滑跟手）
 
 // 长按检测状态
 const longPressTimer = ref<number | null>(null)
@@ -463,7 +460,7 @@ const taskBarStyle = computed(() => {
   // 季度视图拖拽时使用位置覆盖
   if (quarterDragOverride.value && props.currentTimeScale === TimelineScale.QUARTER) {
     const taskBarHeight = props.rowHeight - 10
-    const topOffset = (props.rowHeight - taskBarHeight) / 2
+    const topOffset = (props.rowHeight - taskBarHeight - 4) / 2 // -4: 2px border each side
     return {
       left: `${quarterDragOverride.value.left ?? 0}px`,
       width: `${quarterDragOverride.value.width ?? 100}px`,
@@ -482,7 +479,7 @@ const taskBarStyle = computed(() => {
   // 如果startDate和endDate都不存在，返回0宽度（实际不会渲染，由shouldRenderTaskBar控制）
   if (!startDate && !endDate) {
     const taskBarHeight = props.rowHeight - 10
-    const topOffset = (props.rowHeight - taskBarHeight) / 2
+    const topOffset = (props.rowHeight - taskBarHeight - 4) / 2
     return {
       left: '0px',
       width: '0px',
@@ -501,7 +498,7 @@ const taskBarStyle = computed(() => {
   // 但baseStart可能不存在，如果不存在则无法计算位置
   if (!renderStartDate || !renderEndDate || !renderBaseStart) {
     const taskBarHeight = props.rowHeight - 10
-    const topOffset = (props.rowHeight - taskBarHeight) / 2
+    const topOffset = (props.rowHeight - taskBarHeight - 4) / 2
     return {
       left: '0px',
       width: '0px',
@@ -513,8 +510,27 @@ const taskBarStyle = computed(() => {
   let left = 0
   let width = 0
 
-  // v1.9.0 资源视图拖拽时，优先使用精确的像素位置
-  if (viewMode.value === 'resource' && tempTaskPixelLeft.value !== null) {
+  // 任务视图拖拽时，直接使用像素位置驱动 left，避免「像素→日期→像素」往返导致的顿挫感
+  if (viewMode.value !== 'resource' && isDragging.value && taskDragPixelLeft.value !== null) {
+    left = taskDragPixelLeft.value
+    const startDate = createLocalDate(currentStartDate)
+    const endDate = createLocalDate(currentEndDate)
+    if (startDate && endDate) {
+      const startDateOnly = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate()
+      )
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+      const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
+      const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
+      const duration = daysDiff === 0 ? 1 : daysDiff + 1
+      width = duration * props.dayWidth
+    } else {
+      width = props.dayWidth
+    }
+    // v1.9.0 资源视图拖拽时，优先使用精确的像素位置
+  } else if (viewMode.value === 'resource' && tempTaskPixelLeft.value !== null) {
     left = tempTaskPixelLeft.value
     if (props.currentTimeScale === TimelineScale.HOUR) {
       // 小时视图：宽度按分钟精度计算，与拖拽时的日期换算保持一致
@@ -522,10 +538,10 @@ const taskBarStyle = computed(() => {
       const endDate = createLocalDate(currentEndDate)
       if (startDate && endDate) {
         const durationMinutes = getMinutesDiff(startDate, endDate)
-        const pixelPerMinute = 40 / 60
+        const pixelPerMinute = props.dayWidth / (24 * 60)
         width = Math.max(4, durationMinutes * pixelPerMinute)
       } else {
-        width = 40 // 默认1小时宽度
+        width = props.dayWidth / 24 // 默认1小时宽度
       }
     } else {
       // 非小时视图：计算宽度（基于日期）
@@ -580,8 +596,8 @@ const taskBarStyle = computed(() => {
     const startMinutesTotal = getMinutesDiff(timelineStartOfDay, adjustedStartDate)
     const endMinutesTotal = getMinutesDiff(timelineStartOfDay, adjustedEndDate)
 
-    // 每小时40px，每分钟40/60 = 2/3 px
-    const pixelPerMinute = 40 / 60
+    // 每小时props.dayWidth/24 px，每分钟pixelPerMinute px
+    const pixelPerMinute = props.dayWidth / (24 * 60)
 
     // 位置和宽度计算
     left = Math.max(0, startMinutesTotal * pixelPerMinute)
@@ -665,20 +681,12 @@ const taskBarStyle = computed(() => {
 
       // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
       if (endPosition === startPosition) {
-        let dayWidth = 60 / 30 // 默认月视图
-        if (props.currentTimeScale === TimelineScale.WEEK) {
-          dayWidth = 60 / 7
-        } else if (props.currentTimeScale === TimelineScale.QUARTER) {
-          dayWidth = 60 / 90 // 季度视图：每季度60px，约90天
-        } else if (props.currentTimeScale === TimelineScale.YEAR) {
-          dayWidth = 180 / 182 // 年度视图：每半年180px，约182天
-        }
         endPosition =
           calculatePositionFromTimelineData(
             endDateOnly,
             props.timelineData,
             props.currentTimeScale
-          ) + dayWidth
+          ) + props.dayWidth
       }
 
       left = startPosition
@@ -738,7 +746,7 @@ const taskBarStyle = computed(() => {
             endDateOnly,
             props.timelineData,
             props.currentTimeScale
-          ) + 30 // 日视图每天30px
+          ) + SCALE_CONFIGS['day'].cellWidth
       }
 
       left = startPosition
@@ -770,7 +778,7 @@ const taskBarStyle = computed(() => {
   // （资源视图的占比视觉效果通过CSS的::before和::after伪元素实现）
 
   // v1.9.1 计算垂直位置：资源视图中支持换行布局
-  let topOffset = (props.rowHeight - taskBarHeight) / 2 // 默认：居中对齐
+  let topOffset = (props.rowHeight - taskBarHeight - 4) / 2 // 默认：居中对齐（考虑 2px border）
 
   if (
     viewMode.value === 'resource' &&
@@ -794,10 +802,10 @@ const taskBarStyle = computed(() => {
     // 后续行：居中（无padding-top）
     if (subRow === 0) {
       // 第一行：顶部5px padding，居中对齐
-      topOffset = cumulativeOffset + 5 + (currentRowHeight - 5 - taskBarHeight) / 2
+      topOffset = cumulativeOffset + 5 + (currentRowHeight - 5 - taskBarHeight - 4) / 2
     } else {
       // 后续行：居中对齐
-      topOffset = cumulativeOffset + (currentRowHeight - taskBarHeight) / 2
+      topOffset = cumulativeOffset + (currentRowHeight - taskBarHeight - 4) / 2
     }
   }
 
@@ -1041,13 +1049,13 @@ const progressWidth = computed(() => {
   return `${(progress / 100) * totalWidth}px`
 })
 
-// 判断是否为周视图（dayWidth小于等于9为周视图）
-const isWeekView = computed(() => props.dayWidth <= 9)
+// 判断是否为周视图（使用 currentTimeScale 精确判断，不依赖 dayWidth 阈值）
+const isWeekView = computed(() => props.currentTimeScale === TimelineScale.WEEK)
 
-// 判断是否为短TaskBar（宽度小于80px）
+// 判断是否为短TaskBar（宽度小于日视图单元格宽度）
 const isShortTaskBar = computed(() => {
   const width = parseFloat(taskBarStyle.value.width || '0')
-  return width < 80
+  return width < SCALE_CONFIGS['day'].cellWidth
 })
 
 // 判断是否有实际进度数据
@@ -1107,20 +1115,12 @@ const actualBarStyle = computed(() => {
     )
 
     if (endPosition === startPosition) {
-      let dayWidth = 60 / 30
-      if (props.currentTimeScale === TimelineScale.WEEK) {
-        dayWidth = 60 / 7
-      } else if (props.currentTimeScale === TimelineScale.QUARTER) {
-        dayWidth = 60 / 90
-      } else if (props.currentTimeScale === TimelineScale.YEAR) {
-        dayWidth = 180 / 182
-      }
       endPosition =
         calculatePositionFromTimelineData(
           effectiveEnd,
           props.timelineData,
           props.currentTimeScale
-        ) + dayWidth
+        ) + props.dayWidth
     }
 
     actualLeft = startPosition
@@ -1145,7 +1145,7 @@ const actualBarStyle = computed(() => {
           effectiveEnd,
           props.timelineData,
           props.currentTimeScale
-        ) + 30
+        ) + SCALE_CONFIGS['day'].cellWidth
     }
 
     actualLeft = startPosition
@@ -1207,6 +1207,7 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
 
   // 清空之前的临时数据
   tempTaskData.value = null
+  taskDragPixelLeft.value = null
 
   // 重置防误触状态
   isDragThresholdMet.value = false
@@ -1476,7 +1477,7 @@ const handleMouseMove = (e: MouseEvent) => {
           // 小时视图：15分钟步进
           // 使用 dragStartLeft + deltaX（与任务视图一致），避免 dragPreviewOffsetX 依赖
           // stale DOM 导致拉伸后再拖拽产生大范围跳移的问题
-          const pixelPerMinute = 40 / 60
+          const pixelPerMinute = props.dayWidth / (24 * 60)
           const pixelPer15Minutes = pixelPerMinute * 15
           const snappedLeft =
             Math.round(Math.max(0, dragStartLeft.value + deltaX) / pixelPer15Minutes) *
@@ -1541,11 +1542,22 @@ const handleMouseMove = (e: MouseEvent) => {
             newStartDate = addDaysToLocalDate(props.startDate, relativeX / props.dayWidth)
           }
 
-          // 计算任务持续时间（天数）
+          // 计算任务持续时间（天数，使用日期级别精度，忽略时间部分，与 taskBarStyle 渲染保持一致）
           const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
           const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
-          const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
-          const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+          const startDay = new Date(
+            originalStartDate.getFullYear(),
+            originalStartDate.getMonth(),
+            originalStartDate.getDate()
+          )
+          const endDay = new Date(
+            originalEndDate.getFullYear(),
+            originalEndDate.getMonth(),
+            originalEndDate.getDate()
+          )
+          const duration = Math.round(
+            (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+          )
 
           // 计算新的结束日期
           const newEndDate = new Date(newStartDate)
@@ -1570,7 +1582,7 @@ const handleMouseMove = (e: MouseEvent) => {
 
     if (props.currentTimeScale === TimelineScale.HOUR) {
       // 小时视图：15分钟刻度对齐
-      const pixelPerMinute = 40 / 60 // 每分钟的像素数
+      const pixelPerMinute = props.dayWidth / (24 * 60) // 每分钟的像素数
       const pixelPer15Minutes = pixelPerMinute * 15 // 15分钟的像素数
 
       // 计算新的左侧位置，对齐到15分钟刻度
@@ -1627,7 +1639,7 @@ const handleMouseMove = (e: MouseEvent) => {
       }
 
       // 同时计算日期用于提示框（使用与Timeline相同的季度视图计算）
-      const quarterWidth = 60 // 与Timeline.vue保持一致
+      const quarterWidth = props.dayWidth * 90 // 与Timeline.vue保持一致
       const daysInQuarter = 90 // 季度平均天数
       const pixelsPerDay = quarterWidth / daysInQuarter // 约0.67px/天
       const dayOffset = Math.round(deltaX / pixelsPerDay)
@@ -1660,6 +1672,9 @@ const handleMouseMove = (e: MouseEvent) => {
       // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
       const newLeft = Math.max(0, dragStartLeft.value + deltaX)
 
+      // 实时更新精确像素位置，供 taskBarStyle 直接使用（消除顿挫感）
+      taskDragPixelLeft.value = newLeft
+
       // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
       if (
         (props.currentTimeScale === TimelineScale.DAY ||
@@ -1675,11 +1690,24 @@ const handleMouseMove = (e: MouseEvent) => {
         )
 
         if (newStartDate) {
-          // 计算任务持续天数
+          // 计算任务持续天数（使用日期级别，忽略时间部分，与 taskBarStyle 的渲染保持一致）
+          // 避免含时间分量的任务（如 14:00-16:15 同天任务）因 Math.ceil 上取整为 1 天，
+          // 导致拖拽开始时 newEndDate 跨天，bar 宽度翻倍的「先变长再移动」视觉 bug
           const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
           const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
-          const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
-          const duration = Math.ceil(durationMs / (1000 * 60 * 60 * 24))
+          const startDay = new Date(
+            originalStartDate.getFullYear(),
+            originalStartDate.getMonth(),
+            originalStartDate.getDate()
+          )
+          const endDay = new Date(
+            originalEndDate.getFullYear(),
+            originalEndDate.getMonth(),
+            originalEndDate.getDate()
+          )
+          const duration = Math.round(
+            (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+          )
 
           const newEndDate = new Date(newStartDate)
           newEndDate.setDate(newEndDate.getDate() + Math.max(0, duration))
@@ -1702,10 +1730,20 @@ const handleMouseMove = (e: MouseEvent) => {
 
         // 从原始任务日期计算持续天数，避免从像素宽度反推（dragStartWidth / dayWidth）
         // 导致的精度损失（WEEK视图 dayWidth=60/7 非整数，parseInt截断后往返计算误差会缩短任务）
+        // 使用日期级别精度，忽略时间部分，与 taskBarStyle 渲染保持一致
         const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
         const originalEndDate = createLocalDate(props.task.endDate) || props.startDate
-        const durationMs = originalEndDate.getTime() - originalStartDate.getTime()
-        const duration = Math.round(durationMs / (1000 * 60 * 60 * 24))
+        const startDay = new Date(
+          originalStartDate.getFullYear(),
+          originalStartDate.getMonth(),
+          originalStartDate.getDate()
+        )
+        const endDay = new Date(
+          originalEndDate.getFullYear(),
+          originalEndDate.getMonth(),
+          originalEndDate.getDate()
+        )
+        const duration = Math.round((endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24))
         const newEndDate = addDaysToLocalDate(newStartDate, duration)
 
         // 只更新临时数据，不触发事件
@@ -1726,7 +1764,7 @@ const handleMouseMove = (e: MouseEvent) => {
 
     if (props.currentTimeScale === TimelineScale.HOUR) {
       // 小时视图：15分钟刻度对齐
-      const pixelPerMinute = 40 / 60
+      const pixelPerMinute = props.dayWidth / (24 * 60)
       const pixelPer15Minutes = pixelPerMinute * 15
 
       // 计算新的左侧位置，对齐到15分钟刻度
@@ -1763,7 +1801,7 @@ const handleMouseMove = (e: MouseEvent) => {
       }
 
       // 计算日期用于提示框（使用与Timeline相同的季度视图计算）
-      const quarterWidth = 60 // 与Timeline.vue保持一致
+      const quarterWidth = props.dayWidth * 90 // 与Timeline.vue保持一致
       const daysInQuarter = 90 // 季度平均天数
       const pixelsPerDay = quarterWidth / daysInQuarter // 约0.67px/天
       const dayOffset = Math.round(deltaX / pixelsPerDay)
@@ -1836,7 +1874,7 @@ const handleMouseMove = (e: MouseEvent) => {
 
     if (props.currentTimeScale === TimelineScale.HOUR) {
       // 小时视图：15分钟刻度对齐
-      const pixelPerMinute = 40 / 60
+      const pixelPerMinute = props.dayWidth / (24 * 60)
       const pixelPer15Minutes = pixelPerMinute * 15
 
       // 计算新的宽度，对齐到15分钟刻度
@@ -1872,7 +1910,7 @@ const handleMouseMove = (e: MouseEvent) => {
       }
 
       // 计算日期用于提示框（使用与Timeline相同的季度视图计算）
-      const quarterWidth = 60 // 与Timeline.vue保持一致
+      const quarterWidth = props.dayWidth * 90 // 与Timeline.vue保持一致
       const daysInQuarter = 90 // 季度平均天数
       const pixelsPerDay = quarterWidth / daysInQuarter // 约0.67px/天
       const dayOffset = Math.round(deltaX / pixelsPerDay)
@@ -2081,6 +2119,7 @@ const handleMouseUp = () => {
   isDelayPassed.value = false
   dragType.value = null
   tempTaskPixelLeft.value = null // v1.9.0 清除资源视图的像素位置缓存
+  taskDragPixelLeft.value = null // 清除任务视图拖拽像素缓存
 
   // v1.9.7 不需要显式设置timelineIsDraggingTaskBar
   // 上面的状态重置会自动触发watch，watch会同步timelineIsDraggingTaskBar的值
@@ -3027,12 +3066,12 @@ const calculatePositionFromTimelineData = (
           dayDate.getDate() === targetDate.getDate()
         ) {
           // 找到目标日期，返回累计位置 + 当前天数索引 * 日宽度
-          return cumulativePosition + i * 30 // 日视图每天30px
+          return cumulativePosition + i * props.dayWidth
         }
       }
 
       // 累加当前月份所有天数的宽度
-      cumulativePosition += days.length * 30
+      cumulativePosition += days.length * props.dayWidth
     } else if (timeScale === TimelineScale.QUARTER) {
       // 季度视图：处理years数组，每个year包含quarters
       const quarters = (periodData as any).quarters || []
@@ -3043,19 +3082,18 @@ const calculatePositionFromTimelineData = (
 
         if (targetDate >= quarterStart && targetDate <= quarterEnd) {
           // 找到目标日期所在的季度
-          const quarterWidth = 60
-          const daysInQuarter = Math.ceil(
-            (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
-          )
+          const quarterWidth = props.dayWidth * 90
+          const daysInQuarter =
+            Math.round((quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
           const dayWidth = quarterWidth / daysInQuarter
-          const dayInQuarter = Math.ceil(
+          const dayInQuarter = Math.round(
             (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInQuarter * dayWidth
         }
 
         // 累加每季度的宽度
-        cumulativePosition += 60
+        cumulativePosition += props.dayWidth * 90
       }
     } else if (timeScale === TimelineScale.WEEK) {
       // 周视图：处理嵌套的weeks结构
@@ -3067,7 +3105,7 @@ const calculatePositionFromTimelineData = (
 
         if (targetDate >= weekStart && targetDate <= weekEnd) {
           // 找到目标日期所在的周
-          const weekWidth = 60
+          const weekWidth = props.dayWidth * 7
           const subDays = week.subDays || []
           const dayWidth = weekWidth / 7
 
@@ -3091,7 +3129,7 @@ const calculatePositionFromTimelineData = (
         }
 
         // 累加每周的宽度
-        cumulativePosition += 60
+        cumulativePosition += props.dayWidth * 7
       }
     } else if (timeScale === TimelineScale.MONTH) {
       // 月视图：处理扁平化的subDays结构
@@ -3100,7 +3138,7 @@ const calculatePositionFromTimelineData = (
 
       if (targetDate >= periodStart && targetDate <= periodEnd) {
         // 找到目标日期所在的时间段
-        const monthWidth = 60
+        const monthWidth = props.dayWidth * 30
         const daysInMonth = periodData.monthData?.dayCount || 30
         const dayWidth = monthWidth / daysInMonth
         const dayInMonth = targetDate.getDate()
@@ -3108,7 +3146,7 @@ const calculatePositionFromTimelineData = (
       }
 
       // 累加每月的宽度
-      cumulativePosition += 60
+      cumulativePosition += props.dayWidth * 30
     } else if (timeScale === TimelineScale.YEAR) {
       // 年度视图：处理years数组，每个year包含halfYears
       const halfYears = (periodData as any).halfYears || []
@@ -3119,19 +3157,19 @@ const calculatePositionFromTimelineData = (
 
         if (targetDate >= halfYearStart && targetDate <= halfYearEnd) {
           // 找到目标日期所在的半年
-          const halfYearWidth = 180 // 年度视图每半年180px
-          const daysInHalfYear = Math.ceil(
-            (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
-          )
+          const halfYearWidth = props.dayWidth * (365 / 2)
+          const daysInHalfYear =
+            Math.round((halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)) +
+            1
           const dayWidth = halfYearWidth / daysInHalfYear
-          const dayInHalfYear = Math.ceil(
+          const dayInHalfYear = Math.round(
             (targetDate.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)
           )
           return cumulativePosition + dayInHalfYear * dayWidth
         }
 
         // 累加每半年的宽度
-        cumulativePosition += 180
+        cumulativePosition += props.dayWidth * (365 / 2)
       }
     }
   }
@@ -3149,9 +3187,7 @@ const calculatePositionFromTimelineData = (
       const daysBefore = Math.ceil(
         (timelineStart.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)
       )
-      const dayWidth =
-        timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
-      return -daysBefore * dayWidth
+      return -daysBefore * props.dayWidth
     }
 
     // 如果目标日期在时间轴之后，基于最后可用的位置计算
@@ -3159,9 +3195,7 @@ const calculatePositionFromTimelineData = (
       const daysAfter = Math.ceil(
         (targetDate.getTime() - timelineEnd.getTime()) / (1000 * 60 * 60 * 24)
       )
-      const dayWidth =
-        timeScale === TimelineScale.DAY ? 30 : timeScale === TimelineScale.WEEK ? 60 / 7 : 2
-      return cumulativePosition + daysAfter * dayWidth
+      return cumulativePosition + daysAfter * props.dayWidth
     }
   }
 
@@ -3191,13 +3225,13 @@ const calculateDateFromPosition = (
     // 日视图：基于 days 数组
     for (const periodData of timelineData) {
       const days = periodData.days || []
-      const periodWidth = days.length * 30 // 日视图每天30px
+      const periodWidth = days.length * props.dayWidth
 
       // 检查像素位置是否在当前时间段内
       if (pixelPosition >= cumulativePosition && pixelPosition < cumulativePosition + periodWidth) {
         // 计算在当前时间段内的相对位置
         const relativePosition = pixelPosition - cumulativePosition
-        const dayIndex = Math.floor(relativePosition / 30)
+        const dayIndex = Math.floor(relativePosition / props.dayWidth)
 
         // 确保索引在范围内
         if (dayIndex >= 0 && dayIndex < days.length) {
@@ -3208,9 +3242,9 @@ const calculateDateFromPosition = (
       cumulativePosition += periodWidth
     }
   } else if (timeScale === TimelineScale.MONTH) {
-    // 月视图：每个月60px
+    // 月视图
     for (const periodData of timelineData) {
-      const monthWidth = 60
+      const monthWidth = props.dayWidth * 30
 
       // 检查像素位置是否在当前月份内
       if (pixelPosition >= cumulativePosition && pixelPosition < cumulativePosition + monthWidth) {
@@ -3229,14 +3263,14 @@ const calculateDateFromPosition = (
       cumulativePosition += monthWidth
     }
   } else if (timeScale === TimelineScale.QUARTER) {
-    // 季度视图：每个季度60px
+    // 季度视图
     for (const periodData of timelineData) {
       const quarters = (periodData as any).quarters || []
 
       for (const quarter of quarters) {
         const quarterStart = new Date(quarter.startDate)
         const quarterEnd = new Date(quarter.endDate)
-        const quarterWidth = 60
+        const quarterWidth = props.dayWidth * 90
 
         // 检查像素位置是否在当前季度内
         if (
@@ -3264,14 +3298,14 @@ const calculateDateFromPosition = (
       }
     }
   } else if (timeScale === TimelineScale.YEAR) {
-    // 年度视图：每半年180px
+    // 年度视图
     for (const periodData of timelineData) {
       const halfYears = (periodData as any).halfYears || []
 
       for (const halfYear of halfYears) {
         const halfYearStart = new Date(halfYear.startDate)
         const halfYearEnd = new Date(halfYear.endDate)
-        const halfYearWidth = 180
+        const halfYearWidth = props.dayWidth * (365 / 2)
 
         // 检查像素位置是否在当前半年内
         if (

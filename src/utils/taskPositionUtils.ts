@@ -22,11 +22,17 @@ import { TimelineScale } from '../models/types/TimelineScale'
 const ROW_HEIGHT = 51
 /** TaskBar 高度 = ROW_HEIGHT - 10 */
 const TASK_BAR_HEIGHT = ROW_HEIGHT - 10 // 41
-/** TaskBar 在行内的顶部偏移 */
-const TASK_BAR_TOP_OFFSET = Math.floor((ROW_HEIGHT - TASK_BAR_HEIGHT) / 2) // 5
+/** TaskBar 边框宽度（border: 2px solid，无 box-sizing: border-box） */
+const TASK_BAR_BORDER_WIDTH = 2
+/** TaskBar 在行内的顶部偏移（考虑 border 的实际渲染高度） */
+const TASK_BAR_TOP_OFFSET = Math.floor(
+  (ROW_HEIGHT - TASK_BAR_HEIGHT - TASK_BAR_BORDER_WIDTH * 2) / 2
+) // 3
 
-/** 小时视图：每分钟像素数（每小时 40px） */
-const PIXEL_PER_MINUTE = 40 / 60
+/** 根据 dayWidth 计算小时视图每分钟像素数（dayWidth = hourCellWidth * 24） */
+function getPixelPerMinute(dayWidth: number): number {
+  return dayWidth / (24 * 60)
+}
 
 export interface LogicalBarPosition {
   left: number
@@ -85,7 +91,7 @@ export function computeTaskViewLogicalPosition(
   timeScale: TimelineScale,
   cache: PositionCache | null,
   dayWidth: number,
-  baseStartDate?: Date | null,
+  baseStartDate?: Date | null
 ): LogicalBarPosition | null {
   const top = rowIndex * ROW_HEIGHT + TASK_BAR_TOP_OFFSET
 
@@ -94,7 +100,7 @@ export function computeTaskViewLogicalPosition(
     if (!baseStartDate) return null
 
     const startD = parseTaskDate(task.startDate || task.endDate)
-    const endD   = parseTaskDate(task.endDate   || task.startDate)
+    const endD = parseTaskDate(task.endDate || task.startDate)
     if (!startD || !endD) return null
 
     // 时间线当天零点作为像素 0 的基准
@@ -105,9 +111,9 @@ export function computeTaskViewLogicalPosition(
     //   startDate 无时间 → 当日 00:00
     //   endDate   无时间 → 次日 00:00
     const origStart = task.startDate
-    const origEnd   = task.endDate
+    const origEnd = task.endDate
     let adjStart = startD
-    let adjEnd   = endD
+    let adjEnd = endD
 
     if (typeof origStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(origStart)) {
       adjStart = new Date(startD)
@@ -120,21 +126,22 @@ export function computeTaskViewLogicalPosition(
     }
 
     const startMins = (adjStart.getTime() - dayZero.getTime()) / (1000 * 60)
-    const endMins   = (adjEnd.getTime()   - dayZero.getTime()) / (1000 * 60)
+    const endMins = (adjEnd.getTime() - dayZero.getTime()) / (1000 * 60)
 
-    const left  = Math.max(0, startMins * PIXEL_PER_MINUTE)
-    const width = Math.max(4, (endMins - startMins) * PIXEL_PER_MINUTE)
+    const pixelPerMinute = getPixelPerMinute(dayWidth)
+    const left = Math.max(0, startMins * pixelPerMinute)
+    const width = Math.max(4, (endMins - startMins) * pixelPerMinute)
 
     return { left, top, width, height: TASK_BAR_HEIGHT }
   }
 
   // ── 其他视图：使用 positionCache O(1) 查表 ─────────────────────────────────
   const startD = parseTaskDate(task.startDate || task.endDate)
-  const endD   = parseTaskDate(task.endDate   || task.startDate)
+  const endD = parseTaskDate(task.endDate || task.startDate)
   if (!startD || !endD) return null
 
   const startOnly = toDateOnly(startD)
-  const endOnly   = toDateOnly(endD)
+  const endOnly = toDateOnly(endD)
 
   const left = cache ? cache.getPosition(startOnly, timeScale) : null
   if (left === null) return null // 任务日期在时间线范围外
@@ -150,9 +157,14 @@ export function computeTaskViewLogicalPosition(
   } else {
     // endDate+1 超出时间线范围：用 endDate 位置 + 1 天宽度估算
     const endDatePos = cache ? cache.getPosition(endOnly, timeScale) : null
-    width = endDatePos !== null
-      ? Math.max(4, endDatePos - left + dayWidth)
-      : Math.max(4, (Math.max(0, Math.round((endOnly.getTime() - startD.getTime()) / 86400000)) + 1) * dayWidth)
+    width =
+      endDatePos !== null
+        ? Math.max(4, endDatePos - left + dayWidth)
+        : Math.max(
+            4,
+            (Math.max(0, Math.round((endOnly.getTime() - startD.getTime()) / 86400000)) + 1) *
+              dayWidth
+          )
   }
 
   return { left, top, width, height: TASK_BAR_HEIGHT }

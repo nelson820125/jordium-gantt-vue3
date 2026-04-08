@@ -386,6 +386,7 @@ For complete configuration object documentation, see [⚙️ Configuration & Cus
 | `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | Task bar style configuration |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | Custom localization messages |
 | `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | Working hours configuration  |
+| `scaleConfigs` ![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ [scale: TimelineScale]?: ScaleConfigOption }` | `undefined` | Custom display configuration per time scale (cell width, header formatters, buffers, etc.), see [scaleConfigs (Timeline Scale Configuration)](#scaleconfigs-timeline-scale-configuration) |
 
 #### Callback Props
 
@@ -2265,6 +2266,108 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 }))
 </script>
 ```
+
+#### scaleConfigs (Timeline Scale Configuration) ![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Customize the cell width, header formatter strings, and buffer sizes for each time scale. Only pass the scales you want to override — unspecified scales continue using built-in defaults.
+
+**Configurable Fields (`ScaleConfigOption`):**
+
+| Field         | Type                                          | Description                                                |
+| ------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| `cellWidth`   | `number`                                      | Cell width in px, clamped to each scale's built-in min/max |
+| `formatter`   | `{ primary: string; secondary?: string }`     | Header formatter strings, see Token reference below        |
+| `preBuffer`   | `number`                                      | Leading buffer size (in current scale's natural unit)      |
+| `sufBuffer`   | `number`                                      | Trailing buffer size (in current scale's natural unit)     |
+
+**Built-in `cellWidth` Constraints (values outside range are automatically clamped):**
+
+| Scale     | Default (px) | Min (px) | Max (px) |
+| --------- | ------------ | -------- | -------- |
+| `hour`    | 40           | 40       | 120      |
+| `day`     | 30           | 30       | 120      |
+| `week`    | 60           | 60       | 240      |
+| `month`   | 60           | 60       | 180      |
+| `quarter` | 60           | 60       | 120      |
+| `year`    | 180          | 180      | 720      |
+
+**Supported `formatter` Tokens:**
+
+| Token  | Meaning            | Example Output |
+| ------ | ------------------ | -------------- |
+| `yyyy` | 4-digit year       | `2025`         |
+| `MM`   | Zero-padded month  | `01`           |
+| `M`    | Non-padded month   | `1`            |
+| `dd`   | Zero-padded day    | `05`           |
+| `d`    | Non-padded day     | `5`            |
+| `HH`   | Zero-padded hour   | `09`           |
+| `mm`   | Zero-padded minute | `30`           |
+| `Q`    | Quarter number     | `2` (rendered as "Q2" in en-US, "2季度" in zh-CN) |
+| `W`    | Week number        | `5` (rendered as "W5" in en-US, "5周" in zh-CN) |
+
+**Built-in Default Formatter Reference:**
+
+| Scale     | primary                | secondary          |
+| --------- | ---------------------- | ------------------ |
+| `hour`    | `yyyy年MM月dd日`       | `HH:mm`            |
+| `day`     | `yyyy年MM月`           | `dd`               |
+| `week`    | `yyyy年MM月`           | `d`                |
+| `month`   | `yyyy年`               | `MM月`             |
+| `quarter` | `yyyy年`               | `Q季度`            |
+| `year`    | `yyyy年`               | `上半年\|下半年`   |
+
+> **Week scale note**: The default `secondary: 'd'` displays the date of the first day of the week (e.g., `5`). Set it to `'W'` to show the week number instead (e.g., "W5" in en-US, "5周" in zh-CN).
+
+**Example 1: Override cell width for day and week views**
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :scale-configs="scaleConfigs" />
+</template>
+
+<script setup lang="ts">
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const scaleConfigs = {
+  day: { cellWidth: 60 },   // Widen day view cells to 60px (default 30px)
+  week: { cellWidth: 120 }, // Widen week view cells to 120px (default 60px)
+}
+</script>
+```
+
+**Example 2: Custom formatter strings**
+
+```vue
+<script setup lang="ts">
+const scaleConfigs = {
+  // Day view: primary row shows year, secondary shows "MM/dd"
+  day: { formatter: { primary: 'yyyy', secondary: 'MM/dd' } },
+  // Week view: show week number instead of the first day's date
+  week: { formatter: { primary: 'yyyy年MM月', secondary: 'W' } },
+  // Month view: combined "yyyy-MM" format on primary row
+  month: { formatter: { primary: 'yyyy-MM' } },
+}
+</script>
+```
+
+**Example 3: Adjust leading/trailing buffer range**
+
+```vue
+<script setup lang="ts">
+const scaleConfigs = {
+  year: { preBuffer: 3, sufBuffer: 3 }, // 3-year buffer on each side (default 1 year)
+  month: { preBuffer: 6, sufBuffer: 6 }, // 6-month buffer on each side
+}
+</script>
+```
+
+> **💡 Notes:**
+>
+> - **Incremental override**: Only specified scales and fields are overridden; all others keep their built-in defaults
+> - **cellWidth clamping**: Values outside each scale's min/max are automatically clamped
+> - **formatter replacement**: Passing `formatter` replaces the entire formatter object for that scale (no field-level merge)
+> - **Buffer units**: `preBuffer` / `sufBuffer` use the scale's natural unit (`day` → days, `week` → weeks, `month` → months, etc.)
 
 #### Timeline Container Auto-Fill Configuration
 

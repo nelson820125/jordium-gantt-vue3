@@ -384,6 +384,7 @@ npm run dev
 | `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | 任务条样式配置   |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | 自定义多语言配置 |
 | `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | 工作时间配置     |
+| `scaleConfigs` ![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ [scale: TimelineScale]?: ScaleConfigOption }` | `undefined` | 自定义各时间刻度的显示配置（单元格宽度、格式化字符串、缓冲区等），详见 [scaleConfigs（时间刻度配置）](#scaleconfigs时间刻度配置) |
 
 #### 回调函数属性
 
@@ -2258,6 +2259,110 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 }))
 </script>
 ```
+
+#### scaleConfigs（时间刻度配置）![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+自定义各时间刻度的单元格宽度、标题格式化字符串和缓冲区大小。只需传入需要覆盖的刻度，未传入的刻度继续使用内置默认值。
+
+**可配置字段（`ScaleConfigOption`）：**
+
+| 字段          | 类型                                          | 说明                                          |
+| ------------- | --------------------------------------------- | --------------------------------------------- |
+| `cellWidth`   | `number`                                      | 单元格宽度（px），受各刻度内置最小/最大值约束 |
+| `formatter`   | `{ primary: string; secondary?: string }`     | 标题格式化字符串，详见下方 Token 说明         |
+| `preBuffer`   | `number`                                      | 前置缓冲区大小（单位：当前刻度自然单位）      |
+| `sufBuffer`   | `number`                                      | 后置缓冲区大小（单位：当前刻度自然单位）      |
+
+**`cellWidth` 内置范围约束（超出范围将被自动截断）：**
+
+| 时间刻度    | 默认值（px） | 最小值（px） | 最大值（px） |
+| ----------- | ------------ | ------------ | ------------ |
+| `hour`      | 40           | 40           | 120          |
+| `day`       | 30           | 30           | 120          |
+| `week`      | 60           | 60           | 240          |
+| `month`     | 60           | 60           | 180          |
+| `quarter`   | 60           | 60           | 120          |
+| `year`      | 180          | 180          | 720          |
+
+**`formatter` 支持的格式化 Token：**
+
+| Token  | 含义        | 示例输出 |
+| ------ | ----------- | -------- |
+| `yyyy` | 四位年份    | `2025`   |
+| `MM`   | 补零月份    | `01`     |
+| `M`    | 不补零月份  | `1`      |
+| `dd`   | 补零日期    | `05`     |
+| `d`    | 不补零日期  | `5`      |
+| `HH`   | 补零小时    | `09`     |
+| `mm`   | 补零分钟    | `30`     |
+| `Q`    | 季度数字    | `2`（替换为 `Q季度` 格式） |
+| `W`    | 周数字      | `5`（替换为 `W周` 格式） |
+
+> **💡 提示**：`Q` 和 `W` token 在格式字符串中被组件自动转换为对应的本地化显示（中文环境输出"2季度"、"5周"，英文环境输出"Q2"、"W5"）。
+
+**内置默认格式化字符串参考：**
+
+| 时间刻度  | primary（主行）     | secondary（副行）  |
+| --------- | ------------------- | ------------------ |
+| `hour`    | `yyyy年MM月dd日`    | `HH:mm`            |
+| `day`     | `yyyy年MM月`        | `dd`               |
+| `week`    | `yyyy年MM月`        | `d`                |
+| `month`   | `yyyy年`            | `MM月`             |
+| `quarter` | `yyyy年`            | `Q季度`            |
+| `year`    | `yyyy年`            | `上半年\|下半年`   |
+
+> **周视图说明**：默认 `secondary: 'd'` 显示该周第一天的日期数字（如 `5`）。如需显示周数，可设置为 `'W'`（中文环境输出"5周"，英文环境输出"W5"）。
+
+**示例1：调整日视图和周视图的单元格宽度**
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :scale-configs="scaleConfigs" />
+</template>
+
+<script setup lang="ts">
+import { GanttChart } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const scaleConfigs = {
+  day: { cellWidth: 60 },   // 日视图单元格加宽至60px（默认30px）
+  week: { cellWidth: 120 }, // 周视图单元格加宽至120px（默认60px）
+}
+</script>
+```
+
+**示例2：自定义格式化字符串**
+
+```vue
+<script setup lang="ts">
+const scaleConfigs = {
+  // 日视图：主行显示年份，副行显示"月/日"
+  day: { formatter: { primary: 'yyyy', secondary: 'MM/dd' } },
+  // 周视图：副行改为显示周数（默认显示该周第一天的日期）
+  week: { formatter: { primary: 'yyyy年MM月', secondary: 'W' } },
+  // 月视图：主行显示"yyyy年MM月"合并格式
+  month: { formatter: { primary: 'yyyy年MM月' } },
+}
+</script>
+```
+
+**示例3：调整缓冲区（前置/后置时间线预留范围）**
+
+```vue
+<script setup lang="ts">
+const scaleConfigs = {
+  year: { preBuffer: 3, sufBuffer: 3 }, // 年视图前后各预留 3 年缓冲（默认 1 年）
+  month: { preBuffer: 6, sufBuffer: 6 }, // 月视图前后各预留 6 个月缓冲
+}
+</script>
+```
+
+> **💡 配置说明**：
+>
+> - **增量覆盖**：`scaleConfigs` 仅覆盖传入的刻度和字段，未传入的部分保持内置默认值不变
+> - **cellWidth 截断**：超出各刻度内置最小/最大范围的 `cellWidth` 会被自动截断至边界值
+> - **formatter 替换**：传入 `formatter` 时会完整替换该刻度的格式配置（不做字段级合并）
+> - **单位说明**：`preBuffer` / `sufBuffer` 的单位与当前刻度对应（`day` 刻度单位为天，`week` 单位为周，`month` 单位为月，以此类推）
 
 #### Timeline 容器自动填充配置
 

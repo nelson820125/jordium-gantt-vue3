@@ -431,6 +431,16 @@ const isTaskListConfigCollapsed = ref(true)
 // TaskBar 配置区域折叠状态（默认收起）
 const isTaskBarConfigCollapsed = ref(true)
 
+// TimeScale 配置演示（直接使用符合 scaleConfigs prop 结构的静态配置）
+const scaleConfigs = {
+  week: { cellWidth: 60, preBuffer: 3, sufBuffer: 3, formatter: { primary: 'yyyy-MM', secondary: 'W周' } },
+  month: { cellWidth: 60, preBuffer: 0, sufBuffer: 0 },
+  year: { cellWidth: 180, preBuffer: 0, sufBuffer: 0 },
+  quarter: {cellWidth: 60, preBuffer: 0, sufBuffer: 0 },
+  hour: { cellWidth: 40},
+  day: { cellWidth: 30, preBuffer: 0, sufBuffer: 1, formatter: { primary: 'yyyy-MM', secondary: 'dd' } },
+}
+
 // Tool 设置区域折叠状态（默认展开用于演示）
 const isToolSettingsCollapsed = ref(false)
 
@@ -2399,6 +2409,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :enable-task-list-collapsible="enableTaskListCollapsible"
         :task-list-visible="enableTaskListCollapsible ? taskListVisible : undefined"
         :task-bar-config="taskBarConfig"
+        :scale-configs="scaleConfigs"
         :working-hours="workingHoursConfig"
         :use-default-milestone-dialog="true"
         :allow-drag-and-resize="allowDragAndResize"

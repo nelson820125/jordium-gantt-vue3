@@ -16,11 +16,15 @@ export const TimelineScale = {
 export interface TimelineScaleConfig {
   scale: TimelineScale
   cellWidth: number // 每个时间单元的宽度(px)
-  headerLevels: number // 表头层级数
+  minCellWidth?: number // cellWidth 的最小限制(px)
+  maxCellWidth?: number // cellWidth 的最大限制(px)
+  headerLevels: number // 表头层级数（固定为 2，不允许外部修改）
   formatters: {
     primary: string // 主要时间标签格式
     secondary?: string // 次要时间标签格式
   }
+  preBuffer?: number // 前置缓冲：单位为当前刻度的自然单位（hour=小时, day=天, week=周, month=月, quarter=季度, year=年）
+  sufBuffer?: number // 后置缓冲：同上
 }
 
 // 预设配置
@@ -28,36 +32,48 @@ export const SCALE_CONFIGS = {
   hour: {
     scale: TimelineScale.HOUR,
     cellWidth: 40,
+    minCellWidth: 40,
+    maxCellWidth: 120,
     headerLevels: 2,
     formatters: { primary: 'yyyy年MM月dd日', secondary: 'HH:mm' },
   },
   day: {
     scale: TimelineScale.DAY,
     cellWidth: 30,
+    minCellWidth: 30,
+    maxCellWidth: 120,
     headerLevels: 2,
     formatters: { primary: 'yyyy年MM月', secondary: 'dd' },
   },
   week: {
     scale: TimelineScale.WEEK,
-    cellWidth: 120,
+    cellWidth: 60,
+    minCellWidth: 60,
+    maxCellWidth: 240,
     headerLevels: 2,
-    formatters: { primary: 'yyyy年MM月', secondary: 'W周' },
+    formatters: { primary: 'yyyy年MM月', secondary: 'd' },
   },
   month: {
     scale: TimelineScale.MONTH,
-    cellWidth: 180,
+    cellWidth: 60,
+    minCellWidth: 60,
+    maxCellWidth: 180,
     headerLevels: 2,
     formatters: { primary: 'yyyy年', secondary: 'MM月' },
   },
   quarter: {
     scale: TimelineScale.QUARTER,
-    cellWidth: 60, // 每个季度的宽度
+    cellWidth: 60,
+    minCellWidth: 60,
+    maxCellWidth: 120,
     headerLevels: 2,
     formatters: { primary: 'yyyy年', secondary: 'Q季度' },
   },
   year: {
     scale: TimelineScale.YEAR,
-    cellWidth: 180, // 每半年的宽度
+    cellWidth: 180,
+    minCellWidth: 180,
+    maxCellWidth: 720,
     headerLevels: 2,
     formatters: { primary: 'yyyy年', secondary: '上半年|下半年' },
   },

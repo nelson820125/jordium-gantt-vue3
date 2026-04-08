@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-04-08
+
+### Added
+- 🎉 新增：GanttChart 新增 `scaleConfigs` 属性，支持按时间刻度自定义单元格宽度（`cellWidth`）、标题格式化字符串（`formatter`）及时间线缓冲区（`preBuffer` / `sufBuffer`），仅需传入需要覆盖的刻度，其余保持内置默认值不变
+- 🎉 新增：`cellWidth` 内置最小/最大值约束，传入超出范围的值将自动截断至边界（各刻度约束详见 README）
+- 🎉 Added: GanttChart new prop `scaleConfigs` — customize `cellWidth`, `formatter`, `preBuffer`, `sufBuffer` per time scale; unspecified scales continue using built-in defaults
+- 🎉 Added: Built-in `cellWidth` min/max clamping per scale; out-of-range values are automatically clamped (see README for per-scale limits)
+
+### Fixed
+- 🔧 修复：Taskbar，Milestone，GanttConflicts，GanttLinks在timeScale-cellWidth变化时坐标问题
+- 🔧 修复：减小SplitterBar的`z-index`属性，防止应用层被覆盖
+- 🔧 修复：导出 PDF 时中文标题乱码问题，改为 html2canvas 截图渲染，彻底避免字体缺失
+- 🔧 Fixed: Coordinate issues for Taskbar, Milestone, GanttConflicts, and GanttLinks when timeScale or cellWidth changes
+- 🔧 Fixed: Reduced SplitterBar z-index to prevent covering application layer
+- 🔧 Fixed: Garbled Chinese title when exporting PDF; switched to html2canvas screenshot rendering to fully avoid missing font issues
+
 ## [1.10.5] - 2026-04-01
 
 ### Enhancement

@@ -28,6 +28,7 @@ import {
 } from '../models/configs/TaskListConfig'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
+import type { TimelineScaleConfig } from '../models/types/TimelineScale'
 import { detectConflicts } from '../utils/conflictUtils'
 import { useMessage } from '../composables/useMessage'
 
@@ -79,6 +80,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableTaskListCollapsible: true,
   taskListVisible: true,
   enableTaskDrawerAutoClose: true,
+  scaleConfigs: undefined,
 })
 
 const emit = defineEmits([
@@ -609,6 +611,23 @@ interface Props {
    * 仅在 useDefaultDrawer=true 时有效
    */
   enableTaskDrawerAutoClose?: boolean
+  /**
+   * 自定义各刻度配置，支持覆盖 cellWidth / preBuffer / sufBuffer / formatter。
+   * 仅需传入需要覆盖的刻度，未传入的刻度继续使用内置默认值。
+   * formatter.primary / formatter.secondary 为格式化字符串，支持 token：
+   * yyyy / MM / M / dd / d / HH / mm / Q / W
+   */
+  scaleConfigs?: Partial<
+    Record<
+      TimelineScale,
+      Partial<{
+        cellWidth: number
+        preBuffer: number
+        sufBuffer: number
+        formatter: { primary: string; secondary?: string }
+      }>
+    >
+  >
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -820,6 +839,41 @@ watch(
 
 // 时间刻度状态
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
+
+/**
+ * 合并后的刻度配置：将用户传入的 scaleConfigs 增量覆盖到内部默认值上。
+ * - 未传入 scaleConfigs 时直接返回内置 SCALE_CONFIGS
+ * - 每个 scale 仅覆盖用户指定的字段，其余继续使用内置默认值
+ * - headerLevels 固定为 2，不允许外部修改
+ */
+const mergedScaleConfigs = computed((): Record<TimelineScale, TimelineScaleConfig> => {
+  if (!props.scaleConfigs) return SCALE_CONFIGS as Record<TimelineScale, TimelineScaleConfig>
+  const result = {} as Record<TimelineScale, TimelineScaleConfig>
+  for (const scale of Object.keys(SCALE_CONFIGS) as TimelineScale[]) {
+    const override = props.scaleConfigs[scale]
+    if (!override) {
+      result[scale] = SCALE_CONFIGS[scale]
+    } else {
+      const defaultConfig = SCALE_CONFIGS[scale]
+      const rawCellWidth = override.cellWidth ?? defaultConfig.cellWidth
+      const clampedCellWidth = Math.min(
+        defaultConfig.maxCellWidth ?? Infinity,
+        Math.max(defaultConfig.minCellWidth ?? 0, rawCellWidth)
+      )
+      result[scale] = {
+        ...defaultConfig,
+        cellWidth: clampedCellWidth,
+        ...(override.preBuffer != null ? { preBuffer: override.preBuffer } : {}),
+        ...(override.sufBuffer != null ? { sufBuffer: override.sufBuffer } : {}),
+        formatters: override.formatter
+          ? { ...defaultConfig.formatters, ...override.formatter }
+          : defaultConfig.formatters,
+        headerLevels: 2,
+      }
+    }
+  }
+  return result
+})
 
 // v1.9.0 视图模式切换处理函数
 const handleViewModeChange = (newMode: 'task' | 'resource') => {
@@ -1832,48 +1886,72 @@ const timelineDateRange = computed(() => {
 
   // 2. 获取容器宽度和当前刻度的列宽
   const containerWidth = timelineContainerWidth.value || 1200 // 默认值
-  const columnWidth = SCALE_CONFIGS[currentTimeScale.value].cellWidth
+  const columnWidth = mergedScaleConfigs.value[currentTimeScale.value].cellWidth
 
   // 3. 计算需要多少列才能铺满容器
   const minColumns = Math.ceil(containerWidth / columnWidth)
 
-  // 4. 应用固定 buffer + 确保铺满容器
+  // 4. 应用固定 buffer + 确保铺满容器（读取自定义 buffer）
+  const scaleConf = mergedScaleConfigs.value[currentTimeScale.value]
+  const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+  const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
   const { min, max } = applyBufferAndFillContainer(
     taskMinDate,
     taskMaxDate,
     currentTimeScale.value,
     minColumns,
-    columnWidth
+    columnWidth,
+    customPreBuffer,
+    customSufBuffer
   )
 
   return { min, max }
 })
 
 /**
+ * 验证并标准化用户输入的 buffer 值
+ * - undefined / null → null（使用默认逻辑）
+ * - < 0 → null（使用默认逻辑）
+ * - 小数 → Math.ceil（向上取整）
+ * - 整数 ≥ 0 → 最小值为 1（设置为 0 时等同于 1）
+ */
+function sanitizeBuffer(value: number | undefined): number | null {
+  if (value == null) return null
+  const ceiled = Math.ceil(value)
+  if (ceiled < 0) return null
+  return Math.max(1, ceiled) // 最小buffer为1，设置为0时等同于1
+}
+
+/**
  * 应用固定 buffer 规则并确保铺满容器
- * Buffer 规则：
+ * 默认 Buffer 规则：
  * - 小时视图：±1天
- * - 日视图：±15天
+ * - 日视图：±15天（对齐到月边界）
  * - 周视图：±1个月（对齐到整月）
  * - 月视图：±1年
- * - 季度视图：±1年
- * - 年度视图：±1年
+ * - 季度视图：±2年（以今日为中心）
+ * - 年度视图：±2年（以今日为中心）
+ * 自定义 buffer 不为 null 时，以任务范围为基准覆盖默认逻辑（DAY 仍对齐月边界）
  */
 function applyBufferAndFillContainer(
   taskMin: Date,
   taskMax: Date,
   scale: TimelineScale,
   minColumns: number,
-  columnWidth: number
+  columnWidth: number,
+  customPreBuffer: number | null = null,
+  customSufBuffer: number | null = null
 ): { min: Date; max: Date } {
   let min: Date
   let max: Date
 
   switch (scale) {
     case TimelineScale.HOUR: {
-      // 小时视图：±1天
-      min = new Date(taskMin.getTime() - 24 * 60 * 60 * 1000)
-      max = new Date(taskMax.getTime() + 24 * 60 * 60 * 1000)
+      // 小时视图：默认 ±1天（24小时）；自定义单位为小时
+      const preBuf = customPreBuffer !== null ? customPreBuffer : 24
+      const sufBuf = customSufBuffer !== null ? customSufBuffer : 24
+      min = new Date(taskMin.getTime() - preBuf * 60 * 60 * 1000)
+      max = new Date(taskMax.getTime() + sufBuf * 60 * 60 * 1000)
       // 确保至少有 minColumns 小时
       const currentHours = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60))
       if (currentHours < minColumns) {
@@ -1885,16 +1963,20 @@ function applyBufferAndFillContainer(
       break
     }
     case TimelineScale.DAY: {
-      // 日视图：±15天，显示 buffer 日期所在月份的完整月份
+      // 日视图：默认 ±15天，自定义单位为天；两种情况均对齐到月边界
 
-      // 1. 计算 buffer 日期
+      // 1. 计算 buffer 天数（自定义或默认值）
+      const preDays = customPreBuffer !== null ? customPreBuffer : 15
+      const sufDays = customSufBuffer !== null ? customSufBuffer : 15
+
+      // 2. 计算 buffer 后的日期
       const minBufferDate = new Date(taskMin)
-      minBufferDate.setDate(minBufferDate.getDate() - 15)
+      minBufferDate.setDate(minBufferDate.getDate() - preDays)
 
       const maxBufferDate = new Date(taskMax)
-      maxBufferDate.setDate(maxBufferDate.getDate() + 15)
+      maxBufferDate.setDate(maxBufferDate.getDate() + sufDays)
 
-      // 2. 获取 buffer 日期所在月份的第一天和最后一天
+      // 3. 获取 buffer 日期所在月份的第一天和最后一天（月边界对齐）
       min = new Date(minBufferDate.getFullYear(), minBufferDate.getMonth(), 1)
       max = new Date(maxBufferDate.getFullYear(), maxBufferDate.getMonth() + 1, 0)
 
@@ -1975,26 +2057,44 @@ function applyBufferAndFillContainer(
       const minYear = minMonday.getFullYear()
       const minMonth = minMonday.getMonth()
 
-      // 2. 基于第一周周一往前追加一个完整月份的周数作为baseBuffer
-      const prevMonth = minMonth === 0 ? 11 : minMonth - 1
-      const prevYear = minMonth === 0 ? minYear - 1 : minYear
-      const prevMonthWeeks = getWeeksOfMonth(prevYear, prevMonth)
+      // 2. 确定前置 buffer：自定义（周数）或默认（往前追加一个完整月份的周数）
+      let startWeeks: Date[]
+      if (customPreBuffer !== null) {
+        // 自定义：从 minMonday 往前 customPreBuffer 周
+        const bufStart = new Date(minMonday)
+        bufStart.setDate(bufStart.getDate() - customPreBuffer * 7)
+        startWeeks = [bufStart]
+      } else {
+        // 默认：往前追加一个完整月份的周数
+        const prevMonth = minMonth === 0 ? 11 : minMonth - 1
+        const prevYear = minMonth === 0 ? minYear - 1 : minYear
+        startWeeks = getWeeksOfMonth(prevYear, prevMonth)
+      }
 
       // 3. 获取最晚TaskBar/Milestone的最大开始日期所在周的周一
       const maxMonday = getMonday(taskMax)
       const maxYear = maxMonday.getFullYear()
       const maxMonth = maxMonday.getMonth()
 
-      // 4. 基于最后一周周日往后追加一个完整月份的周数作为baseBuffer
-      const nextMonth = maxMonth === 11 ? 0 : maxMonth + 1
-      const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
-      const nextMonthWeeks = getWeeksOfMonth(nextYear, nextMonth)
+      // 4. 确定后置 buffer：自定义（周数）或默认（往后追加一个完整月份的周数）
+      let endWeeks: Date[]
+      if (customSufBuffer !== null) {
+        // 自定义：从 maxMonday 往后 customSufBuffer 周
+        const bufEnd = new Date(maxMonday)
+        bufEnd.setDate(bufEnd.getDate() + customSufBuffer * 7)
+        endWeeks = [bufEnd]
+      } else {
+        // 默认：往后追加一个完整月份的周数
+        const nextMonth = maxMonth === 11 ? 0 : maxMonth + 1
+        const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
+        endWeeks = getWeeksOfMonth(nextYear, nextMonth)
+      }
 
-      // 初始weeks：前buffer月 + 最小月到最大月之间所有月 + 后buffer月
+      // 初始weeks：前buffer + 最小月到最大月之间所有月 + 后buffer
       let weeks: Date[] = []
 
-      // 添加前buffer月
-      weeks.push(...prevMonthWeeks)
+      // 添加前buffer
+      weeks.push(...startWeeks)
 
       // 添加最小月到最大月之间的所有月份的周
       let currentYear = minYear
@@ -2009,8 +2109,8 @@ function applyBufferAndFillContainer(
         }
       }
 
-      // 添加后buffer月
-      weeks.push(...nextMonthWeeks)
+      // 添加后buffer
+      weeks.push(...endWeeks)
 
       // 5. 判断是否填满容器，不够则继续扩展前后的完整月份
       const weekWidth = 60 // 周视图：每周60px
@@ -2047,9 +2147,11 @@ function applyBufferAndFillContainer(
       break
     }
     case TimelineScale.MONTH: {
-      // 月视图：±1年
-      min = new Date(taskMin.getFullYear() - 1, taskMin.getMonth(), 1)
-      max = new Date(taskMax.getFullYear() + 1, taskMax.getMonth() + 1, 0)
+      // 月视图：默认 ±1年（12个月）；自定义单位为月
+      const preMonths = customPreBuffer !== null ? customPreBuffer : 12
+      const sufMonths = customSufBuffer !== null ? customSufBuffer : 12
+      min = new Date(taskMin.getFullYear(), taskMin.getMonth() - preMonths, 1)
+      max = new Date(taskMax.getFullYear(), taskMax.getMonth() + sufMonths + 1, 0)
       // 确保至少有 minColumns 月
       const currentMonths =
         (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth())
@@ -2062,25 +2164,42 @@ function applyBufferAndFillContainer(
       break
     }
     case TimelineScale.QUARTER: {
-      // 季度视图：以今日为中心，±2年 buffer，不够则继续扩展
-      const today = new Date()
-      const todayYear = today.getFullYear()
+      // 季度视图：自定义单位为季度（以任务范围为基准）；默认以今日为中心 ±2年
+      if (customPreBuffer !== null || customSufBuffer !== null) {
+        // 自定义模式：以任务范围为基准
+        const preQ = customPreBuffer !== null ? customPreBuffer : 0
+        const sufQ = customSufBuffer !== null ? customSufBuffer : 0
+        const preMs = preQ * 3
+        const sufMs = sufQ * 3
 
-      // 1. 先确保包含任务范围 + ±2年 buffer
-      const taskMinYear = taskMin.getFullYear()
-      const taskMaxYear = taskMax.getFullYear()
+        // 计算前置日期并对齐到季度开始（月份 0,3,6,9）
+        const rawMinMonth = taskMin.getMonth() - preMs
+        const minYear0 = taskMin.getFullYear() + Math.floor(rawMinMonth / 12)
+        const minMon0 = ((rawMinMonth % 12) + 12) % 12
+        const minQuarterStart = Math.floor(minMon0 / 3) * 3
+        min = new Date(minYear0, minQuarterStart, 1)
 
-      min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
-      max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
+        // 计算后置日期并对齐到季度结束
+        const rawMaxMonth = taskMax.getMonth() + sufMs
+        const maxYear0 = taskMax.getFullYear() + Math.floor(rawMaxMonth / 12)
+        const maxMon0 = ((rawMaxMonth % 12) + 12) % 12
+        const maxQuarterEnd = Math.floor(maxMon0 / 3) * 3 + 2
+        max = new Date(maxYear0, maxQuarterEnd + 1, 0)
+      } else {
+        // 默认模式：以今日为中心，±2年 buffer
+        const today = new Date()
+        const todayYear = today.getFullYear()
+        const taskMinYear = taskMin.getFullYear()
+        const taskMaxYear = taskMax.getFullYear()
+        min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
+        max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
+      }
 
-      // 2. 检查是否能填充容器
+      // 检查是否能填充容器
       const currentQuarters = (max.getFullYear() - min.getFullYear() + 1) * 4
       if (currentQuarters < minColumns) {
-        // 需要扩展，以1年（4个季度）为单位
         const needQuarters = minColumns - currentQuarters
         const expandYears = Math.ceil(needQuarters / 4)
-
-        // 以今日为中心扩展
         const expandEach = Math.ceil(expandYears / 2)
         min = new Date(min.getFullYear() - expandEach, 0, 1)
         max = new Date(max.getFullYear() + expandEach, 11, 31)
@@ -2088,25 +2207,28 @@ function applyBufferAndFillContainer(
       break
     }
     case TimelineScale.YEAR: {
-      // 年度视图：以今日为中心，±2年 buffer，不够则继续扩展（与季度视图逻辑一致）
-      const today = new Date()
-      const todayYear = today.getFullYear()
+      // 年度视图：自定义单位为年（以任务范围为基准）；默认以今日为中心 ±2年
+      if (customPreBuffer !== null || customSufBuffer !== null) {
+        // 自定义模式：以任务范围为基准
+        const preY = customPreBuffer !== null ? customPreBuffer : 0
+        const sufY = customSufBuffer !== null ? customSufBuffer : 0
+        min = new Date(taskMin.getFullYear() - preY, 0, 1)
+        max = new Date(taskMax.getFullYear() + sufY, 11, 31)
+      } else {
+        // 默认模式：以今日为中心，±2年 buffer
+        const today = new Date()
+        const todayYear = today.getFullYear()
+        const taskMinYear = taskMin.getFullYear()
+        const taskMaxYear = taskMax.getFullYear()
+        min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
+        max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
+      }
 
-      // 1. 先确保包含任务范围 + ±2年 buffer
-      const taskMinYear = taskMin.getFullYear()
-      const taskMaxYear = taskMax.getFullYear()
-
-      min = new Date(Math.min(todayYear - 2, taskMinYear - 2), 0, 1)
-      max = new Date(Math.max(todayYear + 2, taskMaxYear + 2), 11, 31)
-
-      // 2. 检查是否能填充容器（年度视图每年2个半年，每个半年是一列）
+      // 检查是否能填充容器（年度视图每年2个半年，每个半年是一列）
       const currentHalfYears = (max.getFullYear() - min.getFullYear() + 1) * 2
       if (currentHalfYears < minColumns) {
-        // 需要扩展，以1年（2个半年）为单位
         const needHalfYears = minColumns - currentHalfYears
         const expandYears = Math.ceil(needHalfYears / 2)
-
-        // 以今日为中心扩展
         const expandEach = Math.ceil(expandYears / 2)
         min = new Date(min.getFullYear() - expandEach, 0, 1)
         max = new Date(max.getFullYear() + expandEach, 11, 31)
@@ -2406,64 +2528,96 @@ const pdfExportHandler = async () => {
     ganttElement.style.overflow = 'visible'
     ganttElement.style.height = 'auto'
 
-    // 使用html2canvas捕获甘特图
-    const canvas = await html2canvas(ganttElement, {
-      allowTaint: true,
-      useCORS: true,
-      scale: 2, // 提高清晰度
-      width: ganttElement.scrollWidth,
-      height: ganttElement.scrollHeight,
-      backgroundColor: '#ffffff',
-    })
+    const currentDate = new Date().toLocaleDateString(i18nLocale.value)
+
+    // 创建标题/日期头部元素（使用浏览器渲染，支持中文，避免 jsPDF 字体乱码）
+    const headerEl = document.createElement('div')
+    headerEl.style.cssText = [
+      'position: fixed',
+      'left: -9999px',
+      'top: 0',
+      `width: ${Math.max(ganttElement.scrollWidth, 800)}px`,
+      'background: #ffffff',
+      'padding: 10px 16px',
+      'display: flex',
+      'justify-content: space-between',
+      'align-items: center',
+      'font-family: sans-serif',
+      'box-sizing: border-box',
+    ].join('; ')
+
+    const titleEl = document.createElement('span')
+    titleEl.style.cssText = 'font-size: 20px; font-weight: bold; flex: 1; text-align: center;'
+    titleEl.textContent = titleText
+
+    const dateEl = document.createElement('span')
+    dateEl.style.cssText = 'font-size: 12px; white-space: nowrap;'
+    dateEl.textContent = `${dateLabel}: ${currentDate}`
+
+    headerEl.appendChild(titleEl)
+    headerEl.appendChild(dateEl)
+    document.body.appendChild(headerEl)
+
+    // 同时捕获标题头部和甘特图（浏览器渲染保证中文字符正确）
+    const [headerCanvas, mainCanvas] = await Promise.all([
+      html2canvas(headerEl, {
+        allowTaint: true,
+        useCORS: true,
+        scale: 2,
+        backgroundColor: '#ffffff',
+      }),
+      html2canvas(ganttElement, {
+        allowTaint: true,
+        useCORS: true,
+        scale: 2,
+        width: ganttElement.scrollWidth,
+        height: ganttElement.scrollHeight,
+        backgroundColor: '#ffffff',
+      }),
+    ])
+
+    document.body.removeChild(headerEl)
 
     // 恢复原始样式
     ganttElement.style.overflow = originalStyle.overflow
     ganttElement.style.height = originalStyle.height
 
-    // 创建PDF
-    const imgData = canvas.toDataURL('image/png')
+    const headerImgData = headerCanvas.toDataURL('image/png')
+    const mainImgData = mainCanvas.toDataURL('image/png')
+
     const pdf = new jsPDF({
-      orientation: 'landscape', // 横向布局更适合甘特图
+      orientation: 'landscape',
       unit: 'mm',
       format: 'a4',
     })
 
-    // 计算图片在PDF中的尺寸
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = pdf.internal.pageSize.getHeight()
-    const imgWidth = canvas.width
-    const imgHeight = canvas.height
 
-    // 计算缩放比例，保持宽高比
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-    const scaledWidth = imgWidth * ratio
-    const scaledHeight = imgHeight * ratio
+    // 计算标题头部在 PDF 中的高度（等比缩放至页面宽度）
+    const headerHeightMm = (headerCanvas.height / headerCanvas.width) * pdfWidth
 
-    // 居中放置
+    // 将标题头部图片添加到 PDF 顶部（不再使用 pdf.text()，彻底解决中文乱码）
+    pdf.addImage(headerImgData, 'PNG', 0, 0, pdfWidth, headerHeightMm)
+
+    // 计算甘特图区域
+    const contentY = headerHeightMm + 2
+    const contentHeight = pdfHeight - contentY
+    const mainAspect = mainCanvas.height / mainCanvas.width
+    const scaledWidth = Math.min(pdfWidth, contentHeight / mainAspect)
+    const scaledHeight = scaledWidth * mainAspect
     const x = (pdfWidth - scaledWidth) / 2
-    const y = (pdfHeight - scaledHeight) / 2
 
-    // 添加标题
-    pdf.setFontSize(16)
-    pdf.text(titleText, pdfWidth / 2, 15, { align: 'center' })
-
-    // 添加日期
-    pdf.setFontSize(10)
-    const currentDate = new Date().toLocaleDateString(i18nLocale.value)
-    pdf.text(`${dateLabel}: ${currentDate}`, pdfWidth - 10, 10, { align: 'right' })
-
-    // 添加甘特图图片
-    pdf.addImage(imgData, 'PNG', x, y + 10, scaledWidth, scaledHeight - 15)
+    pdf.addImage(mainImgData, 'PNG', x, contentY, scaledWidth, scaledHeight)
 
     // 如果内容超出一页，分页处理
-    if (scaledHeight > pdfHeight - 30) {
-      // 计算需要的页数
-      const pages = Math.ceil(scaledHeight / (pdfHeight - 30))
+    if (scaledHeight > contentHeight) {
+      const pages = Math.ceil(scaledHeight / contentHeight)
 
       for (let i = 1; i < pages; i++) {
         pdf.addPage()
-        const offsetY = -i * (pdfHeight - 30)
-        pdf.addImage(imgData, 'PNG', x, y + 10 + offsetY, scaledWidth, scaledHeight - 15)
+        const offsetY = -i * contentHeight
+        pdf.addImage(mainImgData, 'PNG', x, contentY + offsetY, scaledWidth, scaledHeight)
       }
     }
 
@@ -3554,6 +3708,7 @@ defineExpose({
           :milestones="milestonesForTimeline"
           :start-date="timelineDateRange.min"
           :end-date="timelineDateRange.max"
+          :scale-configs="mergedScaleConfigs"
           :working-hours="props.workingHours"
           :task-bar-config="props.taskBarConfig"
           :allow-drag-and-resize="props.allowDragAndResize"
@@ -3747,7 +3902,7 @@ defineExpose({
   cursor: col-resize;
   background: var(--gantt-border-light, #e4e7ed);
   transition: all 0.2s ease;
-  z-index: 999;
+  z-index: 1;
   /* 禁用文本选择和拖拽干扰 */
   user-select: none;
   -webkit-user-select: none;

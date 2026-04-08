@@ -28,7 +28,8 @@ import type { Task } from '../models/classes/Task'
 import type { Resource } from '../models/classes/Resource'
 import type { Milestone } from '../models/classes/Milestone'
 import type { TimelineConfig } from '../models/configs/TimelineConfig'
-import { TimelineScale } from '../models/types/TimelineScale'
+import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
+import type { TimelineScaleConfig } from '../models/types/TimelineScale'
 import type {
   TooltipShowPayload,
   MilestoneTooltipShowPayload,
@@ -70,6 +71,8 @@ interface Props {
   delayTaskBackgroundColor?: string
   completeTaskBackgroundColor?: string
   ongoingTaskBackgroundColor?: string
+  // 外部刻度配置（增量覆盖），由 GanttChart 传入
+  scaleConfigs?: Record<TimelineScale, TimelineScaleConfig>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -95,6 +98,7 @@ const props = withDefaults(defineProps<Props>(), {
   delayTaskBackgroundColor: undefined,
   completeTaskBackgroundColor: undefined,
   ongoingTaskBackgroundColor: undefined,
+  scaleConfigs: undefined,
 })
 
 // 定义emits
@@ -467,27 +471,99 @@ const tasks = computed(() => {
 const timelineContainerElement = ref<HTMLElement | null>(null)
 const timelinePanelElement = ref<HTMLElement | null>(null)
 
+// 有效刻度配置：外部传入则使用，否则回退到内置默认值
+const effectiveScaleConfigs = computed((): Record<TimelineScale, TimelineScaleConfig> => {
+  return (props.scaleConfigs as Record<TimelineScale, TimelineScaleConfig>) ?? SCALE_CONFIGS
+})
+
+/**
+ * 验证并标准化 buffer 值（与 GanttChart.vue 中保持一致）
+ * - undefined / null → null（使用默认逻辑）
+ * - < 0 → null（使用默认逻辑）
+ * - 小数 → Math.ceil（向上取整）
+ * - 整数 ≥ 0 → 直接使用
+ */
+function sanitizeBuffer(value: number | undefined): number | null {
+  if (value == null) return null
+  const ceiled = Math.ceil(value)
+  if (ceiled < 0) return null
+  return Math.max(1, ceiled) // 最小buffer为1，设置为0时等同于1
+}
+
+/**
+ * 计算日期的 ISO 周数（W token 使用）
+ */
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayOfWeek = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+/**
+ * 将格式字符串应用于指定日期，返回格式化后的标签字符串。
+ * 支持 token：yyyy, MM, M, dd, d, HH, mm, Q（季度数字1-4）, W（ISO周数）
+ * 特殊 pattern：'AAA|BBB' —— 月份 < 6（1-6月, index 0-5）时返回 AAA，否则返回 BBB
+ */
+function applyFormatter(formatStr: string, date: Date): string {
+  if (formatStr.includes('|')) {
+    const parts = formatStr.split('|')
+    return date.getMonth() < 6 ? parts[0] : (parts[1] ?? parts[0])
+  }
+  const yyyy = date.getFullYear().toString()
+  const MM = String(date.getMonth() + 1).padStart(2, '0')
+  const M = String(date.getMonth() + 1)
+  const dd = String(date.getDate()).padStart(2, '0')
+  const d = String(date.getDate())
+  const HH = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  const Q = String(Math.ceil((date.getMonth() + 1) / 3))
+  const W = getISOWeekNumber(date).toString()
+  // 注意替换顺序：多字符 token 优先，避免单字符 token 误替换
+  return formatStr
+    .replace('yyyy', yyyy)
+    .replace('MM', MM)
+    .replace('dd', dd)
+    .replace('HH', HH)
+    .replace('mm', mm)
+    .replace('M', M)
+    .replace('d', d)
+    .replace('Q', Q)
+    .replace('W', W)
+}
+
+/**
+ * 检查指定刻度的某行是否配置了自定义 formatter（与内置默认值不同）
+ */
+function hasCustomFormatter(scale: TimelineScale, row: 'primary' | 'secondary'): boolean {
+  const effective = effectiveScaleConfigs.value[scale]?.formatters
+  const defaultF = SCALE_CONFIGS[scale]?.formatters
+  if (!effective || !defaultF) return false
+  if (row === 'primary') return effective.primary !== defaultF.primary
+  return (effective.secondary ?? '') !== (defaultF.secondary ?? '')
+}
+
 // 根据时间刻度计算每日宽度
 const dayWidth = computed(() => {
   if (currentTimeScale.value === TimelineScale.HOUR) {
-    // 小时视图：每小时40px，一天24小时，每天960px
-    return 960 // 24 * 40
+    // 小时视图：每小时N px，一天24小时
+    return effectiveScaleConfigs.value['hour'].cellWidth * 24
   } else if (currentTimeScale.value === TimelineScale.WEEK) {
-    // 周视图：每周60px，分7天，每天约8.57px
-    return 60 / 7
+    // 周视图：每周N px，分7天
+    return effectiveScaleConfigs.value['week'].cellWidth / 7
   } else if (currentTimeScale.value === TimelineScale.MONTH) {
-    // 月视图：动态计算，基于当前月的实际天数
-    // 这里返回一个平均值，具体定位时会根据每个月的实际天数重新计算
-    return 2 // 月视图下每天约2px（60px/30天的平均值）
+    // 月视图：每月N px，约30天均值
+    return effectiveScaleConfigs.value['month'].cellWidth / 30
   } else if (currentTimeScale.value === TimelineScale.QUARTER) {
-    // 季度视图：每季度60px，分90天（平均），每天约0.67px
-    return 60 / 90
+    // 季度视图：每季度N px，分90天（平均）
+    return effectiveScaleConfigs.value['quarter'].cellWidth / 90
   } else if (currentTimeScale.value === TimelineScale.YEAR) {
-    // 年视图：每年360px，分365天，每天约0.99px
-    return 360 / 365
+    // 年视图：每半年N px，全年两个半年，分365天
+    return (effectiveScaleConfigs.value['year'].cellWidth * 2) / 365
   } else {
-    // 日视图：每天30px
-    return 30
+    // 日视图：每天N px
+    return effectiveScaleConfigs.value['day'].cellWidth
   }
 })
 
@@ -574,7 +650,10 @@ const getTasksDateRange = () => {
 const getHourTimelineRange = () => {
   const taskRange = getTasksDateRange()
   const containerWidth = timelineContainerWidth.value || 1200
-  const hourWidth = 40 // 小时视图：每小时40px
+  const hourWidth = effectiveScaleConfigs.value['hour'].cellWidth // 小时视图：每小时N px
+  const scaleConf = effectiveScaleConfigs.value['hour']
+  const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+  const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
 
   if (!taskRange) {
     // 如果没有任务，只显示前一天、当天、后一天（共3天）
@@ -593,15 +672,25 @@ const getHourTimelineRange = () => {
 
   const { minDate, maxDate } = taskRange
 
-  // 开始日期：任务最小开始日期的前一天0点
-  const startDate = new Date(minDate)
-  startDate.setHours(0, 0, 0, 0)
-  startDate.setDate(startDate.getDate() - 1)
+  // 开始日期：自定义preBuffer小时前（从当天0点起算），或默认前一天0点
+  const startBase = new Date(minDate)
+  startBase.setHours(0, 0, 0, 0)
+  const startDate = new Date(startBase)
+  if (customPreBuffer !== null) {
+    startDate.setDate(startDate.getDate() - customPreBuffer)
+  } else {
+    startDate.setDate(startDate.getDate() - 1)
+  }
 
-  // 结束日期：任务最大结束日期的后一天23:59:59
-  const endDate = new Date(maxDate)
-  endDate.setHours(23, 59, 59, 999)
-  endDate.setDate(endDate.getDate() + 1)
+  // 结束日期：自定义sufBuffer天后（从当天23:59:59起算），或默认后一天23:59:59
+  const endBase = new Date(maxDate)
+  endBase.setHours(23, 59, 59, 999)
+  const endDate = new Date(endBase)
+  if (customSufBuffer !== null) {
+    endDate.setDate(endDate.getDate() + customSufBuffer)
+  } else {
+    endDate.setDate(endDate.getDate() + 1)
+  }
 
   // 计算当前范围需要的宽度
   const hoursDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60))
@@ -627,12 +716,15 @@ const getHourTimelineRange = () => {
 const getDayTimelineRange = () => {
   const taskRange = getTasksDateRange()
   const containerWidth = timelineContainerWidth.value || 1200
-  const dayWidth = 30 // 日视图：每天30px
+  const cellWidthDay = effectiveScaleConfigs.value['day'].cellWidth // 日视图：每天N px
+  const scaleConf = effectiveScaleConfigs.value['day']
+  const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+  const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
 
   if (!taskRange) {
     // 如果没有任务，根据容器宽度计算范围
     const today = new Date()
-    const daysNeeded = Math.max(Math.ceil(containerWidth / dayWidth), 60) // 至少60天
+    const daysNeeded = Math.max(Math.ceil(containerWidth / cellWidthDay), 60) // 至少60天
 
     const startDate = new Date(today)
     startDate.setDate(startDate.getDate() - Math.floor(daysNeeded / 2))
@@ -645,25 +737,31 @@ const getDayTimelineRange = () => {
 
   const { minDate, maxDate } = taskRange
 
-  // 开始日期：取任务最小日期所在月的前一个月月初（第1天）
-  // 采用月运算而非减30天，原因：
-  //   减30天后若落在月末（如1月31日），normalize 到月初会多出一整个月（1月→1月1日），
-  //   而语义上只需在任务月份前保留一个完整月作为 buffer。
-  // 直接用 new Date(year, month-1, 1) 使 startDate 始终为月初且精确为前一个月，
-  //   generateDayTimelineData 以月为单位迭代时 setMonth(+1) 不会因日期溢出跳过任何月份。
-  let startDate = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1)
+  // 开始日期：自定义preBuffer月前对齐月初，或默认前一个月月初
+  // 对齐到月初原因：避免日期溢出导致 generateDayTimelineData 月份迭代 setMonth(+1) 跳过月份
+  let startDate: Date
+  if (customPreBuffer !== null) {
+    startDate = new Date(minDate.getFullYear(), minDate.getMonth() - customPreBuffer, 1)
+  } else {
+    startDate = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1)
+  }
 
-  // 结束日期：任务最大结束日期+30天
-  let endDate = new Date(maxDate)
-  endDate.setDate(endDate.getDate() + 30)
+  // 结束日期：自定义sufBuffer月后对齐月末，或默认+30天
+  let endDate: Date
+  if (customSufBuffer !== null) {
+    endDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + customSufBuffer + 1, 0)
+  } else {
+    endDate = new Date(maxDate)
+    endDate.setDate(endDate.getDate() + 30)
+  }
 
   // 计算当前范围需要的宽度
   const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-  const currentWidth = daysDiff * dayWidth
+  const currentWidth = daysDiff * cellWidthDay
 
   // 如果当前宽度小于容器宽度，扩展范围
   if (currentWidth < containerWidth) {
-    const daysNeeded = Math.ceil(containerWidth / dayWidth)
+    const daysNeeded = Math.ceil(containerWidth / cellWidthDay)
     const additionalDays = Math.ceil((daysNeeded - daysDiff) / 2)
 
     // 向前扩展
@@ -684,7 +782,10 @@ const getDayTimelineRange = () => {
 const getWeekTimelineRange = () => {
   const taskRange = getTasksDateRange()
   const containerWidth = timelineContainerWidth.value || 1200
-  const weekWidth = 60 // 周视图：每周60px
+  const weekWidth = effectiveScaleConfigs.value['week'].cellWidth // 周视图：每周N px
+  const scaleConf = effectiveScaleConfigs.value['week']
+  const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+  const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
 
   if (!taskRange) {
     // 如果没有任务，根据容器宽度计算范围
@@ -771,11 +872,35 @@ const getWeekTimelineRange = () => {
   const nextYear = maxMonth === 11 ? maxYear + 1 : maxYear
   const nextMonthWeeks = getWeeksOfMonth(nextYear, nextMonth)
 
+  // 确定前置buffer周列表（自定义N月 或 默认前一整月的周）
+  let preBufferWeeks: Date[]
+  if (customPreBuffer !== null) {
+    preBufferWeeks = []
+    for (let i = customPreBuffer; i >= 1; i--) {
+      const d = new Date(minDate.getFullYear(), minDate.getMonth() - i, 1)
+      preBufferWeeks.push(...getWeeksOfMonth(d.getFullYear(), d.getMonth()))
+    }
+  } else {
+    preBufferWeeks = prevMonthWeeks
+  }
+
+  // 确定后置buffer周列表（自定义N月 或 默认后一整月的周）
+  let sufBufferWeeks: Date[]
+  if (customSufBuffer !== null) {
+    sufBufferWeeks = []
+    for (let i = 1; i <= customSufBuffer; i++) {
+      const d = new Date(maxDate.getFullYear(), maxDate.getMonth() + i, 1)
+      sufBufferWeeks.push(...getWeeksOfMonth(d.getFullYear(), d.getMonth()))
+    }
+  } else {
+    sufBufferWeeks = nextMonthWeeks
+  }
+
   // 初始weeks：前buffer月 + 最小月到最大月之间所有月 + 后buffer月
   let weeks: Date[] = []
 
-  // 添加前buffer月
-  weeks.push(...prevMonthWeeks)
+  // 添加前buffer周
+  weeks.push(...preBufferWeeks)
 
   // 添加最小月到最大月之间的所有月份的周
   let currentYear = minYear
@@ -790,8 +915,8 @@ const getWeekTimelineRange = () => {
     }
   }
 
-  // 添加后buffer月
-  weeks.push(...nextMonthWeeks)
+  // 添加后buffer周
+  weeks.push(...sufBufferWeeks)
 
   // 5. 判断是否填满容器，不够则继续扩展前后的完整月份
   let totalWidth = weeks.length * weekWidth
@@ -830,6 +955,10 @@ const getWeekTimelineRange = () => {
 // 获取月度视图的时间范围（任务最小开始日期-2年 ~ 任务最大结束日期+2年）
 const getMonthTimelineRange = () => {
   const taskRange = getTasksDateRange()
+  const scaleConf = effectiveScaleConfigs.value['month']
+  const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+  const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
+
   if (!taskRange) {
     // 如果没有任务，使用当前日期为中心的范围
     const today = new Date()
@@ -841,18 +970,28 @@ const getMonthTimelineRange = () => {
   const { minDate, maxDate } = taskRange
   const containerWidth = timelineContainerWidth.value || 1200 // 默认1200px
 
-  // 开始日期：任务最小开始日期-1年，月初
-  let startDate = new Date(minDate.getFullYear() - 1, 0, 1)
+  // 开始日期：自定义preBuffer年前年初，或默认任务最小日期-1年年初
+  let startDate: Date
+  if (customPreBuffer !== null) {
+    startDate = new Date(minDate.getFullYear() - customPreBuffer, 0, 1)
+  } else {
+    startDate = new Date(minDate.getFullYear() - 1, 0, 1)
+  }
 
-  // 结束日期：任务最大结束日期+1年，月末
-  let endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
+  // 结束日期：自定义sufBuffer年后年末，或默认任务最大日期+1年年末
+  let endDate: Date
+  if (customSufBuffer !== null) {
+    endDate = new Date(maxDate.getFullYear() + customSufBuffer, 11, 31)
+  } else {
+    endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
+  }
 
   // 计算当前范围的月数
   const yearsDiff = endDate.getFullYear() - startDate.getFullYear()
   const monthsDiff = yearsDiff * 12 + (endDate.getMonth() - startDate.getMonth())
 
-  // 月视图：每月60px
-  const monthWidth = 60
+  // 月视图：每月N px
+  const monthWidth = effectiveScaleConfigs.value['month'].cellWidth
   const currentWidth = monthsDiff * monthWidth
 
   // 如果当前宽度小于容器宽度，扩展范围
@@ -886,13 +1025,13 @@ const getYearTimelineRange = () => {
     let yearsNeeded = 3 // 默认至少3年
 
     if (currentTimeScale.value === TimelineScale.QUARTER) {
-      // 季度视图：每季度60px，每年4个季度 = 240px
-      const quarterWidth = 60
+      // 季度视图：每季度N px，每年4个季度
+      const quarterWidth = effectiveScaleConfigs.value['quarter'].cellWidth
       const yearWidth = quarterWidth * 4 // 240px
       yearsNeeded = Math.max(Math.ceil(containerWidth / yearWidth) + 1, 5) // 至少5年
     } else if (currentTimeScale.value === TimelineScale.YEAR) {
-      // 年度视图：每年360px
-      const yearWidth = 360
+      // 年度视图：每年两个半年
+      const yearWidth = effectiveScaleConfigs.value['year'].cellWidth * 2
       yearsNeeded = Math.max(Math.ceil(containerWidth / yearWidth) + 1, 5) // 至少5年
     }
 
@@ -908,44 +1047,84 @@ const getYearTimelineRange = () => {
   const { minDate, maxDate } = taskRange
   const containerWidth = timelineContainerWidth.value || 1200 // 默认1200px
 
-  // 开始日期：任务最小开始日期-1年，年初
-  let startDate = new Date(minDate.getFullYear() - 1, 0, 1)
-
-  // 结束日期：任务最大结束日期+1年，年末
-  let endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
-
   // 计算当前范围需要的宽度
-  const yearsDiff = endDate.getFullYear() - startDate.getFullYear() + 1
-
   if (currentTimeScale.value === TimelineScale.QUARTER) {
-    // 季度视图：每季度60px，每年4个季度 = 240px
-    const quarterWidth = 60
+    const scaleConf = effectiveScaleConfigs.value['quarter']
+    const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+    const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
+
+    // 季度视图：每季度N px，每年4个季度
+    const quarterWidth = effectiveScaleConfigs.value['quarter'].cellWidth
     const yearWidth = quarterWidth * 4 // 240px
+
+    // 开始日期：自定义preBuffer年前年初，或默认-1年年初
+    let startDate: Date
+    if (customPreBuffer !== null) {
+      startDate = new Date(minDate.getFullYear() - customPreBuffer, 0, 1)
+    } else {
+      startDate = new Date(minDate.getFullYear() - 1, 0, 1)
+    }
+
+    // 结束日期：自定义sufBuffer年后年末，或默认+1年年末
+    let endDate: Date
+    if (customSufBuffer !== null) {
+      endDate = new Date(maxDate.getFullYear() + customSufBuffer, 11, 31)
+    } else {
+      endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
+    }
+
+    const yearsDiff = endDate.getFullYear() - startDate.getFullYear() + 1
     const currentWidth = yearsDiff * yearWidth
 
-    // 如果当前宽度小于容器宽度，扩展范围
     if (currentWidth < containerWidth) {
       const yearsNeeded = Math.ceil(containerWidth / yearWidth)
       const additionalYears = Math.ceil((yearsNeeded - yearsDiff) / 2)
-
       startDate = new Date(startDate.getFullYear() - additionalYears, 0, 1)
       endDate = new Date(endDate.getFullYear() + additionalYears, 11, 31)
     }
+
+    return { startDate, endDate }
   } else if (currentTimeScale.value === TimelineScale.YEAR) {
-    // 年度视图：每年360px
-    const yearWidth = 360
+    const scaleConf = effectiveScaleConfigs.value['year']
+    const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
+    const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
+
+    // 年度视图：每年两个半年
+    const yearHalfWidth = effectiveScaleConfigs.value['year'].cellWidth
+    const yearWidth = yearHalfWidth * 2
+
+    // 开始日期：自定义preBuffer年前年初，或默认-1年年初
+    let startDate: Date
+    if (customPreBuffer !== null) {
+      startDate = new Date(minDate.getFullYear() - customPreBuffer, 0, 1)
+    } else {
+      startDate = new Date(minDate.getFullYear() - 1, 0, 1)
+    }
+
+    // 结束日期：自定义sufBuffer年后年末，或默认+1年年末
+    let endDate: Date
+    if (customSufBuffer !== null) {
+      endDate = new Date(maxDate.getFullYear() + customSufBuffer, 11, 31)
+    } else {
+      endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
+    }
+
+    const yearsDiff = endDate.getFullYear() - startDate.getFullYear() + 1
     const currentWidth = yearsDiff * yearWidth
 
-    // 如果当前宽度小于容器宽度，扩展范围
     if (currentWidth < containerWidth) {
       const yearsNeeded = Math.ceil(containerWidth / yearWidth)
       const additionalYears = Math.ceil((yearsNeeded - yearsDiff) / 2)
-
       startDate = new Date(startDate.getFullYear() - additionalYears, 0, 1)
       endDate = new Date(endDate.getFullYear() + additionalYears, 11, 31)
     }
+
+    return { startDate, endDate }
   }
 
+  // 兜底：按年计算（不应到达）
+  const startDate = new Date(minDate.getFullYear() - 1, 0, 1)
+  const endDate = new Date(maxDate.getFullYear() + 1, 11, 31)
   return { startDate, endDate }
 }
 
@@ -1592,7 +1771,6 @@ const isInitialScrolling = ref(true) // 跟踪初始滚动状态
 let hideBubblesTimeout: number | null = null // 半圆显示恢复定时器
 
 // 虚拟滚动相关状态
-const HOUR_WIDTH = 40 // 每小时40px
 const VIRTUAL_BUFFER = 10 // 减少缓冲区以提升滑动性能
 
 // v1.9.5 P2-3优化 - 智能缓存数据结构
@@ -1638,8 +1816,9 @@ const visibleHourRange = computed(() => {
   }
 
   // 正常滚动状态：计算可视区域的开始和结束小时（相对于时间线开始的小时偏移）
-  const startHour = Math.floor(scrollLeft / HOUR_WIDTH) - VIRTUAL_BUFFER
-  const endHour = Math.ceil((scrollLeft + containerWidth) / HOUR_WIDTH) + VIRTUAL_BUFFER
+  const hourWidth = effectiveScaleConfigs.value['hour'].cellWidth
+  const startHour = Math.floor(scrollLeft / hourWidth) - VIRTUAL_BUFFER
+  const endHour = Math.ceil((scrollLeft + containerWidth) / hourWidth) + VIRTUAL_BUFFER
 
   return {
     startHour: Math.max(0, startHour),
@@ -1740,7 +1919,7 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
       for (const periodData of data) {
         const weeks = periodData.weeks || []
         for (const week of weeks) {
-          const weekWidth = 60
+          const weekWidth = effectiveScaleConfigs.value['week'].cellWidth
           if (
             scrollPosition >= cumulativePosition &&
             scrollPosition < cumulativePosition + weekWidth
@@ -1761,7 +1940,7 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
     } else if (scale === TimelineScale.MONTH) {
       // 月视图：遍历每个月找到对应位置
       for (const periodData of data) {
-        const monthWidth = 60
+        const monthWidth = effectiveScaleConfigs.value['month'].cellWidth
         if (
           scrollPosition >= cumulativePosition &&
           scrollPosition < cumulativePosition + monthWidth
@@ -1780,7 +1959,7 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
       for (const periodData of data) {
         const quarters = (periodData as any).quarters || []
         for (const quarter of quarters) {
-          const quarterWidth = 60
+          const quarterWidth = effectiveScaleConfigs.value['quarter'].cellWidth
           if (
             scrollPosition >= cumulativePosition &&
             scrollPosition < cumulativePosition + quarterWidth
@@ -1804,7 +1983,7 @@ const getDateByScrollPosition = (scrollPosition: number): Date => {
       for (const periodData of data) {
         const halfYears = (periodData as any).halfYears || []
         for (const halfYear of halfYears) {
-          const halfYearWidth = 180
+          const halfYearWidth = effectiveScaleConfigs.value['year'].cellWidth
           if (
             scrollPosition >= cumulativePosition &&
             scrollPosition < cumulativePosition + halfYearWidth
@@ -2114,11 +2293,11 @@ const rebuildResourceTaskQueues = () => {
     // 根据时间刻度计算每单位的像素宽度
     let pixelPerMs = 0
     if (scale === TimelineScale.HOUR) {
-      pixelPerMs = 40 / (60 * 60 * 1000) // 40px per hour
+      pixelPerMs = effectiveScaleConfigs.value['hour'].cellWidth / (60 * 60 * 1000) // N px per hour
     } else if (scale === TimelineScale.DAY) {
-      pixelPerMs = 30 / (24 * 60 * 60 * 1000) // 30px per day
+      pixelPerMs = effectiveScaleConfigs.value['day'].cellWidth / (24 * 60 * 60 * 1000) // N px per day
     } else if (scale === TimelineScale.WEEK) {
-      pixelPerMs = 60 / (7 * 24 * 60 * 60 * 1000) // 60px per week
+      pixelPerMs = effectiveScaleConfigs.value['week'].cellWidth / (7 * 24 * 60 * 60 * 1000) // N px per week
     }
 
     // 超精确计算：只保留10%缓冲区（方案1核心）
@@ -2464,7 +2643,7 @@ const totalTimelineWidth = computed(() => {
     for (const day of cachedData as any[]) {
       totalHours += day.hours.length
     }
-    return totalHours * HOUR_WIDTH
+    return totalHours * effectiveScaleConfigs.value['hour'].cellWidth
   }
 
   // 季度视图
@@ -2473,7 +2652,7 @@ const totalTimelineWidth = computed(() => {
     for (const year of cachedData as any[]) {
       totalQuarters += year.quarters.length
     }
-    return totalQuarters * 60
+    return totalQuarters * effectiveScaleConfigs.value['quarter'].cellWidth
   }
 
   // 周视图
@@ -2482,17 +2661,17 @@ const totalTimelineWidth = computed(() => {
     for (const month of cachedData) {
       totalWeeks += month.weeks?.length || 0
     }
-    return totalWeeks * 60
+    return totalWeeks * effectiveScaleConfigs.value['week'].cellWidth
   }
 
   // 月视图
   if (scale === TimelineScale.MONTH) {
-    return cachedData.length * 60
+    return cachedData.length * effectiveScaleConfigs.value['month'].cellWidth
   }
 
   // 年视图
   if (scale === TimelineScale.YEAR) {
-    return cachedData.length * 360
+    return cachedData.length * effectiveScaleConfigs.value['year'].cellWidth * 2
   }
 
   // 日视图
@@ -2500,7 +2679,7 @@ const totalTimelineWidth = computed(() => {
   for (const month of cachedData) {
     totalDays += month.days?.length || 0
   }
-  return totalDays * 30
+  return totalDays * effectiveScaleConfigs.value['day'].cellWidth
 })
 
 let resizeObserver: ResizeObserver | null = null
@@ -2537,7 +2716,10 @@ const computeAllMilestonesPositions = () => {
           const startDiff = Math.floor(
             (milestoneDate.getTime() - timelineStart) / (1000 * 60 * 60 * 24)
           )
-          const left = startDiff * 30 + 15 - 12 // 30是dayWidth，12是图标半径
+          const left =
+            startDiff * effectiveScaleConfigs.value['day'].cellWidth +
+            effectiveScaleConfigs.value['day'].cellWidth / 2 -
+            12 // dayWidth中夯 + 居中偏移 - 图标半径
 
           // 计算边界粘性状态
           const iconLeft = left - 12
@@ -2567,7 +2749,7 @@ const computeAllMilestonesPositions = () => {
       if (!isNaN(milestoneDate.getTime())) {
         const daysDiff = (milestoneDate.getTime() - timelineStart) / (1000 * 60 * 60 * 24)
         const startDiff = Math.floor(daysDiff)
-        const left = startDiff * 30 + 15 - 12
+        const left = startDiff * dayWidth.value + dayWidth.value / 2 - 12
 
         // 计算边界粘性状态
         const iconLeft = left - 12
@@ -2698,6 +2880,10 @@ const handleTimelineContainerResized = () => {
   // 清空TaskBar位置信息并强制重新渲染（修复全屏时关系线位置不正确的问题）
   taskBarPositions.value = {}
   taskBarRenderKey.value++
+
+  // 全屏/容器变化会改变 bodyContentRef 的视口位置，必须清除 cachedBodyRect
+  // 否则 handleBarMounted 会用旧的 bodyRect 做坐标变换，导致关系线偏移
+  cachedBodyRect = null
 
   // 清除之前的定时器，避免多次触发冲突
   if (hideBubblesTimeout) {
@@ -3024,14 +3210,14 @@ const getGlobalWeekPosition = (monthIndex: number, weekIndex: number) => {
   for (let i = 0; i < monthIndex; i++) {
     const month = timelineData.value[i]
     if (month && month.isWeekView && month.weeks) {
-      position += month.weeks.length * 60
+      position += month.weeks.length * effectiveScaleConfigs.value['week'].cellWidth
     } else if (month && month.days) {
-      position += month.days.length * 30
+      position += month.days.length * effectiveScaleConfigs.value['day'].cellWidth
     }
   }
 
   // 加上当前月份内的周位置
-  position += weekIndex * 60
+  position += weekIndex * effectiveScaleConfigs.value['week'].cellWidth
 
   return position
 }
@@ -3187,7 +3373,11 @@ watch(
     positionCacheWatchCount++
 
     if (newData && newScale) {
-      positionCache.buildCache(newData as any[], newScale)
+      // 传入实际 cellWidths，确保自定义 scaleConfigs 的宽度被正确使用
+      const cellWidths = Object.fromEntries(
+        Object.entries(effectiveScaleConfigs.value).map(([k, v]) => [k, (v as any).cellWidth])
+      )
+      positionCache.buildCache(newData as any[], newScale, cellWidths)
     }
   },
   { immediate: true } // 立即执行，确保初始化时也构建缓存
@@ -3264,11 +3454,11 @@ const scrollToTodayCenter = (retry = 0) => {
     // 基础天数偏移（到今日0点的位置）
     const baseDayPosition = daysDiff * dayWidth.value
 
-    // 小时偏移：每小时40px
-    const hourOffset = currentHour * 40
+    // 小时偏移：每小时N px
+    const hourOffset = currentHour * effectiveScaleConfigs.value['hour'].cellWidth
 
     // 分钟偏移：在当前小时内的精确位置
-    const minuteOffset = (currentMinute / 60) * 40
+    const minuteOffset = (currentMinute / 60) * effectiveScaleConfigs.value['hour'].cellWidth
 
     todayPosition = baseDayPosition + hourOffset + minuteOffset
   } else if (currentTimeScale.value === TimelineScale.QUARTER) {
@@ -3276,9 +3466,9 @@ const scrollToTodayCenter = (retry = 0) => {
     const targetYear = todayNormalized.getFullYear()
     const baseYear = startNormalized.getFullYear()
 
-    // 每年的宽度是240px (4季度 * 60px)，每季度60px
-    const yearWidth = 240
-    const quarterWidth = 60
+    // 每年的宽度是4季度 * N px，每季度N px
+    const quarterWidth = effectiveScaleConfigs.value['quarter'].cellWidth
+    const yearWidth = quarterWidth * 4
 
     // 计算年份偏移
     const yearOffset = targetYear - baseYear
@@ -3336,7 +3526,7 @@ const scrollToTodayCenter = (retry = 0) => {
     const monthsDiff = (targetYear - baseYear) * 12 + (targetMonth - baseMonth)
 
     // 每个月60px
-    const monthWidth = 60
+    const monthWidth = effectiveScaleConfigs.value['month'].cellWidth
     todayPosition = monthsDiff * monthWidth
 
     // 在月份内的具体位置（基于日期）
@@ -3356,7 +3546,7 @@ const scrollToTodayCenter = (retry = 0) => {
     }>
 
     let position = 0
-    const halfYearWidth = 180 // 每个半年的宽度
+    const halfYearWidth = effectiveScaleConfigs.value['year'].cellWidth // 每个半年的宽度
     let found = false
 
     // 遍历年份数据
@@ -3463,7 +3653,7 @@ const getTodayLinePositionInYearView = computed(() => {
   }
 
   let position = 0
-  const halfYearWidth = 180 // 每个半年的宽度
+  const halfYearWidth = effectiveScaleConfigs.value['year'].cellWidth // 每个半年的宽度
 
   // 遍历年份数据
   for (const yearItem of yearData) {
@@ -3677,11 +3867,11 @@ const scrollToDate = (date: Date | string) => {
     // 基础天数偏移（到目标日0点的位置）
     const baseDayPosition = daysDiff * dayWidth.value
 
-    // 小时偏移：每小时40px
-    const hourOffset = targetHour * 40
+    // 小时偏移：每小时N px
+    const hourOffset = targetHour * effectiveScaleConfigs.value['hour'].cellWidth
 
     // 分钟偏移：在当前小时内的精确位置
-    const minuteOffset = (targetMinute / 60) * 40
+    const minuteOffset = (targetMinute / 60) * effectiveScaleConfigs.value['hour'].cellWidth
 
     datePosition = baseDayPosition + hourOffset + minuteOffset
   } else if (currentTimeScale.value === TimelineScale.QUARTER) {
@@ -3689,8 +3879,8 @@ const scrollToDate = (date: Date | string) => {
     const targetYear = targetNormalized.getFullYear()
     const baseYear = startNormalized.getFullYear()
 
-    const yearWidth = 240 // 每年4季度 * 60px
-    const quarterWidth = 60
+    const quarterWidth = effectiveScaleConfigs.value['quarter'].cellWidth
+    const yearWidth = quarterWidth * 4 // 每年4季度 * N px
 
     // 计算年份偏移
     const yearOffset = targetYear - baseYear
@@ -3713,7 +3903,7 @@ const scrollToDate = (date: Date | string) => {
     const targetYear = targetNormalized.getFullYear()
     const baseYear = startNormalized.getFullYear()
 
-    const yearWidth = 360 // 每年360px
+    const yearWidth = effectiveScaleConfigs.value['year'].cellWidth * 2 // 每年两个半年
 
     // 计算年份偏移
     const yearOffset = targetYear - baseYear
@@ -3733,7 +3923,7 @@ const scrollToDate = (date: Date | string) => {
     const baseYear = startNormalized.getFullYear()
     const baseMonth = startNormalized.getMonth()
 
-    const monthWidth = 60 // 每月60px
+    const monthWidth = effectiveScaleConfigs.value['month'].cellWidth // 每月60px
 
     // 计算跨越的月数
     const monthsDiff = (targetYear - baseYear) * 12 + (targetMonth - baseMonth)
@@ -3744,8 +3934,8 @@ const scrollToDate = (date: Date | string) => {
     const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
     datePosition += (targetDay / daysInMonth) * monthWidth
   } else if (currentTimeScale.value === TimelineScale.WEEK) {
-    // 周视图：每周60px
-    const weekWidth = 60
+    // 周视图：每周N px
+    const weekWidth = effectiveScaleConfigs.value['week'].cellWidth
     datePosition = (daysDiff / 7) * weekWidth
   } else {
     // 日视图：每天30px
@@ -4987,7 +5177,9 @@ const monthFirstFlags = computed(() => {
         const subDay = subDays[dayIndex]
         if (subDay.date && subDay.date.getDate() === 1) {
           flags.push({
-            left: getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60 / 7),
+            left:
+              getGlobalWeekPosition(monthIndex, weekIndex) +
+              dayIndex * (effectiveScaleConfigs.value['week'].cellWidth / 7),
             date: subDay.date.getDate(),
           })
         }
@@ -5019,7 +5211,9 @@ const monthFirstVerticalLines = computed(() => {
         const subDay = subDays[dayIndex]
         if (subDay.date && subDay.date.getDate() === 1) {
           lines.push({
-            left: getGlobalWeekPosition(monthIndex, weekIndex) + dayIndex * (60 / 7),
+            left:
+              getGlobalWeekPosition(monthIndex, weekIndex) +
+              dayIndex * (effectiveScaleConfigs.value['week'].cellWidth / 7),
           })
         }
       }
@@ -5361,7 +5555,7 @@ const generateMonthTimelineData = () => {
         })
       }
 
-      const monthWidth = 60 // 每个月的宽度
+      const monthWidth = effectiveScaleConfigs.value['month'].cellWidth // 每个月的宽度
       const monthStartPosition = cumulativePosition
       const monthEndPosition = cumulativePosition + monthWidth
 
@@ -5473,13 +5667,13 @@ const generateYearTimelineData = () => {
         label: t('halfYearFirst'),
         startDate: new Date(year, 0, 1),
         endDate: new Date(year, 6, 0), // 6月的最后一天
-        width: 180,
+        width: effectiveScaleConfigs.value['year'].cellWidth,
       },
       {
         label: t('halfYearSecond'),
         startDate: new Date(year, 6, 1),
         endDate: new Date(year, 11, 31),
-        width: 180,
+        width: effectiveScaleConfigs.value['year'].cellWidth,
       },
     ]
 
@@ -5488,7 +5682,7 @@ const generateYearTimelineData = () => {
       startDate: new Date(year, 0, 1),
       endDate: new Date(year, 11, 31),
       halfYears,
-      width: 360,
+      width: effectiveScaleConfigs.value['year'].cellWidth * 2,
     })
   }
 
@@ -5510,6 +5704,10 @@ const handleAddSuccessor = (task: Task) => {
   <div
     ref="timelineContainer"
     class="timeline"
+    :style="{
+      '--gantt-day-cell-width': effectiveScaleConfigs['day'].cellWidth + 'px',
+      '--gantt-week-cell-width': effectiveScaleConfigs['week'].cellWidth + 'px',
+    }"
     @mousedown="handleMouseDown"
     @scroll="handleTimelineScroll"
   >
@@ -5527,9 +5725,18 @@ const handleAddSuccessor = (task: Task) => {
             v-for="yearData in yearTimelineData"
             :key="`year-${(yearData as any).year}`"
             class="timeline-year"
-            :style="{ width: '360px' }"
+            :style="{ width: effectiveScaleConfigs['year'].cellWidth * 2 + 'px' }"
           >
-            <div class="year-label">{{ (yearData as any).year }}</div>
+            <div class="year-label">
+              {{
+                hasCustomFormatter('year', 'primary')
+                  ? applyFormatter(
+                      effectiveScaleConfigs['year'].formatters.primary,
+                      new Date((yearData as any).year, 0, 1)
+                    )
+                  : (yearData as any).year
+              }}
+            </div>
           </div>
         </div>
 
@@ -5543,9 +5750,18 @@ const handleAddSuccessor = (task: Task) => {
               v-for="halfYear in (yearData as any).halfYears || []"
               :key="`halfyear-${(yearData as any).year}-${halfYear.label}`"
               class="timeline-half-year-item"
-              :style="{ width: '180px' }"
+              :style="{ width: effectiveScaleConfigs['year'].cellWidth + 'px' }"
             >
-              <div class="half-year-label">{{ halfYear.label }}</div>
+              <div class="half-year-label">
+                {{
+                  hasCustomFormatter('year', 'secondary')
+                    ? applyFormatter(
+                        effectiveScaleConfigs['year'].formatters.secondary!,
+                        halfYear.startDate
+                      )
+                    : halfYear.label
+                }}
+              </div>
             </div>
           </template>
         </div>
@@ -5556,12 +5772,24 @@ const handleAddSuccessor = (task: Task) => {
         <!-- 第一行：年份 -->
         <div class="timeline-header-row year-row">
           <div
-            v-for="(_, yearValue) in groupMonthsByYear"
+            v-for="(yearMonths, yearValue) in groupMonthsByYear"
             :key="`year-${yearValue}`"
             class="timeline-year"
-            :style="{ width: '720px' }"
+            :style="{
+              width:
+                (yearMonths as unknown[]).length * effectiveScaleConfigs['month'].cellWidth + 'px',
+            }"
           >
-            <div class="year-label">{{ yearValue }}</div>
+            <div class="year-label">
+              {{
+                hasCustomFormatter('month', 'primary')
+                  ? applyFormatter(
+                      effectiveScaleConfigs['month'].formatters.primary,
+                      new Date(Number(yearValue), 0, 1)
+                    )
+                  : yearValue
+              }}
+            </div>
           </div>
         </div>
 
@@ -5572,9 +5800,18 @@ const handleAddSuccessor = (task: Task) => {
             :key="`month-${month.year}-${month.month}`"
             class="timeline-month-item"
             :class="{ today: month.monthData?.isToday }"
-            :style="{ width: '59px' }"
+            :style="{ width: effectiveScaleConfigs['month'].cellWidth + 'px' }"
           >
-            <div class="month-label">{{ month.monthData?.monthLabel }}</div>
+            <div class="month-label">
+              {{
+                hasCustomFormatter('month', 'secondary')
+                  ? applyFormatter(
+                      effectiveScaleConfigs['month'].formatters.secondary!,
+                      new Date(month.year, month.month - 1, 1)
+                    )
+                  : month.monthData?.monthLabel
+              }}
+            </div>
           </div>
         </div>
       </template>
@@ -5587,9 +5824,18 @@ const handleAddSuccessor = (task: Task) => {
             v-for="year in timelineData"
             :key="`year-${year.year}`"
             class="timeline-year"
-            :style="{ width: '240px' }"
+            :style="{ width: effectiveScaleConfigs['quarter'].cellWidth * 4 + 'px' }"
           >
-            <div class="year-label">{{ year.yearLabel }}</div>
+            <div class="year-label">
+              {{
+                hasCustomFormatter('quarter', 'primary')
+                  ? applyFormatter(
+                      effectiveScaleConfigs['quarter'].formatters.primary,
+                      new Date((year as any).year, 0, 1)
+                    )
+                  : year.yearLabel
+              }}
+            </div>
           </div>
         </div>
 
@@ -5601,9 +5847,18 @@ const handleAddSuccessor = (task: Task) => {
               :key="`quarter-${year.year}-${quarter.quarter}`"
               class="timeline-quarter-item"
               :class="{ today: quarter.isToday }"
-              :style="{ width: '60px' }"
+              :style="{ width: effectiveScaleConfigs['quarter'].cellWidth + 'px' }"
             >
-              <div class="quarter-label">{{ quarter.label }}</div>
+              <div class="quarter-label">
+                {{
+                  hasCustomFormatter('quarter', 'secondary')
+                    ? applyFormatter(
+                        effectiveScaleConfigs['quarter'].formatters.secondary!,
+                        quarter.startDate
+                      )
+                    : quarter.label
+                }}
+              </div>
             </div>
           </template>
         </div>
@@ -5621,8 +5876,8 @@ const handleAddSuccessor = (task: Task) => {
               class="timeline-day-item"
               :style="{
                 position: 'absolute',
-                width: `${day.hours.length * 40}px`,
-                left: `${(day.hourOffset || 0) * 40}px`,
+                width: `${day.hours.length * effectiveScaleConfigs['hour'].cellWidth}px`,
+                left: `${(day.hourOffset || 0) * effectiveScaleConfigs['hour'].cellWidth}px`,
               }"
             >
               <div class="date-label">{{ day.dateLabel }}</div>
@@ -5645,8 +5900,8 @@ const handleAddSuccessor = (task: Task) => {
                 }"
                 :style="{
                   position: 'absolute',
-                  width: '40px',
-                  left: `${(day.hourOffset + index) * 40}px`,
+                  width: `${effectiveScaleConfigs['hour'].cellWidth}px`,
+                  left: `${(day.hourOffset + index) * effectiveScaleConfigs['hour'].cellWidth}px`,
                 }"
               >
                 <div class="hour-label">{{ hour.shortLabel }}</div>
@@ -5666,11 +5921,20 @@ const handleAddSuccessor = (task: Task) => {
             class="timeline-month"
             :style="{
               width: month.isWeekView
-                ? `${(month.weeks || []).length * 60}px`
-                : `${(month.days || []).length * 30}px`,
+                ? `${(month.weeks || []).length * effectiveScaleConfigs['week'].cellWidth}px`
+                : `${(month.days || []).length * effectiveScaleConfigs['day'].cellWidth}px`,
             }"
           >
-            <div class="year-month-label">{{ month.yearMonthLabel }}</div>
+            <div class="year-month-label">
+              {{
+                hasCustomFormatter(currentTimeScale, 'primary')
+                  ? applyFormatter(
+                      effectiveScaleConfigs[currentTimeScale].formatters.primary,
+                      new Date(month.year, month.month - 1, 1)
+                    )
+                  : month.yearMonthLabel
+              }}
+            </div>
           </div>
 
           <!-- 月份1号标记旗帜 - 优化：使用预计算的位置数组，避免3层嵌套循环 -->
@@ -5696,7 +5960,9 @@ const handleAddSuccessor = (task: Task) => {
             <div
               v-if="month.isWeekView && month.weeks"
               class="timeline-month-weeks"
-              :style="{ width: `${(month.weeks || []).length * 60}px` }"
+              :style="{
+                width: `${(month.weeks || []).length * effectiveScaleConfigs['week'].cellWidth}px`,
+              }"
             >
               <div
                 v-for="week in month.weeks || []"
@@ -5706,7 +5972,14 @@ const handleAddSuccessor = (task: Task) => {
                   today: week.isToday,
                 }"
               >
-                <div class="week-label">{{ week.label }}</div>
+                <div class="week-label">
+                  {{
+                    applyFormatter(
+                      effectiveScaleConfigs['week'].formatters.secondary ?? 'W周',
+                      (week as any).weekStart
+                    )
+                  }}
+                </div>
                 <!-- 优化：移除7个子div，使用CSS grid替代，大幅减少DOM节点 -->
                 <div class="week-sub-days"></div>
               </div>
@@ -5716,7 +5989,7 @@ const handleAddSuccessor = (task: Task) => {
             <div
               v-else
               class="timeline-month-days"
-              :style="{ width: `${month.days.length * 30}px` }"
+              :style="{ width: `${month.days.length * effectiveScaleConfigs['day'].cellWidth}px` }"
             >
               <div
                 v-for="day in month.days"
@@ -5727,7 +6000,13 @@ const handleAddSuccessor = (task: Task) => {
                   weekend: day.isWeekend && !day.isToday,
                 }"
               >
-                <div class="day-label">{{ day.label }}</div>
+                <div class="day-label">
+                  {{
+                    hasCustomFormatter('day', 'secondary')
+                      ? applyFormatter(effectiveScaleConfigs['day'].formatters.secondary!, day.date)
+                      : day.label
+                  }}
+                </div>
               </div>
             </div>
           </template>
@@ -5804,16 +6083,25 @@ const handleAddSuccessor = (task: Task) => {
                   }"
                   :style="{
                     position: 'absolute',
-                    width: '40px',
+                    width: `${effectiveScaleConfigs['hour'].cellWidth}px`,
                     height: `${contentHeight}px`,
-                    left: `${(day.hourOffset + index) * 40}px`,
+                    left: `${(day.hourOffset + index) * effectiveScaleConfigs['hour'].cellWidth}px`,
                   }"
                 >
                   <!-- 15分钟刻度分割线 -->
                   <div class="quarter-hour-lines">
-                    <div class="quarter-line" style="left: 10px"></div>
-                    <div class="quarter-line" style="left: 20px"></div>
-                    <div class="quarter-line" style="left: 30px"></div>
+                    <div
+                      class="quarter-line"
+                      :style="{ left: `${effectiveScaleConfigs['hour'].cellWidth / 4}px` }"
+                    ></div>
+                    <div
+                      class="quarter-line"
+                      :style="{ left: `${effectiveScaleConfigs['hour'].cellWidth / 2}px` }"
+                    ></div>
+                    <div
+                      class="quarter-line"
+                      :style="{ left: `${(effectiveScaleConfigs['hour'].cellWidth * 3) / 4}px` }"
+                    ></div>
                   </div>
                 </div>
               </template>
@@ -5830,7 +6118,10 @@ const handleAddSuccessor = (task: Task) => {
                 v-for="halfYear in (yearData as any).halfYears || []"
                 :key="`halfyear-col-${(yearData as any).year}-${(halfYear as any).label}`"
                 class="half-year-column"
-                :style="{ width: '180px', height: `${contentHeight}px` }"
+                :style="{
+                  width: effectiveScaleConfigs['year'].cellWidth + 'px',
+                  height: `${contentHeight}px`,
+                }"
               ></div>
             </template>
           </template>
@@ -5854,9 +6145,9 @@ const handleAddSuccessor = (task: Task) => {
                   :class="{ today: quarter.isToday }"
                   :style="{
                     position: 'absolute',
-                    width: '60px',
+                    width: `${effectiveScaleConfigs['quarter'].cellWidth}px`,
                     height: `${contentHeight}px`,
-                    left: `${yearIndex * 240 + quarterIndex * 60}px`,
+                    left: `${yearIndex * effectiveScaleConfigs['quarter'].cellWidth * 4 + quarterIndex * effectiveScaleConfigs['quarter'].cellWidth}px`,
                   }"
                 ></div>
               </template>
@@ -5877,7 +6168,10 @@ const handleAddSuccessor = (task: Task) => {
                 v-if="month.isMonthView"
                 class="month-column"
                 :class="{ today: month.monthData?.isToday }"
-                :style="{ width: '59px', height: `${contentHeight}px` }"
+                :style="{
+                  width: `${effectiveScaleConfigs['month'].cellWidth}px`,
+                  height: `${contentHeight}px`,
+                }"
               ></div>
 
               <!-- 周视图背景列 - 优化：移除 subDay 子列，减少 364 个 DOM 节点 -->
@@ -5885,7 +6179,7 @@ const handleAddSuccessor = (task: Task) => {
                 v-else-if="month.isWeekView && month.weeks"
                 class="month-week-columns"
                 :style="{
-                  width: `${(month.weeks || []).length * 60}px`,
+                  width: `${(month.weeks || []).length * effectiveScaleConfigs['week'].cellWidth}px`,
                   height: `${contentHeight}px`,
                 }"
               >
@@ -5896,7 +6190,10 @@ const handleAddSuccessor = (task: Task) => {
                   :class="{
                     today: week.isToday,
                   }"
-                  :style="{ height: `${contentHeight}px`, width: '60px' }"
+                  :style="{
+                    height: `${contentHeight}px`,
+                    width: `${effectiveScaleConfigs['week'].cellWidth}px`,
+                  }"
                 >
                   <!-- 周内的7个子列 -->
                   <div
@@ -5917,7 +6214,7 @@ const handleAddSuccessor = (task: Task) => {
                 v-else
                 class="month-day-columns"
                 :style="{
-                  width: `${(month.days || []).length * 30}px`,
+                  width: `${(month.days || []).length * effectiveScaleConfigs['day'].cellWidth}px`,
                   height: `${contentHeight}px`,
                 }"
               >
@@ -5958,7 +6255,7 @@ const handleAddSuccessor = (task: Task) => {
                   v-for="milestone in task.children"
                   :key="milestone.id"
                   :date="milestone.startDate || ''"
-                  :row-height="50"
+                  :row-height="51"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -5994,7 +6291,7 @@ const handleAddSuccessor = (task: Task) => {
                 <MilestonePoint
                   :key="task.id"
                   :date="task.startDate || ''"
-                  :row-height="50"
+                  :row-height="51"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6031,7 +6328,7 @@ const handleAddSuccessor = (task: Task) => {
                 :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                 :task="task"
                 :row-index="originalIndex"
-                :row-height="50"
+                :row-height="51"
                 :day-width="dayWidth"
                 :start-date="
                   currentTimeScale === TimelineScale.YEAR
@@ -6599,7 +6896,7 @@ const handleAddSuccessor = (task: Task) => {
   align-items: center;
   justify-content: center;
   border-right: 1px solid var(--gantt-border-light);
-  width: 30px;
+  width: var(--gantt-day-cell-width, 30px);
   box-sizing: border-box;
   border-bottom: 1px solid var(--gantt-border-medium);
   transition: background-color 0.2s;
@@ -6653,7 +6950,7 @@ const handleAddSuccessor = (task: Task) => {
   align-items: center;
   justify-content: center;
   border-right: 1px solid var(--gantt-border-light);
-  width: 60px;
+  width: var(--gantt-week-cell-width, 60px);
   box-sizing: border-box;
   border-bottom: 1px solid var(--gantt-border-medium);
   transition: background-color 0.2s;
@@ -6826,7 +7123,6 @@ const handleAddSuccessor = (task: Task) => {
   pointer-events: auto;
   z-index: 11;
   transition: background-color 0.2s ease;
-  padding-bottom: 2px;
 }
 
 /* 资源视图行样式 */
@@ -6897,7 +7193,7 @@ const handleAddSuccessor = (task: Task) => {
 }
 
 .day-column {
-  width: 30px;
+  width: var(--gantt-day-cell-width, 30px);
   border-right: 1px dashed var(--gantt-border-light, #f0f0f0);
   box-sizing: border-box;
   transition: background-color 0.2s;
@@ -7131,6 +7427,7 @@ const handleAddSuccessor = (task: Task) => {
   justify-content: center;
   min-height: 36px;
   transition: background-color 0.2s ease;
+  box-sizing: border-box; /* 确保border包含在width内，与其他刻度保持一致 */
 }
 
 .timeline-month-item.today {
@@ -7149,6 +7446,7 @@ const handleAddSuccessor = (task: Task) => {
   border-right: 1px solid var(--gantt-border-light, #d1d5da);
   position: relative;
   transition: background-color 0.2s ease;
+  box-sizing: border-box; /* 确保border包含在width内，与其他刻度保持一致 */
 }
 
 .month-column.today {

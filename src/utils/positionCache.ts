@@ -12,7 +12,7 @@
  */
 
 import type { TimelineMonth, TimelineYear, TimelineDay } from '../models/types/TimelineDataTypes'
-import { TimelineScale } from '../models/types/TimelineScale'
+import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
 
 type TimelineData = TimelineMonth | TimelineYear | TimelineDay
 
@@ -35,9 +35,14 @@ export class PositionCache {
 
   /**
    * 计算timelineData的hash值
-   * 简化方案：使用时间刻度 + 第一个日期 + 最后一个日期 + 数据长度
+   * 包含时间刻度、日期范围、数据长度以及当前视图的cellWidth，
+   * 确保修改 SCALE_CONFIGS 后（例如热更新）能正确重建缓存。
    */
-  private computeHash(timelineData: TimelineData[], timeScale: string): string {
+  private computeHash(
+    timelineData: TimelineData[],
+    timeScale: string,
+    cellWidths?: Partial<Record<string, number>>
+  ): string {
     if (timelineData.length === 0) return ''
 
     const first = timelineData[0]
@@ -69,7 +74,13 @@ export class PositionCache {
       return ''
     }
 
-    return `${timeScale}-${firstDate.getTime()}-${lastDate.getTime()}-${timelineData.length}`
+    // 将当前视图对应的 cellWidth 加入 hash，防止 cellWidth 变化后缓存不更新
+    const cellWidth =
+      cellWidths?.[timeScale] ??
+      SCALE_CONFIGS[timeScale as keyof typeof SCALE_CONFIGS]?.cellWidth ??
+      0
+
+    return `${timeScale}-${firstDate.getTime()}-${lastDate.getTime()}-${timelineData.length}-cw${cellWidth}`
   }
 
   /**
@@ -78,9 +89,14 @@ export class PositionCache {
    *
    * @param timelineData 时间轴数据数组
    * @param timeScale 当前时间刻度
+   * @param cellWidths 各刻度实际 cellWidth（effectiveScaleConfigs），覆盖内置默认值
    */
-  buildCache(timelineData: TimelineData[], timeScale: string): void {
-    const newHash = this.computeHash(timelineData, timeScale)
+  buildCache(
+    timelineData: TimelineData[],
+    timeScale: string,
+    cellWidths?: Partial<Record<string, number>>
+  ): void {
+    const newHash = this.computeHash(timelineData, timeScale, cellWidths)
 
     // 如果timelineData没变化，复用现有缓存
     if (newHash === this.timelineDataHash && this.cache.size > 0) {
@@ -91,6 +107,10 @@ export class PositionCache {
     this.cache.clear()
     this.timelineDataHash = newHash
 
+    // 获取实际 cellWidth 的辅助函数（优先使用传入的 cellWidths，回退到内置默认值）
+    const getW = (scale: string): number =>
+      cellWidths?.[scale] ?? SCALE_CONFIGS[scale as keyof typeof SCALE_CONFIGS]?.cellWidth ?? 60
+
     let cumulativePosition = 0
 
     // ⚠️ 关键优化：一次性遍历timelineData，构建完整的日期→位置映射表
@@ -98,37 +118,39 @@ export class PositionCache {
       if (timeScale === TimelineScale.HOUR) {
         // 小时视图：遍历每天的所有小时
         const hours = (periodData as TimelineDay).hours || []
+        const hourCellW = getW('hour')
 
         for (let i = 0; i < hours.length; i++) {
           const hourData = hours[i]
           const date = hourData.date ? new Date(hourData.date) : new Date()
           const key = this.getCacheKey(date, timeScale)
-          const position = cumulativePosition + i * 30 // 小时视图每小时30px
+          const position = cumulativePosition + i * hourCellW
           this.cache.set(key, position)
         }
 
-        cumulativePosition += hours.length * 30
+        cumulativePosition += hours.length * hourCellW
       } else if (timeScale === TimelineScale.DAY) {
         // 日视图：遍历每个月的所有天数
         const days = (periodData as TimelineMonth).days || []
+        const dayCellW = getW('day')
 
         for (let i = 0; i < days.length; i++) {
           const dayData = days[i]
           const date = new Date(dayData.date)
           const key = this.getCacheKey(date, timeScale)
-          const position = cumulativePosition + i * 30 // 日视图每天30px
+          const position = cumulativePosition + i * dayCellW
           this.cache.set(key, position)
         }
 
-        cumulativePosition += days.length * 30
+        cumulativePosition += days.length * dayCellW
       } else if (timeScale === TimelineScale.WEEK) {
         // 周视图：遍历每个月的所有周
         const weeks = (periodData as TimelineMonth).weeks || []
+        const weekCellW = getW('week')
+        const dayWidth = weekCellW / 7
 
         for (const week of weeks) {
           const subDays = week.subDays || []
-          const weekWidth = 60
-          const dayWidth = weekWidth / 7
 
           for (let i = 0; i < subDays.length; i++) {
             const subDay = subDays[i]
@@ -138,15 +160,15 @@ export class PositionCache {
             this.cache.set(key, position)
           }
 
-          cumulativePosition += 60
+          cumulativePosition += weekCellW
         }
       } else if (timeScale === TimelineScale.MONTH) {
         // 月视图：为每个月的每一天建立映射
         const startDate = new Date((periodData as TimelineMonth).startDate)
         const endDate = new Date((periodData as TimelineMonth).endDate)
         const daysInMonth = (periodData as TimelineMonth).monthData?.dayCount || 30
-        const monthWidth = 60
-        const dayWidth = monthWidth / daysInMonth
+        const monthCellW = getW('month')
+        const dayWidth = monthCellW / daysInMonth
 
         for (let day = 1; day <= daysInMonth; day++) {
           const date = new Date(startDate.getFullYear(), startDate.getMonth(), day)
@@ -158,22 +180,20 @@ export class PositionCache {
           }
         }
 
-        cumulativePosition += 60
+        cumulativePosition += monthCellW
       } else if (timeScale === TimelineScale.QUARTER) {
         // 季度视图：遍历每年的所有季度
         const quarters = (periodData as TimelineYear).quarters || []
+        const quarterCellW = getW('quarter')
 
         for (const quarter of quarters) {
           const quarterStart = new Date(quarter.startDate)
           const quarterEnd = new Date(quarter.endDate)
-          const quarterWidth = 60
 
-          // 计算季度的天数
+          // 计算季度的日历天数（+1 包含端点日，避免某季最后一天超出单元格边界）
           const daysInQuarter =
-            Math.ceil(
-              (quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
-            ) + 1
-          const dayWidth = quarterWidth / daysInQuarter
+            Math.round((quarterEnd.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+          const dayWidth = quarterCellW / daysInQuarter
 
           // 为季度中的每一天建立映射
           for (let dayOffset = 0; dayOffset < daysInQuarter; dayOffset++) {
@@ -187,22 +207,22 @@ export class PositionCache {
             }
           }
 
-          cumulativePosition += 60
+          cumulativePosition += quarterCellW
         }
       } else if (timeScale === TimelineScale.YEAR) {
         // 年视图：遍历每年的两个半年
         const halfYears = (periodData as TimelineYear).halfYears || []
+        const halfYearCellW = getW('year')
 
         for (const halfYear of halfYears) {
           const halfYearStart = new Date(halfYear.startDate)
           const halfYearEnd = new Date(halfYear.endDate)
-          const halfYearWidth = 180 // 年视图每半年180px
+          const halfYearWidth = halfYearCellW
 
-          // 计算半年的天数
+          // 计算半年的日历天数（+1 包含端点日，避免半年最后一天超出单元格边界）
           const daysInHalfYear =
-            Math.ceil(
-              (halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24),
-            ) + 1
+            Math.round((halfYearEnd.getTime() - halfYearStart.getTime()) / (1000 * 60 * 60 * 24)) +
+            1
           const dayWidth = halfYearWidth / daysInHalfYear
 
           // 为半年中的每一天建立映射
@@ -217,7 +237,7 @@ export class PositionCache {
             }
           }
 
-          cumulativePosition += 180
+          cumulativePosition += halfYearCellW
         }
       }
     }
