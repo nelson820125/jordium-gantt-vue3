@@ -3863,7 +3863,7 @@ const handleAnchorDragEnd = (anchorEvent: {
             position: 'fixed',
             left: `${contextMenuPosition.x}px`,
             top: `${contextMenuPosition.y}px`,
-            zIndex: 9999,
+            zIndex: 'var(--gantt-z-overlay)',
           }"
         >
           <component
@@ -3991,7 +3991,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     transform 0.3s,
     filter 0.3s,
     z-index 0s; /* v1.9.0 z-index不使用动画 */
-  z-index: 100;
+  z-index: var(--gantt-z-bar);
   border: 2px solid;
   /* 添加半透明黑色边框增强对比度 */
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
@@ -4000,12 +4000,12 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* v1.9.0 悬停时提升z-index，确保资源视图中重叠的TaskBar可以正常交互 */
 .task-bar:hover {
-  z-index: 160 !important;
+  z-index: var(--gantt-z-bar-hover) !important;
 }
 
 /* v1.9.1 有气泡指示器时提升z-index，解决DOM渲染顺序导致的遮挡问题 */
 .task-bar.has-bubble {
-  z-index: 200 !important;
+  z-index: var(--gantt-z-bar-bubble) !important;
 }
 
 /* 有实际进度时，计划条使用虚线边框样式 */
@@ -4020,7 +4020,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 有实际TaskBar的计划TaskBar悬停时，提升到顶层 */
 .task-bar.has-actual:hover {
-  z-index: 160 !important; /* 高于实际TaskBar的150 */
+  z-index: var(--gantt-z-bar-hover) !important; /* 高于实际TaskBar的 --gantt-z-bar-actual */
 }
 
 /* 有实际进度时，增强文字清晰度 */
@@ -4183,11 +4183,11 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 .task-bar.dragging {
   opacity: 0.8;
-  z-index: 1000;
+  z-index: var(--gantt-z-bar-drag);
 }
 
 .task-bar.resizing {
-  z-index: 1000;
+  z-index: var(--gantt-z-bar-drag);
 }
 
 /* 高亮模式下，非高亮的TaskBar变暗淡 */
@@ -4200,7 +4200,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 高亮样式 - 前置/后置任务 */
 .task-bar.highlighted {
-  z-index: 1002 !important;
+  z-index: var(--gantt-z-bar-hl) !important;
   box-shadow:
     0 8px 24px rgba(64, 158, 255, 0.5),
     0 6px 16px rgba(0, 0, 0, 0.3) !important;
@@ -4216,7 +4216,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 主要高亮样式 - 被长按的任务 */
 .task-bar.primary-highlight {
-  z-index: 1003 !important;
+  z-index: var(--gantt-z-bar-hl-pri) !important;
   box-shadow:
     0 12px 32px rgba(64, 158, 255, 0.6),
     0 8px 20px rgba(0, 0, 0, 0.35) !important;
@@ -4272,7 +4272,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   height: 0;
   border-right: 6px solid transparent;
   border-top: 10px solid var(--parent-color, #409eff); /* 使用父级TaskBar的动态颜色 */
-  z-index: 15;
+  z-index: var(--gantt-z-bar-hover);
 }
 
 /* 右侧向下箭头 */
@@ -4285,7 +4285,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   height: 0;
   border-left: 6px solid transparent;
   border-top: 10px solid var(--parent-color, #409eff); /* 使用父级TaskBar的动态颜色 */
-  z-index: 15;
+  z-index: var(--gantt-z-bar-hover);
 }
 
 /* 父级任务的标题（内部居中显示） */
@@ -4317,7 +4317,8 @@ const handleAnchorDragEnd = (anchorEvent: {
   border-radius: 10px; /* 两头圆形，高度20px的50% */
   /* 边框通过内联样式设置，使用TaskBar颜色 */
   /* 阴影通过JS动态设置，使用TaskBar的颜色 */
-  z-index: 150; /* 高于计划条的z-index(100)，显示在顶层 */
+  z-index: var(--gantt-z-bar-actual); /* 高于计划条的 --gantt-z-bar */
+
   transition: all 0.3s ease;
   user-select: none;
   pointer-events: none; /* 不响应鼠标事件，避免干扰计划条的交互 */
@@ -4338,7 +4339,8 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 实际TaskBar的高亮样式 - 跟随计划TaskBar */
 .actual-bar.highlighted {
-  z-index: 1004 !important; /* 高于计划TaskBar的highlighted(1002)，确保在上层 */
+  z-index: var(--gantt-z-actual-hl) !important; /* 高于计划TaskBar的 --gantt-z-bar-hl */
+
   transform: translateY(-5px) scale(1.05) !important;
   transition: all 0.3s ease !important;
   filter: brightness(1.25) saturate(1) !important; /* 高亮时更亮 */
@@ -4346,7 +4348,8 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 实际TaskBar的主要高亮样式 */
 .actual-bar.primary-highlight {
-  z-index: 1005 !important; /* 高于计划TaskBar的primary-highlight(1003)，确保在上层 */
+  z-index: var(--gantt-z-actual-hl-pri) !important; /* 高于计划TaskBar的 --gantt-z-bar-hl-pri */
+
   transform: translateY(-8px) scale(1.08) !important;
   transition: all 0.3s ease !important;
   filter: brightness(1.3) saturate(1) !important; /* 主要高亮时最亮 */
@@ -4367,7 +4370,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 200; /* 显示在最顶层 */
+  z-index: var(--gantt-z-avatar);
 }
 
 .actual-task-avatar img {
@@ -4408,7 +4411,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  z-index: 200; /* 显示在最顶层 */
+  z-index: var(--gantt-z-bar); /* 内容层，在 actual-bar 内部局部层叠中位于前景 */
 }
 
 /* 尾部外面的容器：头像 + 标题 */
@@ -4422,13 +4425,13 @@ const handleAnchorDragEnd = (anchorEvent: {
   gap: 10px; /* 头像和标题之间的间距 */
   margin-left: 6px;
   pointer-events: none;
-  z-index: 200; /* 显示在最顶层，超过计划TaskBar */
+  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
 }
 
 /* 实际TaskBar的标题容器 */
 .actual-task-name-wrapper {
   position: relative;
-  z-index: 200; /* 显示在最顶层 */
+  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
   display: flex;
   align-items: center; /* 垂直居中 */
 }
@@ -4455,7 +4458,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   font-weight: 700;
   letter-spacing: 0.3px;
   position: relative;
-  z-index: 200; /* 显示在最顶层 */
+  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
 }
 
 .task-bar-content {
@@ -4503,7 +4506,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 .task-avatars-container .task-avatar:hover,
 .actual-avatars-container .actual-task-avatar:hover {
   transform: translateY(-3px) scale(1.15);
-  z-index: 999 !important;
+  z-index: var(--gantt-z-avatar) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -4560,7 +4563,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 /* 当 taskbar 较窄时，将 avatar 渲染到外框左边缘 */
 .task-avatars-container.avatar-outside {
   left: -12px; /* 位于 taskbar 左侧外框边缘 */
-  z-index: 20; /* 提高层级确保在最上层 */
+  z-index: var(--gantt-z-milestone); /* 提高层级确保在最上层 */
 }
 
 .task-avatar.avatar-outside {
@@ -4660,7 +4663,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 溢出效果下的拉伸handle优化 */
 .task-bar.overflow-effect .resize-handle {
-  z-index: 20; /* 确保handle在溢出内容之上 */
+  z-index: var(--gantt-z-milestone); /* 确保handle在溢出内容之上 */
   background: rgba(0, 0, 0, 0.15); /* 稍微加深以提高可见性 */
 }
 
@@ -4684,7 +4687,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   top: 50%;
   width: 8px; /* 半圆宽度 */
   height: 16px; /* 半圆高度 */
-  z-index: 9999 !important; /* v1.9.1 使用超高层级和 !important，确保不被任何元素遮挡 */
+  z-index: var(--gantt-z-bar-drag) !important; /* v1.9.1 确保不被任意task-bar内容遮挡 */
   cursor: pointer;
   border: 2px solid;
   transform: translateY(-50%);
@@ -4835,7 +4838,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   padding: 12px;
   border-radius: 8px;
   font-size: 12px;
-  z-index: 9999999999; /* 确保在最上层 */
+  z-index: var(--gantt-z-overlay);
   max-width: 250px;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.4),
@@ -4901,7 +4904,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  z-index: 999999999;
+  z-index: var(--gantt-z-overlay);
   box-shadow: 0 2px 12px rgba(0, 123, 255, 0.4);
   pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -4914,7 +4917,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   opacity: 0.5;
   border-radius: 6px;
   border: 2px dashed rgba(255, 255, 255, 0.8);
-  z-index: 999999998;
+  z-index: var(--gantt-z-overlay);
   pointer-events: none;
   /* v1.9.0 不使用transform居中，直接定位保持时间对齐 */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -4965,7 +4968,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   padding: 10px 14px;
   border-radius: 6px;
   font-size: 12px;
-  z-index: 999999999;
+  z-index: var(--gantt-z-overlay);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   transform: translate(-50%, -100%); /* 默认显示在上方 */

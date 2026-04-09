@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-04-09
+
+### Fixed
+- 🔧 修复：修复周视图中每月1日标记线污染问题
+- 🔧 修复：参考element plus组件库设计，升级该组件z-index定义
+- 🔧 Fixed: Fixed contamination issue with monthly marker line on the 1st in weekly view
+- 🔧 Fixed: Updated z-index definition of the component based on Element Plus design
+
 ## [1.11.0] - 2026-04-08
 
 ### Added

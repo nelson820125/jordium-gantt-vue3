@@ -35,6 +35,33 @@
   /* 滚动条 */
   --gantt-scrollbar-thumb: #c1c1c1;
   --gantt-scrollbar-thumb-hover: #a8a8a8;
+
+  /* ─── z-index 分层体系（参考 Element Plus 设计规范）───────────────────── */
+  /* 视口级：position:fixed 元素，需高于宿主页面 modal（通常 ≤ 1000） */
+  --gantt-z-overlay: 9999; /* tooltip、右键菜单、fullscreen 全屏覆盖 */
+
+  /* GanttChart 容器级（在 .gantt-root 层叠上下文内） */
+  --gantt-z-toggle: 1000; /* task-list-toggle，防被 position:sticky header 遮挡 */
+  --gantt-z-sticky: 30; /* focus-close-button、today-line 等浮层装饰 */
+  --gantt-z-canvas-hl: 20; /* GanttLinks canvas 高亮状态（需 > --gantt-z-row:11） */
+  --gantt-z-canvas: 12; /* GanttLinks canvas 普通状态 */
+  --gantt-z-row: 11; /* task-row / resource-row（建立局部层叠上下文） */
+  --gantt-z-container: 10; /* task-bar-container */
+
+  /* task-row 内部局部层（值仅在 row 层叠上下文中比较，不与容器级直接竞争） */
+  --gantt-z-bar-drag: 40; /* task-bar / milestone 拖拽中（最高交互层） */
+  --gantt-z-avatar: 35; /* actual-task-avatar / task-avatar 堆叠层 */
+  --gantt-z-actual-hl-pri: 32; /* actual-bar primary-highlight */
+  --gantt-z-bar-hl-pri: 30; /* task-bar primary-highlight */
+  --gantt-z-actual-hl: 28; /* actual-bar highlighted */
+  --gantt-z-bar-hl: 26; /* task-bar highlighted */
+  --gantt-z-milestone-sticky: 24; /* milestone sticky 停靠模式（停靠到左边缘） */
+  --gantt-z-conflict: 22; /* GanttConflicts canvas */
+  --gantt-z-milestone: 20; /* milestone 普通状态 */
+  --gantt-z-bar-bubble: 18; /* task-bar has-bubble 气泡指示 */
+  --gantt-z-bar-hover: 15; /* task-bar hover / has-actual:hover */
+  --gantt-z-bar-actual: 12; /* actual-bar 实际进度条 */
+  --gantt-z-bar: 10; /* task-bar 基础层 */
 }
 
 /* 暗黑主题 */

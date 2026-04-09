@@ -32,6 +32,8 @@ interface Props {
   // 月份分隔线配置
   verticalLines?: VerticalLine[]
   showVerticalLines?: boolean
+  // 是否绘制 TaskBar 间的连接线，默认 true；资源视图中没有前置关系可设为 false
+  showLinks?: boolean
   // 主题模式通过inject获取，不再需要props
   // 滚动优化：垂直滚动时跳过 canvas 重绘，等滚动停止后一次性重绘
   isScrolling?: boolean
@@ -40,6 +42,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   verticalLines: () => [],
   showVerticalLines: true,
+  showLinks: true,
   offsetLeft: 0,
   offsetTop: 0,
   isScrolling: false,
@@ -96,6 +99,7 @@ const drawLinks = () => {
     const lineColor = isDarkTheme.value ? '#66b1ff' : '#409eff'
     ctx.strokeStyle = lineColor
     ctx.lineWidth = 1
+    ctx.setLineDash([4, 4]) // 虚线样式：4px 实线 + 4px 间距
 
     // 优化：一次性绘制所有垂直线，避免多次 stroke() 调用
     // 虚拟渲染：减去偏移量，转换为 Canvas 局部坐标
@@ -112,6 +116,9 @@ const drawLinks = () => {
 
     ctx.restore()
   }
+
+  // showLinks=false 时跳过所有连接线绘制（命令逃逻，竖线已在前面绘制完毕）
+  if (!props.showLinks) return
 
   // 获取当前渲染的任务ID集合
   const currentTaskIds = new Set<number>()
@@ -388,7 +395,7 @@ const drawArrowOptimized = (
   ctx: CanvasRenderingContext2D,
   x2: number,
   y2: number,
-  angle: number,
+  angle: number
 ) => {
   const arrowLength = 8
   const arrowWidth = 4
@@ -398,11 +405,11 @@ const drawArrowOptimized = (
   ctx.moveTo(x2, y2)
   ctx.lineTo(
     x2 - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle),
-    y2 - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle),
+    y2 - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle)
   )
   ctx.lineTo(
     x2 - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle),
-    y2 - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle),
+    y2 - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle)
   )
   ctx.closePath()
   ctx.fill()
@@ -443,12 +450,12 @@ const scheduleRedraw = () => {
 // 监听滚动结束：滚动期间有待重绘时，在停止后立即补绘一次
 watch(
   () => props.isScrolling,
-  (scrolling) => {
+  scrolling => {
     if (!scrolling && pendingRedrawOnScrollStop) {
       pendingRedrawOnScrollStop = false
       scheduleRedraw()
     }
-  },
+  }
 )
 
 // 监听相关状态变化，自动重绘 Canvas
@@ -463,6 +470,7 @@ watch(
     () => props.height,
     () => props.verticalLines,
     () => props.showVerticalLines,
+    () => props.showLinks,
     () => props.offsetLeft, // 监听虚拟渲染的偏移量变化
     () => props.offsetTop,
     injectedTheme, // 监听inject的主题变化（computed会自动响应）
@@ -471,7 +479,7 @@ watch(
     // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
     scheduleRedraw()
   },
-  { deep: false }, // shallowRef 不需要 deep
+  { deep: false } // shallowRef 不需要 deep
 )
 
 // 组件挂载后初始化绘制
@@ -510,7 +518,7 @@ defineExpose({
       top: `${offsetTop}px`,
       width: `${width}px`,
       height: `${height}px`,
-      zIndex: highlightedTaskId !== null ? 2000 : 500,
+      zIndex: highlightedTaskId !== null ? 'var(--gantt-z-canvas-hl)' : 'var(--gantt-z-canvas)',
       pointerEvents: 'none',
     }"
   />

@@ -3853,7 +3853,7 @@ defineExpose({
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1004;
+  z-index: var(--gantt-z-sticky);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3979,7 +3979,7 @@ defineExpose({
   border: 1px solid #d9d9d9;
   border-radius: 0 6px 6px 0; /* 右侧圆角，左侧直角贴合splitter */
   cursor: pointer;
-  z-index: 1000;
+  z-index: var(--gantt-z-toggle);
   color: #666;
   transition: all 0.2s ease;
   backdrop-filter: blur(4px);
@@ -4104,7 +4104,7 @@ defineExpose({
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  z-index: 9999 !important;
+  z-index: var(--gantt-z-overlay) !important;
   background: #f5f7fa !important;
   border-radius: 0 !important;
   box-shadow: none !important;

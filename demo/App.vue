@@ -444,6 +444,22 @@ const scaleConfigs = {
 // Tool 设置区域折叠状态（默认展开用于演示）
 const isToolSettingsCollapsed = ref(false)
 
+// ── z-index 测试工具 ─────────────────────────────────────────────────────────
+const isZIndexTestCollapsed = ref(false)
+const zOverrideValue = ref(9999)
+const hostModalZIndex = ref(10000)
+const showHostTestModal = ref(false)
+const currentZOverride = ref(9999)
+function applyZOverride() {
+  document.documentElement.style.setProperty('--gantt-z-overlay', String(zOverrideValue.value))
+  currentZOverride.value = zOverrideValue.value
+}
+function resetZOverride() {
+  document.documentElement.style.removeProperty('--gantt-z-overlay')
+  zOverrideValue.value = 9999
+  currentZOverride.value = 9999
+}
+
 // Tool 设置状态变量
 const fullscreenStatus = ref(false)
 const expandStatus = ref(false)
@@ -2388,6 +2404,59 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               </div>
             </transition>
           </div>
+
+          <!-- z-index 测试区域 -->
+          <div class="config-section">
+            <div class="section-header" @click="isZIndexTestCollapsed = !isZIndexTestCollapsed">
+              <div class="section-header-title">
+                <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
+                  <rect x="13" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+                  <rect x="3" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                  <rect x="13" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2" opacity="0.7"/>
+                </svg>
+                🔬 z-index 测试工具
+              </div>
+              <button class="section-collapse-button" :class="{ collapsed: isZIndexTestCollapsed }">
+                <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            </div>
+            <transition name="section-content">
+              <div v-show="!isZIndexTestCollapsed" class="section-content">
+                <!-- --gantt-z-overlay 覆盖 -->
+                <div class="subsection">
+                  <h5 class="subsection-title">🔢 --gantt-z-overlay 覆盖值</h5>
+                  <div class="tool-button-group">
+                    <input v-model.number="zOverrideValue" type="number" class="tool-input" style="width: 80px" min="0" max="999999" />
+                    <button class="tool-button primary" @click="applyZOverride">应用</button>
+                    <button class="tool-button" @click="resetZOverride">重置 (9999)</button>
+                  </div>
+                  <p class="config-hint" style="margin-top: 6px">
+                    当前生效值: <strong>{{ currentZOverride }}</strong>
+                    &nbsp;·&nbsp;
+                    <code style="font-size: 11px">document.documentElement.style.setProperty('--gantt-z-overlay', '{{ currentZOverride }}')</code>
+                  </p>
+                </div>
+                <div class="tool-divider"></div>
+                <!-- 宿主 Modal 测试 -->
+                <div class="subsection">
+                  <h5 class="subsection-title">🪟 宿主 Modal 层级</h5>
+                  <div class="tool-button-group">
+                    <input v-model.number="hostModalZIndex" type="number" class="tool-input" style="width: 80px" min="0" max="999999" />
+                    <button class="tool-button primary" @click="showHostTestModal = true">显示 Modal</button>
+                  </div>
+                  <p class="config-hint" style="margin-top: 6px">
+                    在视口绘制 position:fixed 的宿主 Modal，对比 Gantt 浮层是否能覆盖它。<br />
+                    <span :style="{ color: currentZOverride > hostModalZIndex ? '#f56c6c' : '#67c23a', fontWeight: '600' }">
+                      {{ currentZOverride > hostModalZIndex ? '⚠️ Gantt 浮层 > 宿主 Modal，Gantt 覆盖宿主' : '✅ 宿主 Modal ≥ Gantt 浮层，宿主覆盖 Gantt' }}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </transition>
+          </div>
         </div>
       </transition>
     </div>
@@ -2956,6 +3025,42 @@ const handleCustomMenuAction = (action: string, task: Task) => {
       </div>
     </div>
   </div>
+
+  <!-- z-index 测试: 宿主应用 Modal（Teleport 到 body，模拟真实宿主层） -->
+  <Teleport to="body">
+    <div
+      v-if="showHostTestModal"
+      class="z-test-overlay"
+      :style="{ zIndex: hostModalZIndex }"
+      @click.self="showHostTestModal = false"
+    >
+      <div class="z-test-modal">
+        <div class="z-test-modal-header">🪟 宿主应用 Modal</div>
+        <div class="z-test-modal-body">
+          <div class="z-test-row">
+            <span class="z-test-label">宿主 Modal z-index</span>
+            <span class="z-test-val" style="color: #409eff">{{ hostModalZIndex }}</span>
+          </div>
+          <div class="z-test-row">
+            <span class="z-test-label">--gantt-z-overlay</span>
+            <span class="z-test-val" style="color: #e6a23c">{{ currentZOverride }}</span>
+          </div>
+          <div class="z-test-result" :class="currentZOverride > hostModalZIndex ? 'danger' : 'success'">
+            {{ currentZOverride > hostModalZIndex
+              ? '⚠️ Gantt 浮层 (tooltip / 右键菜单) 会覆盖此 Modal'
+              : '✅ 此 Modal 在 Gantt 浮层之上' }}
+          </div>
+          <p class="z-test-hint">
+            💡 保持此 Modal 打开，在 Gantt 区域右键任意任务条或悬停触发 tooltip，<br />
+            观察 Gantt 浮层与此 Modal 的遮挡关系。
+          </p>
+        </div>
+        <div class="z-test-modal-footer">
+          <button class="z-test-close" @click="showHostTestModal = false">✕ 关闭</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -5226,6 +5331,103 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 :global(.gantt-root[data-theme='dark']) .sponsor-star-hint {
   color: #718096;
   border-top-color: #4a5568;
+}
+
+/* ── z-index 测试 Modal ──────────────────────────────────────────────────── */
+.z-test-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.z-test-modal {
+  background: #fff;
+  border-radius: 12px;
+  min-width: 360px;
+  max-width: 460px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.z-test-modal-header {
+  padding: 16px 20px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.z-test-modal-body {
+  padding: 16px 20px;
+}
+
+.z-test-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.z-test-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.z-test-val {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.z-test-result {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.z-test-result.success {
+  background: #f0f9eb;
+  color: #67c23a;
+  border: 1px solid #c2e7b0;
+}
+
+.z-test-result.danger {
+  background: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fbc4c4;
+}
+
+.z-test-hint {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.7;
+  margin-top: 8px;
+}
+
+.z-test-modal-footer {
+  padding: 12px 20px 16px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #ebeef5;
+}
+
+.z-test-close {
+  padding: 6px 24px;
+  border-radius: 6px;
+  border: 1px solid #dcdfe6;
+  background: #f5f7fa;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.z-test-close:hover {
+  background: #e4e7ed;
 }
 </style>
 

@@ -3753,6 +3753,58 @@ The TaskList component has been deeply refactored with a modular design, improvi
 
 ---
 
+### Engineering Standards
+
+#### CSS Variable Management
+
+All theme colors, spacing, and z-index values are managed through CSS custom properties defined in `src/styles/theme-variables.css`. All components reference variables rather than hardcoded values — changing a theme only requires modifying the variables for global effect.
+
+Naming convention: `--gantt-{category}-{variant}`. Existing groups: `bg` (backgrounds), `text` (text colors), `border` (borders), `z` (z-index layers).
+
+#### z-index Layering Specification
+
+Following Element Plus design conventions, z-index is divided into **viewport-level** and **component-local** systems, with all hardcoded values replaced by semantic variables.
+
+| Variable | Value | Scope | Stacking Context | Usage |
+|---|:---:|---|---|---|
+| `--gantt-z-overlay` | 9999 | Viewport | viewport (position:fixed, escapes all SC) | `position:fixed` tooltips, context menus, fullscreen; must exceed host page modals |
+| `--gantt-z-toggle` | 1000 | Container | host/document initial SC | Task list toggle button, avoid being covered by sticky header |
+| `--gantt-z-sticky` | 30 | Container | host/document initial SC | Focus close button, year-view today-line and similar floating decorations |
+| `--gantt-z-canvas-hl` | 20 | Container | host/document initial SC | GanttLinks canvas highlighted state (must > --gantt-z-row:11) |
+| `--gantt-z-canvas` | 12 | Container | host/document initial SC | GanttLinks canvas normal state |
+| `--gantt-z-row` | 11 | Container | task-bar-container SC | `.task-row` / `.resource-row` (establishes local stacking context) |
+| `--gantt-z-container` | 10 | Container | host/document initial SC | `.task-bar-container` (establishes local stacking context) |
+| `--gantt-z-bar-drag` | 40 | Row-local | task-row SC | task-bar / milestone while dragging (highest interaction layer) |
+| `--gantt-z-avatar` | 35 | Row-local | task-row SC | Avatar stacking layer |
+| `--gantt-z-actual-hl-pri` | 32 | Row-local | task-row SC | actual-bar primary-highlight |
+| `--gantt-z-bar-hl-pri` | 30 | Row-local | task-row SC | task-bar primary-highlight |
+| `--gantt-z-actual-hl` | 28 | Row-local | task-row SC | actual-bar highlighted |
+| `--gantt-z-bar-hl` | 26 | Row-local | task-row SC | task-bar highlighted |
+| `--gantt-z-milestone-sticky` | 24 | Row-local | task-row SC | Milestone sticky mode (pinned to left edge) |
+| `--gantt-z-conflict` | 22 | Row-local | task-row SC | GanttConflicts canvas |
+| `--gantt-z-milestone` | 20 | Row-local | task-row SC | Milestone normal state |
+| `--gantt-z-bar-bubble` | 18 | Row-local | task-row SC | task-bar has-bubble indicator |
+| `--gantt-z-bar-hover` | 15 | Row-local | task-row SC | task-bar hover / has-actual:hover |
+| `--gantt-z-bar-actual` | 12 | Row-local | task-row SC | actual-bar (actual progress bar) |
+| `--gantt-z-bar` | 10 | Row-local | task-row SC | task-bar base layer |
+
+> **Three-tier stacking context isolation model:**
+> - `.gantt-root` has no `position` / `z-index` — **does not create a stacking context**; the component participates in the host document's default stacking order.
+> - `.task-bar-container` (position:absolute + z-index:10) creates SC → `.task-row` (z-index:11) sorts only within this context.
+> - `.task-row` (position:absolute + z-index:11) creates SC → TaskBar / Milestone and all row-local elements sort only within the row, fully isolated from outside the component.
+>
+> **Impact on host application:**
+> 1. `position:fixed` overlays (`--gantt-z-overlay: 9999`, including tooltips, context menus, fullscreen) escape all stacking contexts and can cover host page elements with z-index < 9999. If the host modal is ≥ 9999, override the variable as needed: `:root { --gantt-z-overlay: 500; }`.
+> 2. All other positioned elements (z-index 10 ~ 1000) are constrained by the DOM layout box and rarely conflict with host content in practice. For complete isolation, add `isolation: isolate` on the host's gantt container.
+
+| Element | Governance | Reason |
+|---|---|---|
+| `position:fixed` loading overlay | 10000 (kept hardcoded) | Dynamically created temporary DOM, extremely short lifecycle |
+| `.task-bar.dimmed` | 1 (kept hardcoded) | Intentionally lowest, not part of regular layer competition |
+| `::before/::after` inner elements | 1/-1 (kept hardcoded) | No external stacking context impact |
+
+---
+
 ## 🔗 Related Links
 
 - **Live Demo**: [https://nelson820125.github.io/jordium-gantt-vue3/](https://nelson820125.github.io/jordium-gantt-vue3/)

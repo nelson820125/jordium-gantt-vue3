@@ -126,7 +126,7 @@ const canvasStyle = computed(() => ({
   left: `${props.scrollLeft || 0}px`, // 平移到滚动位置
   pointerEvents: 'none' as const, // 始终穿透，让TaskBar可以响应鼠标事件
   transition: 'opacity 0.2s',
-  zIndex: 250, // v1.9.2 高于TaskBar的最高z-index(200)，确保冲突层在最上层
+  zIndex: 'var(--gantt-z-conflict)', // v1.9.2 高于TaskBar的 --gantt-z-bar-bubble(18)，确保冲突层在最上层
   backgroundColor: 'transparent', // 确保Canvas背景透明
 }))
 

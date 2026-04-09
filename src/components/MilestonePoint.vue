@@ -912,7 +912,9 @@ const calculateMilestonePositionFromTimelineData = (
         position: milestoneVisibility.isSticky ? 'relative' : 'static',
         left: milestoneVisibility.isSticky ? milestoneVisibility.iconLeft : '0px',
         clipPath: milestoneVisibility.clipPath,
-        zIndex: milestoneVisibility.isSticky ? 200 : 120,
+        zIndex: milestoneVisibility.isSticky
+          ? 'var(--gantt-z-milestone-sticky)'
+          : 'var(--gantt-z-milestone)',
       }"
       style="cursor: pointer"
       @mouseenter="handleMilestoneMouseEnter"
@@ -973,7 +975,7 @@ const calculateMilestonePositionFromTimelineData = (
 
 .milestone {
   position: absolute;
-  z-index: 120;
+  z-index: var(--gantt-z-milestone);
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -1005,7 +1007,7 @@ const calculateMilestonePositionFromTimelineData = (
   font-weight: bold;
   color: var(--gantt-text-primary, #222);
   white-space: nowrap;
-  z-index: 10; /* 确保标签在上层 */
+  z-index: var(--gantt-z-bar); /* 确保标签在上层 */
 }
 
 .milestone-label-right {
@@ -1064,7 +1066,7 @@ const calculateMilestonePositionFromTimelineData = (
 
 /* 拖拽状态样式 */
 .milestone.dragging {
-  z-index: 1000;
+  z-index: var(--gantt-z-bar-drag);
   opacity: 0.8;
   transform: scale(1.1);
   cursor: grabbing;
@@ -1083,7 +1085,7 @@ const calculateMilestonePositionFromTimelineData = (
 
 /* 停靠状态的特殊样式 */
 .milestone-sticky svg {
-  z-index: 150;
+  z-index: var(--gantt-z-milestone-sticky);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

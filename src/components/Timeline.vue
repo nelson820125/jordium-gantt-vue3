@@ -6017,9 +6017,14 @@ const handleAddSuccessor = (task: Task) => {
     <!-- Timeline Body (Task Bar Area) -->
     <div class="timeline-body" @scroll="handleTimelineBodyScroll">
       <div ref="bodyContentRef" class="timeline-body-content">
-        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染）- 仅在任务视图渲染 -->
+        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染）-->
+        <!-- 任务视图：同时绘制连接线 + 周视图1号竖线 -->
+        <!-- 资源视图：仅绘制周视图1号竖线（show-links=false 跳过连接线绘制） -->
         <GanttLinks
-          v-if="viewMode === 'task'"
+          v-if="
+            viewMode === 'task' ||
+            (viewMode === 'resource' && currentTimeScale === TimelineScale.WEEK)
+          "
           :tasks="tasks"
           :task-bar-positions="allBarPositions"
           :width="canvasWidth"
@@ -6031,6 +6036,7 @@ const handleAddSuccessor = (task: Task) => {
           :hovered-task-id="hoveredTaskId"
           :vertical-lines="monthFirstVerticalLines"
           :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
+          :show-links="viewMode === 'task'"
           :is-scrolling="isTimelineScrolling"
         />
 
@@ -6644,7 +6650,7 @@ const handleAddSuccessor = (task: Task) => {
   padding: 10px 14px;
   border-radius: 6px;
   font-size: 12px;
-  z-index: 999999999;
+  z-index: var(--gantt-z-overlay);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   overflow: visible; /* 允许箭头伸出容器边缘 */
@@ -7104,7 +7110,7 @@ const handleAddSuccessor = (task: Task) => {
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 100;
+  z-index: var(--gantt-z-container);
   pointer-events: none;
   /* height由内联样式动态设置 */
 }
@@ -7121,7 +7127,7 @@ const handleAddSuccessor = (task: Task) => {
   width: 100%;
   min-height: 51px; /** 为了对齐左侧的Task List Row高度，同时需要包含List Row的Bottom Border 1px */
   pointer-events: auto;
-  z-index: 11;
+  z-index: var(--gantt-z-row);
   transition: background-color 0.2s ease;
 }
 
@@ -7140,7 +7146,7 @@ const handleAddSuccessor = (task: Task) => {
 .timeline-body .task-row-hovered {
   background-color: var(--gantt-bg-hover); /* 与TaskList保持一致的悬停背景色 */
   /* 降低层级，避免覆盖任务条等元素 */
-  z-index: 11;
+  z-index: var(--gantt-z-row);
 }
 
 .timeline-body .task-row-hovered > * {
@@ -7372,7 +7378,7 @@ const handleAddSuccessor = (task: Task) => {
 :global(.gantt-root[data-theme='dark']) .timeline-body .task-row-hovered {
   background-color: var(--gantt-bg-hover) !important; /* 与TaskList保持一致，使用透明背景 */
   /* 降低层级，避免覆盖任务条等元素 */
-  z-index: 11 !important;
+  z-index: var(--gantt-z-row) !important;
 }
 
 /* 确保暗黑模式下子元素能继续响应事件 */
@@ -7654,7 +7660,7 @@ const handleAddSuccessor = (task: Task) => {
   top: 0;
   width: 2px;
   background-color: var(--gantt-primary, #409eff);
-  z-index: 30;
+  z-index: var(--gantt-z-sticky);
   pointer-events: none;
   box-shadow: 0 0 4px rgba(64, 158, 255, 0.3);
 }
@@ -7892,7 +7898,7 @@ const handleAddSuccessor = (task: Task) => {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 12px;
-  z-index: 999999999;
+  z-index: var(--gantt-z-overlay);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
     0 2px 6px rgba(0, 0, 0, 0.2);

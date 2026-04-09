@@ -695,5 +695,17 @@
       "🔧 Fixed: Garbled Chinese title when exporting PDF; switched to html2canvas screenshot rendering to fully avoid missing font issues",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to jSinicyn@github / cunqu@gitee / yuwenkai1996@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.11.1",
+    "date": "2026-04-09",
+    "notes": [
+      "🔧 修复：修复周视图中每月1日标记线污染问题",
+      "🔧 修复：参考element plus组件库设计，升级该组件z-index定义",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自cunqu@gitee的使用与反馈</span>",
+      "🔧 Fixed: Fixed contamination issue with monthly marker line on the 1st in weekly view",
+      "🔧 Fixed: Updated z-index definition of the component based on Element Plus design",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to cunqu@gitee for their use and feedback</span>"
+    ]
   }
 ]
