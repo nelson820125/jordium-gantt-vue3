@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
   onLanguageChange: undefined,
   onThemeChange: undefined,
   onFullscreenChange: undefined,
+  onSettingsConfirm: undefined,
   onExpandAll: undefined,
   onCollapseAll: undefined,
   localeMessages: undefined,
@@ -501,6 +502,10 @@ interface Props {
   onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
+  onSettingsConfirm?: (
+    type: 'theme' | 'language',
+    value: string | boolean
+  ) => Promise<boolean> | boolean
   onExpandAll?: () => void
   onCollapseAll?: () => void
   /**
@@ -815,6 +820,10 @@ watch(
   () => {
     // props变化时清空增量追踪，执行全量更新
     triggerFullUpdate()
+    // 新增：tasks 替换后重新应用折叠状态
+    if (props.expandAll === false) {
+      nextTick(() => collapseAllTasks())
+    }
   }
 )
 
@@ -2283,6 +2292,8 @@ const handleTimelineScaleChanged = (scale: TimelineScale) => {
 const handleThemeChange = (isDark: boolean) => {
   const newTheme = isDark ? 'dark' : 'light'
   setTheme(newTheme)
+  // 转发到外部回调（如果用户传了 @theme-change 或 :on-theme-change）
+  props.onThemeChange?.(isDark)
 }
 
 // === 时间维度相关方法 ===
@@ -3628,8 +3639,8 @@ defineExpose({
       :on-export-csv="csvExportHandler"
       :on-export-pdf="pdfExportHandler"
       :on-language-change="props.onLanguageChange"
-      :on-theme-change="props.onThemeChange"
       :on-fullscreen-change="props.onFullscreenChange"
+      :on-settings-confirm="props.onSettingsConfirm"
       :on-time-scale-change="handleTimeScaleChange"
       :on-expand-all="handleExpandAll"
       :on-collapse-all="handleCollapseAll"

@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed, inject, type Ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { Task } from '../models/classes/Task'
 import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
@@ -31,6 +31,8 @@ const emit = defineEmits([
 
 // 多语言支持
 const { t } = useI18n()
+
+const ganttTheme = inject<Ref<'light' | 'dark'>>('gantt-theme')
 
 // 菜单容器ref
 const menuRef = ref<HTMLElement | null>(null)
@@ -242,7 +244,7 @@ watch(
       })
     }
   },
-  { immediate: true, deep: true },
+  { immediate: true, deep: true }
 )
 
 // 关闭菜单的方法
@@ -356,6 +358,8 @@ onUnmounted(() => {
     clearTimeout(submenuHideTimer)
   }
 })
+
+defineExpose({ menuRef })
 </script>
 
 <template>
@@ -364,6 +368,7 @@ onUnmounted(() => {
       v-if="visible"
       ref="menuRef"
       class="task-context-menu"
+      :data-theme="ganttTheme"
       :style="{
         left: `${adjustedPosition.x}px`,
         top: `${adjustedPosition.y}px`,
@@ -661,23 +666,23 @@ onUnmounted(() => {
 }
 
 /* 暗色主题支持 */
-:global(.gantt-root[data-theme='dark']) .task-context-menu {
+.task-context-menu[data-theme='dark'] {
   background-color: #2c2c2c;
   border-color: #444444;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
-:global(.gantt-root[data-theme='dark']) .menu-item {
+.task-context-menu[data-theme='dark'] .menu-item {
   color: #e5e5e5;
 }
 
-:global(.gantt-root[data-theme='dark']) .menu-item:hover {
+.task-context-menu[data-theme='dark'] .menu-item:hover {
   background-color: #3a3a3a;
   color: #409eff;
 }
 
 /* 暗色主题下箭头颜色 */
-:global(.gantt-root[data-theme='dark']) .menu-arrow {
+.task-context-menu[data-theme='dark'] .menu-arrow {
   border-bottom-color: #2c2c2c; /* 匹配暗色菜单背景色 */
   filter: drop-shadow(0 -1px 2px rgba(0, 0, 0, 0.25));
 }
@@ -784,13 +789,13 @@ onUnmounted(() => {
 }
 
 /* 暗色主题下的子菜单 */
-:global(.gantt-root[data-theme='dark']) .submenu {
+.task-context-menu[data-theme='dark'] .submenu {
   background-color: #2c2c2c;
   border-color: #444444;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
-:global(.gantt-root[data-theme='dark']) .submenu-item:hover {
+.task-context-menu[data-theme='dark'] .submenu-item:hover {
   background-color: #3a1f1f;
   color: #f56c6c;
 }

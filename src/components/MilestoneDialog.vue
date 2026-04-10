@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue'
+import { ref, reactive, watch, computed, inject, type Ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import DatePicker from './DatePicker.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
@@ -20,6 +20,11 @@ const emit = defineEmits<{
   save: [milestone: Task]
   delete: [milestoneId: number]
 }>()
+
+const ganttTheme = inject<Ref<'light' | 'dark'>>(
+  'gantt-theme',
+  ref('light') as Ref<'light' | 'dark'>
+)
 
 // 表单数据
 const formData = reactive<Milestone>({
@@ -86,13 +91,13 @@ watch(
     errors.name = ''
     errors.startDate = ''
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 监听对话框打开，确保新建时重置表单
 watch(
   () => props.visible,
-  (newVisible) => {
+  newVisible => {
     if (newVisible && !props.milestone) {
       // 打开对话框且没有传入里程碑（新建模式），重置表单
       Object.assign(formData, {
@@ -108,7 +113,7 @@ watch(
       errors.name = ''
       errors.startDate = ''
     }
-  },
+  }
 )
 
 // 表单验证
@@ -205,225 +210,237 @@ const t = (key: string) => {
 </script>
 
 <template>
-  <div v-if="visible" class="milestone-dialog-overlay" @click="handleOverlayClick">
-    <div class="milestone-dialog" @click.stop>
-      <div class="milestone-dialog-header">
-        <h3 class="milestone-dialog-title">
-          <svg
-            class="milestone-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <g transform="rotate(45 12 12)">
-              <rect
-                x="4"
-                y="4"
-                width="16"
-                height="16"
-                rx="4"
-                ry="4"
-                fill="currentColor"
-                opacity="0.1"
-              />
-              <rect
-                x="4"
-                y="4"
-                width="16"
-                height="16"
-                rx="4"
-                ry="4"
-                stroke="currentColor"
-                fill="none"
-              />
-            </g>
-          </svg>
-          {{ isEditMode ? globalT.editMilestone : globalT.newMilestone }}
-        </h3>
-        <button class="milestone-dialog-close" :title="t('close')" @click="closeDialog">×</button>
-      </div>
+  <Teleport to="body">
+    <div
+      v-if="visible"
+      class="milestone-dialog-overlay"
+      :data-theme="ganttTheme"
+      @click="handleOverlayClick"
+    >
+      <div class="milestone-dialog" @click.stop>
+        <div class="milestone-dialog-header">
+          <h3 class="milestone-dialog-title">
+            <svg
+              class="milestone-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <g transform="rotate(45 12 12)">
+                <rect
+                  x="4"
+                  y="4"
+                  width="16"
+                  height="16"
+                  rx="4"
+                  ry="4"
+                  fill="currentColor"
+                  opacity="0.1"
+                />
+                <rect
+                  x="4"
+                  y="4"
+                  width="16"
+                  height="16"
+                  rx="4"
+                  ry="4"
+                  stroke="currentColor"
+                  fill="none"
+                />
+              </g>
+            </svg>
+            {{ isEditMode ? globalT.editMilestone : globalT.newMilestone }}
+          </h3>
+          <button class="milestone-dialog-close" :title="t('close')" @click="closeDialog">×</button>
+        </div>
 
-      <div class="milestone-dialog-content">
-        <form class="milestone-form" @submit.prevent="handleSave">
-          <!-- 第一行：里程碑名称 -->
-          <div class="milestone-form-row">
-            <div class="milestone-form-item milestone-form-item-full">
-              <label class="milestone-form-label required" for="milestone-name">{{
-                t('milestoneName')
-              }}</label>
-              <input
-                id="milestone-name"
-                v-model="formData.name"
-                type="text"
-                class="milestone-form-input"
-                :class="{ error: errors.name }"
-                :placeholder="t('enterMilestoneName')"
-                required
-              />
-              <span v-if="errors.name" class="milestone-form-error">{{ errors.name }}</span>
-            </div>
-          </div>
-
-          <!-- 第二行：里程碑日期和图标 -->
-          <div class="milestone-form-row">
-            <div class="milestone-form-item">
-              <label class="milestone-form-label required" for="milestone-date">{{
-                t('milestoneDate')
-              }}</label>
-              <DatePicker
-                id="milestone-date"
-                v-model="formData.startDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择里程碑日期"
-                :class="{ error: errors.startDate }"
-              />
-              <span v-if="errors.startDate" class="milestone-form-error">{{
-                errors.startDate
-              }}</span>
+        <div class="milestone-dialog-content">
+          <form class="milestone-form" @submit.prevent="handleSave">
+            <!-- 第一行：里程碑名称 -->
+            <div class="milestone-form-row">
+              <div class="milestone-form-item milestone-form-item-full">
+                <label class="milestone-form-label required" for="milestone-name">{{
+                  t('milestoneName')
+                }}</label>
+                <input
+                  id="milestone-name"
+                  v-model="formData.name"
+                  type="text"
+                  class="milestone-form-input"
+                  :class="{ error: errors.name }"
+                  :placeholder="t('enterMilestoneName')"
+                  required
+                />
+                <span v-if="errors.name" class="milestone-form-error">{{ errors.name }}</span>
+              </div>
             </div>
 
-            <div class="milestone-form-item">
-              <label class="milestone-form-label" for="milestone-icon">{{
-                t('milestoneIcon')
-              }}</label>
-              <div class="milestone-icon-dropdown" :class="{ active: dropdownOpen }">
-                <button
-                  id="milestone-icon"
-                  type="button"
-                  class="milestone-icon-trigger"
-                  :aria-expanded="dropdownOpen"
-                  aria-haspopup="listbox"
-                  @click="dropdownOpen = !dropdownOpen"
-                >
-                  <div class="selected-icon">
+            <!-- 第二行：里程碑日期和图标 -->
+            <div class="milestone-form-row">
+              <div class="milestone-form-item">
+                <label class="milestone-form-label required" for="milestone-date">{{
+                  t('milestoneDate')
+                }}</label>
+                <DatePicker
+                  id="milestone-date"
+                  v-model="formData.startDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="请选择里程碑日期"
+                  :class="{ error: errors.startDate }"
+                />
+                <span v-if="errors.startDate" class="milestone-form-error">{{
+                  errors.startDate
+                }}</span>
+              </div>
+
+              <div class="milestone-form-item">
+                <label class="milestone-form-label" for="milestone-icon">{{
+                  t('milestoneIcon')
+                }}</label>
+                <div class="milestone-icon-dropdown" :class="{ active: dropdownOpen }">
+                  <button
+                    id="milestone-icon"
+                    type="button"
+                    class="milestone-icon-trigger"
+                    :aria-expanded="dropdownOpen"
+                    aria-haspopup="listbox"
+                    @click="dropdownOpen = !dropdownOpen"
+                  >
+                    <div class="selected-icon">
+                      <svg
+                        v-if="formData.icon === 'diamond'"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <g transform="rotate(45 12 12)">
+                          <rect
+                            x="6"
+                            y="6"
+                            width="12"
+                            height="12"
+                            rx="3"
+                            ry="3"
+                            fill="currentColor"
+                          />
+                        </g>
+                      </svg>
+                      <div v-else-if="formData.icon === 'rocket'" class="rocket-emoji-mini">🚀</div>
+                      <span>{{ t(formData.icon || 'diamond') }}</span>
+                    </div>
                     <svg
-                      v-if="formData.icon === 'diamond'"
+                      class="dropdown-arrow"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
                       stroke-width="2"
                     >
-                      <g transform="rotate(45 12 12)">
-                        <rect
-                          x="6"
-                          y="6"
-                          width="12"
-                          height="12"
-                          rx="3"
-                          ry="3"
-                          fill="currentColor"
-                        />
-                      </g>
+                      <polyline points="6,9 12,15 18,9"></polyline>
                     </svg>
-                    <div v-else-if="formData.icon === 'rocket'" class="rocket-emoji-mini">🚀</div>
-                    <span>{{ t(formData.icon || 'diamond') }}</span>
-                  </div>
-                  <svg
-                    class="dropdown-arrow"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <polyline points="6,9 12,15 18,9"></polyline>
-                  </svg>
-                </button>
+                  </button>
 
-                <div v-if="dropdownOpen" class="milestone-icon-options">
-                  <div
-                    class="icon-option"
-                    :class="{ selected: formData.icon === 'diamond' }"
-                    @click="selectIcon('diamond')"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <g transform="rotate(45 12 12)">
-                        <rect
-                          x="6"
-                          y="6"
-                          width="12"
-                          height="12"
-                          rx="3"
-                          ry="3"
-                          fill="currentColor"
-                        />
-                      </g>
-                    </svg>
-                    <span>{{ t('diamond') }}</span>
-                  </div>
+                  <div v-if="dropdownOpen" class="milestone-icon-options">
+                    <div
+                      class="icon-option"
+                      :class="{ selected: formData.icon === 'diamond' }"
+                      @click="selectIcon('diamond')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <g transform="rotate(45 12 12)">
+                          <rect
+                            x="6"
+                            y="6"
+                            width="12"
+                            height="12"
+                            rx="3"
+                            ry="3"
+                            fill="currentColor"
+                          />
+                        </g>
+                      </svg>
+                      <span>{{ t('diamond') }}</span>
+                    </div>
 
-                  <div
-                    class="icon-option"
-                    :class="{ selected: formData.icon === 'rocket' }"
-                    @click="selectIcon('rocket')"
-                  >
-                    <div class="rocket-emoji-option">🚀</div>
-                    <span>{{ t('rocket') }}</span>
+                    <div
+                      class="icon-option"
+                      :class="{ selected: formData.icon === 'rocket' }"
+                      @click="selectIcon('rocket')"
+                    >
+                      <div class="rocket-emoji-option">🚀</div>
+                      <span>{{ t('rocket') }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 第三行：描述 -->
-          <div class="milestone-form-row">
-            <div class="milestone-form-item milestone-form-item-full">
-              <label class="milestone-form-label" for="milestone-description">{{
-                t('description')
-              }}</label>
-              <div class="textarea-wrapper">
-                <textarea
-                  id="milestone-description"
-                  ref="descriptionTextarea"
-                  v-model="formData.description"
-                  class="milestone-form-textarea"
-                  :placeholder="t('enterDescription')"
-                  rows="4"
-                  maxlength="500"
-                  @input="adjustTextareaHeight"
-                ></textarea>
-                <div class="textarea-footer">
-                  <span class="char-count">{{ formData.description?.length || 0 }}/500</span>
+            <!-- 第三行：描述 -->
+            <div class="milestone-form-row">
+              <div class="milestone-form-item milestone-form-item-full">
+                <label class="milestone-form-label" for="milestone-description">{{
+                  t('description')
+                }}</label>
+                <div class="textarea-wrapper">
+                  <textarea
+                    id="milestone-description"
+                    ref="descriptionTextarea"
+                    v-model="formData.description"
+                    class="milestone-form-textarea"
+                    :placeholder="t('enterDescription')"
+                    rows="4"
+                    maxlength="500"
+                    @input="adjustTextareaHeight"
+                  ></textarea>
+                  <div class="textarea-footer">
+                    <span class="char-count">{{ formData.description?.length || 0 }}/500</span>
+                  </div>
                 </div>
               </div>
             </div>
+          </form>
+        </div>
+
+        <div class="milestone-dialog-footer">
+          <div class="milestone-dialog-footer-left">
+            <button
+              v-if="isEditMode"
+              type="button"
+              class="gantt-btn gantt-btn-danger"
+              @click="handleDelete"
+            >
+              {{ globalT.delete }}
+            </button>
           </div>
-        </form>
+          <div class="milestone-dialog-footer-right">
+            <button type="button" class="gantt-btn gantt-btn-default" @click="closeDialog">
+              {{ globalT.cancel }}
+            </button>
+            <button
+              type="button"
+              class="gantt-btn gantt-btn-primary"
+              :disabled="!isFormValid"
+              @click="handleSave"
+            >
+              {{ globalT.confirm }}
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="milestone-dialog-footer">
-        <div class="milestone-dialog-footer-left">
-          <button v-if="isEditMode" type="button" class="gantt-btn gantt-btn-danger" @click="handleDelete">
-            {{ globalT.delete }}
-          </button>
-        </div>
-        <div class="milestone-dialog-footer-right">
-          <button type="button" class="gantt-btn gantt-btn-default" @click="closeDialog">
-            {{ globalT.cancel }}
-          </button>
-          <button
-            type="button"
-            class="gantt-btn gantt-btn-primary"
-            :disabled="!isFormValid"
-            @click="handleSave"
-          >
-            {{ globalT.confirm }}
-          </button>
-        </div>
-      </div>
+      <GanttConfirmDialog
+        :visible="showDeleteConfirm"
+        :title="globalT.delete"
+        :message="globalT.confirmDelete"
+        :confirm-text="globalT.confirm"
+        :cancel-text="globalT.cancel"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
-
-    <GanttConfirmDialog
-      :visible="showDeleteConfirm"
-      :title="globalT.delete"
-      :message="globalT.confirmDelete"
-      :confirm-text="globalT.confirm"
-      :cancel-text="globalT.cancel"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
-    />
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -440,6 +457,11 @@ const t = (key: string) => {
   align-items: center;
   justify-content: center;
   z-index: 10000; /* 确保在全屏模式下也能正常显示 */
+}
+
+/* 暗黑模式下：overlay 在深色背景上会看起来过黑，改用深灰半透明 */
+:global(.milestone-dialog-overlay[data-theme='dark']) {
+  background: rgba(50, 50, 50, 0.7) !important;
 }
 
 .milestone-dialog {
@@ -792,12 +814,12 @@ const t = (key: string) => {
 }
 
 /* 暗黑模式下的确认弹窗 */
-:global(.gantt-root[data-theme='dark']) .milestone-confirm-dialog {
+.milestone-dialog-overlay[data-theme='dark'] .milestone-confirm-dialog {
   background: var(--gantt-bg-dark, #1d1e1f);
   border-color: var(--gantt-border-dark, #3c3e40);
 }
 
-:global(.gantt-root[data-theme='dark']) .milestone-confirm-footer {
+.milestone-dialog-overlay[data-theme='dark'] .milestone-confirm-footer {
   background: var(--gantt-bg-darker, #141414);
   border-color: var(--gantt-border-dark, #3c3e40);
 }

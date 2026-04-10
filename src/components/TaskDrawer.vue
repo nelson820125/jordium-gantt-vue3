@@ -1,5 +1,15 @@
 ﻿<script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import {
+  ref,
+  reactive,
+  watch,
+  computed,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  inject,
+  type Ref,
+} from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useMessage } from '../composables/useMessage'
 import DatePicker from './DatePicker.vue'
@@ -62,6 +72,9 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { showMessage } = useMessage()
 
+// 从 GanttChart 注入当前主题，使 Teleport'd 的 drawer 能跟随暗色/亮色模式
+const ganttTheme = inject<Ref<'light' | 'dark'>>('gantt-theme')
+
 const submitting = ref(false)
 const isVisible = ref(props.visible)
 const showDeleteConfirm = ref(false)
@@ -95,7 +108,7 @@ watch(
   () => [props.task?.isTimerRunning, props.task?.timerStartTime, props.task?.timerElapsedTime],
   () => {
     updateTimer()
-  },
+  }
 )
 
 // 计时器本地状态，保证点击后UI立即切换
@@ -111,7 +124,7 @@ watch(
       timerInterval.value = null
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 修正计时器每秒递增逻辑，保证计时器正常跳动
@@ -129,7 +142,7 @@ watch(
       updateTimer()
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 onUnmounted(() => {
@@ -184,7 +197,7 @@ const availableParentTasks = computed(() => {
     .filter(
       task =>
         task.id !== props.task?.id && // 排除当前任务自己
-        (task.type === 'story' || task.type === 'task'), // 只显示story和task类型
+        (task.type === 'story' || task.type === 'task') // 只显示story和task类型
     )
     .map(task => ({
       ...task,
@@ -390,7 +403,7 @@ watch(
       // 抽屉显示时重新请求任务数据，确保前置任务列表是最新的
       window.dispatchEvent(new CustomEvent('request-task-list'))
     }
-  },
+  }
 )
 
 // 监听 isVisible 变化，同步到父组件
@@ -407,7 +420,7 @@ watch(
       formData.parentId = newTask.parentId ?? undefined
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 重置表单
@@ -472,7 +485,11 @@ const validateForm = (): boolean => {
     isValid = false
   }
   // 验证实际日期（可选字段）
-  if (formData.actualStartDate && formData.actualEndDate && new Date(formData.actualEndDate) < new Date(formData.actualStartDate)) {
+  if (
+    formData.actualStartDate &&
+    formData.actualEndDate &&
+    new Date(formData.actualEndDate) < new Date(formData.actualStartDate)
+  ) {
     errors.actualEndDate = t.value.actualEndDateInvalid
     isValid = false
   }
@@ -611,7 +628,7 @@ watch(
   newValue => {
     progressDisplayValue.value = (newValue || 0).toString()
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 // 修正计时器首次启动不跳动问题：每次打开抽屉时重置 timerElapsed，且 timerStartTime 为空时立即赋值
@@ -629,7 +646,7 @@ watch(
       }
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 const handleStartTimer = (desc?: string) => {
@@ -687,12 +704,14 @@ const addResource = () => {
   if (!formData.resources) {
     formData.resources = []
   }
-  formData.resources.push(createResource({
-    id: '',
-    name: '',
-    capacity: 100,
-    tasks: [],
-  }))
+  formData.resources.push(
+    createResource({
+      id: '',
+      name: '',
+      capacity: 100,
+      tasks: [],
+    })
+  )
 }
 
 const removeResource = (index: number) => {
@@ -731,9 +750,13 @@ const mapAssigneeToResources = () => {
   }
 
   // 从 assignee/avatar 映射到 resources
-  const assignees = Array.isArray(formData.assignee) ? formData.assignee : (formData.assignee ? [formData.assignee] : [])
+  const assignees = Array.isArray(formData.assignee)
+    ? formData.assignee
+    : formData.assignee
+      ? [formData.assignee]
+      : []
 
-  formData.resources = assignees.map((assigneeId) => {
+  formData.resources = assignees.map(assigneeId => {
     // 查找对应的assigneeOption获取名称
     const option = props.assigneeOptions?.find(opt => opt.value === assigneeId)
     return createResource({
@@ -755,7 +778,7 @@ const mapResourcesToAssignee = () => {
 
   // 映射 assignee 数组
   const assignees = formData.resources.map(r => String(r.id)).filter(id => id)
-  formData.assignee = assignees.length > 1 ? assignees : (assignees[0] || '')
+  formData.assignee = assignees.length > 1 ? assignees : assignees[0] || ''
 
   // 映射 avatar 数组（从assigneeOptions中查找对应的avatar）
   const avatars = formData.resources
@@ -765,7 +788,7 @@ const mapResourcesToAssignee = () => {
     })
     .filter(avatar => avatar)
 
-  formData.avatar = avatars.length > 1 ? avatars : (avatars[0] || '')
+  formData.avatar = avatars.length > 1 ? avatars : avatars[0] || ''
 }
 
 // 计算任务状态
@@ -835,457 +858,483 @@ const taskStatus = computed(() => {
 </script>
 
 <template>
-  <div v-if="isVisible" class="drawer-overlay" @click="handleOverlayClick">
-    <div class="drawer-container" @click.stop>
-      <!-- Drawer Header -->
-      <div
-        class="drawer-header"
-        style="display: flex; align-items: center; justify-content: flex-start; gap: 8px"
-      >
-        <h3 class="drawer-title" style="margin: 0">{{ isEdit ? t.editTask : t.newTask }}</h3>
+  <Teleport to="body">
+    <div
+      v-if="isVisible"
+      class="drawer-overlay"
+      :data-theme="ganttTheme"
+      @click="handleOverlayClick"
+    >
+      <div class="drawer-container" @click.stop>
+        <!-- Drawer Header -->
         <div
-          v-if="props.task?.type !== 'story' && isEdit"
-          class="drawer-timer"
-          style="display: flex; align-items: center; gap: 6px; margin-left: 8px"
+          class="drawer-header"
+          style="display: flex; align-items: center; justify-content: flex-start; gap: 8px"
         >
-          <button
-            v-if="!localTimerRunning"
-            class="timer-btn start minimal"
-            title="开始计时"
-            style="
-              width: 24px;
-              height: 24px;
-              background: #4caf50;
-              border: none;
-              padding: 0;
-              margin: 0;
-              box-shadow: none;
-              cursor: pointer;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: background 0.2s;
-            "
-            @click.stop="openTimerConfirm"
+          <h3 class="drawer-title" style="margin: 0">{{ isEdit ? t.editTask : t.newTask }}</h3>
+          <div
+            v-if="props.task?.type !== 'story' && isEdit"
+            class="drawer-timer"
+            style="display: flex; align-items: center; gap: 6px; margin-left: 8px"
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              style="display: block; margin: 0 auto"
+            <button
+              v-if="!localTimerRunning"
+              class="timer-btn start minimal"
+              title="开始计时"
+              style="
+                width: 24px;
+                height: 24px;
+                background: #4caf50;
+                border: none;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                cursor: pointer;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+              "
+              @click.stop="openTimerConfirm"
             >
-              <circle cx="12" cy="12" r="11" stroke="#4caf50" stroke-width="2" fill="#4caf50" />
-              <polygon points="9,7 18,12 9,17" fill="#fff" />
-            </svg>
-          </button>
-          <button
-            v-else
-            class="timer-btn stop minimal"
-            title="停止计时"
-            style="
-              width: 24px;
-              height: 24px;
-              background: #f44336;
-              border: none;
-              padding: 0;
-              margin: 0;
-              box-shadow: none;
-              cursor: pointer;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: background 0.2s;
-            "
-            @click.stop="handleStopTimer"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="11" stroke="#f44336" stroke-width="2" fill="#f44336" />
-              <rect x="7" y="7" width="10" height="10" fill="#fff" rx="1.5" />
-            </svg>
-          </button>
-          <span
-            v-if="localTimerRunning"
-            class="timer-badge"
-            :class="{ 'timer-active': localTimerRunning }"
-            style="
-              margin-left: 8px;
-              font-size: 13px;
-              font-weight: 700;
-              padding: 2px 10px;
-              border-radius: 10px;
-              background: #fffbe6;
-              color: #e6a23c;
-              box-shadow: 0 0 0 1px #ffe58f;
-              display: inline-flex;
-              align-items: center;
-              min-width: 80px;
-              justify-content: center;
-            "
-          >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                style="display: block; margin: 0 auto"
+              >
+                <circle cx="12" cy="12" r="11" stroke="#4caf50" stroke-width="2" fill="#4caf50" />
+                <polygon points="9,7 18,12 9,17" fill="#fff" />
+              </svg>
+            </button>
+            <button
+              v-else
+              class="timer-btn stop minimal"
+              title="停止计时"
+              style="
+                width: 24px;
+                height: 24px;
+                background: #f44336;
+                border: none;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                cursor: pointer;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+              "
+              @click.stop="handleStopTimer"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="11" stroke="#f44336" stroke-width="2" fill="#f44336" />
+                <rect x="7" y="7" width="10" height="10" fill="#fff" rx="1.5" />
+              </svg>
+            </button>
             <span
               v-if="localTimerRunning"
-              class="timer-dot"
+              class="timer-badge"
+              :class="{ 'timer-active': localTimerRunning }"
               style="
-                background: #67c23a;
-                width: 7px;
-                height: 7px;
-                border-radius: 50%;
-                margin-right: 5px;
-                animation: pulse 1s infinite;
+                margin-left: 8px;
+                font-size: 13px;
+                font-weight: 700;
+                padding: 2px 10px;
+                border-radius: 10px;
+                background: #fffbe6;
+                color: #e6a23c;
+                box-shadow: 0 0 0 1px #ffe58f;
+                display: inline-flex;
+                align-items: center;
+                min-width: 80px;
+                justify-content: center;
               "
-            ></span>
-            {{ formattedTimer }}
-          </span>
-        </div>
-        <div style="flex: 1"></div>
-        <!-- Status Badge -->
-        <div
-          v-if="isEdit && props.task"
-          class="status-badge"
-          :style="{
-            backgroundColor: taskStatus.bgColor,
-            color: taskStatus.color,
-            border: `1px solid ${taskStatus.borderColor}`,
-          }"
-        >
-          {{ taskStatus.text }}
-        </div>
-        <button class="drawer-close-btn" type="button" @click="handleClose">
-          <svg
-            class="close-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            style="vertical-align: middle"
+            >
+              <span
+                v-if="localTimerRunning"
+                class="timer-dot"
+                style="
+                  background: #67c23a;
+                  width: 7px;
+                  height: 7px;
+                  border-radius: 50%;
+                  margin-right: 5px;
+                  animation: pulse 1s infinite;
+                "
+              ></span>
+              {{ formattedTimer }}
+            </span>
+          </div>
+          <div style="flex: 1"></div>
+          <!-- Status Badge -->
+          <div
+            v-if="isEdit && props.task"
+            class="status-badge"
+            :style="{
+              backgroundColor: taskStatus.bgColor,
+              color: taskStatus.color,
+              border: `1px solid ${taskStatus.borderColor}`,
+            }"
           >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Drawer Body -->
-      <div class="drawer-body">
-        <form class="task-form" @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label class="form-label" for="task-name">
-              {{ t.taskName }} <span class="required">*</span></label
-            >
-            <input
-              id="task-name"
-              v-model="formData.name"
-              type="text"
-              class="form-input"
-              :class="{ error: errors.name }"
-              :placeholder="t.taskNamePlaceholder"
-            />
-            <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
+            {{ taskStatus.text }}
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="task-type">
-              {{ t.taskType }} <span class="required">*</span></label
+          <button class="drawer-close-btn" type="button" @click="handleClose">
+            <svg
+              class="close-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              style="vertical-align: middle"
             >
-            <select
-              id="task-type"
-              v-model="formData.type"
-              class="form-select"
-              :class="{ error: errors.type }"
-            >
-              <option value="story">{{ t.taskTypeMap.story }}</option>
-              <option value="task">{{ t.taskTypeMap.task }}</option>
-              <option value="bug">{{ t.taskTypeMap.bug }}</option>
-            </select>
-            <span v-if="errors.type" class="error-text">{{ errors.type }}</span>
-          </div>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
 
-          <!-- v1.9.0 资源分配（含占比配置） -->
-          <div class="form-group">
-            <label class="form-label">{{ t.resourceAllocation || '资源分配' }}</label>
-            <div class="resource-list">
-              <!-- 资源分配标题行 -->
-              <div class="resource-header">
-                <span class="resource-header-label">资源名称</span>
-                <span class="resource-header-label">占用比例</span>
-                <span class="resource-header-action"></span>
-              </div>
-
-              <div
-                v-for="(resource, index) in formData.resources"
-                :key="index"
-                class="resource-item"
+        <!-- Drawer Body -->
+        <div class="drawer-body">
+          <form class="task-form" @submit.prevent="handleSubmit">
+            <div class="form-group">
+              <label class="form-label" for="task-name">
+                {{ t.taskName }} <span class="required">*</span></label
               >
-                <select
-                  v-model="resource.id"
-                  class="form-select resource-select"
-                  @change="handleResourceChange(index, 'id', ($event.target as HTMLSelectElement).value)"
+              <input
+                id="task-name"
+                v-model="formData.name"
+                type="text"
+                class="form-input"
+                :class="{ error: errors.name }"
+                :placeholder="t.taskNamePlaceholder"
+              />
+              <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="task-type">
+                {{ t.taskType }} <span class="required">*</span></label
+              >
+              <select
+                id="task-type"
+                v-model="formData.type"
+                class="form-select"
+                :class="{ error: errors.type }"
+              >
+                <option value="story">{{ t.taskTypeMap.story }}</option>
+                <option value="task">{{ t.taskTypeMap.task }}</option>
+                <option value="bug">{{ t.taskTypeMap.bug }}</option>
+              </select>
+              <span v-if="errors.type" class="error-text">{{ errors.type }}</span>
+            </div>
+
+            <!-- v1.9.0 资源分配（含占比配置） -->
+            <div class="form-group">
+              <label class="form-label">{{ t.resourceAllocation || '资源分配' }}</label>
+              <div class="resource-list">
+                <!-- 资源分配标题行 -->
+                <div class="resource-header">
+                  <span class="resource-header-label">资源名称</span>
+                  <span class="resource-header-label">占用比例</span>
+                  <span class="resource-header-action"></span>
+                </div>
+
+                <div
+                  v-for="(resource, index) in formData.resources"
+                  :key="index"
+                  class="resource-item"
                 >
-                  <option value="">{{ t.selectResource || '选择资源' }}</option>
-                  <option
-                    v-for="assignee in props.assigneeOptions"
-                    :key="assignee.key ?? assignee.value"
-                    :value="assignee.value"
-                    :data-avatar="assignee.avatar"
+                  <select
+                    v-model="resource.id"
+                    class="form-select resource-select"
+                    @change="
+                      handleResourceChange(index, 'id', ($event.target as HTMLSelectElement).value)
+                    "
                   >
-                    {{ assignee.label }}
-                  </option>
-                </select>
+                    <option value="">{{ t.selectResource || '选择资源' }}</option>
+                    <option
+                      v-for="assignee in props.assigneeOptions"
+                      :key="assignee.key ?? assignee.value"
+                      :value="assignee.value"
+                      :data-avatar="assignee.avatar"
+                    >
+                      {{ assignee.label }}
+                    </option>
+                  </select>
 
-                <select
-                  v-model.number="resource.capacity"
-                  class="form-select capacity-select"
-                  @change="handleResourceChange(index, 'capacity', ($event.target as HTMLSelectElement).value)"
-                >
-                  <option :value="25">25%</option>
-                  <option :value="50">50%</option>
-                  <option :value="75">75%</option>
-                  <option :value="100">100%</option>
-                </select>
+                  <select
+                    v-model.number="resource.capacity"
+                    class="form-select capacity-select"
+                    @change="
+                      handleResourceChange(
+                        index,
+                        'capacity',
+                        ($event.target as HTMLSelectElement).value
+                      )
+                    "
+                  >
+                    <option :value="25">25%</option>
+                    <option :value="50">50%</option>
+                    <option :value="75">75%</option>
+                    <option :value="100">100%</option>
+                  </select>
 
-                <button
-                  type="button"
-                  class="btn-remove-resource"
-                  title="删除资源"
-                  @click="removeResource(index)"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                  </svg>
+                  <button
+                    type="button"
+                    class="btn-remove-resource"
+                    title="删除资源"
+                    @click="removeResource(index)"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path
+                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                      ></path>
+                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                  </button>
+                </div>
+                <button type="button" class="btn-add-resource" @click="addResource">
+                  + {{ t.addResource || '添加资源' }}
                 </button>
               </div>
-              <button
-                type="button"
-                class="btn-add-resource"
-                @click="addResource"
-              >
-                + {{ t.addResource || '添加资源' }}
-              </button>
             </div>
-          </div>
 
-          <!-- 上级任务选择 -->
-          <div class="form-group">
-            <label class="form-label" for="task-parent">{{ t.parentTask }}</label>
-            <select id="task-parent" v-model="formData.parentId" class="form-select">
-              <option :value="undefined">{{ t.noParentTask }}</option>
-              <option
-                v-for="parentTask in availableParentTasks"
-                :key="parentTask.id"
-                :value="parentTask.id"
-              >
-                {{ parentTask.displayName }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-row">
+            <!-- 上级任务选择 -->
             <div class="form-group">
-              <label class="form-label" for="task-start-date">
-                {{ t.plannedStartDate }} <span class="required">*</span></label
-              >
-              <DatePicker
-                id="task-start-date"
-                v-model="formData.startDate"
-                :type="'datetime' as any"
-                value-format="YYYY-MM-DD HH:mm"
-                :placeholder="t.plannedStartDateRequired"
-                :class="{ error: errors.startDate }"
-              />
-              <span v-if="errors.startDate" class="error-text">{{ errors.startDate }}</span>
+              <label class="form-label" for="task-parent">{{ t.parentTask }}</label>
+              <select id="task-parent" v-model="formData.parentId" class="form-select">
+                <option :value="undefined">{{ t.noParentTask }}</option>
+                <option
+                  v-for="parentTask in availableParentTasks"
+                  :key="parentTask.id"
+                  :value="parentTask.id"
+                >
+                  {{ parentTask.displayName }}
+                </option>
+              </select>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="task-end-date">
-                {{ t.plannedEndDate }} <span class="required">*</span></label
-              >
-              <DatePicker
-                id="task-end-date"
-                v-model="formData.endDate"
-                :type="'datetime' as any"
-                value-format="YYYY-MM-DD HH:mm"
-                :placeholder="t.plannedEndDateRequired"
-                :class="{ error: errors.endDate }"
-              />
-              <span v-if="errors.endDate" class="error-text">{{ errors.endDate }}</span>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="task-actual-start-date">
-                {{ t.actualStartDate }}</label
-              >
-              <DatePicker
-                id="task-actual-start-date"
-                v-model="formData.actualStartDate"
-                :type="'datetime' as any"
-                value-format="YYYY-MM-DD HH:mm"
-                :placeholder="t.actualStartDate"
-                :class="{ error: errors.actualStartDate }"
-              />
-              <span v-if="errors.actualStartDate" class="error-text">{{ errors.actualStartDate }}</span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="task-actual-end-date">
-                {{ t.actualEndDate }}</label
-              >
-              <DatePicker
-                id="task-actual-end-date"
-                v-model="formData.actualEndDate"
-                :type="'datetime' as any"
-                value-format="YYYY-MM-DD HH:mm"
-                :placeholder="t.actualEndDate"
-                :class="{ error: errors.actualEndDate }"
-              />
-              <span v-if="errors.actualEndDate" class="error-text">{{ errors.actualEndDate }}</span>
-            </div>
-          </div>
-
-          <MultiSelectPredecessor
-            v-model="formData.predecessor"
-            :tasks="allTasks"
-            :current-task-id="props.task?.id"
-            :label="t.predecessor"
-            :placeholder="t.predecessorPlaceholder"
-          />
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="task-estimated-hours">{{ t.estimatedHours }}</label>
-              <input
-                id="task-estimated-hours"
-                v-model="formData.estimatedHours"
-                type="number"
-                class="form-input"
-                placeholder="0.00"
-                min="0"
-                max="99999"
-                step="0.01"
-                @input="handleEstimatedHoursInput"
-              />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="task-actual-hours">{{ t.actualHours }}</label>
-              <input
-                id="task-actual-hours"
-                v-model="formData.actualHours"
-                type="number"
-                class="form-input"
-                placeholder="0.00"
-                min="0"
-                max="99999"
-                step="0.01"
-                @input="handleActualHoursInput"
-              />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="task-progress">{{ t.progress }}</label>
-            <div class="progress-container">
-              <input
-                id="task-progress"
-                v-model.number="formData.progress"
-                type="range"
-                class="progress-slider"
-                :style="progressSliderStyle"
-                min="0"
-                max="100"
-                step="5"
-              />
-              <div class="progress-input-group">
-                <input
-                  v-model="progressDisplayValue"
-                  type="text"
-                  class="progress-input"
-                  placeholder="0"
-                  maxlength="3"
-                  @blur="handleProgressInputBlur"
-                  @keyup.enter="handleProgressInputBlur"
-                  @input="handleProgressInput"
-                  @focus="handleProgressInputFocus"
-                  @keydown="handleProgressKeydown"
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="task-start-date">
+                  {{ t.plannedStartDate }} <span class="required">*</span></label
+                >
+                <DatePicker
+                  id="task-start-date"
+                  v-model="formData.startDate"
+                  :type="'datetime' as any"
+                  value-format="YYYY-MM-DD HH:mm"
+                  :placeholder="t.plannedStartDateRequired"
+                  :class="{ error: errors.startDate }"
                 />
-                <span class="progress-unit">%</span>
+                <span v-if="errors.startDate" class="error-text">{{ errors.startDate }}</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="task-end-date">
+                  {{ t.plannedEndDate }} <span class="required">*</span></label
+                >
+                <DatePicker
+                  id="task-end-date"
+                  v-model="formData.endDate"
+                  :type="'datetime' as any"
+                  value-format="YYYY-MM-DD HH:mm"
+                  :placeholder="t.plannedEndDateRequired"
+                  :class="{ error: errors.endDate }"
+                />
+                <span v-if="errors.endDate" class="error-text">{{ errors.endDate }}</span>
               </div>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label" for="task-description">{{ t.description }}</label>
-            <textarea
-              id="task-description"
-              v-model="formData.description"
-              class="form-textarea"
-              :placeholder="t.descriptionPlaceholder"
-              rows="3"
-            ></textarea>
-          </div>
-        </form>
-      </div>
-      <!-- Drawer Footer -->
-      <div class="drawer-footer">
-        <div class="footer-left">
-          <!-- 删除按钮，仅在编辑模式下显示 -->
-          <button
-            v-if="isEdit && task"
-            type="button"
-            class="gantt-btn gantt-btn-danger"
-            :disabled="submitting"
-            @click="handleDelete"
-          >
-            <span v-if="submitting" class="loading-spinner"></span>
-            {{ t.delete }}
-          </button>
-          <GanttConfirmDialog
-            :visible="showDeleteConfirm"
-            :title="t.delete"
-            :type="dialogType"
-            :message="dialogMessage"
-            :confirm-text="t.confirm"
-            :cancel-text="t.cancel"
-            :yes-text="t.storyDeleteYes"
-            :no-text="t.storyDeleteNo"
-            @confirm="confirmDelete"
-            @yes="handleDeleteYes"
-            @no="handleDeleteNo"
-            @cancel="cancelDelete"
-          />
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="task-actual-start-date">
+                  {{ t.actualStartDate }}</label
+                >
+                <DatePicker
+                  id="task-actual-start-date"
+                  v-model="formData.actualStartDate"
+                  :type="'datetime' as any"
+                  value-format="YYYY-MM-DD HH:mm"
+                  :placeholder="t.actualStartDate"
+                  :class="{ error: errors.actualStartDate }"
+                />
+                <span v-if="errors.actualStartDate" class="error-text">{{
+                  errors.actualStartDate
+                }}</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="task-actual-end-date"> {{ t.actualEndDate }}</label>
+                <DatePicker
+                  id="task-actual-end-date"
+                  v-model="formData.actualEndDate"
+                  :type="'datetime' as any"
+                  value-format="YYYY-MM-DD HH:mm"
+                  :placeholder="t.actualEndDate"
+                  :class="{ error: errors.actualEndDate }"
+                />
+                <span v-if="errors.actualEndDate" class="error-text">{{
+                  errors.actualEndDate
+                }}</span>
+              </div>
+            </div>
+
+            <MultiSelectPredecessor
+              v-model="formData.predecessor"
+              :tasks="allTasks"
+              :current-task-id="props.task?.id"
+              :label="t.predecessor"
+              :placeholder="t.predecessorPlaceholder"
+            />
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="task-estimated-hours">{{ t.estimatedHours }}</label>
+                <input
+                  id="task-estimated-hours"
+                  v-model="formData.estimatedHours"
+                  type="number"
+                  class="form-input"
+                  placeholder="0.00"
+                  min="0"
+                  max="99999"
+                  step="0.01"
+                  @input="handleEstimatedHoursInput"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="task-actual-hours">{{ t.actualHours }}</label>
+                <input
+                  id="task-actual-hours"
+                  v-model="formData.actualHours"
+                  type="number"
+                  class="form-input"
+                  placeholder="0.00"
+                  min="0"
+                  max="99999"
+                  step="0.01"
+                  @input="handleActualHoursInput"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="task-progress">{{ t.progress }}</label>
+              <div class="progress-container">
+                <input
+                  id="task-progress"
+                  v-model.number="formData.progress"
+                  type="range"
+                  class="progress-slider"
+                  :style="progressSliderStyle"
+                  min="0"
+                  max="100"
+                  step="5"
+                />
+                <div class="progress-input-group">
+                  <input
+                    v-model="progressDisplayValue"
+                    type="text"
+                    class="progress-input"
+                    placeholder="0"
+                    maxlength="3"
+                    @blur="handleProgressInputBlur"
+                    @keyup.enter="handleProgressInputBlur"
+                    @input="handleProgressInput"
+                    @focus="handleProgressInputFocus"
+                    @keydown="handleProgressKeydown"
+                  />
+                  <span class="progress-unit">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="task-description">{{ t.description }}</label>
+              <textarea
+                id="task-description"
+                v-model="formData.description"
+                class="form-textarea"
+                :placeholder="t.descriptionPlaceholder"
+                rows="3"
+              ></textarea>
+            </div>
+          </form>
         </div>
-        <div class="footer-right">
-          <button type="button" class="gantt-btn gantt-btn-default" @click="handleClose">{{ t.cancel }}</button>
-          <button
-            type="button"
-            class="gantt-btn gantt-btn-primary"
-            :disabled="submitting"
-            @click="handleSubmit"
-          >
-            <span v-if="submitting" class="loading-spinner"></span>
-            {{ isEdit ? t.update : t.create }}
-          </button>
+        <!-- Drawer Footer -->
+        <div class="drawer-footer">
+          <div class="footer-left">
+            <!-- 删除按钮，仅在编辑模式下显示 -->
+            <button
+              v-if="isEdit && task"
+              type="button"
+              class="gantt-btn gantt-btn-danger"
+              :disabled="submitting"
+              @click="handleDelete"
+            >
+              <span v-if="submitting" class="loading-spinner"></span>
+              {{ t.delete }}
+            </button>
+            <GanttConfirmDialog
+              :visible="showDeleteConfirm"
+              :title="t.delete"
+              :type="dialogType"
+              :message="dialogMessage"
+              :confirm-text="t.confirm"
+              :cancel-text="t.cancel"
+              :yes-text="t.storyDeleteYes"
+              :no-text="t.storyDeleteNo"
+              @confirm="confirmDelete"
+              @yes="handleDeleteYes"
+              @no="handleDeleteNo"
+              @cancel="cancelDelete"
+            />
+          </div>
+          <div class="footer-right">
+            <button type="button" class="gantt-btn gantt-btn-default" @click="handleClose">
+              {{ t.cancel }}
+            </button>
+            <button
+              type="button"
+              class="gantt-btn gantt-btn-primary"
+              :disabled="submitting"
+              @click="handleSubmit"
+            >
+              <span v-if="submitting" class="loading-spinner"></span>
+              {{ isEdit ? t.update : t.create }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- 计时器确认弹窗 -->
-  <ConfirmTimerDialog
-    v-if="showTimerConfirm"
-    :visible="showTimerConfirm"
-    :title="'确认开始计时'"
-    :message="`即将为任务${props.task?.name}计时，若有特殊说明请完善下面的描述`"
-    :default-desc="props.task?.name || ''"
-    @confirm="confirmTimer"
-    @cancel="cancelTimerConfirm"
-  />
+    <!-- 计时器确认弹窗 -->
+    <ConfirmTimerDialog
+      v-if="showTimerConfirm"
+      :visible="showTimerConfirm"
+      :title="'确认开始计时'"
+      :message="`即将为任务${props.task?.name}计时，若有特殊说明请完善下面的描述`"
+      :default-desc="props.task?.name || ''"
+      @confirm="confirmTimer"
+      @cancel="cancelTimerConfirm"
+    />
+  </Teleport>
 </template>
 
 <style scoped>
@@ -1611,29 +1660,29 @@ const taskStatus = computed(() => {
 }
 
 /* 暗黑模式样式 */
-:global(.gantt-root[data-theme='dark']) .progress-input-group {
+.drawer-overlay[data-theme='dark'] .progress-input-group {
   border-color: var(--gantt-border-medium, #4c4d4f);
   background: var(--gantt-bg-primary, #2b2b2b);
 }
 
-:global(.gantt-root[data-theme='dark']) .progress-input-group:hover {
+.drawer-overlay[data-theme='dark'] .progress-input-group:hover {
   border-color: var(--gantt-primary, #409eff);
 }
 
-:global(.gantt-root[data-theme='dark']) .progress-input-group:focus-within {
+.drawer-overlay[data-theme='dark'] .progress-input-group:focus-within {
   border-color: var(--gantt-primary, #409eff);
 }
 
-:global(.gantt-root[data-theme='dark']) .progress-input {
+.drawer-overlay[data-theme='dark'] .progress-input {
   color: var(--gantt-text-primary, #e5eaf3);
   background: transparent;
 }
 
-:global(.gantt-root[data-theme='dark']) .progress-input::placeholder {
+.drawer-overlay[data-theme='dark'] .progress-input::placeholder {
   color: var(--gantt-text-placeholder, #8b949e);
 }
 
-:global(.gantt-root[data-theme='dark']) .progress-unit {
+.drawer-overlay[data-theme='dark'] .progress-unit {
   color: var(--gantt-text-secondary, #a8a8a8);
 }
 
@@ -1691,27 +1740,27 @@ const taskStatus = computed(() => {
 }
 
 /* 暗黑模式样式优化 */
-:global(.gantt-root[data-theme='dark']) .drawer-overlay {
+.drawer-overlay[data-theme='dark'] {
   background: rgba(0, 0, 0, 0.7) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .drawer-container {
+.drawer-overlay[data-theme='dark'] .drawer-container {
   box-shadow: -4px 0 15px rgba(0, 0, 0, 0.4) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .drawer-close-btn:hover {
+.drawer-overlay[data-theme='dark'] .drawer-close-btn:hover {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.1)) !important;
   border-radius: 4px;
 }
 
-:global(.gantt-root[data-theme='dark']) .form-input:focus,
-:global(.gantt-root[data-theme='dark']) .form-select:focus,
-:global(.gantt-root[data-theme='dark']) .form-textarea:focus {
+.drawer-overlay[data-theme='dark'] .form-input:focus,
+.drawer-overlay[data-theme='dark'] .form-select:focus,
+.drawer-overlay[data-theme='dark'] .form-textarea:focus {
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .form-input::placeholder,
-:global(.gantt-root[data-theme='dark']) .form-textarea::placeholder {
+.drawer-overlay[data-theme='dark'] .form-input::placeholder,
+.drawer-overlay[data-theme='dark'] .form-textarea::placeholder {
   color: var(--gantt-text-muted, #9e9e9e) !important;
 }
 
@@ -1824,24 +1873,24 @@ const taskStatus = computed(() => {
 }
 
 /* 暗黑模式 */
-:global(.gantt-root[data-theme='dark']) .resource-header {
+.drawer-overlay[data-theme='dark'] .resource-header {
   background: var(--gantt-bg-toolbar, rgba(255, 255, 255, 0.03)) !important;
   border-color: var(--gantt-border-light, rgba(255, 255, 255, 0.1)) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .resource-header-label {
+.drawer-overlay[data-theme='dark'] .resource-header-label {
   color: var(--gantt-text-secondary, #a8a8a8) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .resource-item {
+.drawer-overlay[data-theme='dark'] .resource-item {
   background: var(--gantt-bg-secondary, rgba(255, 255, 255, 0.05)) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .btn-remove-resource:hover {
+.drawer-overlay[data-theme='dark'] .btn-remove-resource:hover {
   background: var(--gantt-danger-dark, rgba(245, 108, 108, 0.2)) !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .btn-add-resource:hover {
+.drawer-overlay[data-theme='dark'] .btn-add-resource:hover {
   background: var(--gantt-primary-dark, rgba(64, 158, 255, 0.2)) !important;
 }
 </style>

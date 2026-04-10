@@ -89,7 +89,17 @@ const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
 const { viewMode } = useViewMode()
 
 // 从 GanttChart 注入资源布局信息
-const resourceTaskLayouts = inject<ComputedRef<Map<string, { taskRowMap: Map<string | number, number>, rowHeights: number[], totalHeight: number }>>>('resourceTaskLayouts', computed(() => new Map()))
+const resourceTaskLayouts = inject<
+  ComputedRef<
+    Map<
+      string,
+      { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+    >
+  >
+>(
+  'resourceTaskLayouts',
+  computed(() => new Map())
+)
 
 // v1.9.0 Detect if current row is a resource
 const isResourceRow = computed(() => {
@@ -116,9 +126,18 @@ const rowHeight = computed(() => {
 })
 
 // 注入右键菜单配置
-const enableTaskListContextMenu = inject<ComputedRef<boolean>>('enable-task-list-context-menu', computed(() => true))
-const hasTaskListContextMenuSlot = inject<ComputedRef<boolean>>('task-list-context-menu-slot', computed(() => false))
-const declarativeTaskListContextMenu = inject<ComputedRef<any>>('declarative-task-list-context-menu', computed(() => null))
+const enableTaskListContextMenu = inject<ComputedRef<boolean>>(
+  'enable-task-list-context-menu',
+  computed(() => true)
+)
+const hasTaskListContextMenuSlot = inject<ComputedRef<boolean>>(
+  'task-list-context-menu-slot',
+  computed(() => false)
+)
+const declarativeTaskListContextMenu = inject<ComputedRef<any>>(
+  'declarative-task-list-context-menu',
+  computed(() => null)
+)
 
 // 判断是否应该显示任何右键菜单
 const shouldShowAnyContextMenu = computed(() => {
@@ -162,14 +181,25 @@ const taskRef = toRef(props, 'task')
 const levelRef = toRef(props, 'level')
 
 // 使用 composables
-const { indent, hasChildren, isStoryTask, isMilestoneGroup, isMilestoneTask, isParentTask, isOvertime, overdueDays, progressClass, customRowClass, customRowStyle } =
-  useTaskRowState(
-    taskRef,
-    levelRef,
-    computed(() => props.rowIndex),
-    computed(() => props.taskListRowClassName),
-    computed(() => props.taskListRowStyle),
-  )
+const {
+  indent,
+  hasChildren,
+  isStoryTask,
+  isMilestoneGroup,
+  isMilestoneTask,
+  isParentTask,
+  isOvertime,
+  overdueDays,
+  progressClass,
+  customRowClass,
+  customRowStyle,
+} = useTaskRowState(
+  taskRef,
+  levelRef,
+  computed(() => props.rowIndex),
+  computed(() => props.taskListRowClassName),
+  computed(() => props.taskListRowStyle)
+)
 
 const { hasColumnSlot, renderColumnSlot } = useTaskRowColumnSlots()
 
@@ -181,8 +211,11 @@ const { isFirstColumn, getDeclarativeColumnAlign, renderDeclarativeColumn } =
     isStoryTask,
     hasChildren,
     computed(() => props.showTaskIcon),
-    computed(() => props.rowIndex),
+    computed(() => props.rowIndex)
   )
+
+// 内置右键菜单组件实例 ref，用于精准识别内置菜单 DOM，避免 class 名冲突
+const taskContextMenuRef = ref<InstanceType<typeof TaskContextMenu> | null>(null)
 
 const {
   contextMenuVisible,
@@ -194,7 +227,7 @@ const {
   timerElapsed,
   formattedTimer,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-} = useTaskRowContextMenu(taskRef, emit as any)
+} = useTaskRowContextMenu(taskRef, emit as any, taskContextMenuRef)
 
 // 包装 handleContextMenu 以添加权限检查
 const handleContextMenu = (event: MouseEvent) => {
@@ -228,7 +261,7 @@ const {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit as any,
   props.dragStart,
-  props.dragOver,
+  props.dragOver
 )
 
 // 计算实际要渲染的列
@@ -308,9 +341,10 @@ const assigneeDisplayData = computed(() => {
   }
 
   // 如果没有avatar，从assignee生成文字头像
-  const displayAvatars = avatarList.length > 0
-    ? avatarList.map(url => ({ type: 'image', url }))
-    : assigneeList.map(name => ({ type: 'text', name }))
+  const displayAvatars =
+    avatarList.length > 0
+      ? avatarList.map(url => ({ type: 'image', url }))
+      : assigneeList.map(name => ({ type: 'text', name }))
 
   // 生成显示的名称文本（换行拼接）
   const nameText = assigneeList.join('\n') || '-'
@@ -331,7 +365,7 @@ const assigneeDisplayData = computed(() => {
       :data-task-id="props.task.id"
       :class="{
         'task-row-hovered': isHovered,
-        'task-type-resource': isResourceRow, /* v1.9.0 资源视图始终显示左边框 */
+        'task-type-resource': isResourceRow /* v1.9.0 资源视图始终显示左边框 */,
         'parent-task': isParentTask,
         'milestone-group-row': isMilestoneGroup,
         'task-type-story': isStoryTask,
@@ -415,16 +449,8 @@ const assigneeDisplayData = computed(() => {
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                d="M12 2L2 20h20L12 2z"
-                fill="var(--gantt-danger, #f56c6c)"
-              />
-              <path
-                d="M12 8v6M12 16h.01"
-                stroke="#fff"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
+              <path d="M12 2L2 20h20L12 2z" fill="var(--gantt-danger, #f56c6c)" />
+              <path d="M12 8v6M12 16h.01" stroke="#fff" stroke-width="2" stroke-linecap="round" />
             </svg>
             <div v-if="(props.task as any).avatar" class="resource-avatar">
               <img :src="(props.task as any).avatar" :alt="(props.task as any).name" />
@@ -453,111 +479,120 @@ const assigneeDisplayData = computed(() => {
             :has-column-slot="hasColumnSlot"
           >
             <template #custom-task-content>
-              <slot
-                name="custom-task-content"
-                v-bind="slotPayload"
-                type="task-row"
-              />
+              <slot name="custom-task-content" v-bind="slotPayload" type="task-row" />
             </template>
           </TaskRowNameContent>
-      </div>
+        </div>
 
-      <!-- 动态渲染列 -->
-      <div
-        v-for="column in columns"
-        :key="column.key"
-        class="col"
-        :class="column.cssClass || `col-${column.key}`"
-        :style="getColumnWidthStyle ? getColumnWidthStyle(column) : undefined"
-      >
-        <!-- 里程碑分组显示空列 -->
-        <template v-if="isMilestoneGroup">
-          <div class="milestone-empty-col"></div>
-        </template>
-        <!-- 普通任务显示具体内容 -->
-        <template v-else>
-          <!-- 优先级1: 列级自定义 Slot (约定: #column-{key})，通过 renderColumnSlot 动态渲染 -->
-          <component
-            :is="() =>
-            renderColumnSlot(column.key,
-                            { task: props.task, column, value: (props.task as any)[column.key] })"
-            v-if="hasColumnSlot(column.key)"
-          />
-
-          <!-- 优先级2: Formatter 函数 -->
-          <template v-else-if="column.formatter">
-            {{ column.formatter(props.task, column) }}
+        <!-- 动态渲染列 -->
+        <div
+          v-for="column in columns"
+          :key="column.key"
+          class="col"
+          :class="column.cssClass || `col-${column.key}`"
+          :style="getColumnWidthStyle ? getColumnWidthStyle(column) : undefined"
+        >
+          <!-- 里程碑分组显示空列 -->
+          <template v-if="isMilestoneGroup">
+            <div class="milestone-empty-col"></div>
           </template>
-
-          <!-- v1.9.0 资源视图：使用formatter或直接显示资源属性 -->
-          <template v-else-if="isResourceRow">
-            {{ (props.task as any)[column.key] || '-' }}
-          </template>
-
-          <!-- 优先级3: 内置列类型渲染（任务视图） -->
-          <!-- 前置任务列 -->
-          <template v-else-if="column.key === 'predecessor'">
-            {{ formatPredecessorDisplay(props.task.predecessor) }}
-          </template>
-
-          <!-- 负责人列 -->
-          <template v-else-if="column.key === 'assignee'">
-            <div class="assignee-info">
-              <!-- 多头像容器 -->
-              <div class="assignee-avatars-container">
-                <div
-                  v-for="(avatarItem, idx) in assigneeDisplayData.avatars"
-                  :key="idx"
-                  class="avatar"
-                  :style="{
-                    zIndex: idx + 1,
-                    marginLeft: idx > 0 ? '-8px' : '0'
-                  }"
-                >
-                  <!-- 图片头像 -->
-                  <img v-if="avatarItem.type === 'image'" :src="(avatarItem as any).url" :alt="`avatar-${idx}`" />
-                  <!-- 文字头像 -->
-                  <span v-else class="avatar-text">{{ (avatarItem as any).name.charAt(0).toUpperCase() }}</span>
-                </div>
-              </div>
-              <!-- 名称显示，支持换行和超出显示... -->
-              <span class="assignee-name" :title="assigneeDisplayData.nameText">{{ assigneeDisplayData.nameText }}</span>
-            </div>
-          </template>
-
-          <!-- 开始日期列 -->
-          <template v-else-if="column.key === 'startDate'">
-            {{ props.task.startDate || '-' }}
-          </template>
-
-          <!-- 结束日期列 -->
-          <template v-else-if="column.key === 'endDate'">
-            {{ props.task.endDate || '-' }}
-          </template>
-
-          <!-- 预估工时列 -->
-          <template v-else-if="column.key === 'estimatedHours'">
-            {{ props.task.estimatedHours || '-' }}
-          </template>
-
-          <!-- 实际工时列 -->
-          <template v-else-if="column.key === 'actualHours'">
-            {{ props.task.actualHours || '-' }}
-          </template>
-
-          <!-- 进度列 -->
-          <template v-else-if="column.key === 'progress'">
-            <span class="progress-value" :class="progressClass">
-              {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
-            </span>
-          </template>
-
-          <!-- 优先级4: 默认渲染 - 自定义列通过task对象的key动态获取值 -->
+          <!-- 普通任务显示具体内容 -->
           <template v-else>
-            {{ (props.task as any)[column.key] || '-' }}
+            <!-- 优先级1: 列级自定义 Slot (约定: #column-{key})，通过 renderColumnSlot 动态渲染 -->
+            <component
+              :is="
+                () =>
+                  renderColumnSlot(column.key, {
+                    task: props.task,
+                    column,
+                    value: (props.task as any)[column.key],
+                  })
+              "
+              v-if="hasColumnSlot(column.key)"
+            />
+
+            <!-- 优先级2: Formatter 函数 -->
+            <template v-else-if="column.formatter">
+              {{ column.formatter(props.task, column) }}
+            </template>
+
+            <!-- v1.9.0 资源视图：使用formatter或直接显示资源属性 -->
+            <template v-else-if="isResourceRow">
+              {{ (props.task as any)[column.key] || '-' }}
+            </template>
+
+            <!-- 优先级3: 内置列类型渲染（任务视图） -->
+            <!-- 前置任务列 -->
+            <template v-else-if="column.key === 'predecessor'">
+              {{ formatPredecessorDisplay(props.task.predecessor) }}
+            </template>
+
+            <!-- 负责人列 -->
+            <template v-else-if="column.key === 'assignee'">
+              <div class="assignee-info">
+                <!-- 多头像容器 -->
+                <div class="assignee-avatars-container">
+                  <div
+                    v-for="(avatarItem, idx) in assigneeDisplayData.avatars"
+                    :key="idx"
+                    class="avatar"
+                    :style="{
+                      zIndex: idx + 1,
+                      marginLeft: idx > 0 ? '-8px' : '0',
+                    }"
+                  >
+                    <!-- 图片头像 -->
+                    <img
+                      v-if="avatarItem.type === 'image'"
+                      :src="(avatarItem as any).url"
+                      :alt="`avatar-${idx}`"
+                    />
+                    <!-- 文字头像 -->
+                    <span v-else class="avatar-text">{{
+                      (avatarItem as any).name.charAt(0).toUpperCase()
+                    }}</span>
+                  </div>
+                </div>
+                <!-- 名称显示，支持换行和超出显示... -->
+                <span class="assignee-name" :title="assigneeDisplayData.nameText">{{
+                  assigneeDisplayData.nameText
+                }}</span>
+              </div>
+            </template>
+
+            <!-- 开始日期列 -->
+            <template v-else-if="column.key === 'startDate'">
+              {{ props.task.startDate || '-' }}
+            </template>
+
+            <!-- 结束日期列 -->
+            <template v-else-if="column.key === 'endDate'">
+              {{ props.task.endDate || '-' }}
+            </template>
+
+            <!-- 预估工时列 -->
+            <template v-else-if="column.key === 'estimatedHours'">
+              {{ props.task.estimatedHours || '-' }}
+            </template>
+
+            <!-- 实际工时列 -->
+            <template v-else-if="column.key === 'actualHours'">
+              {{ props.task.actualHours || '-' }}
+            </template>
+
+            <!-- 进度列 -->
+            <template v-else-if="column.key === 'progress'">
+              <span class="progress-value" :class="progressClass">
+                {{ props.task.progress != null ? props.task.progress + '%' : '-' }}
+              </span>
+            </template>
+
+            <!-- 优先级4: 默认渲染 - 自定义列通过task对象的key动态获取值 -->
+            <template v-else>
+              {{ (props.task as any)[column.key] || '-' }}
+            </template>
           </template>
-        </template>
-      </div>
+        </div>
       </template>
       <!-- 结束默认渲染模式 -->
     </div>
@@ -571,6 +606,7 @@ const assigneeDisplayData = computed(() => {
     <!-- 默认右键菜单 -->
     <TaskContextMenu
       v-if="shouldShowDefaultContextMenu"
+      ref="taskContextMenuRef"
       :visible="contextMenuVisible"
       :task="contextMenuTask"
       :position="contextMenuPosition"
@@ -585,7 +621,11 @@ const assigneeDisplayData = computed(() => {
     <!-- 声明式右键菜单 -->
     <Teleport to="body">
       <div
-        v-if="shouldShowCustomContextMenu && contextMenuVisible && declarativeTaskListContextMenu?.defaultSlot"
+        v-if="
+          shouldShowCustomContextMenu &&
+          contextMenuVisible &&
+          declarativeTaskListContextMenu?.defaultSlot
+        "
         class="gantt-context-menu-wrapper"
         :style="{
           position: 'fixed',
@@ -617,20 +657,26 @@ const assigneeDisplayData = computed(() => {
   align-items: center;
   color: var(--gantt-text-secondary);
   cursor: pointer;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
   z-index: 1;
   position: relative;
 }
 
 .task-row:hover {
   background-color: var(--gantt-bg-hover);
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  box-shadow:
+    0 1px 3px 0 rgba(60, 64, 67, 0.3),
+    0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
 }
 
 .task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
+  box-shadow:
+    0 1px 3px 0 rgba(60, 64, 67, 0.3),
+    0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
   z-index: 10 !important;
 }
 
@@ -641,13 +687,17 @@ const assigneeDisplayData = computed(() => {
 
 .task-row.parent-task:hover {
   background: var(--gantt-bg-hover-parent, var(--gantt-bg-hover));
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  box-shadow:
+    0 1px 3px 0 rgba(60, 64, 67, 0.3),
+    0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
 }
 
 .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent, var(--gantt-bg-hover)) !important;
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
+  box-shadow:
+    0 1px 3px 0 rgba(60, 64, 67, 0.3),
+    0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
   z-index: 10 !important;
 }
 
@@ -659,7 +709,9 @@ const assigneeDisplayData = computed(() => {
 
 .milestone-group-row:hover {
   background: linear-gradient(90deg, var(--gantt-bg-hover-parent) 0%, var(--gantt-bg-hover) 100%);
-  box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  box-shadow:
+    0 1px 3px 0 rgba(60, 64, 67, 0.3),
+    0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
   border-left-color: var(--gantt-danger, #f56c6c);
 }
@@ -871,25 +923,35 @@ const assigneeDisplayData = computed(() => {
 
 /* 暗黑模式的悬停效果 */
 :global(.gantt-root[data-theme='dark']) .task-row:hover {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row.task-row-hovered {
   background-color: var(--gantt-bg-hover) !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row.parent-task:hover {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-row.parent-task.task-row-hovered {
   background: var(--gantt-bg-hover-parent) !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15) !important;
 }
 
 :global(.gantt-root[data-theme='dark']) .milestone-group-row:hover {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* TaskRow拖拽样式 */
@@ -927,7 +989,8 @@ const assigneeDisplayData = computed(() => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

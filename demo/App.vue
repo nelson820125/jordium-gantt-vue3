@@ -834,9 +834,20 @@ const getTaskRowStyle = (row: Task, rowIndex: number) => {
 
 const handleThemeChange = (isDark: boolean) => {
   const themeText = isDark ? t.value.darkModeText : t.value.lightModeText
+  currentThemeStatus.value = isDark ? 'dark' : 'light'
   showMessage(formatTranslation('themeSwitchedTo', { theme: themeText }), 'info', {
     closable: true,
   })
+}
+
+// onSettingsConfirm 拦截示例：在保存到 localStorage 前做额外判断
+// 返回 true 允许保存，返回 false 阻止保存
+const handleSettingsConfirm = (type: 'theme' | 'language', value: string | boolean): boolean => {
+  const label = type === 'theme'
+    ? `主题 (${value ? 'dark' : 'light'})`
+    : `语言 (${value})`
+  showMessage(`[onSettingsConfirm] 允许保存设置：${label}`, 'info', { closable: true })
+  return true
 }
 
 // 从外部 MilestoneDialog 保存里程碑（新建里程碑按钮打开的对话框）
@@ -2487,6 +2498,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :on-export-csv="handleCustomCsvExport"
         :on-language-change="handleLanguageChange"
         :on-theme-change="handleThemeChange"
+        :on-settings-confirm="handleSettingsConfirm"
         :task-list-column-render-mode="taskListColumnRenderMode"
         :show-actual-taskbar="showActualTaskBar"
         :enable-task-bar-tooltip="true"
@@ -2633,7 +2645,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         <!-- 使用声明式的 TaskListContextMenu 组件 - 推荐方式 -->
         <TaskListContextMenu :task-type="['task']">
           <template #default="scope">
-            <div class="custom-menu">
+            <div class="custom-menu" :data-theme="currentThemeStatus">
               <div class="custom-menu-header">声明式 TaskList 菜单</div>
               <div class="custom-menu-item" @click="handleCustomMenuAction('extend', scope.row)">
                 ➡️ 延长任务
@@ -4901,35 +4913,35 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   margin: 4px 0;
 }
 
-/* 暗色主题下的自定义菜单 */
-:global(.gantt-root[data-theme='dark']) .custom-menu {
+/* 暗色主题下的自定义菜单（通过 data-theme 属性匹配，适配 Teleport 场景） */
+.custom-menu[data-theme='dark'] {
   background: #2a2a2a;
   border-color: #444;
 }
 
-:global(.gantt-root[data-theme='dark']) .custom-menu-header {
+.custom-menu[data-theme='dark'] .custom-menu-header {
   background: #1e1e1e;
   color: #e0e0e0;
   border-bottom-color: #444;
 }
 
-:global(.gantt-root[data-theme='dark']) .custom-menu-item {
+.custom-menu[data-theme='dark'] .custom-menu-item {
   color: #e0e0e0;
 }
 
-:global(.gantt-root[data-theme='dark']) .custom-menu-item:hover {
+.custom-menu[data-theme='dark'] .custom-menu-item:hover {
   background: #353535;
 }
 
-:global(.gantt-root[data-theme='dark']) .custom-menu-item.danger {
+.custom-menu[data-theme='dark'] .custom-menu-item.danger {
   color: #ff6b6b;
 }
 
-:global(.gantt-root[data-theme='dark']) .custom-menu-item.danger:hover {
+.custom-menu[data-theme='dark'] .custom-menu-item.danger:hover {
   background: #3a2020;
 }
 
-:global(.gantt-root[data-theme='dark']) .custom-menu-divider {
+.custom-menu[data-theme='dark'] .custom-menu-divider {
   background: #444;
 }
 

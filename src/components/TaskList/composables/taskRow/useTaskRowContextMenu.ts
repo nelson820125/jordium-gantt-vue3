@@ -9,6 +9,8 @@ export function useTaskRowContextMenu(
   task: Ref<Task>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit: (...args: any[]) => void,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  defaultMenuRef?: Ref<{ menuRef: HTMLElement | null } | null>
 ) {
   // 右键菜单相关状态
   const contextMenuVisible = ref(false)
@@ -66,7 +68,7 @@ export function useTaskRowContextMenu(
           updateTimer()
         }
       },
-      { immediate: true },
+      { immediate: true }
     )
   }
 
@@ -101,9 +103,9 @@ export function useTaskRowContextMenu(
     if (!contextMenuVisible.value) return
 
     const target = event.target as HTMLElement
-    // 检查点击是否在右键菜单内部
-    const contextMenuElement = document.querySelector('.task-context-menu')
-    if (contextMenuElement && contextMenuElement.contains(target)) {
+    // 精准检查：通过组件实例 ref 获取内置菜单的真实 DOM，避免 class 名冲突
+    const defaultMenuEl = defaultMenuRef?.value?.menuRef
+    if (defaultMenuEl && defaultMenuEl.contains(target)) {
       return
     }
 

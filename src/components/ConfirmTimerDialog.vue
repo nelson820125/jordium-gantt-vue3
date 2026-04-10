@@ -18,7 +18,7 @@ watch(
   () => props.visible,
   v => {
     if (v) desc.value = props.defaultDesc
-  },
+  }
 )
 const onConfirm = () => emit('confirm', desc.value)
 const messageTaskName = computed(() => {
@@ -46,8 +46,12 @@ const messageTaskName = computed(() => {
         rows="3"
       ></textarea>
       <div class="dialog-actions">
-        <button class="gantt-btn gantt-btn-default" @click="$emit('cancel')">{{ t('cancel') }}</button>
-        <button class="gantt-btn gantt-btn-confirm" @click="onConfirm">{{ t('startTimer') }}</button>
+        <button class="gantt-btn gantt-btn-default" @click="$emit('cancel')">
+          {{ t('cancel') }}
+        </button>
+        <button class="gantt-btn gantt-btn-confirm" @click="onConfirm">
+          {{ t('startTimer') }}
+        </button>
       </div>
     </div>
   </div>
@@ -78,7 +82,7 @@ const messageTaskName = computed(() => {
   gap: 16px;
 }
 
-:global(.gantt-root[data-theme='dark']) .confirm-timer-dialog {
+:global([data-theme='dark']) .confirm-timer-dialog {
   background: var(--gantt-bg-primary, #6b6b6b);
 }
 .dialog-message {

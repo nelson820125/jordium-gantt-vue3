@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2026-04-10
+
+### Fixed
+- 🔧 修复：TaskContextMenu内置ClassName，导致特定条件下无法自动关闭
+- 🔧 修复：expand-all属性设置不生效问题
+- 🔧 修复：弱点修复-vite & lodash
+- 🔧 修复：内置ConfirmDialog确认和取消问题，影响语言和主题切换
+- 🔧 修复：内置MilestoneDialog和TaskDrawer组件升级到Body层级
+- 🔧 修复：内置ContextMenu跟随主题切换，自定义ContextMenu亦可通过Theme传递完成主题切换
+- 🔧 Fixed: Built-in ClassName in TaskContextMenu caused it to not auto-close under certain conditions
+- 🔧 Fixed: expand-all prop not taking effect
+- 🔧 Fixed: Vulnerability fixes for vite & lodash
+- 🔧 Fixed: Issues with built-in ConfirmDialog's confirm and cancel actions affecting language and theme switching
+- 🔧 Fixed: Upgraded built-in MilestoneDialog and TaskDrawer components to the Body level
+- 🔧 Fixed: Built-in ContextMenu now follows theme switching, and custom ContextMenu can also switch themes through Theme
+
 ## [1.11.1] - 2026-04-09
 
 ### Fixed

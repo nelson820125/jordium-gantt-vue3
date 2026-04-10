@@ -64,8 +64,9 @@
   --gantt-z-bar: 10; /* task-bar 基础层 */
 }
 
-/* 暗黑主题 */
-.gantt-root[data-theme='dark'] {
+/* 暗黑主题：同时支持 .gantt-root 内部继承和 Teleport 元素自身携带 data-theme */
+.gantt-root[data-theme='dark'],
+[data-theme='dark'] {
   /* 背景色 - 大幅提升亮度，接近中性灰 */
   --gantt-bg-primary: #6b6b6b; /* Body主体 - 明显更亮，接近中性灰 */
   --gantt-bg-secondary: #4b4b4b; /* Header背景 - 中等亮度，保持层次 */

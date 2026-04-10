@@ -43,7 +43,8 @@ const onNo = () => emit('no')
         <template v-else>
           <button type="button" class="gantt-btn gantt-btn-default" @click="onCancel">
             {{ props.cancelText }}
-          </button> &nbsp;&nbsp;
+          </button>
+          &nbsp;&nbsp;
           <button type="button" class="gantt-btn gantt-btn-danger" @click="onConfirm">
             {{ props.confirmText }}
           </button>
@@ -102,7 +103,7 @@ const onNo = () => emit('no')
   gap: 12px;
 }
 
-:global(.gantt-root[data-theme='dark']) .gantt-confirm-dialog {
+:global([data-theme='dark']) .gantt-confirm-dialog {
   background: var(--gantt-bg-secondary, #f8f9fa) !important;
   border-color: var(--gantt-border-dark, #999999) !important;
 }
