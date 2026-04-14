@@ -177,6 +177,9 @@ const messages = {
     selectTime: '选择时间',
     hour: '时',
     minute: '分',
+    // 日期选择器占位符
+    selectDate: '请选择日期',
+    to: '至',
     noParentTask: '无上级任务',
     update: '更新',
     taskNameTooLong: '任务名称不能超过50个字符',
@@ -489,7 +492,9 @@ const messages = {
     selectTime: 'Select Time',
     hour: 'Hour',
     minute: 'Minute',
-
+    // Date picker placeholders
+    selectDate: 'Select date',
+    to: 'to',
     noParentTask: 'No Parent Task',
     update: 'Update',
     taskNameTooLong: 'Task name cannot exceed 50 characters',

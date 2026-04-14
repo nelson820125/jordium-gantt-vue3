@@ -19,15 +19,11 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   type: 'date',
-  placeholder: '请选择日期',
-  startPlaceholder: '开始日期',
-  endPlaceholder: '结束日期',
   disabled: false,
   clearable: true,
   size: 'default',
   format: 'YYYY-MM-DD',
   valueFormat: 'YYYY-MM-DD',
-  rangeSeparator: '至',
 })
 
 const emit = defineEmits<{
@@ -38,6 +34,12 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+// Effective prop values — fall back to i18n translations when prop is not provided
+const effectivePlaceholder = computed(() => props.placeholder ?? t.value.selectDate)
+const effectiveStartPlaceholder = computed(() => props.startPlaceholder ?? t.value.startDate)
+const effectiveEndPlaceholder = computed(() => props.endPlaceholder ?? t.value.endDate)
+const effectiveRangeSeparator = computed(() => props.rangeSeparator ?? t.value.to)
 
 // 内部状态
 const isFocused = ref(false)
@@ -107,7 +109,7 @@ const displayValue = computed(() => {
       : ''
     const end = endValue.value ? formatDisplayDateTime(endValue.value, selectedTime.value) : ''
     if (start && end) {
-      return `${start} ${props.rangeSeparator} ${end}`
+      return `${start} ${effectiveRangeSeparator.value} ${end}`
     }
     return start || end || ''
   }
@@ -967,8 +969,8 @@ const timePickerStyle = computed(() => {
             class="el-input__inner-input"
             :placeholder="
               type === 'daterange'
-                ? `${startPlaceholder} ${rangeSeparator} ${endPlaceholder}`
-                : placeholder
+                ? `${effectiveStartPlaceholder} ${effectiveRangeSeparator} ${effectiveEndPlaceholder}`
+                : effectivePlaceholder
             "
             :disabled="disabled"
             readonly

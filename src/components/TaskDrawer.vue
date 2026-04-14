@@ -1328,8 +1328,8 @@ const taskStatus = computed(() => {
     <ConfirmTimerDialog
       v-if="showTimerConfirm"
       :visible="showTimerConfirm"
-      :title="'确认开始计时'"
-      :message="`即将为任务${props.task?.name}计时，若有特殊说明请完善下面的描述`"
+      :title="t.startTimer"
+      :message="`${t.timerConfirmPrefix}${props.task?.name}${t.timerConfirmSuffix}`"
       :default-desc="props.task?.name || ''"
       @confirm="confirmTimer"
       @cancel="cancelTimerConfirm"
