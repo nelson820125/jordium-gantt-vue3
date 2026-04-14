@@ -3,10 +3,10 @@ import { ref, watch, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
 const props = defineProps({
   visible: Boolean,
-  title: { type: String, default: '确认开始计时' },
+  title: { type: String, default: '' },
   message: { type: String, default: '' },
   defaultDesc: { type: String, default: '' },
-  placeholder: { type: String, default: '请输入计时说明' },
+  placeholder: { type: String, default: '' },
 })
 
 const emit = defineEmits(['confirm', 'cancel'])
