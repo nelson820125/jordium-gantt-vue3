@@ -727,5 +727,15 @@
       "🔧 Fixed: Built-in ContextMenu now follows theme switching, and custom ContextMenu can also switch themes through Theme",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to psufdjd@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.11.3",
+    "date": "2026-04-15",
+    "notes": [
+      "🔧 修复：清除代码中中文hardcode",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢来自eldrift@github的PR贡献</span>",
+      "🔧 Fixed: Removed hardcoded Chinese text in the code",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to eldrift@github for their PR contributions</span>"
+    ]
   }
 ]
