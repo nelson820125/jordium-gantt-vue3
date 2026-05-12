@@ -2508,6 +2508,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :ongoing-task-background-color="ongoingTaskBackgroundColor"
         :use-default-drawer="useDefaultDrawer"
         :enable-task-drawer-auto-close="false"
+        :row-height="30"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"

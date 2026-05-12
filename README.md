@@ -1956,7 +1956,7 @@ Customize task list display columns, width limits, etc. Task list is located on 
 | `showAllColumns` | `boolean`                | `true`            | Whether to show all columns. When `true`, ignores `visible` setting in `columns`                                 |
 | `defaultWidth`   | `number \| string`       | `320`             | Default expanded width. Supports pixel number (like `320`) or percentage string (like `'30%'`)                   |
 | `minWidth`       | `number \| string`       | `280`             | Minimum width. Supports pixel number (like `280`) or percentage string (like `'20%'`). Cannot be less than 280px |
-| `maxWidth`       | `number \| string`       | `1160`            | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`)                           |
+| `maxWidth`       | `number \| string`       | `1160`            | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`). When all visible columns have explicit widths, this value is automatically capped to the effective total column width to prevent a blank area on the right side |
 | `showTaskIcon`       | `boolean`       | `true`  | Whether to show Tasks' icons                |
 
 **TaskListColumnConfig Type Definition：**

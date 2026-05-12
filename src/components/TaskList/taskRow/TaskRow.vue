@@ -115,14 +115,20 @@ const isResourceOverloadedComputed = computed(() => {
   return isResourceOverloaded(resource)
 })
 
+// 注入行高配置（由 GanttChart provide）
+const ganttRowHeight = inject<ComputedRef<number>>(
+  'gantt-row-height',
+  computed(() => 51)
+)
+
 // 计算行高度 - resource视图下使用动态高度
 const rowHeight = computed(() => {
   if (isResourceRow.value) {
     const resourceId = String(props.task.id) // 转换为string
     const layout = resourceTaskLayouts.value.get(resourceId)
-    return layout?.totalHeight || 56 // v1.9.1 默认56px（51 + 5px底部padding）
+    return layout?.totalHeight || ganttRowHeight.value + 5 // v1.9.1 默认行高 + 5px底部padding
   }
-  return 51 // task视图下使用固定高度
+  return ganttRowHeight.value // task视图下使用可配置行高
 })
 
 // 注入右键菜单配置

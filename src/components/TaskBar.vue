@@ -1037,6 +1037,12 @@ const avatarList = computed(() => {
 // 判断是否已完成
 const isCompleted = computed(() => (props.task.progress || 0) >= 100)
 
+// rowHeight < 30 时实际进度条使用紧凑模式（5px高，百分比显示为右上角徽标）
+const isActualBarSmall = computed(() => !!props.showActualTaskbar && props.rowHeight < 30)
+
+// 头像尺对随行高等比缩放：rowHeight=51→1=22px，rowHeight=20→1=12px
+const avatarSize = computed(() => Math.max(12, Math.min(22, props.rowHeight - 8)))
+
 // 判断是否应该显示为暗淡（处于高亮模式但自己不是高亮的）
 const isDimmed = computed(() => {
   return props.isInHighlightMode && !props.isHighlighted && !props.isPrimaryHighlight
@@ -1162,9 +1168,9 @@ const actualBarStyle = computed(() => {
     actualWidth = duration * props.dayWidth
   }
 
-  // 实际进度条固定高度20px，垂直居中显示
-  const actualHeight = 20
-  const topOffset = (props.rowHeight - actualHeight) / 2 // 上下居中对齐
+  // 实际进度条高度随行高等比缩放；rowHeight < 30 时固定 5px
+  const actualHeight = props.rowHeight < 30 ? 5 : Math.round((props.rowHeight - 10) / 2)
+  const topOffset = (props.rowHeight - actualHeight) / 2 // 垂直居中对齐
 
   return {
     left: `${actualLeft}px`,
@@ -2374,14 +2380,14 @@ const stickyStyles = computed(() => {
   // 估算文字内容的实际位置
   const nameWidth = Math.max(nameTextWidth.value, 40) // 最小40px
   const progressWidth = 35
-  const singleAvatarWidth = 22 // 单个avatar 宽度
-  // 计算实际avatar总宽度（多个头像时会重叠，每个头像露出18px）
+  const singleAvatarWidth = avatarSize.value // 头像宽度随行高缩放
+  // 计算实际avatar总宽度（多个头像重叠，每个头像显示 82% 宽度）
   const actualAvatarCount = avatarList.value.length
   const avatarTotalWidth =
     actualAvatarCount > 0
       ? actualAvatarCount === 1
         ? singleAvatarWidth
-        : singleAvatarWidth + (actualAvatarCount - 1) * 18
+        : singleAvatarWidth + (actualAvatarCount - 1) * Math.round(singleAvatarWidth * 0.82)
       : 0
   const handleWidth = actualHandleWidth.value // 拉伸手柄宽度
 
@@ -3012,8 +3018,7 @@ const getAvatarStyles = () => {
 // 计算 avatar 是否应该渲染在外框边缘
 const shouldRenderAvatarOutside = computed(() => {
   const taskWidth = parseInt(taskBarStyle.value.width)
-  const avatarWidth = 22
-  return taskWidth - 10 < avatarWidth
+  return taskWidth - 10 < avatarSize.value
 })
 
 // 计算 resize-handle 的样式
@@ -3480,11 +3485,13 @@ const handleAnchorDragEnd = (anchorEvent: {
         boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40` /* 使用TaskBar颜色的阴影，移除白边 */,
       }"
     >
-      <div class="actual-bar-content">
+      <div v-if="!isActualBarSmall" class="actual-bar-content">
         <span class="actual-progress">{{ task.progress || 0 }}%</span>
       </div>
+      <!-- rowHeight < 30 时百分比展示为右上角徽标 -->
+      <span v-else class="actual-progress-badge">{{ task.progress || 0 }}%</span>
       <!-- 头像和标题放置在实际TaskBar尾部外面 -->
-      <div class="actual-bar-trailing">
+      <div v-if="!isActualBarSmall" class="actual-bar-trailing">
         <!-- 实际TaskBar的多头像容器 -->
         <div
           v-if="barConfig.showAvatar && viewMode !== 'resource' && avatarList.length > 0"
@@ -3708,7 +3715,9 @@ const handleAnchorDragEnd = (anchorEvent: {
             }"
             :style="{
               zIndex: index + 1,
-              marginLeft: index > 0 ? '-8px' : '0',
+              width: `${avatarSize}px`,
+              height: `${avatarSize}px`,
+              marginLeft: index > 0 ? `-${Math.round(avatarSize * 0.36)}px` : '0',
             }"
           >
             <!-- 文字头像（从assignee生成） -->
@@ -4313,8 +4322,8 @@ const handleAnchorDragEnd = (anchorEvent: {
 /* 实际进度条样式 - 独立在顶层渲染 */
 .actual-bar {
   position: absolute;
-  height: 20px !important; /* 固定高度，比计划条窄 */
-  border-radius: 10px; /* 两头圆形，高度20px的50% */
+  /* height 由 actualBarStyle 动态设置，随行高等比缩放 */
+  border-radius: 10px; /* 两头圆形 */
   /* 边框通过内联样式设置，使用TaskBar颜色 */
   /* 阴影通过JS动态设置，使用TaskBar的颜色 */
   z-index: var(--gantt-z-bar-actual); /* 高于计划条的 --gantt-z-bar */
@@ -4323,7 +4332,24 @@ const handleAnchorDragEnd = (anchorEvent: {
   user-select: none;
   pointer-events: none; /* 不响应鼠标事件，避免干扰计划条的交互 */
   opacity: 1; /* 完全不透明，实际条要清晰可见 */
+  overflow: visible; /* 允许徽标溢出展示 */
   /* 背景色通过内联样式设置，但会在filter中加白和增加透明度 */
+}
+
+/* rowHeight < 30 时百分比徽标（浮于 bar 右上角） */
+.actual-progress-badge {
+  position: absolute;
+  bottom: calc(100% + 1px);
+  right: 2px;
+  font-size: 9px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 1px 3px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* 实际TaskBar的dimmed状态 - 确保在蒙版之下 */

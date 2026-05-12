@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.4] - 2026-05-12
+
+### Fixed
+- 🔧 修复：TaskList 列宽总和小于 `maxWidth` 时，`maxWidth` 自动收紧为列宽总和，消除右侧空白
+- 🔧 Fixed: TaskList `maxWidth` is now auto-capped to total column width when columns are narrower, eliminating blank space on the right
+
 ## [1.11.3] - 2026-04-15
 
 ### Fixed

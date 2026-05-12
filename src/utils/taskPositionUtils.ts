@@ -18,16 +18,8 @@
 import type { PositionCache } from './positionCache'
 import { TimelineScale } from '../models/types/TimelineScale'
 
-/** 任务视图每行高度（px），与 Timeline.vue 中的 ROW_HEIGHT 保持一致 */
-const ROW_HEIGHT = 51
-/** TaskBar 高度 = ROW_HEIGHT - 10 */
-const TASK_BAR_HEIGHT = ROW_HEIGHT - 10 // 41
 /** TaskBar 边框宽度（border: 2px solid，无 box-sizing: border-box） */
 const TASK_BAR_BORDER_WIDTH = 2
-/** TaskBar 在行内的顶部偏移（考虑 border 的实际渲染高度） */
-const TASK_BAR_TOP_OFFSET = Math.floor(
-  (ROW_HEIGHT - TASK_BAR_HEIGHT - TASK_BAR_BORDER_WIDTH * 2) / 2
-) // 3
 
 /** 根据 dayWidth 计算小时视图每分钟像素数（dayWidth = hourCellWidth * 24） */
 function getPixelPerMinute(dayWidth: number): number {
@@ -83,6 +75,7 @@ function toDateOnly(d: Date): Date {
  * @param cache          positionCache 实例（Timeline.vue provide）
  * @param dayWidth       当前刻度下每天的像素宽度（用于 cache miss 时的估算）
  * @param baseStartDate  时间线基准开始日期（HOUR 视图必须传入，其他视图可省略）
+ * @param rowHeight      路行高度（px），默认51
  * @returns              逻辑坐标，若无法计算（日期缺失或范围外）则返回 null
  */
 export function computeTaskViewLogicalPosition(
@@ -91,9 +84,12 @@ export function computeTaskViewLogicalPosition(
   timeScale: TimelineScale,
   cache: PositionCache | null,
   dayWidth: number,
-  baseStartDate?: Date | null
+  baseStartDate?: Date | null,
+  rowHeight = 51
 ): LogicalBarPosition | null {
-  const top = rowIndex * ROW_HEIGHT + TASK_BAR_TOP_OFFSET
+  const taskBarHeight = rowHeight - 10
+  const taskBarTopOffset = Math.floor((rowHeight - taskBarHeight - TASK_BAR_BORDER_WIDTH * 2) / 2)
+  const top = rowIndex * rowHeight + taskBarTopOffset
 
   // ── HOUR 视图：分钟级精确计算（与 TaskBar.vue HOUR 分支完全一致）──────────────
   if (timeScale === TimelineScale.HOUR) {
@@ -132,7 +128,7 @@ export function computeTaskViewLogicalPosition(
     const left = Math.max(0, startMins * pixelPerMinute)
     const width = Math.max(4, (endMins - startMins) * pixelPerMinute)
 
-    return { left, top, width, height: TASK_BAR_HEIGHT }
+    return { left, top, width, height: taskBarHeight }
   }
 
   // ── 其他视图：使用 positionCache O(1) 查表 ─────────────────────────────────
@@ -167,5 +163,5 @@ export function computeTaskViewLogicalPosition(
           )
   }
 
-  return { left, top, width, height: TASK_BAR_HEIGHT }
+  return { left, top, width, height: taskBarHeight }
 }

@@ -211,8 +211,15 @@ const showConflicts = inject<ComputedRef<boolean>>(
   computed(() => true)
 )
 
+// 注入行高配置（由 GanttChart provide）
+const ganttRowHeight = inject<ComputedRef<number>>(
+  'gantt-row-height',
+  computed(() => 51)
+)
+
 // 纵向虚拟滚动相关状态（需要在useResourceLayout之前定义）
-const ROW_HEIGHT = 51 // 每行高度51px (50px + 1px border)
+// ROW_HEIGHT 通过 ganttRowHeight.value 访问，让下面所有使用处保持兼容
+const ROW_HEIGHT_LEGACY = ganttRowHeight // 别名，以便在 computed 中访问 .value
 const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
 const timelineBodyScrollTop = ref(0) // 纵向滚动位置
 // 滚动同步标志位：防止 TaskList ↔ Timeline 垂直滚动形成 2 跳循环派发
@@ -2035,10 +2042,10 @@ const visibleTaskRange = computed(() => {
       const rowTop = resourceRowPositions.value?.get(resourceId) || 0
       // v1.9.9 从 resourceTaskLayouts 直接获取布局
       const layout = resourceTaskLayouts.value.get(resourceId)
-      const rowHeight = layout?.totalHeight || ROW_HEIGHT
+      const rowHeight = layout?.totalHeight || ganttRowHeight.value
       const rowBottom = rowTop + rowHeight
 
-      if (rowBottom >= scrollTop - ROW_HEIGHT * VERTICAL_BUFFER) {
+      if (rowBottom >= scrollTop - ganttRowHeight.value * VERTICAL_BUFFER) {
         startIndex = i
         break
       }
@@ -2050,7 +2057,7 @@ const visibleTaskRange = computed(() => {
       const resourceId = resources[i].id
       const rowTop = resourceRowPositions.value?.get(resourceId) || 0
 
-      if (rowTop > scrollBottom + ROW_HEIGHT * VERTICAL_BUFFER) {
+      if (rowTop > scrollBottom + ganttRowHeight.value * VERTICAL_BUFFER) {
         endIndex = i
         break
       }
@@ -2062,8 +2069,9 @@ const visibleTaskRange = computed(() => {
     }
   } else {
     // 任务视图：使用固定行高计算
-    const startIndex = Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER
-    const endIndex = Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER
+    const startIndex = Math.floor(scrollTop / ganttRowHeight.value) - VERTICAL_BUFFER
+    const endIndex =
+      Math.ceil((scrollTop + containerHeight) / ganttRowHeight.value) + VERTICAL_BUFFER
 
     return {
       startIndex: Math.max(0, startIndex),
@@ -2927,14 +2935,14 @@ const contentHeight = computed(() => {
     resources.forEach(resource => {
       // v1.9.9 从 resourceTaskLayouts 直接获取布局
       const layout = resourceTaskLayouts.value.get(resource.id)
-      totalHeight += layout?.totalHeight || 51
+      totalHeight += layout?.totalHeight || ganttRowHeight.value
     })
 
     return Math.max(totalHeight, minHeight, timelineBodyHeight.value)
   }
 
-  // 任务视图：每个任务行高度51px (50px + 1px border)
-  const rowHeight = 51
+  // 任务视图：每个任务行高度取自 ganttRowHeight
+  const rowHeight = ganttRowHeight.value
   const taskCount = tasks.value.length
   const minHeightFromTasks = taskCount * rowHeight
 
@@ -4054,7 +4062,8 @@ function _runSeedChunk(deadline?: IdleDeadline) {
       scale as any,
       positionCache,
       dw,
-      baseStart
+      baseStart,
+      ganttRowHeight.value
     )
     if (pos) chunkResult[task.id as number] = pos
     _seedIndex++
@@ -4674,7 +4683,7 @@ const handleResourceTaskBarDrop = (event: Event) => {
     const rowTop = resourceRowPositions.value.get(resourceId) || 0
     // v1.9.9 从resoureTaskLayouts直接获取布局
     const layout = resourceTaskLayouts.value.get(resourceId)
-    const rowHeight = layout?.totalHeight || 51
+    const rowHeight = layout?.totalHeight || ganttRowHeight.value
     const rowCenter = rowTop + rowHeight / 2
     const distance = Math.abs(relativeY - rowCenter)
 
@@ -5012,7 +5021,7 @@ const handleDragBoundaryCheck = (event: CustomEvent) => {
       const rowTop = resourceRowPositions.value.get(resourceId) || 0
       // v1.9.9 从resoureTaskLayouts直接获取布局
       const layout = resourceTaskLayouts.value.get(resourceId)
-      const rowHeight = layout?.totalHeight || 51
+      const rowHeight = layout?.totalHeight || ganttRowHeight.value
       const rowCenter = rowTop + rowHeight / 2
       const distance = Math.abs(relativeY - rowCenter)
 
@@ -6251,7 +6260,7 @@ const handleAddSuccessor = (task: Task) => {
               :key="task.id"
               class="task-row"
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
-              :style="{ top: `${originalIndex * 51}px` }"
+              :style="{ top: `${originalIndex * ganttRowHeight}px`, height: `${ganttRowHeight}px` }"
               @mouseenter="handleTaskRowHover(task.id)"
               @mouseleave="handleTaskRowHover(null)"
             >
@@ -6261,7 +6270,7 @@ const handleAddSuccessor = (task: Task) => {
                   v-for="milestone in task.children"
                   :key="milestone.id"
                   :date="milestone.startDate || ''"
-                  :row-height="51"
+                  :row-height="ganttRowHeight"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6297,7 +6306,7 @@ const handleAddSuccessor = (task: Task) => {
                 <MilestonePoint
                   :key="task.id"
                   :date="task.startDate || ''"
-                  :row-height="51"
+                  :row-height="ganttRowHeight"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6334,7 +6343,7 @@ const handleAddSuccessor = (task: Task) => {
                 :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                 :task="task"
                 :row-index="originalIndex"
-                :row-height="51"
+                :row-height="ganttRowHeight"
                 :day-width="dayWidth"
                 :start-date="
                   currentTimeScale === TimelineScale.YEAR
@@ -6413,7 +6422,7 @@ const handleAddSuccessor = (task: Task) => {
               :class="{ 'task-row-hovered': hoveredTaskId === resource.id }"
               :style="{
                 top: `${resourceRowPositions?.get(resource.id) || 0}px`,
-                height: `${resourceTaskLayouts?.get(resource.id)?.totalHeight || 51}px`,
+                height: `${resourceTaskLayouts?.get(resource.id)?.totalHeight || ganttRowHeight}px`,
               }"
               @mouseenter="handleTaskRowHover(resource.id)"
               @mouseleave="handleTaskRowHover(null)"
@@ -6425,11 +6434,13 @@ const handleAddSuccessor = (task: Task) => {
                   :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                   :task="task"
                   :row-index="originalIndex"
-                  :row-height="51"
+                  :row-height="ganttRowHeight"
                   :task-sub-row="
                     resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0
                   "
-                  :row-heights="resourceTaskLayouts?.get(resource.id)?.rowHeights || [51]"
+                  :row-heights="
+                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [ganttRowHeight]
+                  "
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6522,8 +6533,10 @@ const handleAddSuccessor = (task: Task) => {
                         ? getMonthTimelineRange().startDate
                         : timelineConfig.startDate
                   "
-                  :top-offset="7.5"
-                  :height="(resourceTaskLayouts.get(resource.id)?.totalHeight || 51) - 10"
+                  :top-offset="5.5"
+                  :height="
+                    (resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight) - 10
+                  "
                   :width="totalTimelineWidth"
                   :timeline-data="timelineData as any"
                   :current-time-scale="currentTimeScale"
@@ -7125,7 +7138,7 @@ const handleAddSuccessor = (task: Task) => {
   position: absolute;
   left: 0;
   width: 100%;
-  min-height: 51px; /** 为了对齐左侧的Task List Row高度，同时需要包含List Row的Bottom Border 1px */
+  /* height 由内联样式动态设置，与 ganttRowHeight 同步 */
   pointer-events: auto;
   z-index: var(--gantt-z-row);
   transition: background-color 0.2s ease;

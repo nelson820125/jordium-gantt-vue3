@@ -32,20 +32,36 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
 
   // v1.9.0 注入视图模式和资源布局信息
   const viewMode = inject<Ref<'task' | 'resource'>>('gantt-view-mode', ref('task'))
-  const dataSource = inject<ComputedRef<Task[] | Resource[]>>('gantt-data-source', computed(() => []))
-  const resourceTaskLayouts = inject<ComputedRef<Map<string | number, {
-    taskRowMap: Map<string | number, number>,
-    rowHeights: number[],
-    totalHeight: number
-  }>>>('resourceTaskLayouts', computed(() => new Map()))
+  const dataSource = inject<ComputedRef<Task[] | Resource[]>>(
+    'gantt-data-source',
+    computed(() => [])
+  )
+  const resourceTaskLayouts = inject<
+    ComputedRef<
+      Map<
+        string | number,
+        {
+          taskRowMap: Map<string | number, number>
+          rowHeights: number[]
+          totalHeight: number
+        }
+      >
+    >
+  >(
+    'resourceTaskLayouts',
+    computed(() => new Map())
+  )
+
+  // 注入行高配置（由 GanttChart provide）
+  const ganttRowHeight = inject<ComputedRef<number>>(
+    'gantt-row-height',
+    computed(() => 51)
+  )
 
   /**
    * 获取当前折叠状态下的可见任务列表（扁平化）
    */
-  const getFlattenedVisibleTasks = (
-    taskList: Task[],
-    level = 0,
-  ): TaskWithLevel[] => {
+  const getFlattenedVisibleTasks = (taskList: Task[], level = 0): TaskWithLevel[] => {
     const result: TaskWithLevel[] = []
 
     for (const task of taskList) {
@@ -76,7 +92,7 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
     let cumulative = 0
     resources.forEach(resource => {
       const layout = resourceTaskLayouts.value.get(resource.id)
-      const height = layout?.totalHeight || ROW_HEIGHT
+      const height = layout?.totalHeight || ganttRowHeight.value
       cumulative += height
       heights.push(cumulative)
     })
@@ -117,17 +133,23 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
       const total = (dataSource.value as Resource[]).length
       let startIndex = Math.max(0, findIndexByScrollTop(scrollTop) - VERTICAL_BUFFER)
       const scrollBottom = scrollTop + containerHeight
-      let endIndex = Math.min(heights.length - 1, findIndexByScrollTop(scrollBottom) + VERTICAL_BUFFER + 1)
+      let endIndex = Math.min(
+        heights.length - 1,
+        findIndexByScrollTop(scrollBottom) + VERTICAL_BUFFER + 1
+      )
       return {
         startIndex: Math.min(startIndex, total),
         endIndex: Math.min(endIndex, total),
       }
     } else {
-      // 任务视图：固定行高 ROW_HEIGHT，O(1) 直接计算，不访问 cumulativeHeights
+      // 任务视图：固定行高由 ganttRowHeight 提供，O(1) 直接计算，不访问 cumulativeHeights
       const total = flattenedTasks.value.length
       if (total === 0) return { startIndex: 0, endIndex: 0 }
-      const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - VERTICAL_BUFFER)
-      const endIndex = Math.min(total, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + VERTICAL_BUFFER)
+      const startIndex = Math.max(0, Math.floor(scrollTop / ganttRowHeight.value) - VERTICAL_BUFFER)
+      const endIndex = Math.min(
+        total,
+        Math.ceil((scrollTop + containerHeight) / ganttRowHeight.value) + VERTICAL_BUFFER
+      )
       return { startIndex, endIndex }
     }
   })
@@ -153,14 +175,14 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
       const heights = cumulativeHeights.value
       return heights.length > 0 ? heights[heights.length - 1] : 0
     }
-    return flattenedTasks.value.length * ROW_HEIGHT
+    return flattenedTasks.value.length * ganttRowHeight.value
   })
 
   const startSpacerHeight = computed(() => {
     if (viewMode.value === 'resource') {
       return cumulativeHeights.value[visibleTaskRange.value.startIndex] || 0
     }
-    return visibleTaskRange.value.startIndex * ROW_HEIGHT
+    return visibleTaskRange.value.startIndex * ganttRowHeight.value
   })
 
   const endSpacerHeight = computed(() => {
@@ -169,7 +191,10 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
       const endHeight = cumulativeHeights.value[endIdx] || 0
       return Math.max(0, totalContentHeight.value - endHeight)
     }
-    return Math.max(0, (flattenedTasks.value.length - visibleTaskRange.value.endIndex) * ROW_HEIGHT)
+    return Math.max(
+      0,
+      (flattenedTasks.value.length - visibleTaskRange.value.endIndex) * ganttRowHeight.value
+    )
   })
 
   return {

@@ -17,6 +17,7 @@ import type { Milestone } from '../models/classes/Milestone'
 import type { Resource } from '../models/classes/Resource'
 import { useTaskListContextMenu } from './TaskList/composables/taskList/useTaskListContextMenu'
 import { useTaskBarContextMenu } from './Timeline/composables/useTaskBarContextMenu'
+import { parseDeclarativeColumns } from './TaskList/composables/taskList/useTaskListColumns'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import type { TaskListConfig } from '../models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../models/configs/ResourceListConfig'
@@ -82,6 +83,7 @@ const props = withDefaults(defineProps<Props>(), {
   taskListVisible: true,
   enableTaskDrawerAutoClose: true,
   scaleConfigs: undefined,
+  rowHeight: 51,
 })
 
 const emit = defineEmits([
@@ -154,6 +156,12 @@ provide(
   computed(() => props.showTaskbarTab)
 )
 
+// 提供行高配置给所有子组件（Timeline、TaskList、TaskRow 等均通过 inject 消费）
+provide(
+  'gantt-row-height',
+  computed(() => Math.max(30, props.rowHeight ?? 51))
+)
+
 // v2.0 性能优化：资源视图布局缓存（避免重复计算）
 const resourceLayoutCache = new Map<
   string,
@@ -186,7 +194,7 @@ const resourceTaskLayouts = computed(() => {
 
   if (currentViewMode.value === 'resource') {
     const resources = currentDataSource.value as Resource[]
-    const baseRowHeight = 51
+    const baseRowHeight = Math.max(30, props.rowHeight ?? 51)
 
     // 依赖 updateTaskTrigger 以便在任务更新时重新计算布局
     if (updateTaskTrigger.value >= 0) {
@@ -289,7 +297,7 @@ const resourceRowPositions = computed(() => {
       const resourceId = String(resource.id)
       positions.set(resourceId, cumulativeTop)
       const layout = resourceTaskLayouts.value.get(resourceId)
-      const resourceHeight = layout?.totalHeight || 51
+      const resourceHeight = layout?.totalHeight || Math.max(30, props.rowHeight ?? 51)
       cumulativeTop += resourceHeight
     })
   }
@@ -633,6 +641,11 @@ interface Props {
       }>
     >
   >
+  /**
+   * 任务行高度（px），同时影响 Timeline 和 TaskList 行高，默认 51px。
+   * 最小值为 40，否则 TaskBar 可能溢出行高。
+   */
+  rowHeight?: number
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -715,23 +728,81 @@ onUnmounted(() => {
   window.removeEventListener('resize', throttledUpdateContainerWidth)
 })
 
+/**
+ * 计算所有可见列的有效像素总宽。
+ * - 所有列都有明确宽度时返回像素值（混合像素+百分比用公式推导）；
+ * - 任意列缺少宽度、或百分比合计 >= 100% 时返回 null（无法确定固定总宽）。
+ */
+const getEffectiveColumnTotal = (): number | null => {
+  let columns: Array<{ width?: number | string; visible?: boolean }>
+  if (props.taskListColumnRenderMode === 'declarative') {
+    columns = parseDeclarativeColumns(slots)
+  } else {
+    const configColumns = props.taskListConfig?.columns
+    if (!configColumns || configColumns.length === 0) return null
+    columns = configColumns.filter(col => col.visible !== false)
+  }
+
+  if (columns.length === 0) return null
+  // 任意列未设置宽度（依赖 CSS flex-grow 填充）→ 无法汇总
+  if (columns.some(col => col.width == null)) return null
+
+  let fixedSum = 0
+  let percentSum = 0
+
+  for (const col of columns) {
+    const w = col.width!
+    if (typeof w === 'number') {
+      fixedSum += w
+    } else {
+      const trimmed = (w as string).trim()
+      if (trimmed.endsWith('%')) {
+        percentSum += parseFloat(trimmed) / 100
+      } else {
+        const parsed = parseFloat(trimmed)
+        if (isNaN(parsed)) return null
+        fixedSum += parsed
+      }
+    }
+  }
+
+  // 百分比合计 >= 100%：列已铺满容器，无法确定固定总宽
+  if (percentSum >= 1) return null
+
+  // effectiveTotal = fixedSum / (1 - percentSum)
+  // 推导：total = fixedSum + percentSum × total → total × (1 - percentSum) = fixedSum
+  return percentSum > 0 ? Math.round(fixedSum / (1 - percentSum)) : fixedSum
+}
+
 // TaskList最小宽度，支持通过taskListConfig配置（支持像素和百分比）
+// 当 configuredMin >= 列总宽时，锁定为列总宽（避免 min > max 矛盾）
 const getTaskListMinWidth = () => {
   const configMinWidth = parseWidthValue(
     props.taskListConfig?.minWidth,
     ganttContainerWidth.value,
     DEFAULT_TASK_LIST_MIN_WIDTH
   )
-  return Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH) // 确保不小于280px
+  const hardMin = Math.max(configMinWidth, DEFAULT_TASK_LIST_MIN_WIDTH)
+  const effectiveTotal = getEffectiveColumnTotal()
+  if (effectiveTotal !== null && hardMin >= effectiveTotal) {
+    // 配置的 minWidth 已超过列总宽 → 两者都锁定为列总宽，消除右侧空白且避免 min > max
+    return effectiveTotal
+  }
+  return hardMin
 }
 
 // TaskList最大宽度，支持通过taskListConfig配置（支持像素和百分比）
+// 当所有可见列均配置了明确宽度时，取 min(configuredMax, 列宽有效总和)
+// 以防止面板可拖宽超过列内容，造成右侧空白
 const getTaskListMaxWidth = () => {
-  return parseWidthValue(
+  const configuredMax = parseWidthValue(
     props.taskListConfig?.maxWidth,
     ganttContainerWidth.value,
     DEFAULT_TASK_LIST_MAX_WIDTH
   )
+  const effectiveTotal = getEffectiveColumnTotal()
+  if (effectiveTotal === null) return configuredMax
+  return Math.min(configuredMax, effectiveTotal)
 }
 
 // TaskList默认宽度，支持通过taskListConfig配置（支持像素和百分比）

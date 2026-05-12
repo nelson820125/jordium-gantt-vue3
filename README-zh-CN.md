@@ -1949,7 +1949,7 @@ const toolbarConfig: ToolbarConfig = {
 | `showAllColumns` | `boolean`                | `true`  | 是否显示所有列。`true` 时忽略 `columns` 中的 `visible` 设置                    |
 | `defaultWidth`   | `number \| string`       | `320`   | 默认展开宽度。支持像素数字（如 `320`）或百分比字符串（如 `'30%'`）             |
 | `minWidth`       | `number \| string`       | `280`   | 最小宽度。支持像素数字（如 `280`）或百分比字符串（如 `'20%'`）。不能小于 280px |
-| `maxWidth`       | `number \| string`       | `1160`  | 最大宽度。支持像素数字（如 `1160`）或百分比字符串（如 `'80%'`）                |
+| `maxWidth`       | `number \| string`       | `1160`  | 最大宽度。支持像素数字（如 `1160`）或百分比字符串（如 `'80%'`）。当所有可见列均配置了明确宽度时，该属性会自动收紧为列宽有效总和，防止面板被拖宽超过列内容宽度为对齐出现右侧空白 |
 | `showTaskIcon`       | `boolean`       | `true`  | 是否展示任务图标                |
 
 **TaskListColumnConfig 类型定义：**
