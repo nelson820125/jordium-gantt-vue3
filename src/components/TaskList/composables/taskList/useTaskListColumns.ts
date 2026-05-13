@@ -1,4 +1,12 @@
-import { computed, type VNode, type Slots, type VNodeChild, type ComputedRef } from 'vue'
+import {
+  computed,
+  watch,
+  shallowRef,
+  type VNode,
+  type Slots,
+  type VNodeChild,
+  type ComputedRef,
+} from 'vue'
 import type { Task } from '../../../../models/classes/Task'
 import type { TaskListColumnConfig } from '../../../../models/configs/TaskListConfig'
 
@@ -106,23 +114,35 @@ export function parseDeclarativeColumns(slots: Slots): DeclarativeColumnConfig[]
   extractColumns(defaultSlot)
 
   return columns
-}/**
+} /**
  * Task List Columns Composable
  * 用于管理任务列表的列配置（支持声明式和配置式）
  */
 export function useTaskListColumns(
   renderMode: ComputedRef<'default' | 'declarative'> | 'default' | 'declarative',
   slots: Slots,
-  defaultColumns?: TaskListColumnConfig[],
+  defaultColumns?: TaskListColumnConfig[]
 ) {
+  const getMode = () => (typeof renderMode === 'string' ? renderMode : renderMode.value)
+
   // 声明式列配置
-  const declarativeColumns = computed(() => {
-    const mode = typeof renderMode === 'string' ? renderMode : renderMode.value
-    if (mode !== 'declarative') {
-      return []
+  // ⚠️ 不能用 computed(() => parseDeclarativeColumns(slots))：
+  //   computed 的 getter 在响应式追踪上下文中运行，slots.default() 执行时会捕获
+  //   slot 闭包里的外部响应式变量（如 viewMode、t），导致父级任意状态变化都触发 TaskList 重渲染。
+  // 解决方案：shallowRef 存结果 + watch(source, callback)。
+  //   watch 只在 source 函数中追踪依赖（slots.default 引用 + renderMode），
+  //   callback 在非追踪上下文中运行，调用 parseDeclarativeColumns(slots) 不会订阅 slot 内部依赖。
+  // 初始值在 setup 顶层（同样是非追踪上下文）直接计算，安全。
+  const declarativeColumns = shallowRef<DeclarativeColumnConfig[]>(
+    getMode() === 'declarative' ? parseDeclarativeColumns(slots) : []
+  )
+
+  watch(
+    () => (getMode() === 'declarative' ? (slots.default ?? null) : null),
+    () => {
+      declarativeColumns.value = getMode() === 'declarative' ? parseDeclarativeColumns(slots) : []
     }
-    return parseDeclarativeColumns(slots)
-  })
+  )
 
   // 最终使用的列配置
   const finalColumns = computed(() => {
@@ -134,10 +154,7 @@ export function useTaskListColumns(
   })
 
   // 获取列宽度样式
-  const getColumnWidthStyle = (
-    column: { width?: number | string },
-    containerWidth?: number,
-  ) => {
+  const getColumnWidthStyle = (column: { width?: number | string }, containerWidth?: number) => {
     if (!column.width) return {}
 
     let widthPx: string

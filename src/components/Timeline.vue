@@ -219,7 +219,6 @@ const ganttRowHeight = inject<ComputedRef<number>>(
 
 // 纵向虚拟滚动相关状态（需要在useResourceLayout之前定义）
 // ROW_HEIGHT 通过 ganttRowHeight.value 访问，让下面所有使用处保持兼容
-const ROW_HEIGHT_LEGACY = ganttRowHeight // 别名，以便在 computed 中访问 .value
 const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
 const timelineBodyScrollTop = ref(0) // 纵向滚动位置
 // 滚动同步标志位：防止 TaskList ↔ Timeline 垂直滚动形成 2 跳循环派发

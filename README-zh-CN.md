@@ -234,6 +234,7 @@ npm run dev
 | `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许折叠/展开 TaskList 面板。`false` 时强制隐藏 TaskList、SplitterBar 及折叠按钮，Timeline 独占全宽 |
 | `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 控制 TaskList 的显隐状态（响应式）。仅在 `enableTaskListCollapsible=true` 时有效 |
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许 TaskDrawer 自动关闭（外总点击或按 Esc 时自动关闭）。设为 `false` 时禁用自动关闭，仅可通过内部按钮手动关闭 |
+| `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | 行高（px），Timeline 和 TaskList 共用同一行高。有效区间：`30`～`60`，超出范围的值将被自动截断（小于 30 截断至 30，大于 60 截断至 60）。当设置小于 40 时，TaskBar 内的任务名称和进度将自动切换为紧凑横排布局以适应小行高 |
 
 #### TaskListColumn 属性
 

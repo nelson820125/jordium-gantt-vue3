@@ -737,5 +737,19 @@
       "🔧 Fixed: Removed hardcoded Chinese text in the code",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to eldrift@github for their PR contributions</span>"
     ]
+  },
+  {
+    "version": "1.11.4",
+    "date": "2026-05-12",
+    "notes": [
+      "🎉 新增：GanttChart 新增 `rowHeight` 属性，支持自定义 Timeline 和 TaskList 的行高（px）。有效区间：30～60px，超出范围自动截断。当设置小于 40 时，TaskBar 内内容自动切换为紧凑横排布局",
+      "🔧 修复：TaskList 列宽总和小于 `maxWidth` 时，`maxWidth` 自动收紧为列宽总和，消除右侧空白",
+      "🔧 修复：修复dompurify和postcss弱点",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢yuwenkai1996@github的使用与反馈</span>",
+      "🎉 Added: GanttChart new prop `rowHeight` — customize row height (px) shared by Timeline and TaskList. Valid range: 30–60px (values out of range are clamped). When set below 40, TaskBar content automatically switches to a compact horizontal layout",
+      "🔧 Fixed: TaskList `maxWidth` is now auto-capped to total column width when columns are narrower, eliminating blank space on the right",
+      "🔧 Fixed: Vulnerabilities in dompurify and postcss",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yuwenkai1996@github for their use and feedback</span>"
+    ]
   }
 ]

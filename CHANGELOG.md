@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.11.4] - 2026-05-12
 
+### Added
+- 🎉 新增：GanttChart 新增 `rowHeight` 属性，支持自定义 Timeline 和 TaskList 的行高（px）。有效区间：30～60px，超出范围自动截断。当设置小于 40 时，TaskBar 内内容自动切换为紧凑横排布局
+- 🎉 Added: GanttChart new prop `rowHeight` — customize row height (px) shared by Timeline and TaskList. Valid range: 30–60px (values out of range are clamped). When set below 40, TaskBar content automatically switches to a compact horizontal layout
+
 ### Fixed
 - 🔧 修复：TaskList 列宽总和小于 `maxWidth` 时，`maxWidth` 自动收紧为列宽总和，消除右侧空白
+- 🔧 修复：修复dompurify和postcss弱点
 - 🔧 Fixed: TaskList `maxWidth` is now auto-capped to total column width when columns are narrower, eliminating blank space on the right
+- 🔧 Fixed: Vulnerabilities in dompurify and postcss
 
 ## [1.11.3] - 2026-04-15
 

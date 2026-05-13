@@ -3485,7 +3485,11 @@ const handleAnchorDragEnd = (anchorEvent: {
         boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40` /* 使用TaskBar颜色的阴影，移除白边 */,
       }"
     >
-      <div v-if="!isActualBarSmall" class="actual-bar-content">
+      <div
+        v-if="!isActualBarSmall"
+        class="actual-bar-content"
+        :style="rowHeight < 40 ? { fontSize: '9px' } : {}"
+      >
         <span class="actual-progress">{{ task.progress || 0 }}%</span>
       </div>
       <!-- rowHeight < 30 时百分比展示为右上角徽标 -->
@@ -3544,7 +3548,7 @@ const handleAnchorDragEnd = (anchorEvent: {
           v-if="barConfig.showTitle"
           class="actual-task-name-wrapper"
           :style="{
-            fontSize: '12px',
+            fontSize: rowHeight < 40 ? '10px' : '12px',
             color: taskStatus.color,
           }"
         >
@@ -3676,6 +3680,7 @@ const handleAnchorDragEnd = (anchorEvent: {
             isPrimaryHighlight
               ? 'grab'
               : 'move',
+          ...(rowHeight < 40 ? { flexDirection: 'row', gap: '10px', alignItems: 'center' } : {}),
         }"
         @mousedown="
           e => {
@@ -3753,7 +3758,10 @@ const handleAnchorDragEnd = (anchorEvent: {
         <div
           v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
           ref="taskBarNameRef"
-          :style="getNameStyles()"
+          :style="{
+            ...getNameStyles(),
+            ...(rowHeight < 40 ? { lineHeight: '1', fontSize: '10px' } : {}),
+          }"
         >
           <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
           <div v-else class="task-name">
@@ -3773,7 +3781,10 @@ const handleAnchorDragEnd = (anchorEvent: {
             !(showActualTaskbar && hasActualProgress)
           "
           class="task-progress"
-          :style="getProgressStyles()"
+          :style="{
+            ...getProgressStyles(),
+            ...(rowHeight < 40 ? { lineHeight: '1', fontSize: '9px' } : {}),
+          }"
         >
           {{ task.progress || 0 }}%
         </div>

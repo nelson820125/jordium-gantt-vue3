@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { ref, onUnmounted, onMounted, computed, watch, nextTick, useSlots, provide } from 'vue'
+import {
+  ref,
+  shallowRef,
+  onUnmounted,
+  onMounted,
+  computed,
+  watch,
+  nextTick,
+  useSlots,
+  provide,
+} from 'vue'
 import type { StyleValue } from 'vue'
 import TaskList from './TaskList/TaskList.vue'
 import Timeline from './Timeline.vue'
@@ -159,7 +169,7 @@ provide(
 // 提供行高配置给所有子组件（Timeline、TaskList、TaskRow 等均通过 inject 消费）
 provide(
   'gantt-row-height',
-  computed(() => Math.max(30, props.rowHeight ?? 51))
+  computed(() => Math.min(60, Math.max(30, props.rowHeight ?? 51)))
 )
 
 // v2.0 性能优化：资源视图布局缓存（避免重复计算）
@@ -194,7 +204,7 @@ const resourceTaskLayouts = computed(() => {
 
   if (currentViewMode.value === 'resource') {
     const resources = currentDataSource.value as Resource[]
-    const baseRowHeight = Math.max(30, props.rowHeight ?? 51)
+    const baseRowHeight = Math.min(60, Math.max(30, props.rowHeight ?? 51))
 
     // 依赖 updateTaskTrigger 以便在任务更新时重新计算布局
     if (updateTaskTrigger.value >= 0) {
@@ -297,7 +307,8 @@ const resourceRowPositions = computed(() => {
       const resourceId = String(resource.id)
       positions.set(resourceId, cumulativeTop)
       const layout = resourceTaskLayouts.value.get(resourceId)
-      const resourceHeight = layout?.totalHeight || Math.max(30, props.rowHeight ?? 51)
+      const resourceHeight =
+        layout?.totalHeight || Math.min(60, Math.max(30, props.rowHeight ?? 51))
       cumulativeTop += resourceHeight
     })
   }
@@ -863,6 +874,49 @@ watch(
   },
   { immediate: false, deep: true }
 )
+
+// declarative 模式专用：追踪列宽签名变化，用于触发 maxWidth/minWidth 重算
+// ⚠️ 不使用 computed：在 computed getter 内调用 parseDeclarativeColumns(slots) 会捕获
+//   slot 闭包中的 viewMode、t 等外部响应式变量，导致不必要的 TaskList 重渲染。
+// 使用 shallowRef + watch(source, callback)：
+//   source 只追踪 slots.default 引用 + renderMode prop；
+//   callback 在非追踪上下文中运行，parseDeclarativeColumns(slots) 调用不会订阅 slot 内部依赖。
+// 初始值在 setup 顶层（非追踪上下文）计算，安全。
+const declarativeColumnsSignature = shallowRef<string | null>(
+  props.taskListColumnRenderMode === 'declarative'
+    ? parseDeclarativeColumns(slots)
+        .map(c => `${c.width ?? '?'}`)
+        .join(',')
+    : null
+)
+
+watch(
+  () => (props.taskListColumnRenderMode !== 'declarative' ? null : (slots.default ?? null)),
+  () => {
+    if (props.taskListColumnRenderMode !== 'declarative') {
+      declarativeColumnsSignature.value = null
+      return
+    }
+    const cols = parseDeclarativeColumns(slots)
+    declarativeColumnsSignature.value = cols.map(c => `${c.width ?? '?'}`).join(',')
+  }
+)
+
+watch(declarativeColumnsSignature, () => {
+  if (declarativeColumnsSignature.value === null) return
+
+  // 与 taskListConfig watch 保持一致的宽度重算逻辑
+  ganttPanelLeftMinWidth.value = getTaskListMinWidth()
+  taskListBodyWidth.value = getTaskListMaxWidth()
+  taskListBodyProposedWidth.value = getTaskListMaxWidth()
+  taskListBodyWidthLimit.value = getTaskListMaxWidth()
+  ganttPanelLeftCurrentWidth.value = getTaskListMinWidth()
+
+  const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
+  if (adjustedWidth !== leftPanelWidth.value) {
+    leftPanelWidth.value = adjustedWidth
+  }
+})
 
 // Timeline组件的引用
 const timelineRef = ref<InstanceType<typeof Timeline> | null>(null)
