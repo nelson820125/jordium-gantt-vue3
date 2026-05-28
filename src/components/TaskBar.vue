@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
 import {
   ref,
@@ -178,6 +178,8 @@ interface Props {
   rowHeights?: number[]
   // v1.9.2 资源列表（用于查找资源名称等信息）
   resources?: Array<{ id: string | number; name: string; color?: string; avatar?: string }>
+  // 父级任务自动调度：true=父级Taskbar跟随子任务范围，false=保持自身设定日期（默认为true）
+  enableParentTaskAutoSchedule?: boolean
 }
 
 interface TaskStatus {
@@ -471,10 +473,21 @@ const taskBarStyle = computed(() => {
 
   const currentStartDate = tempTaskData.value?.startDate || props.task.startDate
   const currentEndDate = tempTaskData.value?.endDate || props.task.endDate
-
-  const startDate = createLocalDate(currentStartDate)
-  const endDate = createLocalDate(currentEndDate)
   const baseStart = parsedBaseStartDate.value
+
+  // 父级任务自动调度：使用子任务最早开始 / 最晚结束替换显示日期
+  const autoScheduleEnabled =
+    props.isParent &&
+    (props.enableParentTaskAutoSchedule ?? true) &&
+    childrenDateRange.value !== null
+  const startDate =
+    autoScheduleEnabled && childrenDateRange.value
+      ? childrenDateRange.value.minStart
+      : createLocalDate(currentStartDate)
+  const endDate =
+    autoScheduleEnabled && childrenDateRange.value
+      ? childrenDateRange.value.maxEnd
+      : createLocalDate(currentEndDate)
 
   // 如果startDate和endDate都不存在，返回0宽度（实际不会渲染，由shouldRenderTaskBar控制）
   if (!startDate && !endDate) {
@@ -841,6 +854,31 @@ const parsedEndDate = computed(() => createLocalDate(props.task.endDate || ''))
 // 缓存解析后的基准开始日期
 const parsedBaseStartDate = computed(() => createLocalDate(props.startDate))
 
+// 递归收集所有后代任务的日期范围（用于父级自动调度）
+const childrenDateRange = computed(() => {
+  if (!props.isParent || !props.task.children?.length) return null
+
+  const collect = (children: Task[]): { min: Date | null; max: Date | null } => {
+    let min: Date | null = null
+    let max: Date | null = null
+    for (const child of children) {
+      const s = createLocalDate(child.startDate)
+      const e = createLocalDate(child.endDate)
+      if (s && (!min || s < min)) min = s
+      if (e && (!max || e > max)) max = e
+      if (child.children?.length) {
+        const nested = collect(child.children)
+        if (nested.min && (!min || nested.min < min)) min = nested.min
+        if (nested.max && (!max || nested.max > max)) max = nested.max
+      }
+    }
+    return { min, max }
+  }
+
+  const { min, max } = collect(props.task.children)
+  return min && max ? { minStart: min, maxEnd: max } : null
+})
+
 // 判断是否应该渲染TaskBar：只考虑startDate和endDate，都不存在时不渲染
 const shouldRenderTaskBar = computed(() => {
   const currentStartDate = tempTaskData.value?.startDate || props.task.startDate
@@ -1176,6 +1214,109 @@ const actualBarStyle = computed(() => {
     left: `${actualLeft}px`,
     width: `${actualWidth}px`,
     height: `${actualHeight}px`,
+    top: `${topOffset}px`,
+  }
+})
+
+// 父级任务溢出指示条：当 enableParentTaskAutoSchedule=false 且子任务超出父级配置日期时显示
+const overflowBarStyle = computed(() => {
+  if (!props.isParent) return null
+  // 只在手动模式（auto-schedule=false）下显示溢出指示
+  if (props.enableParentTaskAutoSchedule !== false) return null
+  if (!childrenDateRange.value) return null
+
+  const { minStart, maxEnd } = childrenDateRange.value
+  const configuredStart = createLocalDate(props.task.startDate)
+  const configuredEnd = createLocalDate(props.task.endDate)
+
+  // 检查是否有溢出
+  const hasOverflow =
+    (configuredStart && minStart < configuredStart) || (configuredEnd && maxEnd > configuredEnd)
+  if (!hasOverflow) return null
+
+  const baseStartOnly = parsedBaseStartDate.value
+  if (!baseStartOnly) return null
+
+  const startDateOnly = new Date(minStart.getFullYear(), minStart.getMonth(), minStart.getDate())
+  const endDateOnly = new Date(maxEnd.getFullYear(), maxEnd.getMonth(), maxEnd.getDate())
+  const baseOnly = new Date(
+    baseStartOnly.getFullYear(),
+    baseStartOnly.getMonth(),
+    baseStartOnly.getDate()
+  )
+
+  let overflowLeft = 0
+  let overflowWidth = 4
+
+  if (
+    props.timelineData &&
+    props.currentTimeScale &&
+    (props.currentTimeScale === TimelineScale.WEEK ||
+      props.currentTimeScale === TimelineScale.MONTH ||
+      props.currentTimeScale === TimelineScale.QUARTER ||
+      props.currentTimeScale === TimelineScale.YEAR)
+  ) {
+    const startPosition = calculatePositionFromTimelineData(
+      startDateOnly,
+      props.timelineData,
+      props.currentTimeScale
+    )
+    const nextDay = new Date(endDateOnly)
+    nextDay.setDate(nextDay.getDate() + 1)
+    let endPosition = calculatePositionFromTimelineData(
+      nextDay,
+      props.timelineData,
+      props.currentTimeScale
+    )
+    if (endPosition === startPosition) {
+      endPosition =
+        calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
+        props.dayWidth
+    }
+    overflowLeft = startPosition
+    overflowWidth = Math.max(endPosition - startPosition, 4)
+  } else if (props.timelineData && props.currentTimeScale === TimelineScale.DAY) {
+    const startPosition = calculatePositionFromTimelineData(
+      startDateOnly,
+      props.timelineData,
+      props.currentTimeScale
+    )
+    const nextDay = new Date(endDateOnly)
+    nextDay.setDate(nextDay.getDate() + 1)
+    let endPosition = calculatePositionFromTimelineData(
+      nextDay,
+      props.timelineData,
+      props.currentTimeScale
+    )
+    if (endPosition === startPosition) {
+      endPosition =
+        calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
+        props.dayWidth
+    }
+    overflowLeft = startPosition
+    overflowWidth = Math.max(endPosition - startPosition, 4)
+  } else {
+    const startDiff = Math.floor(
+      (startDateOnly.getTime() - baseOnly.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
+    const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
+    const duration = daysDiff === 0 ? 1 : daysDiff + 1
+    overflowLeft = startDiff * props.dayWidth
+    overflowWidth = duration * props.dayWidth
+  }
+
+  // 父级 TaskBar 的实际视觉顶部由 CSS 决定：
+  //   .task-bar.parent-task { height: 15px !important; top: 50% !important; transform: translateY(-50%) }
+  //   故 barTop = rowHeight / 2 - 15 / 2 = (rowHeight - 15) / 2
+  const lineHeight = 4
+  const barTop = (props.rowHeight - 15) / 2
+  const topOffset = barTop - lineHeight // 红线底边紧贴父级 TaskBar 上边沿
+
+  return {
+    left: `${overflowLeft}px`,
+    width: `${overflowWidth}px`,
+    height: `${lineHeight}px`,
     top: `${topOffset}px`,
   }
 })
@@ -2774,6 +2915,13 @@ const handleBubbleMouseEnter = (event: MouseEvent) => {
       resourcePercent: resourcePercent.value,
       hasResourceConflict: props.hasResourceConflict ?? false,
       targetRect: el.getBoundingClientRect(),
+      parentAutoSchedule: props.isParent
+        ? {
+            enabled: props.enableParentTaskAutoSchedule ?? true,
+            childrenRange: childrenDateRange.value,
+            hasOverflow: !!overflowBarStyle.value,
+          }
+        : undefined,
     })
     return
   }
@@ -2889,6 +3037,13 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
         resourcePercent: resourcePercent.value,
         hasResourceConflict: props.hasResourceConflict ?? false,
         targetRect: rect,
+        parentAutoSchedule: props.isParent
+          ? {
+              enabled: props.enableParentTaskAutoSchedule ?? true,
+              childrenRange: childrenDateRange.value,
+              hasOverflow: !!overflowBarStyle.value,
+            }
+          : undefined,
       })
     }, 300) // 300ms延迟
   }
@@ -3557,6 +3712,16 @@ const handleAnchorDragEnd = (anchorEvent: {
         </div>
       </div>
     </div>
+
+    <!-- 父级任务子集溢出指示条：2px红色线，仅在 enableParentTaskAutoSchedule=false 且子任务超出父级边界时显示 -->
+    <div
+      v-if="overflowBarStyle"
+      class="parent-overflow-bar"
+      :style="{
+        ...overflowBarStyle,
+        backgroundColor: '#f56c6c',
+      }"
+    />
 
     <!-- 计划进度条（原有TaskBar） -->
     <div
@@ -4345,6 +4510,16 @@ const handleAnchorDragEnd = (anchorEvent: {
   opacity: 1; /* 完全不透明，实际条要清晰可见 */
   overflow: visible; /* 允许徽标溢出展示 */
   /* 背景色通过内联样式设置，但会在filter中加白和增加透明度 */
+}
+
+/* 父级任务子集溢出指示条：高 4px 的红色水平线，居于父级 TaskBar 上边缘之外，无交互 */
+.parent-overflow-bar {
+  position: absolute;
+  height: 4px;
+  border-radius: 2px;
+  z-index: calc(var(--gantt-z-bar) - 1); /* 低于主 task-bar，确保父级任务条遮盖中间重叠区域 */
+  pointer-events: none;
+  user-select: none;
 }
 
 /* rowHeight < 30 时百分比徽标（浮于 bar 右上角） */

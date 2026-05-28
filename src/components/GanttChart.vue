@@ -94,6 +94,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableTaskDrawerAutoClose: true,
   scaleConfigs: undefined,
   rowHeight: 51,
+  enableParentTaskAutoSchedule: true,
 })
 
 const emit = defineEmits([
@@ -132,6 +133,8 @@ const emit = defineEmits([
 
 // 根元素引用
 const ganttRootRef = ref<HTMLElement>()
+// TaskList 组件实例引用（用于读取 header scrollWidth 计算 maxWidth）
+const taskListComponentRef = ref<InstanceType<typeof TaskList> | null>(null)
 
 const { showMessage } = useMessage()
 const slots = useSlots()
@@ -657,6 +660,12 @@ interface Props {
    * 最小值为 40，否则 TaskBar 可能溢出行高。
    */
   rowHeight?: number
+  /**
+   * 父级任务自动调度（默认为 true）
+   * true：父级 TaskBar 自动跟随子任务最早开始/最晚结束日期
+   * false：父级 TaskBar 保持自身设定日期；子任务溢出时显示2px红色指示条
+   */
+  enableParentTaskAutoSchedule?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -696,22 +705,31 @@ const throttle = <T extends (...args: unknown[]) => unknown>(func: T, delay: num
   }) as T
 }
 
+/**
+ * 统一的宽度限制重算函数。
+ * 必须在 nextTick 后调用，确保 DOM 已完成本轮渲染，
+ * 从而能够通过 taskListComponentRef.getHeaderScrollWidth() 读取真实列宽。
+ */
+const refreshWidthLimits = async () => {
+  await nextTick()
+  ganttPanelLeftMinWidth.value = getTaskListMinWidth()
+  taskListBodyWidth.value = getTaskListMaxWidth()
+  taskListBodyProposedWidth.value = getTaskListMaxWidth()
+  taskListBodyWidthLimit.value = getTaskListMaxWidth()
+  ganttPanelLeftCurrentWidth.value = getTaskListMinWidth()
+  const adjusted = checkWidthLimits(leftPanelWidth.value)
+  if (adjusted !== leftPanelWidth.value) {
+    leftPanelWidth.value = adjusted
+  }
+}
+
 const updateContainerWidth = () => {
   if (ganttRootRef.value) {
     const newWidth = ganttRootRef.value.clientWidth
     if (newWidth !== ganttContainerWidth.value) {
       ganttContainerWidth.value = newWidth
-      // 容器宽度变化时，重新计算 TaskList 的宽度限制
-      ganttPanelLeftMinWidth.value = getTaskListMinWidth()
-      taskListBodyWidth.value = getTaskListMaxWidth()
-      taskListBodyProposedWidth.value = getTaskListMaxWidth()
-      taskListBodyWidthLimit.value = getTaskListMaxWidth()
-
-      // 确保当前宽度在新的限制范围内
-      const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
-      if (adjustedWidth !== leftPanelWidth.value) {
-        leftPanelWidth.value = adjustedWidth
-      }
+      // 容器宽度变化时，重新计算 TaskList 的宽度限制（含 DOM scrollWidth）
+      refreshWidthLimits()
     }
   }
 }
@@ -721,6 +739,8 @@ const throttledUpdateContainerWidth = throttle(updateContainerWidth, 100)
 
 onMounted(() => {
   updateContainerWidth()
+  // DOM 挂载后立即用真实 scrollWidth 再算一次（覆盖 setup 阶段的配置计算值）
+  refreshWidthLimits()
   // 使用节流版本监听窗口大小变化
   window.addEventListener('resize', throttledUpdateContainerWidth)
 
@@ -803,17 +823,23 @@ const getTaskListMinWidth = () => {
 }
 
 // TaskList最大宽度，支持通过taskListConfig配置（支持像素和百分比）
-// 当所有可见列均配置了明确宽度时，取 min(configuredMax, 列宽有效总和)
-// 以防止面板可拖宽超过列内容，造成右侧空白
+// 优先读取 header DOM scrollWidth（无需所有列显式配置宽度）
+// 当 DOM 尚未就绪时，退回到配置计算；最终结果不超过 configuredMax
 const getTaskListMaxWidth = () => {
   const configuredMax = parseWidthValue(
     props.taskListConfig?.maxWidth,
     ganttContainerWidth.value,
     DEFAULT_TASK_LIST_MAX_WIDTH
   )
+  // ① 优先：DOM 测量（覆盖 flex 列等无法配置计算的情况）
+  const domTotal = taskListComponentRef.value?.getHeaderScrollWidth() ?? null
+  if (domTotal !== null && domTotal > 0) return Math.min(configuredMax, domTotal)
+
+  // ② 兜底：配置计算（setup 阶段或 DOM 未就绪时）
   const effectiveTotal = getEffectiveColumnTotal()
-  if (effectiveTotal === null) return configuredMax
-  return Math.min(configuredMax, effectiveTotal)
+  if (effectiveTotal !== null) return Math.min(configuredMax, effectiveTotal)
+
+  return configuredMax
 }
 
 // TaskList默认宽度，支持通过taskListConfig配置（支持像素和百分比）
@@ -857,19 +883,8 @@ watch(
       if (newConfig.defaultWidth !== undefined) {
         leftPanelWidth.value = getTaskListDefaultWidth()
       }
-
-      // 更新最小最大宽度限制
-      ganttPanelLeftMinWidth.value = getTaskListMinWidth()
-      taskListBodyWidth.value = getTaskListMaxWidth()
-      taskListBodyProposedWidth.value = getTaskListMaxWidth()
-      taskListBodyWidthLimit.value = getTaskListMaxWidth()
-      ganttPanelLeftCurrentWidth.value = getTaskListMinWidth()
-
-      // 确保当前宽度在新的限制范围内
-      const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
-      if (adjustedWidth !== leftPanelWidth.value) {
-        leftPanelWidth.value = adjustedWidth
-      }
+      // 等 DOM 渲染后用 scrollWidth 重算宽度限制
+      refreshWidthLimits()
     }
   },
   { immediate: false, deep: true }
@@ -904,18 +919,8 @@ watch(
 
 watch(declarativeColumnsSignature, () => {
   if (declarativeColumnsSignature.value === null) return
-
-  // 与 taskListConfig watch 保持一致的宽度重算逻辑
-  ganttPanelLeftMinWidth.value = getTaskListMinWidth()
-  taskListBodyWidth.value = getTaskListMaxWidth()
-  taskListBodyProposedWidth.value = getTaskListMaxWidth()
-  taskListBodyWidthLimit.value = getTaskListMaxWidth()
-  ganttPanelLeftCurrentWidth.value = getTaskListMinWidth()
-
-  const adjustedWidth = checkWidthLimits(leftPanelWidth.value)
-  if (adjustedWidth !== leftPanelWidth.value) {
-    leftPanelWidth.value = adjustedWidth
-  }
+  // 等 DOM 渲染后用 scrollWidth 重算宽度限制
+  refreshWidthLimits()
 })
 
 // Timeline组件的引用
@@ -938,16 +943,67 @@ const triggerFullUpdate = () => {
   updateTaskTrigger.value++
 }
 
+// 父任务原始日期备份：enableParentTaskAutoSchedule=true 时子集拖拽会 mutate props.tasks 中父任务的日期
+// 在此备份用户配置的原始值，切换回 false 时可以还原
+const _originalParentDates = new Map<string | number, { startDate: string; endDate: string }>()
+
+const _backupParentDates = (tasks: Task[], reset: boolean) => {
+  if (reset) _originalParentDates.clear()
+  const walk = (list: Task[]) => {
+    for (const task of list) {
+      if (task.children && (task.children as Task[]).length > 0) {
+        // 仅在首次备份（reset）或尚未记录时写入，避免已被 mutate 的值覆盖备份
+        if (reset || !_originalParentDates.has(task.id)) {
+          _originalParentDates.set(task.id, {
+            startDate: task.startDate || '',
+            endDate: task.endDate || '',
+          })
+        }
+        walk(task.children as Task[])
+      }
+    }
+  }
+  if (tasks) walk(tasks)
+}
+
+// 立即备份（在 TaskList onMounted 之前的 setup 阶段执行）
+if (props.tasks) _backupParentDates(props.tasks, true)
+
 // 监听props.tasks变化，自动触发Timeline更新
 // 这对于TaskRow移动等操作很重要，因为外部更新tasks后需要通知Timeline重新渲染
 watch(
   () => props.tasks,
-  () => {
+  newTasks => {
+    // tasks 引用替换时重新备份原始日期
+    if (newTasks) _backupParentDates(newTasks, true)
     // props变化时清空增量追踪，执行全量更新
     triggerFullUpdate()
     // 新增：tasks 替换后重新应用折叠状态
     if (props.expandAll === false) {
       nextTick(() => collapseAllTasks())
+    }
+  }
+)
+
+// 当 enableParentTaskAutoSchedule 从 true 切换为 false 时，还原父任务原始日期
+watch(
+  () => props.enableParentTaskAutoSchedule,
+  (newVal, oldVal) => {
+    if (oldVal !== false && newVal === false && props.tasks) {
+      const restore = (list: Task[]) => {
+        for (const task of list) {
+          if (task.children && (task.children as Task[]).length > 0) {
+            const original = _originalParentDates.get(task.id)
+            if (original) {
+              task.startDate = original.startDate
+              task.endDate = original.endDate
+            }
+            restore(task.children as Task[])
+          }
+        }
+      }
+      restore(props.tasks)
+      triggerFullUpdate()
     }
   }
 )
@@ -1029,6 +1085,11 @@ watch(
     }
   }
 )
+
+// 视图模式切换后，列配置改变，需用新 header scrollWidth 重算 maxWidth
+watch(currentViewMode, () => {
+  refreshWidthLimits()
+})
 
 // 计算是否显示关闭按钮
 const showCloseButton = computed(() => {
@@ -1883,6 +1944,15 @@ const tasksForTimeline = computed(() => {
         // 父任务：先递归处理子任务
         const updatedChildren = updateParentDateRanges(task.children)
         const isParent = task.type === 'story' || true
+
+        // 禁用自动调度时，保留父任务原始配置日期，不用子集范围覆盖
+        if (!props.enableParentTaskAutoSchedule) {
+          return {
+            ...task,
+            children: updatedChildren,
+            isParent,
+          }
+        }
 
         // 重新计算父任务时间范围
         const taskWithChildren = { ...task, children: updatedChildren }
@@ -3785,6 +3855,7 @@ defineExpose({
         :style="{ width: leftPanelWidth + 'px' }"
       >
         <TaskList
+          ref="taskListComponentRef"
           :tasks="tasksForTaskList"
           :use-default-drawer="props.useDefaultDrawer"
           :task-list-config="props.taskListConfig"
@@ -3792,6 +3863,7 @@ defineExpose({
           :enable-task-row-move="props.enableTaskRowMove"
           :task-list-row-class-name="props.taskListRowClassName"
           :task-list-row-style="props.taskListRowStyle"
+          :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
           @task-collapse-change="handleTaskCollapseChange"
           @start-timer="handleStartTimer"
           @stop-timer="handleStopTimer"
@@ -3851,6 +3923,7 @@ defineExpose({
           :show-actual-taskbar="props.showActualTaskbar"
           :enable-task-bar-tooltip="props.enableTaskBarTooltip"
           :enable-milestone-tooltip="props.enableMilestoneTooltip"
+          :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
           :pending-task-background-color="props.pendingTaskBackgroundColor"
           :delay-task-background-color="props.delayTaskBackgroundColor"
           :complete-task-background-color="props.completeTaskBackgroundColor"

@@ -751,5 +751,19 @@
       "🔧 Fixed: Vulnerabilities in dompurify and postcss",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yuwenkai1996@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.11.5",
+    "date": "2026-05-28",
+    "notes": [
+      "🎉 新增：GanttChart 新增 `enableParentTaskAutoSchedule` 属性，支持父任务自动/手动调度切换。`true`（默认）：父任务 TaskBar 时间窗口自动跟随子任务拉伸；`false`：父任务显示自身配置日期，子任务超出时其 TaskBar 上方显示红色指示线",
+      "🔧 修复：`maxWidth` 收紧逻辑改为 DOM scrollWidth 测量，支持 flex 列，并在视图切换/resize 后自动重算",
+      "🔧 修复：修复弱点",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢YQ6494@gitee的使用与反馈</span>",
+      "🎉 Added: GanttChart new prop `enableParentTaskAutoSchedule` — toggle between auto and manual scheduling for parent tasks. `true` (default): parent TaskBar auto-stretches to span children's date range; `false`: parent TaskBar shows its own configured dates, with a red indicator line above when children overflow the bounds",
+      "🔧 Fixed: `maxWidth` capping logic switched to DOM scrollWidth measurement, supporting flex columns and auto-recalculating on view switch/resize",
+      "🔧 Fixed: Vulnerabilities fix",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to YQ6494@gitee for their use and feedback</span>"
+    ]
   }
 ]

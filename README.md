@@ -237,6 +237,7 @@ npm run dev
 | `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Controls TaskList visibility (reactive). Only effective when `enableTaskListCollapsible=true` |
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow TaskDrawer to auto-close (closes on outside click or Esc key). Set to `false` to disable auto-close — the drawer can only be closed via its internal close button |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | Row height (px) shared by both Timeline and TaskList. Valid range: `30`–`60`. Values below 30 are clamped to 30, values above 60 are clamped to 60. When set below 40, TaskBar content (name + progress) automatically switches to a compact horizontal layout to fit the smaller row |
+| `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to enable auto-scheduling for parent tasks. `true`: parent task's TaskBar time window automatically stretches to span the earliest start and latest end of its children. `false`: parent task displays its own configured date range; a red indicator line appears above its TaskBar when children overflow the configured bounds |
 
 #### TaskListColumn Component Props
 
@@ -1957,7 +1958,7 @@ Customize task list display columns, width limits, etc. Task list is located on 
 | `showAllColumns` | `boolean`                | `true`            | Whether to show all columns. When `true`, ignores `visible` setting in `columns`                                 |
 | `defaultWidth`   | `number \| string`       | `320`             | Default expanded width. Supports pixel number (like `320`) or percentage string (like `'30%'`)                   |
 | `minWidth`       | `number \| string`       | `280`             | Minimum width. Supports pixel number (like `280`) or percentage string (like `'20%'`). Cannot be less than 280px |
-| `maxWidth`       | `number \| string`       | `1160`            | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`). When all visible columns have explicit widths, this value is automatically capped to the effective total column width to prevent a blank area on the right side |
+| `maxWidth`       | `number \| string`       | `1160`            | Maximum width. Supports pixel number (like `1160`) or percentage string (like `'80%'`). Automatically capped to the actual rendered column total width (measured via DOM) to prevent a blank area on the right side, regardless of whether columns use explicit pixel widths or flex layout |
 | `showTaskIcon`       | `boolean`       | `true`  | Whether to show Tasks' icons                |
 
 **TaskListColumnConfig Type Definition：**

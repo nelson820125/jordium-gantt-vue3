@@ -24,6 +24,7 @@ interface Props {
   enableTaskRowMove?: boolean
   taskListRowClassName?: string | ((row: Task, rowIndex: number) => string)
   taskListRowStyle?: StyleValue | ((row: Task, rowIndex: number) => StyleValue)
+  enableParentTaskAutoSchedule?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -77,12 +78,11 @@ const finalColumnsConfig = computed(() => {
 })
 
 // 使用声明式列管理 composable
-const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } =
-  useTaskListColumns(
-    computed(() => props.taskListColumnRenderMode || 'default'),
-    slots,
-    finalColumnsConfig.value as TaskListColumnConfig[],
-  )
+const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } = useTaskListColumns(
+  computed(() => props.taskListColumnRenderMode || 'default'),
+  slots,
+  finalColumnsConfig.value as TaskListColumnConfig[]
+)
 
 // 计算实际使用的列配置
 const columnsToUse = computed(() => {
@@ -112,13 +112,8 @@ const localTasks = computed(() => {
 })
 
 // 使用布局计算 composable
-const {
-  taskListScrollTop,
-  taskListBodyHeight,
-  visibleTasks,
-  startSpacerHeight,
-  endSpacerHeight,
-} = useTaskListLayout(localTasks)
+const { taskListScrollTop, taskListBodyHeight, visibleTasks, startSpacerHeight, endSpacerHeight } =
+  useTaskListLayout(localTasks)
 
 // 悬停状态管理 - v1.9.0 支持资源视图中的字符串ID
 const hoveredTaskId = ref<number | string | null>(null)
@@ -185,6 +180,7 @@ const {
   taskListScrollTop,
   taskListBodyRef,
   updateContainerWidth,
+  enableParentTaskAutoSchedule: computed(() => props.enableParentTaskAutoSchedule ?? true),
 })
 
 function toggleCollapse(task: Task) {
@@ -254,8 +250,8 @@ onMounted(async () => {
   // 注册全局事件监听器
   registerEventListeners()
 
-  // 初始化时计算父级任务的进度和日期范围
-  updateParentTasksData(props.tasks)
+  // 初始化时计算父级任务的进度和日期范围（禁用自动调度时跳过日期覆写）
+  updateParentTasksData(props.tasks, !(props.enableParentTaskAutoSchedule ?? true))
 })
 
 onUnmounted(() => {
@@ -264,6 +260,16 @@ onUnmounted(() => {
 
   // 注销全局事件监听器
   unregisterEventListeners()
+})
+
+// 暴露 header DOM 的 scrollWidth，供 GanttChart 计算 maxWidth
+defineExpose({
+  getHeaderScrollWidth: (): number | null => {
+    const header = taskListRef.value?.querySelector('.task-list-header') as HTMLElement | null
+    if (!header) return null
+    const w = header.scrollWidth
+    return w > 0 ? w : null
+  },
 })
 </script>
 
@@ -285,7 +291,7 @@ onUnmounted(() => {
                 : (column as any).align === 'right'
                   ? 'flex-end'
                   : 'flex-start',
-            textAlign: (column as any).align || 'left'
+            textAlign: (column as any).align || 'left',
           }"
         >
           <template v-if="(column as any).headerSlot">
@@ -304,7 +310,11 @@ onUnmounted(() => {
             <component :is="columnSlots['header-name']" />
           </template>
           <template v-else>
-            {{ viewMode === 'resource' ? ((t as any).resourceName || '资源名称') : ((t as any).taskName || '任务名称') }}
+            {{
+              viewMode === 'resource'
+                ? (t as any).resourceName || '资源名称'
+                : (t as any).taskName || '任务名称'
+            }}
           </template>
         </div>
         <div
@@ -335,14 +345,26 @@ onUnmounted(() => {
       <TaskRow
         v-for="{ task, level, rowIndex } in visibleTasks"
         :key="task.id"
-        v-memo="[task.id, task.name, task.collapsed, hoveredTaskId === task.id, task.startDate, task.endDate, task.progress]"
+        v-memo="[
+          task.id,
+          task.name,
+          task.collapsed,
+          hoveredTaskId === task.id,
+          task.startDate,
+          task.endDate,
+          task.progress,
+        ]"
         :task="task"
         :level="level"
         :row-index="rowIndex"
         :is-hovered="hoveredTaskId === task.id"
         :hovered-task-id="hoveredTaskId"
         :on-hover="handleTaskRowHover"
-        :columns="taskListColumnRenderMode === 'declarative' ? [] : (visibleColumns as TaskListColumnConfig[])"
+        :columns="
+          taskListColumnRenderMode === 'declarative'
+            ? []
+            : (visibleColumns as TaskListColumnConfig[])
+        "
         :declarative-columns="taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined"
         :render-mode="taskListColumnRenderMode"
         :get-column-width-style="getColumnWidthStyle"

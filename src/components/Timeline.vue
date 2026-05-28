@@ -73,6 +73,8 @@ interface Props {
   ongoingTaskBackgroundColor?: string
   // 外部刻度配置（增量覆盖），由 GanttChart 传入
   scaleConfigs?: Record<TimelineScale, TimelineScaleConfig>
+  // 父级任务自动调度：true=父级跟suivant子任务范围（默认），false=保持自身设定日期
+  enableParentTaskAutoSchedule?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -98,6 +100,7 @@ const props = withDefaults(defineProps<Props>(), {
   delayTaskBackgroundColor: undefined,
   completeTaskBackgroundColor: undefined,
   ongoingTaskBackgroundColor: undefined,
+  enableParentTaskAutoSchedule: true,
   scaleConfigs: undefined,
 })
 
@@ -248,6 +251,14 @@ const tooltipState = reactive({
   taskStatus: { color: '#409eff', label: '' } as { color: string; label: string; type?: string },
   resourcePercent: 100,
   hasResourceConflict: false,
+  /** 父级任务自动调度信息 */
+  parentAutoSchedule: undefined as
+    | {
+        enabled: boolean
+        childrenRange: { minStart: Date; maxEnd: Date } | null
+        hasOverflow: boolean
+      }
+    | undefined,
   /** 'above'|'below'：tooltip 在目标上下方；'left'|'right'：tooltip 在目标左右侧（气泡停靠时） */
   placement: 'above' as 'above' | 'below' | 'left' | 'right',
   /** tooltip 盒子的左上角坐标（直接用于 fixed left/top，无 transform） */
@@ -264,6 +275,15 @@ const tooltipState = reactive({
 const formatTooltipDate = (dateStr: string | undefined): string => {
   if (!dateStr) return t('dateNotSet')
   return String(dateStr).substring(0, 10)
+}
+
+/** 格式化 Date 对象为 YYYY-MM-DD 字符串（用于父级自动调度日期展示） */
+const formatDateObj = (d: Date | null | undefined): string => {
+  if (!d) return t('dateNotSet')
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
 }
 
 /** 估算默认 tooltip 内容行数 → 高度 */
@@ -283,6 +303,7 @@ const handleTooltipShow = (payload: TooltipShowPayload) => {
   tooltipState.taskStatus = taskStatus
   tooltipState.resourcePercent = resourcePercent
   tooltipState.hasResourceConflict = hasResourceConflict
+  tooltipState.parentAutoSchedule = payload.parentAutoSchedule
 
   const TW = 250 // tooltip 固定宽度（与 CSS width:250px 保持一致）
   const TH = estimateTaskTooltipHeight(resourcePercent, hasResourceConflict)
@@ -6367,6 +6388,7 @@ const handleAddSuccessor = (task: Task) => {
                 :delay-task-background-color="props.delayTaskBackgroundColor"
                 :complete-task-background-color="props.completeTaskBackgroundColor"
                 :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
+                :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
                 :is-highlighted="highlightedTaskIds.has(task.id)"
                 :is-primary-highlight="highlightedTaskId === task.id"
                 :is-in-highlight-mode="isInHighlightMode"
@@ -6582,34 +6604,84 @@ const handleAddSuccessor = (task: Task) => {
       <template v-else>
         <div class="hover-tooltip-content">
           <div class="hover-tooltip-title">{{ tooltipState.task?.name }}</div>
-          <div class="hover-tooltip-row">
-            <span class="hover-tooltip-label">{{ t('plannedStartDate') }}:</span>
-            <span class="hover-tooltip-value">{{
-              formatTooltipDate(tooltipState.task?.startDate)
-            }}</span>
-          </div>
-          <div class="hover-tooltip-row">
-            <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
-            <span class="hover-tooltip-value">{{
-              formatTooltipDate(tooltipState.task?.endDate)
-            }}</span>
-          </div>
-          <div class="hover-tooltip-row">
-            <span class="hover-tooltip-label">{{ t('actualStartDate') }}:</span>
-            <span class="hover-tooltip-value">{{
-              tooltipState.task?.actualStartDate
-                ? formatTooltipDate(tooltipState.task.actualStartDate)
-                : '-'
-            }}</span>
-          </div>
-          <div class="hover-tooltip-row">
-            <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
-            <span class="hover-tooltip-value">{{
-              tooltipState.task?.actualEndDate
-                ? formatTooltipDate(tooltipState.task.actualEndDate)
-                : '-'
-            }}</span>
-          </div>
+          <!-- 父级任务自动调度：显示子任务计算范围 -->
+          <template
+            v-if="
+              tooltipState.parentAutoSchedule?.enabled &&
+              tooltipState.parentAutoSchedule?.childrenRange
+            "
+          >
+            <div class="hover-tooltip-row">
+              <span class="hover-tooltip-label">{{ t('childrenEarliestStart') }}:</span>
+              <span class="hover-tooltip-value">{{
+                formatDateObj(tooltipState.parentAutoSchedule.childrenRange.minStart)
+              }}</span>
+            </div>
+            <div class="hover-tooltip-row">
+              <span class="hover-tooltip-label">{{ t('childrenLatestEnd') }}:</span>
+              <span class="hover-tooltip-value">{{
+                formatDateObj(tooltipState.parentAutoSchedule.childrenRange.maxEnd)
+              }}</span>
+            </div>
+          </template>
+          <!-- 普通显示（非自动调度父级或手动模式父级） -->
+          <template v-else>
+            <div class="hover-tooltip-row">
+              <span class="hover-tooltip-label">{{ t('plannedStartDate') }}:</span>
+              <span class="hover-tooltip-value">{{
+                formatTooltipDate(tooltipState.task?.startDate)
+              }}</span>
+            </div>
+            <div class="hover-tooltip-row">
+              <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
+              <span class="hover-tooltip-value">{{
+                formatTooltipDate(tooltipState.task?.endDate)
+              }}</span>
+            </div>
+            <!-- 手动模式父级且子任务溢出：额外显示子任务实际范围 -->
+            <template
+              v-if="
+                tooltipState.parentAutoSchedule?.enabled === false &&
+                tooltipState.parentAutoSchedule?.hasOverflow &&
+                tooltipState.parentAutoSchedule?.childrenRange
+              "
+            >
+              <div class="hover-tooltip-row hover-tooltip-overflow-warning">
+                <span class="hover-tooltip-label">⚠ {{ t('childrenOverflow') }}</span>
+              </div>
+              <div class="hover-tooltip-row">
+                <span class="hover-tooltip-label">{{ t('childrenEarliestStart') }}:</span>
+                <span class="hover-tooltip-value">{{
+                  formatDateObj(tooltipState.parentAutoSchedule.childrenRange.minStart)
+                }}</span>
+              </div>
+              <div class="hover-tooltip-row">
+                <span class="hover-tooltip-label">{{ t('childrenLatestEnd') }}:</span>
+                <span class="hover-tooltip-value">{{
+                  formatDateObj(tooltipState.parentAutoSchedule.childrenRange.maxEnd)
+                }}</span>
+              </div>
+            </template>
+          </template>
+          <!-- 非父级任务才显示实际日期 -->
+          <template v-if="!tooltipState.parentAutoSchedule">
+            <div class="hover-tooltip-row">
+              <span class="hover-tooltip-label">{{ t('actualStartDate') }}:</span>
+              <span class="hover-tooltip-value">{{
+                tooltipState.task?.actualStartDate
+                  ? formatTooltipDate(tooltipState.task.actualStartDate)
+                  : '-'
+              }}</span>
+            </div>
+            <div class="hover-tooltip-row">
+              <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
+              <span class="hover-tooltip-value">{{
+                tooltipState.task?.actualEndDate
+                  ? formatTooltipDate(tooltipState.task.actualEndDate)
+                  : '-'
+              }}</span>
+            </div>
+          </template>
         </div>
       </template>
       <!-- 箭头：最后渲染，确保层叠在内容之上，并正确超出容器边缘 -->
@@ -6801,6 +6873,15 @@ const handleAddSuccessor = (task: Task) => {
   font-weight: 500;
   text-align: right;
   font-size: 11px;
+}
+
+/* 子任务溢出警告行 */
+.hover-tooltip-overflow-warning {
+  color: #ffa0a0;
+  font-size: 11px;
+  border-top: 1px solid rgba(255, 160, 160, 0.3);
+  padding-top: 4px;
+  margin-top: 2px;
 }
 
 .timeline {

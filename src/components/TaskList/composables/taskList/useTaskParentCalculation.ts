@@ -8,9 +8,11 @@ import type { Task } from '../../../../models/classes/Task'
 /**
  * 计算父级任务的进度和日期范围
  */
-export function calculateParentTaskData(
-  task: Task,
-): { progress: number; startDate: string; endDate: string } {
+export function calculateParentTaskData(task: Task): {
+  progress: number
+  startDate: string
+  endDate: string
+} {
   if (!task.children || task.children.length === 0) {
     return {
       progress: task.progress || 0,
@@ -63,8 +65,9 @@ export function calculateParentTaskData(
 
 /**
  * 更新所有父级任务的进度和日期范围
+ * @param skipDateRange 为 true 时跳过日期范围更新，仅更新进度（用于 enableParentTaskAutoSchedule=false 时）
  */
-export function updateParentTasksData(tasks: Task[] | undefined) {
+export function updateParentTasksData(tasks: Task[] | undefined, skipDateRange = false) {
   if (!tasks) return
 
   const updateParentTask = (taskList: Task[]): void => {
@@ -76,8 +79,10 @@ export function updateParentTasksData(tasks: Task[] | undefined) {
         // 计算父级任务的进度和日期范围
         const parentData = calculateParentTaskData(task)
         task.progress = parentData.progress
-        task.startDate = parentData.startDate
-        task.endDate = parentData.endDate
+        if (!skipDateRange) {
+          task.startDate = parentData.startDate
+          task.endDate = parentData.endDate
+        }
       }
     })
   }

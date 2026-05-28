@@ -1,11 +1,11 @@
-{
+﻿{
   "tasks": [
     {
       "id": 1000,
       "name": "新药ADX-2024临床试验项目",
       "assignee": "首席研究员 Dr. Chen",
-      "startDate": "2025-01-01",
-      "endDate": "2027-12-31",
+      "startDate": "2024-11-01",
+      "endDate": "2028-02-28",
       "progress": 15,
       "estimatedHours": 26280.5,
       "actualHours": 3942.75,
@@ -17,8 +17,8 @@
           "id": 1100,
           "name": "I期临床试验",
           "assignee": "I期试验主任 Dr. Wang",
-          "startDate": "2025-01-01",
-          "endDate": "2025-08-31",
+          "startDate": "2024-12-01",
+          "endDate": "2025-09-30",
           "progress": 65,
           "estimatedHours": 5256,
           "actualHours": 3417,
@@ -33,10 +33,7 @@
               "id": 1101,
               "name": "试验方案设计与<span style='font-weight: bold;color:red;'>伦理审查</span>",
               "assignee": "方案设计师 李明",
-              "avatar": [
-                "50-1.jpg",
-                "50-2.jpg"
-              ],
+              "avatar": ["50-1.jpg", "50-2.jpg"],
               "startDate": "2025-01-01",
               "endDate": "2025-02-28",
               "actualStartDate": "2025-01-03",
@@ -63,9 +60,7 @@
               "estimatedHours": 1392.5,
               "actualHours": 1250.25,
               "type": "task",
-              "predecessor": [
-                1101
-              ],
+              "predecessor": [1101],
               "parentId": 1100,
               "description": "招募24名健康志愿者，完成医学筛选和入组评估",
               "custom": "test11111",
@@ -75,10 +70,7 @@
               "id": 1103,
               "name": "药物给药与安全性监测",
               "assignee": "临床医生 Dr. Liu",
-              "avatar": [
-                "50-3.jpg",
-                "50-2.jpg"
-              ],
+              "avatar": ["50-3.jpg", "50-2.jpg"],
               "startDate": "2025-05-01",
               "endDate": "2025-08-31",
               "actualStartDate": "2025-05-10",
@@ -86,9 +78,7 @@
               "estimatedHours": 3400,
               "actualHours": 1687,
               "type": "task",
-              "predecessor": [
-                1102
-              ],
+              "predecessor": [1102],
               "parentId": 1100,
               "description": "按照剂量递增方案给药，密切监测不良反应和药代动力学参数",
               "custom": "test11111",
@@ -101,8 +91,8 @@
           "id": 1200,
           "name": "II期临床试验",
           "assignee": "II期试验主任 Dr. Zhang",
-          "startDate": "2025-09-01",
-          "endDate": "2026-08-31",
+          "startDate": "2025-08-01",
+          "endDate": "2026-10-31",
           "progress": 5,
           "estimatedHours": 8760.75,
           "actualHours": 438.25,
@@ -116,10 +106,7 @@
               "id": 1201,
               "name": "多中心试验<span style='font-weight: bold; color: blue;'>启动</span>",
               "assignee": "项目经理 王芳",
-              "avatar": [
-                "50-10.jpg",
-                "50-2.jpg"
-              ],
+              "avatar": ["50-10.jpg", "50-2.jpg"],
               "startDate": "2025-09-01",
               "endDate": "2025-11-30",
               "actualStartDate": "2025-09-01",
@@ -127,9 +114,7 @@
               "estimatedHours": 2160,
               "actualHours": 324,
               "type": "task",
-              "predecessor": [
-                1103
-              ],
+              "predecessor": [1103],
               "parentId": 1200,
               "description": "启动5个临床中心，完成研究者培训和质量体系建立",
               "custom": "test11111",
@@ -139,19 +124,14 @@
               "id": 1202,
               "name": "患者入组与随机化",
               "assignee": "数据管理员 陈静",
-              "avatar": [
-                "50-6.jpg",
-                "50-10.jpg"
-              ],
+              "avatar": ["50-6.jpg", "50-10.jpg"],
               "startDate": "2025-12-01",
               "endDate": "2026-03-31",
               "progress": 0,
               "estimatedHours": 2880,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                1201
-              ],
+              "predecessor": [1201],
               "parentId": 1200,
               "description": "计划入组120名患者，采用双盲随机对照设计",
               "custom": "test11111"
@@ -167,9 +147,7 @@
               "estimatedHours": 3720,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                1202
-              ],
+              "predecessor": [1202],
               "parentId": 1200,
               "description": "定期评估患者疗效指标，收集安全性数据，进行中期分析",
               "custom": "test11111",
@@ -182,8 +160,8 @@
           "id": 1300,
           "name": "III期临床试验",
           "assignee": "III期试验主任 Dr. Li",
-          "startDate": "2026-09-01",
-          "endDate": "2027-12-31",
+          "startDate": "2026-08-01",
+          "endDate": "2028-01-31",
           "progress": 0,
           "estimatedHours": 12264,
           "actualHours": 0,
@@ -201,9 +179,7 @@
               "estimatedHours": 2928,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                1203
-              ],
+              "predecessor": [1203],
               "parentId": 1300,
               "description": "启动15个国际临床中心，获得各国监管审批"
             },
@@ -217,9 +193,7 @@
               "estimatedHours": 4380,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                1301
-              ],
+              "predecessor": [1301],
               "parentId": 1300,
               "description": "计划入组500名患者，严格按照纳排标准执行"
             },
@@ -233,9 +207,7 @@
               "estimatedHours": 4956,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                1302
-              ],
+              "predecessor": [1302],
               "parentId": 1300,
               "description": "完成最终疗效分析，撰写临床研究报告，准备新药上市申请"
             }
@@ -338,9 +310,7 @@
             {
               "id": 4,
               "name": "调研A",
-              "predecessor": [
-                2
-              ],
+              "predecessor": [2],
               "assignee": "赵六",
               "startDate": "2025-06-21",
               "endDate": "2025-06-23",
@@ -353,9 +323,7 @@
             {
               "id": 5,
               "name": "调研B",
-              "predecessor": [
-                4
-              ],
+              "predecessor": [4],
               "assignee": "钱七",
               "startDate": "2025-06-24",
               "endDate": "2025-06-28",
@@ -392,9 +360,7 @@
           "estimatedHours": 80,
           "actualHours": 35,
           "type": "task",
-          "predecessor": [
-            5
-          ],
+          "predecessor": [5],
           "parentId": 7
         },
         {
@@ -407,9 +373,7 @@
           "estimatedHours": 80,
           "actualHours": 0,
           "type": "task",
-          "predecessor": [
-            5
-          ],
+          "predecessor": [5],
           "parentId": 7
         },
         {
@@ -422,9 +386,7 @@
           "estimatedHours": 88,
           "actualHours": 0,
           "type": "task",
-          "predecessor": [
-            5
-          ],
+          "predecessor": [5],
           "parentId": 7
         }
       ],
@@ -451,11 +413,7 @@
           "estimatedHours": 48,
           "actualHours": 0,
           "type": "task",
-          "predecessor": [
-            8,
-            11,
-            12
-          ],
+          "predecessor": [8, 11, 12],
           "parentId": 13
         },
         {
@@ -468,9 +426,7 @@
           "estimatedHours": 24,
           "actualHours": 0,
           "type": "task",
-          "predecessor": [
-            14
-          ],
+          "predecessor": [14],
           "parentId": 13
         }
       ],
@@ -529,9 +485,7 @@
               "estimatedHours": 120,
               "actualHours": 130,
               "type": "task",
-              "predecessor": [
-                3101
-              ],
+              "predecessor": [3101],
               "parentId": 3100,
               "description": "完成核心页面低保真原型，输出交互流程说明文档"
             },
@@ -546,9 +500,7 @@
               "estimatedHours": 160,
               "actualHours": 168,
               "type": "task",
-              "predecessor": [
-                3102
-              ],
+              "predecessor": [3102],
               "parentId": 3100,
               "description": "交付全套高保真设计稿，含深色模式和响应式适配方案"
             },
@@ -563,9 +515,7 @@
               "estimatedHours": 40,
               "actualHours": 36,
               "type": "task",
-              "predecessor": [
-                3103
-              ],
+              "predecessor": [3103],
               "parentId": 3100,
               "description": "组织跨部门设计评审，完成修改并发布设计规范"
             }
@@ -596,9 +546,7 @@
               "estimatedHours": 160,
               "actualHours": 172,
               "type": "task",
-              "predecessor": [
-                3104
-              ],
+              "predecessor": [3104],
               "parentId": 3200,
               "description": "设计商品、订单、用户、营销等核心数据模型，规划分库分表策略"
             },
@@ -613,9 +561,7 @@
               "estimatedHours": 200,
               "actualHours": 208,
               "type": "task",
-              "predecessor": [
-                3201
-              ],
+              "predecessor": [3201],
               "parentId": 3200,
               "description": "实现多端登录、OAuth2.0、JWT鉴权、短信验证码等认证流程"
             },
@@ -630,9 +576,7 @@
               "estimatedHours": 400,
               "actualHours": 320,
               "type": "task",
-              "predecessor": [
-                3201
-              ],
+              "predecessor": [3201],
               "parentId": 3200,
               "description": "商品SPU/SKU管理、分类标签、富文本详情、图片上传、库存扣减"
             },
@@ -647,10 +591,7 @@
               "estimatedHours": 480,
               "actualHours": 288,
               "type": "task",
-              "predecessor": [
-                3202,
-                3203
-              ],
+              "predecessor": [3202, 3203],
               "parentId": 3200,
               "description": "购物车、下单、优惠券抵扣、多种支付方式集成、订单状态机"
             },
@@ -665,9 +606,7 @@
               "estimatedHours": 360,
               "actualHours": 108,
               "type": "task",
-              "predecessor": [
-                3203
-              ],
+              "predecessor": [3203],
               "parentId": 3200,
               "description": "Elasticsearch商品全文搜索、个性化推荐、热词联想"
             },
@@ -682,9 +621,7 @@
               "estimatedHours": 280,
               "actualHours": 28,
               "type": "task",
-              "predecessor": [
-                3204
-              ],
+              "predecessor": [3204],
               "parentId": 3200,
               "description": "限时折扣、满减活动、拼团、优惠券发放与核销"
             }
@@ -729,9 +666,7 @@
               "estimatedHours": 120,
               "actualHours": 128,
               "type": "task",
-              "predecessor": [
-                3301
-              ],
+              "predecessor": [3301],
               "parentId": 3300,
               "description": "基于Element Plus定制主题，封装高频业务组件"
             },
@@ -746,9 +681,7 @@
               "estimatedHours": 200,
               "actualHours": 196,
               "type": "task",
-              "predecessor": [
-                3302
-              ],
+              "predecessor": [3302],
               "parentId": 3300,
               "description": "首页Banner/推荐/排行，商品列表筛选/排序/分页"
             },
@@ -763,9 +696,7 @@
               "estimatedHours": 240,
               "actualHours": 192,
               "type": "task",
-              "predecessor": [
-                3303
-              ],
+              "predecessor": [3303],
               "parentId": 3300,
               "description": "商品规格选择、评价展示、加入购物车、购物车管理"
             },
@@ -780,9 +711,7 @@
               "estimatedHours": 280,
               "actualHours": 140,
               "type": "task",
-              "predecessor": [
-                3304
-              ],
+              "predecessor": [3304],
               "parentId": 3300,
               "description": "收货地址、优惠券、支付方式选择、订单确认与支付回调"
             },
@@ -797,9 +726,7 @@
               "estimatedHours": 240,
               "actualHours": 48,
               "type": "task",
-              "predecessor": [
-                3305
-              ],
+              "predecessor": [3305],
               "parentId": 3300,
               "description": "个人信息、收货地址、我的订单、退换货申请、优惠券钱包"
             },
@@ -814,9 +741,7 @@
               "estimatedHours": 360,
               "actualHours": 36,
               "type": "task",
-              "predecessor": [
-                3302
-              ],
+              "predecessor": [3302],
               "parentId": 3300,
               "description": "商品管理、订单管理、用户管理、营销管理、数据看板"
             }
@@ -847,10 +772,7 @@
               "estimatedHours": 240,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3307,
-                3206
-              ],
+              "predecessor": [3307, 3206],
               "parentId": 3400,
               "description": "覆盖全业务流程的功能测试，输出测试报告"
             },
@@ -865,9 +787,7 @@
               "estimatedHours": 160,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3401
-              ],
+              "predecessor": [3401],
               "parentId": 3400,
               "description": "模拟大促场景压测，验证系统承压10万QPS的稳定性"
             },
@@ -882,9 +802,7 @@
               "estimatedHours": 120,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3401
-              ],
+              "predecessor": [3401],
               "parentId": 3400,
               "description": "SQL注入、XSS、CSRF、越权访问等安全漏洞扫描与修复"
             }
@@ -915,9 +833,7 @@
               "estimatedHours": 360,
               "actualHours": 180,
               "type": "task",
-              "predecessor": [
-                3104
-              ],
+              "predecessor": [3104],
               "parentId": 3450,
               "description": "Swift原生开发，覆盖首页、商品、购物车、订单、我的五大模块"
             },
@@ -932,9 +848,7 @@
               "estimatedHours": 360,
               "actualHours": 162,
               "type": "task",
-              "predecessor": [
-                3104
-              ],
+              "predecessor": [3104],
               "parentId": 3450,
               "description": "Kotlin+Jetpack Compose，与iOS保持功能对齐"
             },
@@ -949,9 +863,7 @@
               "estimatedHours": 120,
               "actualHours": 24,
               "type": "task",
-              "predecessor": [
-                3202
-              ],
+              "predecessor": [3202],
               "parentId": 3450,
               "description": "APNs/FCM推送集成，站内消息、订单通知、活动推送"
             },
@@ -966,11 +878,7 @@
               "estimatedHours": 120,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3451,
-                3452,
-                3453
-              ],
+              "predecessor": [3451, 3452, 3453],
               "parentId": 3450,
               "description": "启动优化、内存泄漏修复，提交App Store和Google Play审核"
             }
@@ -1001,9 +909,7 @@
               "estimatedHours": 120,
               "actualHours": 24,
               "type": "task",
-              "predecessor": [
-                3205
-              ],
+              "predecessor": [3205],
               "parentId": 3600,
               "description": "ODS→DWD→DWS→ADS四层数仓建设，Hive+Spark ETL流程"
             },
@@ -1018,9 +924,7 @@
               "estimatedHours": 160,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3601
-              ],
+              "predecessor": [3601],
               "parentId": 3600,
               "description": "GMV、DAU、转化率、复购率等核心经营指标实时看板"
             },
@@ -1035,9 +939,7 @@
               "estimatedHours": 120,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3602
-              ],
+              "predecessor": [3602],
               "parentId": 3600,
               "description": "用户分层RFM模型、行为漏斗分析、召回策略数据支撑"
             }
@@ -1067,9 +969,7 @@
               "estimatedHours": 80,
               "actualHours": 88,
               "type": "task",
-              "predecessor": [
-                3104
-              ],
+              "predecessor": [3104],
               "parentId": 3700,
               "description": "GitLab CI + Docker + Kubernetes 自动化构建、测试、部署流水线"
             },
@@ -1084,9 +984,7 @@
               "estimatedHours": 80,
               "actualHours": 68,
               "type": "task",
-              "predecessor": [
-                3701
-              ],
+              "predecessor": [3701],
               "parentId": 3700,
               "description": "SonarQube代码扫描、单元测试覆盖率要求、MR评审规范落地"
             },
@@ -1101,9 +999,7 @@
               "estimatedHours": 80,
               "actualHours": 40,
               "type": "task",
-              "predecessor": [
-                3702
-              ],
+              "predecessor": [3702],
               "parentId": 3700,
               "description": "按PR自动创建隔离测试环境，合并后自动销毁，降低环境冲突"
             },
@@ -1118,9 +1014,7 @@
               "estimatedHours": 80,
               "actualHours": 16,
               "type": "task",
-              "predecessor": [
-                3703
-              ],
+              "predecessor": [3703],
               "parentId": 3700,
               "description": "日志(ELK)、指标(Prometheus)、链路追踪(Jaeger)三位一体可观测性体系"
             }
@@ -1150,10 +1044,7 @@
               "estimatedHours": 80,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3402,
-                3403
-              ],
+              "predecessor": [3402, 3403],
               "parentId": 3500,
               "description": "Kubernetes集群部署，灰度放量5%流量验证"
             },
@@ -1168,9 +1059,7 @@
               "estimatedHours": 40,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3501
-              ],
+              "predecessor": [3501],
               "parentId": 3500,
               "description": "切换全量流量，完成上线公告和故障应急预案"
             },
@@ -1185,9 +1074,7 @@
               "estimatedHours": 80,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3501
-              ],
+              "predecessor": [3501],
               "parentId": 3500,
               "description": "Prometheus+Grafana监控大盘，关键指标告警规则配置"
             },
@@ -1202,9 +1089,7 @@
               "estimatedHours": 80,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                3502
-              ],
+              "predecessor": [3502],
               "parentId": 3500,
               "description": "分析GMV、转化率、用户留存等核心指标，制定首期迭代计划"
             }
@@ -1264,9 +1149,7 @@
               "estimatedHours": 160,
               "actualHours": 168,
               "type": "task",
-              "predecessor": [
-                4101
-              ],
+              "predecessor": [4101],
               "parentId": 4100,
               "description": "输出业务流程蓝图，明确系统边界和接口规范"
             },
@@ -1281,9 +1164,7 @@
               "estimatedHours": 80,
               "actualHours": 76,
               "type": "task",
-              "predecessor": [
-                4102
-              ],
+              "predecessor": [4102],
               "parentId": 4100,
               "description": "技术选型评审，确定微服务架构和关键技术组件"
             }
@@ -1313,9 +1194,7 @@
               "estimatedHours": 240,
               "actualHours": 192,
               "type": "task",
-              "predecessor": [
-                4103
-              ],
+              "predecessor": [4103],
               "parentId": 4200,
               "description": "ERP计划数据接入，工单自动拆分与产线分配"
             },
@@ -1330,9 +1209,7 @@
               "estimatedHours": 360,
               "actualHours": 108,
               "type": "task",
-              "predecessor": [
-                4201
-              ],
+              "predecessor": [4201],
               "parentId": 4200,
               "description": "基于遗传算法的多约束智能排程，支持插单和动态调整"
             },
@@ -1347,9 +1224,7 @@
               "estimatedHours": 200,
               "actualHours": 40,
               "type": "task",
-              "predecessor": [
-                4201
-              ],
+              "predecessor": [4201],
               "parentId": 4200,
               "description": "工单完成率、产线效率、异常预警实时大屏展示"
             }
@@ -1379,9 +1254,7 @@
               "estimatedHours": 160,
               "actualHours": 64,
               "type": "task",
-              "predecessor": [
-                4103
-              ],
+              "predecessor": [4103],
               "parentId": 4300,
               "description": "供应商来料AQL抽检，检验结果上传与不合格处置"
             },
@@ -1396,9 +1269,7 @@
               "estimatedHours": 240,
               "actualHours": 24,
               "type": "task",
-              "predecessor": [
-                4301
-              ],
+              "predecessor": [4301],
               "parentId": 4300,
               "description": "首件检验、巡检、SPC统计过程控制分析"
             },
@@ -1413,9 +1284,7 @@
               "estimatedHours": 160,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4302
-              ],
+              "predecessor": [4302],
               "parentId": 4300,
               "description": "出货检验报告、质量月报自动生成、不良率趋势分析"
             }
@@ -1445,9 +1314,7 @@
               "estimatedHours": 120,
               "actualHours": 108,
               "type": "task",
-              "predecessor": [
-                4103
-              ],
+              "predecessor": [4103],
               "parentId": 4400,
               "description": "库区、货位、物料编码、计量单位等基础数据维护"
             },
@@ -1462,9 +1329,7 @@
               "estimatedHours": 240,
               "actualHours": 72,
               "type": "task",
-              "predecessor": [
-                4401
-              ],
+              "predecessor": [4401],
               "parentId": 4400,
               "description": "收料入库、领料出库、退料、库存盘点、动态储位管理"
             },
@@ -1479,9 +1344,7 @@
               "estimatedHours": 200,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4402
-              ],
+              "predecessor": [4402],
               "parentId": 4400,
               "description": "原料→半成品→成品全链路批次追溯，支持正反向查询"
             }
@@ -1511,9 +1374,7 @@
               "estimatedHours": 120,
               "actualHours": 42,
               "type": "task",
-              "predecessor": [
-                4103
-              ],
+              "predecessor": [4103],
               "parentId": 4600,
               "description": "设备基础信息、技术参数、备品备件台账数字化管理"
             },
@@ -1528,9 +1389,7 @@
               "estimatedHours": 160,
               "actualHours": 16,
               "type": "task",
-              "predecessor": [
-                4601
-              ],
+              "predecessor": [4601],
               "parentId": 4600,
               "description": "按设备类型制定定期保养计划，自动推送工单给维保人员"
             },
@@ -1545,9 +1404,7 @@
               "estimatedHours": 160,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4602
-              ],
+              "predecessor": [4602],
               "parentId": 4600,
               "description": "移动端扫码报修、维修过程记录、故障原因分析与MTBF统计"
             }
@@ -1577,10 +1434,7 @@
               "estimatedHours": 160,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4303,
-                4403
-              ],
+              "predecessor": [4303, 4403],
               "parentId": 4500,
               "description": "与SAP ERP、WMS系统数据实时同步，接口联调"
             },
@@ -1595,9 +1449,7 @@
               "estimatedHours": 160,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4203
-              ],
+              "predecessor": [4203],
               "parentId": 4500,
               "description": "PLC/SCADA设备数据采集，IoT平台对接，设备状态实时上报"
             },
@@ -1612,10 +1464,7 @@
               "estimatedHours": 80,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4501,
-                4502
-              ],
+              "predecessor": [4501, 4502],
               "parentId": 4500,
               "description": "组织业务部门进行UAT，记录缺陷并跟踪修复"
             },
@@ -1630,9 +1479,7 @@
               "estimatedHours": 80,
               "actualHours": 0,
               "type": "task",
-              "predecessor": [
-                4503
-              ],
+              "predecessor": [4503],
               "parentId": 4500,
               "description": "数据迁移、旧系统下线、人员培训、上线保障"
             }

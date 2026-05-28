@@ -18,6 +18,9 @@ const messages = {
     plannedEndDate: '预计结束日期',
     actualStartDate: '实际开始日期',
     actualEndDate: '实际结束日期',
+    childrenEarliestStart: '子任务最早开始',
+    childrenLatestEnd: '子任务最晚结束',
+    childrenOverflow: '子任务已超出父级计划范围',
     estimatedHours: '预计工时(hr)',
     actualHours: '实际工时(hr)',
     progress: '进度',
@@ -250,7 +253,8 @@ const messages = {
         maxWidth: '最大宽度',
         pixelsModel: '像素 (px)',
         percentageModel: '百分比 (%)',
-      },      collapsible: {
+      },
+      collapsible: {
         title: '展开/收起控制',
         enableCollapsible: '启用任务列可折叠',
         enableCollapsibleHint: '启用后任务列可展开/收起',
@@ -258,7 +262,8 @@ const messages = {
         visibleExpanded: '展开',
         visibleCollapsed: '收起',
         visibleHint: '通过 prop 控制任务列初始/当前显示状态',
-      },    },
+      },
+    },
     // TaskBar配置
     taskBarConfig: {
       title: 'TaskBar 配置',
@@ -335,6 +340,9 @@ const messages = {
     plannedEndDate: 'Planned End Date',
     actualStartDate: 'Actual Start Date',
     actualEndDate: 'Actual End Date',
+    childrenEarliestStart: 'Children Earliest Start',
+    childrenLatestEnd: 'Children Latest End',
+    childrenOverflow: 'Children exceed parent boundaries',
     estimatedHours: 'Est. Hours',
     actualHours: 'Act. Hours',
     progress: 'Progress',
@@ -568,7 +576,8 @@ const messages = {
         maxWidth: 'Max Width',
         pixelsModel: 'pixels (px)',
         percentageModel: 'percentage (%)',
-      },      collapsible: {
+      },
+      collapsible: {
         title: 'Collapsible Control',
         enableCollapsible: 'Enable collapsible task list',
         enableCollapsibleHint: 'Allow task list to expand/collapse when enabled',
@@ -576,7 +585,8 @@ const messages = {
         visibleExpanded: 'Expanded',
         visibleCollapsed: 'Collapsed',
         visibleHint: 'Controls initial/current visibility state of the task list',
-      },    },
+      },
+    },
     // TaskBar配置
     taskBarConfig: {
       title: 'TaskBar Configuration',
@@ -597,7 +607,8 @@ const messages = {
         dragDelayTime: 'Delay Time (ms)',
         dragDelayTimeHint: 'Delay time before dragging starts',
         allowDragOnClick: 'Allow dragging and resizing of TaskBars and Milestones',
-        allowDragOnClickHint: 'Controls whether to allow dragging of TaskBars and Milestones, as well as resizing the length of TaskBars',
+        allowDragOnClickHint:
+          'Controls whether to allow dragging of TaskBars and Milestones, as well as resizing the length of TaskBars',
       },
     },
     disableTaskbarFocusMode: 'Disable Focus Mode',
@@ -657,7 +668,7 @@ export function setCustomMessages(locale: Locale, custom: Partial<(typeof messag
     window.dispatchEvent(
       new CustomEvent('locale-changed', {
         detail: { locale },
-      }),
+      })
     )
   }
 }
@@ -707,7 +718,7 @@ export function useI18n() {
     // 1. 如果找到了值且是字符串，返回该值
     // 2. 如果值不是字符串，优先返回用户传入的 default
     // 3. 否则返回 key
-    return typeof value === 'string' ? value : (defaultValue || key)
+    return typeof value === 'string' ? value : defaultValue || key
   }
 
   // 格式化带参数的翻译文本
@@ -727,7 +738,7 @@ export function useI18n() {
     window.dispatchEvent(
       new CustomEvent('locale-changed', {
         detail: { locale },
-      }),
+      })
     )
   }
 

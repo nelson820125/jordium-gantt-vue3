@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.5] - 2026-05-28
+
+### Added
+- 🎉 新增：GanttChart 新增 `enableParentTaskAutoSchedule` 属性，支持父任务自动/手动调度切换。`true`（默认）：父任务 TaskBar 时间窗口自动跟随子任务拉伸；`false`：父任务显示自身配置日期，子任务超出时其 TaskBar 上方显示红色指示线
+- 🎉 Added: GanttChart new prop `enableParentTaskAutoSchedule` — toggle between auto and manual scheduling for parent tasks. `true` (default): parent TaskBar auto-stretches to span children's date range; `false`: parent TaskBar shows its own configured dates, with a red indicator line above when children overflow the bounds
+
+### Fixed
+- 🔧 修复：`maxWidth` 收紧逻辑改为 DOM scrollWidth 测量，支持 flex 列，并在视图切换/resize 后自动重算
+- 🔧 修复：修复弱点
+- 🔧 Fixed: `maxWidth` auto-cap now uses DOM `scrollWidth`, supports flex columns, recalculates on view switch and resize
+- 🔧 Fixed: Vulnerabilities fix
+
 ## [1.11.4] - 2026-05-12
 
 ### Added

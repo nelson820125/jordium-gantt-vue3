@@ -235,6 +235,7 @@ npm run dev
 | `taskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 控制 TaskList 的显隐状态（响应式）。仅在 `enableTaskListCollapsible=true` 时有效 |
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许 TaskDrawer 自动关闭（外总点击或按 Esc 时自动关闭）。设为 `false` 时禁用自动关闭，仅可通过内部按钮手动关闭 |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | 行高（px），Timeline 和 TaskList 共用同一行高。有效区间：`30`～`60`，超出范围的值将被自动截断（小于 30 截断至 30，大于 60 截断至 60）。当设置小于 40 时，TaskBar 内的任务名称和进度将自动切换为紧凑横排布局以适应小行高 |
+| `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 是否开启父任务自动调度。`true`：父任务的 TaskBar 时间窗口自动跟随子任务的最早开始／最晚结束日期同步拉伸。`false`：父任务显示自身配置的固定日期范围，子任务超出时其 TaskBar 上方显示红色指示线 |
 
 #### TaskListColumn 属性
 
@@ -1950,7 +1951,7 @@ const toolbarConfig: ToolbarConfig = {
 | `showAllColumns` | `boolean`                | `true`  | 是否显示所有列。`true` 时忽略 `columns` 中的 `visible` 设置                    |
 | `defaultWidth`   | `number \| string`       | `320`   | 默认展开宽度。支持像素数字（如 `320`）或百分比字符串（如 `'30%'`）             |
 | `minWidth`       | `number \| string`       | `280`   | 最小宽度。支持像素数字（如 `280`）或百分比字符串（如 `'20%'`）。不能小于 280px |
-| `maxWidth`       | `number \| string`       | `1160`  | 最大宽度。支持像素数字（如 `1160`）或百分比字符串（如 `'80%'`）。当所有可见列均配置了明确宽度时，该属性会自动收紧为列宽有效总和，防止面板被拖宽超过列内容宽度为对齐出现右侧空白 |
+| `maxWidth`       | `number \| string`       | `1160`  | 最大宽度。支持像素数字（如 `1160`）或百分比字符串（如 `'80%'`）。自动通过 DOM 实际渲染宽度收紧上限，无论列是像素宽度还是 flex 布局，均可防止面板被拖宽超过内容宽度导致右侧空白 |
 | `showTaskIcon`       | `boolean`       | `true`  | 是否展示任务图标                |
 
 **TaskListColumnConfig 类型定义：**

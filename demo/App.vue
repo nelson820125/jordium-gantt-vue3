@@ -361,6 +361,9 @@ const allowDragAndResize = ref(true)
 // 控制是否启用TaskRow拖拽移动
 const enableTaskRowMove = ref(true)
 
+// 控制父任务是否自动随子任务调度日期（true=自动跟随子任务范围，false=保持自身设定日期）
+const enableParentAutoSchedule = ref(true)
+
 // v1.9.0 资源视图垂直拖拽确认对话框
 const resourceDragConfirmVisible = ref(false)
 const resourceDragData = ref<{
@@ -1867,6 +1870,16 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                       </span>
                     </div>
                     <div class="control-row">
+                      <label class="taskbar-control">
+                        <input v-model="enableParentAutoSchedule" type="checkbox" />
+                        <span class="taskbar-label">父任务自动调度 (enableParentTaskAutoSchedule)</span>
+                      </label>
+                      <span class="control-hint">
+                        开启时，父任务日期自动收缩到子任务范围；关闭时，父任务保持自身设定日期（子任务
+                        <strong>超出</strong>父任务边界时两种模式均会扩展）
+                      </span>
+                    </div>
+                    <div class="control-row">
                       <label class="control-label">
                         {{ t.taskBarConfig.mistouch.dragThreshold }}:
                       </label>
@@ -2508,6 +2521,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :ongoing-task-background-color="ongoingTaskBackgroundColor"
         :use-default-drawer="useDefaultDrawer"
         :enable-task-drawer-auto-close="false"
+        :enable-parent-task-auto-schedule="enableParentAutoSchedule"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"

@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { Task } from '../../../../models/classes/Task'
 import { updateParentTasksData, getAllTasks } from './useTaskParentCalculation'
+import type { ComputedRef } from 'vue'
 
 /**
  * TaskList 事件处理逻辑
@@ -15,6 +16,7 @@ export interface TaskListEventHandlersOptions {
   taskListBodyRef: Ref<HTMLElement | null>
   updateContainerWidth: () => void
   onTaskUpdate?: (task: Task) => void
+  enableParentTaskAutoSchedule?: Ref<boolean> | ComputedRef<boolean>
 }
 
 export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) {
@@ -26,6 +28,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     taskListBodyRef,
     updateContainerWidth,
     onTaskUpdate,
+    enableParentTaskAutoSchedule,
   } = options
 
   // ==================== 悬停事件处理 ====================
@@ -39,7 +42,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     window.dispatchEvent(
       new CustomEvent('task-list-hover', {
         detail: taskId,
-      }),
+      })
     )
   }
 
@@ -57,7 +60,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     window.dispatchEvent(
       new CustomEvent('task-row-double-click', {
         detail: task,
-      }),
+      })
     )
   }
 
@@ -83,7 +86,8 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     }
 
     updateTaskInTree(tasks.value)
-    updateParentTasksData(tasks.value)
+    const skipDateRange = !(enableParentTaskAutoSchedule?.value ?? true)
+    updateParentTasksData(tasks.value, skipDateRange)
 
     // 调用回调通知外部
     if (onTaskUpdate) {
@@ -112,7 +116,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     window.dispatchEvent(
       new CustomEvent('task-list-updated', {
         detail: allTasks,
-      }),
+      })
     )
   }
 
@@ -161,7 +165,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     window.dispatchEvent(
       new CustomEvent('task-list-vertical-scroll', {
         detail: { scrollTop },
-      }),
+      })
     )
   }
 
@@ -176,21 +180,20 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
       // 防止 handleTaskListScroll 被触发后反向再次派发事件（2跳链路）
       _isSyncingScrollFromTimeline = true
       taskListBodyElement.scrollTop = scrollTop
-      Promise.resolve().then(() => { _isSyncingScrollFromTimeline = false })
+      Promise.resolve().then(() => {
+        _isSyncingScrollFromTimeline = false
+      })
     }
   }
 
   // ==================== 右键菜单事件 ====================
 
-  const handleTaskRowContextMenu = (event: {
-    task: Task
-    position: { x: number; y: number }
-  }) => {
+  const handleTaskRowContextMenu = (event: { task: Task; position: { x: number; y: number } }) => {
     try {
       window.dispatchEvent(
         new CustomEvent('context-menu', {
           detail: event,
-        }),
+        })
       )
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -219,7 +222,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     window.addEventListener('timeline-task-hover', handleTimelineHover as EventListener)
     window.addEventListener(
       'timeline-vertical-scroll',
-      handleTimelineVerticalScroll as EventListener,
+      handleTimelineVerticalScroll as EventListener
     )
     window.addEventListener('milestone-icon-changed', handleMilestoneIconChange as EventListener)
     window.addEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
@@ -233,12 +236,9 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     window.removeEventListener('timeline-task-hover', handleTimelineHover as EventListener)
     window.removeEventListener(
       'timeline-vertical-scroll',
-      handleTimelineVerticalScroll as EventListener,
+      handleTimelineVerticalScroll as EventListener
     )
-    window.removeEventListener(
-      'milestone-icon-changed',
-      handleMilestoneIconChange as EventListener,
-    )
+    window.removeEventListener('milestone-icon-changed', handleMilestoneIconChange as EventListener)
     window.removeEventListener('splitter-drag-start', handleSplitterDragStart as EventListener)
     window.removeEventListener('splitter-drag-end', handleSplitterDragEnd as EventListener)
   }
