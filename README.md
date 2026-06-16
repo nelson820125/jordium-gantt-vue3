@@ -22,6 +22,9 @@
   <a href="https://nodejs.org/">
     <img src="https://img.shields.io/badge/Node.js->=16.0.0-339933?style=flat-square&logo=node.js&logoColor=white" alt="Nodejs">
   </a>
+  <a href="https://nodejs.org/">
+    <img src="https://img.shields.io/badge/Node.js%20in%20Dev/Build-%3E=20.0.0-339933?style=flat-square&logo=node.js&logoColor=white" alt="Nodejs">
+  </a>
 </p>
 
 <p align="center">
@@ -60,6 +63,12 @@
   </a>
 </p>
 
+<div style="background-color: #eee; padding: 10px 10px 2px 10px">
+  <p>
+    <b style="color:red">⚠️ Important Notice: </b>Following recent security vulnerability updates, all base packages now require <b><i>Nodejs >= 20</i></b>. If you maintain any local customizations or secondary development, please ensure your Node.js version is upgraded before continuing development and build operations.
+  </p>
+</div>
+
 ---
 
 ## ✨ Introduction
@@ -68,8 +77,8 @@ jordium-gantt-vue3 is a modern Gantt chart component for Vue3 with built-in Reso
 
 ### Core Features
 
-- � **Resource Planning View** - The only Vue 3 Gantt component with a dedicated resource view. Visualize task assignments and workload per resource (people / equipment)
-- �📊 **Feature Complete** - Task management, milestones, dependencies, progress tracking
+- 📊 **Resource Planning View** - The only Vue 3 Gantt component with a dedicated resource view. Visualize task assignments and workload per resource (people / equipment)
+- 📊 **Feature Complete** - Task management, milestones, dependencies, progress tracking
 - 🎨 **Theme System** - Built-in light/dark themes with customizable styles
 - 🖱️ **Smooth Interaction** - Drag & resize, zoom, double-click edit, context menu
 - 🌍 **Internationalization** - Built-in Chinese/English with extensible language support
