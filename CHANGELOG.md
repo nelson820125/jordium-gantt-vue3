@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.6] - 2026-06-16
+
+### Fixed
+- 🔧 修复：日视图下，更改(resize/drag/edit)TaskBar开始或者结束日期后，消除Timeline产生的无效偏移
+- 🔧 修复：tooltip跟随鼠标位置展示
+- 🔧 修复：Taskbar的resize-right计算结束日期的问题
+- 🔧 修复：修复弱点
+- 🔧 Fixed: In DAY view, after changing (resizing/dragging/editing) TaskBar start or end date, eliminated invalid offset caused by Timeline
+- 🔧 Fixed: Tooltip now follows mouse position
+- 🔧 Fixed: TaskBar resize-right calculation of end date
+- 🔧 Fixed: Vulnerabilities fix
+
 ## [1.11.5] - 2026-05-28
 
 ### Added

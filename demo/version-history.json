@@ -765,5 +765,21 @@
       "🔧 Fixed: Vulnerabilities fix",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to YQ6494@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.11.6",
+    "date": "2026-06-16",
+    "notes": [
+      "🔧 修复：日视图下，更改(resize/drag/edit)TaskBar开始或者结束日期后，消除Timeline产生的无效偏移",
+      "🔧 修复：tooltip跟随鼠标位置展示",
+      "🔧 修复：TaskBar的resize-right计算结束日期的问题",
+      "🔧 修复：修复弱点",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢yuwenkai1996 / wangyin1234 / DavidKasin / yirongJiang@github的使用与反馈</span>",
+      "🔧 Fixed: In DAY view, after changing (resizing/dragging/editing) TaskBar start or end date, eliminated invalid offset caused by Timeline",
+      "🔧 Fixed: Tooltip now follows mouse position",
+      "🔧 Fixed: TaskBar resize-right calculation of end date",
+      "🔧 Fixed: Vulnerabilities fix",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yuwenkai1996 / wangyin1234 / DavidKasin / yirongJiang@github for their use and feedback</span>"
+    ]
   }
 ]

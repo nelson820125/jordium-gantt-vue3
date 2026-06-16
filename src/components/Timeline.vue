@@ -298,7 +298,8 @@ const estimateTaskTooltipHeight = (resourcePercent: number, hasResourceConflict:
 const handleTooltipShow = (payload: TooltipShowPayload) => {
   if (props.enableTaskBarTooltip === false) return
 
-  const { task, taskStatus, resourcePercent, hasResourceConflict, targetRect } = payload
+  const { task, taskStatus, resourcePercent, hasResourceConflict, targetRect, mouseX, mouseY } =
+    payload
   tooltipState.task = task
   tooltipState.taskStatus = taskStatus
   tooltipState.resourcePercent = resourcePercent
@@ -315,8 +316,8 @@ const handleTooltipShow = (payload: TooltipShowPayload) => {
   const panelRight = panelRect ? panelRect.right : window.innerWidth
   const viewH = window.innerHeight
 
-  const targetCX = targetRect.left + targetRect.width / 2
-  const targetCY = targetRect.top + targetRect.height / 2
+  const targetCX = mouseX ?? targetRect.left + targetRect.width / 2
+  const targetCY = mouseY ?? targetRect.top + targetRect.height / 2
 
   // ── 判断气泡停靠场景 ────────────────────────────────────────────────────────
   // 当 TaskBar 滑出面板左/右边缘时，气泡显示在面板边框处
@@ -475,6 +476,12 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
   if (viewMode.value === 'resource') return
   if (props.startDate || props.endDate) {
     if (!isUpdatingTimelineConfig) {
+      // 范围值相等时跳过重绘，避免无效 timeline 重新生成（消除微小闪烁）
+      if (
+        newStart.getTime() === timelineConfig.value.startDate.getTime() &&
+        newEnd.getTime() === timelineConfig.value.endDate.getTime()
+      )
+        return
       timelineConfig.value.startDate = newStart
       timelineConfig.value.endDate = newEnd
     }
@@ -773,13 +780,15 @@ const getDayTimelineRange = () => {
     startDate = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1)
   }
 
-  // 结束日期：自定义sufBuffer月后对齐月末，或默认+30天
+  // 结束日期：自定义sufBuffer月后对齐月末，或默认下一个月月末
+  // 对齐到月末原因：与 applyBufferAndFillContainer (GanttChart.vue) 的 DAY case 保持一致，
+  // 避免两条路径产生不同的 endDate（如 Jul 25 vs Jul 31），进而引发不必要的 timelineData
+  // 重新生成 → taskBarRenderKey++ → TaskBar 闪烁/跳变。
   let endDate: Date
   if (customSufBuffer !== null) {
     endDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + customSufBuffer + 1, 0)
   } else {
-    endDate = new Date(maxDate)
-    endDate.setDate(endDate.getDate() + 30)
+    endDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 2, 0)
   }
 
   // 计算当前范围需要的宽度

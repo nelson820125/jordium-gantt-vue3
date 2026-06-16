@@ -144,6 +144,8 @@ export interface TooltipShowPayload {
   hasResourceConflict: boolean
   /** TaskBar 元素的 DOMRect，用于 Timeline 计算定位 */
   targetRect: DOMRect
+  mouseX?: number // [v1.11.6]
+  mouseY?: number // [v1.11.6]
   /** 父级任务自动调度信息（仅 isParent=true 时携带） */
   parentAutoSchedule?: {
     enabled: boolean

@@ -1970,7 +1970,8 @@ const handleMouseMove = (e: MouseEvent) => {
       }
     } else {
       // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
-      const newLeft = Math.max(0, resizeStartLeft.value + deltaX)
+      const maxLeft = resizeStartLeft.value + resizeStartWidth.value - props.dayWidth
+      const newLeft = Math.min(maxLeft, Math.max(0, resizeStartLeft.value + deltaX))
 
       // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
       if (
@@ -2101,13 +2102,13 @@ const handleMouseMove = (e: MouseEvent) => {
           // 只更新临时数据，不触发事件
           tempTaskData.value = {
             startDate: props.task.startDate, // 保持原来的开始日期
-            endDate: formatDateToLocalString(newEndDate),
+            endDate: formatDateToLocalString(addDaysToLocalDate(newEndDate, -1)),
           }
 
           // 更新拖拽提示框内容
           dragTooltipContent.value = {
             startDate: props.task.startDate || '',
-            endDate: formatDateToLocalString(newEndDate),
+            endDate: formatDateToLocalString(addDaysToLocalDate(newEndDate, -1)),
           }
         }
       } else {
@@ -3021,11 +3022,6 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
   ) {
     // 保存event.currentTarget的引用，因为在setTimeout回调中它会变成null
     const targetElement = event.currentTarget as HTMLElement
-    // 保存鼠标位置
-    // @ts-expect-error - 预留变量，未来可能使用
-    const mouseX = event.clientX
-    // @ts-expect-error - 预留变量，未来可能使用
-    const mouseY = event.clientY
 
     // 延迟显示tooltip，避免快速滑过时显示
     // Singleton Tooltip：Timer后 emit tooltip-show，由 Timeline 统一计算位置和渲染
@@ -3037,6 +3033,8 @@ const handleTaskBarMouseEnter = (event: MouseEvent) => {
         resourcePercent: resourcePercent.value,
         hasResourceConflict: props.hasResourceConflict ?? false,
         targetRect: rect,
+        mouseX: event.clientX, // [v1.11.6]
+        mouseY: event.clientY, // [v1.11.6]
         parentAutoSchedule: props.isParent
           ? {
               enabled: props.enableParentTaskAutoSchedule ?? true,

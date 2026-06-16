@@ -2062,8 +2062,13 @@ const timelineDateRange = computed(() => {
       }
     }
   } else {
-    if (props.tasks) allTasks = allTasks.concat(flattenTasks(props.tasks))
-    if (props.milestones) allTasks = allTasks.concat(props.milestones)
+    // 使用 tasksForTimeline 而非 props.tasks，原因：
+    // tasksForTimeline 中父任务的 startDate/endDate 已由 updateParentDateRanges 重算为子任务的
+    // 实际范围（enableParentTaskAutoSchedule=true 时），与 Timeline 内部 getDayTimelineRange
+    // 读取的数据源保持一致，避免"原始父任务 dates 比子任务更宽"导致两条路径 minDate 不同，
+    // 进而引发首次 resize/drag 后的 timeline 跳变。
+    // flattenTasks 会递归 children，自动包含 milestone-group 的子里程碑日期。
+    allTasks = allTasks.concat(flattenTasks(tasksForTimeline.value))
   }
 
   // 过滤出有日期的任务
@@ -2167,22 +2172,17 @@ function applyBufferAndFillContainer(
       break
     }
     case TimelineScale.DAY: {
-      // 日视图：默认 ±15天，自定义单位为天；两种情况均对齐到月边界
+      // 日视图：buffer 单位为"月"，与 getDayTimelineRange 保持一致，均对齐到月边界
+      // 修复：原逻辑 buffer 单位为"天"，导致任务更新时 timeline 起始月份与初始加载不同，
+      // 引发约 930px（31天×30px）的水平滚动跳变。统一改为以月为单位后两条路径结果相同。
 
-      // 1. 计算 buffer 天数（自定义或默认值）
-      const preDays = customPreBuffer !== null ? customPreBuffer : 15
-      const sufDays = customSufBuffer !== null ? customSufBuffer : 15
+      // 1. 计算 buffer 月数（自定义或默认值 1 个月，与 getDayTimelineRange 默认行为一致）
+      const preMonths = customPreBuffer !== null ? customPreBuffer : 1
+      const sufMonths = customSufBuffer !== null ? customSufBuffer : 1
 
-      // 2. 计算 buffer 后的日期
-      const minBufferDate = new Date(taskMin)
-      minBufferDate.setDate(minBufferDate.getDate() - preDays)
-
-      const maxBufferDate = new Date(taskMax)
-      maxBufferDate.setDate(maxBufferDate.getDate() + sufDays)
-
-      // 3. 获取 buffer 日期所在月份的第一天和最后一天（月边界对齐）
-      min = new Date(minBufferDate.getFullYear(), minBufferDate.getMonth(), 1)
-      max = new Date(maxBufferDate.getFullYear(), maxBufferDate.getMonth() + 1, 0)
+      // 2. 直接按月偏移并对齐到月边界（无需中间 buffer 日期）
+      min = new Date(taskMin.getFullYear(), taskMin.getMonth() - preMonths, 1)
+      max = new Date(taskMax.getFullYear(), taskMax.getMonth() + sufMonths + 1, 0)
 
       // 3. 确保至少有 minColumns 天
       const currentDays = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60 * 24))
