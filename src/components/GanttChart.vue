@@ -95,6 +95,7 @@ const props = withDefaults(defineProps<Props>(), {
   scaleConfigs: undefined,
   rowHeight: 51,
   enableParentTaskAutoSchedule: true,
+  enableResourceLaneStacking: true,
 })
 
 const emit = defineEmits([
@@ -170,8 +171,17 @@ provide(
 )
 
 // 提供行高配置给所有子组件（Timeline、TaskList、TaskRow 等均通过 inject 消费）
+// v1.12.0: titlePosition='above' 时行高增加 18px，防止 above 标题与上方行 TaskBar 重叠
+const TITLE_ABOVE_ROW_PADDING = 18 // px
 provide(
   'gantt-row-height',
+  computed(() => {
+    const base = Math.min(60, Math.max(30, props.rowHeight ?? 51))
+    return props.taskBarConfig?.titlePosition === 'above' ? base + TITLE_ABOVE_ROW_PADDING : base
+  })
+)
+provide(
+  'gantt-row-height-base',
   computed(() => Math.min(60, Math.max(30, props.rowHeight ?? 51)))
 )
 
@@ -207,7 +217,10 @@ const resourceTaskLayouts = computed(() => {
 
   if (currentViewMode.value === 'resource') {
     const resources = currentDataSource.value as Resource[]
-    const baseRowHeight = Math.min(60, Math.max(30, props.rowHeight ?? 51))
+    // v1.12.0: titlePosition='above' 时行高增加同等补偿，与 gantt-row-height provide 保持一致
+    const baseRowHeight =
+      Math.min(60, Math.max(30, props.rowHeight ?? 51)) +
+      (props.taskBarConfig?.titlePosition === 'above' ? TITLE_ABOVE_ROW_PADDING : 0)
 
     // 依赖 updateTaskTrigger 以便在任务更新时重新计算布局
     if (updateTaskTrigger.value >= 0) {
@@ -246,13 +259,19 @@ const resourceTaskLayouts = computed(() => {
 
           // v2.0 方案2：检查缓存
           const tasksHash = getTasksHash(tasks)
-          const cacheHash = `${currentTimeScale.value}:${tasksHash}`
+          const stackingFlag = props.enableResourceLaneStacking !== false ? '1' : '0'
+          const cacheHash = `${currentTimeScale.value}:${stackingFlag}:${tasksHash}`
           const cached = resourceLayoutCache.get(resourceId)
 
           if (cached && cached.hash === cacheHash) {
             layouts.set(resourceId, cached.layout)
           } else {
-            const layout = assignTaskRows(tasks, baseRowHeight, currentTimeScale.value)
+            const layout = assignTaskRows(
+              tasks,
+              baseRowHeight,
+              currentTimeScale.value,
+              props.enableResourceLaneStacking !== false
+            )
             layouts.set(resourceId, layout)
             resourceLayoutCache.set(resourceId, {
               layout,
@@ -277,13 +296,19 @@ const resourceTaskLayouts = computed(() => {
 
           // v2.0 方案2：检查缓存
           const tasksHash = getTasksHash(tasks)
-          const cacheHash = `${currentTimeScale.value}:${tasksHash}`
+          const stackingFlag = props.enableResourceLaneStacking !== false ? '1' : '0'
+          const cacheHash = `${currentTimeScale.value}:${stackingFlag}:${tasksHash}`
           const cached = resourceLayoutCache.get(resourceId)
 
           if (cached && cached.hash === cacheHash) {
             layouts.set(resourceId, cached.layout)
           } else {
-            const layout = assignTaskRows(tasks, baseRowHeight, currentTimeScale.value)
+            const layout = assignTaskRows(
+              tasks,
+              baseRowHeight,
+              currentTimeScale.value,
+              props.enableResourceLaneStacking !== false
+            )
             layouts.set(resourceId, layout)
             resourceLayoutCache.set(resourceId, {
               layout,
@@ -311,7 +336,9 @@ const resourceRowPositions = computed(() => {
       positions.set(resourceId, cumulativeTop)
       const layout = resourceTaskLayouts.value.get(resourceId)
       const resourceHeight =
-        layout?.totalHeight || Math.min(60, Math.max(30, props.rowHeight ?? 51))
+        layout?.totalHeight ||
+        Math.min(60, Math.max(30, props.rowHeight ?? 51)) +
+          (props.taskBarConfig?.titlePosition === 'above' ? TITLE_ABOVE_ROW_PADDING : 0)
       cumulativeTop += resourceHeight
     })
   }
@@ -666,6 +693,12 @@ interface Props {
    * false：父级 TaskBar 保持自身设定日期；子任务溢出时显示2px红色指示条
    */
   enableParentTaskAutoSchedule?: boolean
+  /**
+   * 资源视图车道堆叠模式（默认为 true）v1.12.0
+   * true：启用贪心车道堆叠——时间不重叠的任务共享同一行，最大化空间利用率
+   * false：禁用堆叠——每个任务独占一行，适合任务密集、需要清晰辨识的场景
+   */
+  enableResourceLaneStacking?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）

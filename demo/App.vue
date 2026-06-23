@@ -422,6 +422,7 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
   resizeHandleWidth: taskBarOptions.value.resizeHandleWidth,
   enableDragDelay: taskBarOptions.value.enableDragDelay,
   dragDelayTime: taskBarOptions.value.dragDelayTime,
+  titlePosition: 'above', // 标题显示在任务条上方
 }))
 
 // 配置面板折叠状态
@@ -445,10 +446,10 @@ const scaleConfigs = {
 }
 
 // Tool 设置区域折叠状态（默认展开用于演示）
-const isToolSettingsCollapsed = ref(false)
+const isToolSettingsCollapsed = ref(true)
 
 // ── z-index 测试工具 ─────────────────────────────────────────────────────────
-const isZIndexTestCollapsed = ref(false)
+const isZIndexTestCollapsed = ref(true)
 const zOverrideValue = ref(9999)
 const hostModalZIndex = ref(10000)
 const showHostTestModal = ref(false)
@@ -2522,6 +2523,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :use-default-drawer="useDefaultDrawer"
         :enable-task-drawer-auto-close="false"
         :enable-parent-task-auto-schedule="enableParentAutoSchedule"
+        :enable-resource-lane-stacking="false"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"

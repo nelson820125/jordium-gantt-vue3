@@ -2241,6 +2241,17 @@ const resourceTaskRenderLimits = shallowRef(new Map<string | number, number>())
 const resourceRenderPhase = ref<'visible' | 'background'>('visible')
 let resourceBatchRafId: number | null = null
 
+// v1.12.0: titlePosition='above' 时 GanttConflicts 的 topOffset 和 height 需要同步补偿
+const CONFLICT_TITLE_ABOVE_PAD = 18
+const conflictTitleAbovePad = computed(() =>
+  props.taskBarConfig?.titlePosition === 'above' ? CONFLICT_TITLE_ABOVE_PAD : 0
+)
+const getConflictRowHeights = (resourceId: string | number) => {
+  const raw = resourceTaskLayouts.value.get(resourceId)?.rowHeights
+  if (!raw || !conflictTitleAbovePad.value) return raw
+  return raw.map(h => h - conflictTitleAbovePad.value)
+}
+
 const stopResourceBatchRender = () => {
   if (resourceBatchRafId !== null) {
     cancelAnimationFrame(resourceBatchRafId)
@@ -6563,15 +6574,17 @@ const handleAddSuccessor = (task: Task) => {
                         ? getMonthTimelineRange().startDate
                         : timelineConfig.startDate
                   "
-                  :top-offset="5.5"
+                  :top-offset="5.5 + conflictTitleAbovePad"
                   :height="
-                    (resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight) - 10
+                    (resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight) -
+                    10 -
+                    conflictTitleAbovePad
                   "
                   :width="totalTimelineWidth"
                   :timeline-data="timelineData as any"
                   :current-time-scale="currentTimeScale"
                   :task-row-map="resourceTaskLayouts.get(resource.id)?.taskRowMap"
-                  :row-heights="resourceTaskLayouts.get(resource.id)?.rowHeights"
+                  :row-heights="getConflictRowHeights(resource.id)"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
                   :render-limit="resourceTaskRenderLimits.get(resource.id)"

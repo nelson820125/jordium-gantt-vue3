@@ -245,6 +245,7 @@ npm run dev
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许 TaskDrawer 自动关闭（外总点击或按 Esc 时自动关闭）。设为 `false` 时禁用自动关闭，仅可通过内部按钮手动关闭 |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | 行高（px），Timeline 和 TaskList 共用同一行高。有效区间：`30`～`60`，超出范围的值将被自动截断（小于 30 截断至 30，大于 60 截断至 60）。当设置小于 40 时，TaskBar 内的任务名称和进度将自动切换为紧凑横排布局以适应小行高 |
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 是否开启父任务自动调度。`true`：父任务的 TaskBar 时间窗口自动跟随子任务的最早开始／最晚结束日期同步拉伸。`false`：父任务显示自身配置的固定日期范围，子任务超出时其 TaskBar 上方显示红色指示线 |
+| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 资源视图车道堆叠模式。`true`：启用贪心车道堆叠——时间不重叠的任务共享同一行，最大化空间利用率。`false`：禁用堆叠——每个任务独占一行，适合任务密集、需要清晰辨识的场景 |
 
 #### TaskListColumn 属性
 
@@ -2168,6 +2169,7 @@ const taskListConfig = computed<TaskListConfig>(() => ({
 | `resizeHandleWidth` | `number`  | `5`     | 拉伸手柄宽度（像素），最大 15px |
 | `enableDragDelay`   | `boolean` | `false` | 是否启用拖拽延迟（防止误触）    |
 | `dragDelayTime`     | `number`  | `150`   | 拖拽延迟时间（毫秒）            |
+| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above'` | `'inside'` | 任务标题渲染位置。`'inside'`：标题在任务条内部（白色文字，默认行为）。`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比，适合任务条较窄或任务名称较长的场景 |
 
 > **💡 编辑权限控制**：
 >

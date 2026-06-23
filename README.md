@@ -247,6 +247,7 @@ npm run dev
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow TaskDrawer to auto-close (closes on outside click or Esc key). Set to `false` to disable auto-close — the drawer can only be closed via its internal close button |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | Row height (px) shared by both Timeline and TaskList. Valid range: `30`–`60`. Values below 30 are clamped to 30, values above 60 are clamped to 60. When set below 40, TaskBar content (name + progress) automatically switches to a compact horizontal layout to fit the smaller row |
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to enable auto-scheduling for parent tasks. `true`: parent task's TaskBar time window automatically stretches to span the earliest start and latest end of its children. `false`: parent task displays its own configured date range; a red indicator line appears above its TaskBar when children overflow the configured bounds |
+| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Resource view lane stacking mode. `true`: greedy lane packing — non-overlapping tasks share the same row, maximizing space efficiency. `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters |
 
 #### TaskListColumn Component Props
 
@@ -2175,6 +2176,7 @@ Controls task bar display content and interaction behavior。
 | `resizeHandleWidth` | `number`  | `5`     | Resize handle width (pixels), max 15px                    |
 | `enableDragDelay`   | `boolean` | `false` | Whether to enable drag delay (prevent accidental trigger) |
 | `dragDelayTime`     | `number`  | `150`   | Drag delay time (milliseconds)                            |
+| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above'` | `'inside'` | Task title render position. `'inside'`: title inside the bar (white text, default). `'above'`: title floats above the bar; only progress percentage is shown inside — ideal for narrow bars (1–3 day tasks) or long task names |
 
 > **💡 Edit Permission Control**：
 >

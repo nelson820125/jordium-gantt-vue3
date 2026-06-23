@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-06-23
+
+### Added
+- 🎉 新增：GanttChart 新增 `enableResourceLaneStacking` 属性，控制资源视图的车道堆叠行为。`true`（默认）：启用贪心车道堆叠，时间不冲突的任务共享同一行以节省空间；`false`：禁用堆叠，每个任务独占一行，适合任务密集、需要清晰辨识的场景
+- 🎉 新增：`TaskBarConfig` 新增 `titlePosition` 字段，控制任务标题渲染位置。`'inside'`（默认）：标题渲染在任务条内部；`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比，适合任务条较窄或任务名称较长的场景
+- 🎉 Added: GanttChart new prop `enableResourceLaneStacking` — controls lane stacking behavior in Resource View. `true` (default): greedy lane packing, non-overlapping tasks share the same row to save space; `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters
+- 🎉 Added: `TaskBarConfig` new field `titlePosition` — controls task title render position. `'inside'` (default): title rendered inside the bar; `'above'`: title floats above the bar with only the progress percentage shown inside, ideal for narrow bars (1–3 day tasks) or long task names
+
 ## [1.11.6] - 2026-06-16
 
 ### Fixed
