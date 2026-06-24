@@ -171,18 +171,13 @@ provide(
 )
 
 // 提供行高配置给所有子组件（Timeline、TaskList、TaskRow 等均通过 inject 消费）
-// v1.12.0: titlePosition='above' 时行高增加 18px，防止 above 标题与上方行 TaskBar 重叠
+// v1.12.x: gantt-row-height 现在只返回 base 值，per-task 的 +18px 逻辑移至 taskRowLayouts
 const TITLE_ABOVE_ROW_PADDING = 18 // px
 provide(
   'gantt-row-height',
   computed(() => {
-    const base = Math.min(60, Math.max(30, props.rowHeight ?? 51))
-    return props.taskBarConfig?.titlePosition === 'above' ? base + TITLE_ABOVE_ROW_PADDING : base
+    return Math.min(60, Math.max(30, props.rowHeight ?? 51))
   })
-)
-provide(
-  'gantt-row-height-base',
-  computed(() => Math.min(60, Math.max(30, props.rowHeight ?? 51)))
 )
 
 // v2.0 性能优化：资源视图布局缓存（避免重复计算）
@@ -2038,6 +2033,43 @@ const tasksForTimeline = computed(() => {
 
   return result
 })
+
+// v1.12.x: per-task 行高布局 —— 按 actualStartDate/actualEndDate 动态决定是否需要 +18px
+// 当 showActualTaskbar=true 且任务有 actual 数据时，above-title 被隐藏（TaskBar.vue L3873），
+// 因此不需要 +18px 补偿
+interface TaskRowLayouts {
+  cumulativeHeights: number[] // [0, h0, h0+h1, ..., total], length = N+1
+  totalHeight: number
+  taskHeights: Map<string | number, number> // task id → row height
+}
+
+function getTaskRowHeight(task: Task): number {
+  const base = Math.min(60, Math.max(30, props.rowHeight ?? 51))
+  if (props.taskBarConfig?.titlePosition !== 'above') return base
+  // 里程碑行没有 above-title，不需要 +18px 补偿
+  if (task.type === 'milestone' || task.type === 'milestone-group') return base
+  // 有 actual bar 时 above-title 被隐藏，不需要 +18px 补偿
+  if (props.showActualTaskbar && (task.actualStartDate || task.actualEndDate)) return base
+  return base + TITLE_ABOVE_ROW_PADDING
+}
+
+const taskRowLayouts = computed<TaskRowLayouts>(() => {
+  const flatTasks = tasksForTimeline.value
+  const cumulativeHeights: number[] = [0]
+  const taskHeights = new Map<string | number, number>()
+  let cumulative = 0
+
+  for (const task of flatTasks) {
+    const height = getTaskRowHeight(task)
+    cumulative += height
+    cumulativeHeights.push(cumulative)
+    taskHeights.set(task.id, height)
+  }
+
+  return { cumulativeHeights, totalHeight: cumulative, taskHeights }
+})
+
+provide('taskRowLayouts', taskRowLayouts)
 
 // 将Task[]转换为Milestone[]的计算属性，确保类型兼容
 const milestonesForTimeline = computed((): Milestone[] => {

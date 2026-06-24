@@ -305,10 +305,20 @@ const barConfig = computed(() => ({
   ...props.taskBarConfig,
 }))
 
-// v1.12.0: above 模式时 row 容器已多了 18px，bar 本体高度基于减去补偿后的有效行高计算
-const titleAbovePaddingValue = computed(() =>
-  barConfig.value.titlePosition === 'above' ? TITLE_ABOVE_ROW_PADDING : 0
-)
+// 判断是否有实际进度数据（需要提前定义，供 titleAbovePaddingValue 引用）
+const hasActualProgress = computed(() => {
+  return !!(props.task.actualStartDate || props.task.actualEndDate)
+})
+
+// v1.12.x: above 模式时，仅当 above-title 实际可见时才需要 -18px 补偿
+// - task view: per-task 逻辑，有 actual bar 时 above-title 隐藏 → 0
+// - resource view: 始终全局 +18px（rowHeights 数组独立处理 sub-row 高度，且 resourceViewTaskBarRowHeight 已含 +18px）
+const titleAbovePaddingValue = computed(() => {
+  if (barConfig.value.titlePosition !== 'above') return 0
+  if (viewMode.value === 'resource') return TITLE_ABOVE_ROW_PADDING
+  if (props.showActualTaskbar && hasActualProgress.value) return 0
+  return TITLE_ABOVE_ROW_PADDING
+})
 const effectiveRowHeightForBar = computed(() => props.rowHeight - titleAbovePaddingValue.value)
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
@@ -1128,11 +1138,6 @@ const isWeekView = computed(() => props.currentTimeScale === TimelineScale.WEEK)
 const isShortTaskBar = computed(() => {
   const width = parseFloat(taskBarStyle.value.width || '0')
   return width < SCALE_CONFIGS['day'].cellWidth
-})
-
-// 判断是否有实际进度数据
-const hasActualProgress = computed(() => {
-  return !!(props.task.actualStartDate || props.task.actualEndDate)
 })
 
 // 计算实际进度条的样式（独立的TaskBar，在下层）

@@ -70,7 +70,7 @@ function toDateOnly(d: Date): Date {
  * 与 TaskBar.vue 的 taskBarStyle computed 算法保持一致，确保像素值吻合。
  *
  * @param task           任务对象（只需 startDate / endDate）
- * @param rowIndex       任务在 tasks 数组中的索引（0-based），用于计算 top
+ * @param cumulativeTop  任务行在时间线中的累计顶部位置（px），替代 rowIndex * rowHeight
  * @param timeScale      当前时间刻度
  * @param cache          positionCache 实例（Timeline.vue provide）
  * @param dayWidth       当前刻度下每天的像素宽度（用于 cache miss 时的估算）
@@ -80,7 +80,7 @@ function toDateOnly(d: Date): Date {
  */
 export function computeTaskViewLogicalPosition(
   task: { startDate?: string | Date | null; endDate?: string | Date | null },
-  rowIndex: number,
+  cumulativeTop: number,
   timeScale: TimelineScale,
   cache: PositionCache | null,
   dayWidth: number,
@@ -89,7 +89,7 @@ export function computeTaskViewLogicalPosition(
 ): LogicalBarPosition | null {
   const taskBarHeight = rowHeight - 10
   const taskBarTopOffset = Math.floor((rowHeight - taskBarHeight - TASK_BAR_BORDER_WIDTH * 2) / 2)
-  const top = rowIndex * rowHeight + taskBarTopOffset
+  const top = cumulativeTop + taskBarTopOffset
 
   // ── HOUR 视图：分钟级精确计算（与 TaskBar.vue HOUR 分支完全一致）──────────────
   if (timeScale === TimelineScale.HOUR) {

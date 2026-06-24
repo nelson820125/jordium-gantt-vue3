@@ -121,14 +121,23 @@ const ganttRowHeight = inject<ComputedRef<number>>(
   computed(() => 51)
 )
 
-// 计算行高度 - resource视图下使用动态高度
+// v1.12.x: per-task 行高布局（用于 task 视图下的 per-task 高度）
+const taskRowLayouts = inject<ComputedRef<{
+  taskHeights: Map<string | number, number>
+}>>(
+  'taskRowLayouts',
+  computed(() => ({ taskHeights: new Map() }))
+)
+
+// 计算行高度 - resource视图下使用动态高度，task视图下使用 per-task 高度
 const rowHeight = computed(() => {
   if (isResourceRow.value) {
     const resourceId = String(props.task.id) // 转换为string
     const layout = resourceTaskLayouts.value.get(resourceId)
     return layout?.totalHeight || ganttRowHeight.value + 5 // v1.9.1 默认行高 + 5px底部padding
   }
-  return ganttRowHeight.value // task视图下使用可配置行高
+  // v1.12.x: task 视图使用 per-task 高度（支持按 actual 数据动态调整）
+  return taskRowLayouts.value.taskHeights.get(props.task.id) || ganttRowHeight.value
 })
 
 // 注入右键菜单配置

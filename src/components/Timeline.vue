@@ -220,6 +220,26 @@ const ganttRowHeight = inject<ComputedRef<number>>(
   computed(() => 51)
 )
 
+// v1.12.x: per-task 行高布局（累计位置），替代 ganttRowHeight * index 固定乘法
+const taskRowLayouts = inject<ComputedRef<{
+  cumulativeHeights: number[]
+  totalHeight: number
+  taskHeights: Map<string | number, number>
+}>>(
+  'taskRowLayouts',
+  computed(() => ({ cumulativeHeights: [0], totalHeight: 0, taskHeights: new Map() }))
+)
+
+// v1.12.x: resource view TaskBar 使用的 rowHeight
+// resource view 的 rowHeights 数组独立处理自身 sub-row 高度，但 TaskBar.vue 内
+// titleAbovePaddingValue 会从 props.rowHeight 中减去 18px。因此 resource view 传入的
+// rowHeight 仍需包含 +18px 补偿，与 resource view 自身的 baseRowHeight 保持一致。
+const RESOURCE_VIEW_ABOVE_PADDING = 18
+const resourceViewTaskBarRowHeight = computed(() => {
+  const base = ganttRowHeight.value
+  return props.taskBarConfig?.titlePosition === 'above' ? base + RESOURCE_VIEW_ABOVE_PADDING : base
+})
+
 // 纵向虚拟滚动相关状态（需要在useResourceLayout之前定义）
 // ROW_HEIGHT 通过 ganttRowHeight.value 访问，让下面所有使用处保持兼容
 const VERTICAL_BUFFER = 5 // 纵向缓冲区行数
@@ -2097,14 +2117,37 @@ const visibleTaskRange = computed(() => {
       endIndex: Math.min(resources.length, endIndex),
     }
   } else {
-    // 任务视图：使用固定行高计算
-    const startIndex = Math.floor(scrollTop / ganttRowHeight.value) - VERTICAL_BUFFER
-    const endIndex =
-      Math.ceil((scrollTop + containerHeight) / ganttRowHeight.value) + VERTICAL_BUFFER
+    // 任务视图：per-task 高度支持，使用累计高度数组 + 二分查找
+    const cumHeights = taskRowLayouts.value.cumulativeHeights
+    const total = tasks.value.length
+    if (total === 0 || cumHeights.length <= 1) {
+      return { startIndex: 0, endIndex: 0 }
+    }
+
+    // 二分查找：找到 cumulativeHeights[i] <= scrollTop 的最大 i
+    const findUpperBound = (target: number): number => {
+      let left = 0, right = cumHeights.length - 1
+      while (left < right) {
+        const mid = Math.floor((left + right) / 2)
+        if (cumHeights[mid] <= target) {
+          left = mid + 1
+        } else {
+          right = mid
+        }
+      }
+      return Math.max(0, left - 1)
+    }
+
+    const startIndex = Math.max(0, findUpperBound(scrollTop) - VERTICAL_BUFFER)
+    const scrollBottom = scrollTop + containerHeight
+    const endIndex = Math.min(
+      total,
+      findUpperBound(scrollBottom) + VERTICAL_BUFFER + 1
+    )
 
     return {
-      startIndex: Math.max(0, startIndex),
-      endIndex: Math.min(tasks.value.length, Math.max(startIndex + 1, endIndex)),
+      startIndex,
+      endIndex: Math.min(total, Math.max(startIndex + 1, endIndex)),
     }
   }
 })
@@ -2981,10 +3024,8 @@ const contentHeight = computed(() => {
     return Math.max(totalHeight, minHeight, timelineBodyHeight.value)
   }
 
-  // 任务视图：每个任务行高度取自 ganttRowHeight
-  const rowHeight = ganttRowHeight.value
-  const taskCount = tasks.value.length
-  const minHeightFromTasks = taskCount * rowHeight
+  // 任务视图：使用 per-task 累计高度（支持不同行有不同高度）
+  const minHeightFromTasks = taskRowLayouts.value.totalHeight
 
   // 返回任务高度、最小高度和容器高度中的最大值
   return Math.max(minHeightFromTasks, minHeight, timelineBodyHeight.value)
@@ -4096,14 +4137,17 @@ function _runSeedChunk(deadline?: IdleDeadline) {
       continue
     }
 
+    const layouts = taskRowLayouts.value
+    const cumulativeTop = layouts.cumulativeHeights[_seedIndex] || 0
+    const taskRowHeight = layouts.taskHeights.get(task.id) ?? ganttRowHeight.value
     const pos = computeTaskViewLogicalPosition(
       task,
-      _seedIndex,
+      cumulativeTop,
       scale as any,
       positionCache,
       dw,
       baseStart,
-      ganttRowHeight.value
+      taskRowHeight
     )
     if (pos) chunkResult[task.id as number] = pos
     _seedIndex++
@@ -6300,7 +6344,10 @@ const handleAddSuccessor = (task: Task) => {
               :key="task.id"
               class="task-row"
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
-              :style="{ top: `${originalIndex * ganttRowHeight}px`, height: `${ganttRowHeight}px` }"
+              :style="{
+                top: `${taskRowLayouts.cumulativeHeights[originalIndex]}px`,
+                height: `${(taskRowLayouts.cumulativeHeights[originalIndex + 1] ?? taskRowLayouts.cumulativeHeights[originalIndex]) - taskRowLayouts.cumulativeHeights[originalIndex]}px`
+              }"
               @mouseenter="handleTaskRowHover(task.id)"
               @mouseleave="handleTaskRowHover(null)"
             >
@@ -6310,7 +6357,7 @@ const handleAddSuccessor = (task: Task) => {
                   v-for="milestone in task.children"
                   :key="milestone.id"
                   :date="milestone.startDate || ''"
-                  :row-height="ganttRowHeight"
+                  :row-height="taskRowLayouts.taskHeights.get(task.id) || ganttRowHeight"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6346,7 +6393,7 @@ const handleAddSuccessor = (task: Task) => {
                 <MilestonePoint
                   :key="task.id"
                   :date="task.startDate || ''"
-                  :row-height="ganttRowHeight"
+                  :row-height="taskRowLayouts.taskHeights.get(task.id) || ganttRowHeight"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6383,7 +6430,7 @@ const handleAddSuccessor = (task: Task) => {
                 :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                 :task="task"
                 :row-index="originalIndex"
-                :row-height="ganttRowHeight"
+                :row-height="taskRowLayouts.taskHeights.get(task.id) || ganttRowHeight"
                 :day-width="dayWidth"
                 :start-date="
                   currentTimeScale === TimelineScale.YEAR
@@ -6475,12 +6522,12 @@ const handleAddSuccessor = (task: Task) => {
                   :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                   :task="task"
                   :row-index="originalIndex"
-                  :row-height="ganttRowHeight"
+                  :row-height="resourceViewTaskBarRowHeight"
                   :task-sub-row="
                     resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0
                   "
                   :row-heights="
-                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [ganttRowHeight]
+                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [resourceViewTaskBarRowHeight]
                   "
                   :day-width="dayWidth"
                   :start-date="
