@@ -2284,15 +2284,29 @@ const resourceTaskRenderLimits = shallowRef(new Map<string | number, number>())
 const resourceRenderPhase = ref<'visible' | 'background'>('visible')
 let resourceBatchRafId: number | null = null
 
-// v1.12.0: titlePosition='above' 时 GanttConflicts 的 topOffset 和 height 需要同步补偿
+// v1.12.x: GanttConflicts Canvas 定位常量
+// 资源视图下每行的 bar 位置由 assignTaskRows 的 rowHeight 和 TaskBar.vue 的 topOffset 公式共同决定：
+//   - 第一行 (row 0): bar top = abovePad + 5px(top-margin) + 0.5px(centering) = abovePad + 5.5
+//   - 后续行:       bar top = abovePad + 0px              + 0.5px(centering) = abovePad + 0.5
+//   - 每行底部留白: 4.5px（= 5px bottom-margin − 0.5px centering）
+//   - barHeight = 41px（= effectiveRowHeightForBar − 10，与 TaskBar.vue 一致）
+// 这些值独立于用户设置的 rowHeight，因为 assignTaskRows 按 5+bar+5 的结构构造行高。
 const CONFLICT_TITLE_ABOVE_PAD = 18
+const CONFLICT_FIRST_ROW_TOP_MARGIN = 5.5   // 5px padding + 0.5px centering
+const CONFLICT_ROW_BOTTOM_MARGIN = 4.5       // 5px padding − 0.5px centering
+
 const conflictTitleAbovePad = computed(() =>
   props.taskBarConfig?.titlePosition === 'above' ? CONFLICT_TITLE_ABOVE_PAD : 0
 )
+/** Canvas 顶部偏移：对齐第一行 bar 的顶边（above-title 下方 + 第一行顶部留白） */
+const conflictCanvasTopOffset = computed(() =>
+  conflictTitleAbovePad.value + CONFLICT_FIRST_ROW_TOP_MARGIN
+)
+/** Canvas 高度：覆盖 bar 区域，去除顶部留白和底部留白 */
+const conflictCanvasHeight = (totalHeight: number) =>
+  totalHeight - conflictCanvasTopOffset.value - CONFLICT_ROW_BOTTOM_MARGIN
 const getConflictRowHeights = (resourceId: string | number) => {
-  const raw = resourceTaskLayouts.value.get(resourceId)?.rowHeights
-  if (!raw || !conflictTitleAbovePad.value) return raw
-  return raw.map(h => h - conflictTitleAbovePad.value)
+  return resourceTaskLayouts.value.get(resourceId)?.rowHeights
 }
 
 const stopResourceBatchRender = () => {
@@ -6621,12 +6635,13 @@ const handleAddSuccessor = (task: Task) => {
                         ? getMonthTimelineRange().startDate
                         : timelineConfig.startDate
                   "
-                  :top-offset="5.5 + conflictTitleAbovePad"
+                  :top-offset="conflictCanvasTopOffset"
                   :height="
-                    (resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight) -
-                    10 -
-                    conflictTitleAbovePad
+                    conflictCanvasHeight(
+                      resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight
+                    )
                   "
+                  :bar-top-pad="conflictTitleAbovePad"
                   :width="totalTimelineWidth"
                   :timeline-data="timelineData as any"
                   :current-time-scale="currentTimeScale"

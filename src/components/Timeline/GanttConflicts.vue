@@ -19,6 +19,8 @@ interface Props {
   width: number
   /** 顶部偏移量（px），用于对齐第一行TaskBar上沿 */
   topOffset?: number
+  /** v1.12.x: above-title 高度（0 或 18），用于校准 bar 在行内的垂直位置 */
+  barTopPad?: number
   /** 时间轴数据（用于精确定位） */
   timelineData?: Array<any>
   /** 当前时间刻度 */
@@ -349,15 +351,24 @@ function recalculateConflictsIncremental(changedTaskId: string | number) {
         if (rowNumbers.length > 0) {
           const minRow = Math.min(...rowNumbers)
           const maxRow = Math.max(...rowNumbers)
-          top = 0
-          for (let i = 0; i < minRow; i++) {
-            top += props.rowHeights[i] || 51
-          }
-          height = 0
-          for (let i = minRow; i <= maxRow; i++) {
-            height += props.rowHeights[i] || 51
-          }
-          height = Math.max(1, height - 10)
+
+          // 行内 bar 定位常量（与 TaskBar.vue 的 taskBarStyle 公式一致）
+          const pad = props.barTopPad || 0
+          const firstRowBarTop = pad + 5.5
+          const nextRowBarTop = pad + 0.5
+          const barHeight = (props.rowHeights[0] || 51) - pad - 10
+
+          let cumBeforeMin = 0
+          for (let i = 0; i < minRow; i++) cumBeforeMin += props.rowHeights[i] || 51
+          const absoluteBarTop = cumBeforeMin + (minRow === 0 ? firstRowBarTop : nextRowBarTop)
+
+          let cumBeforeMax = 0
+          for (let i = 0; i < maxRow; i++) cumBeforeMax += props.rowHeights[i] || 51
+          const absoluteBarBottom =
+            cumBeforeMax + (maxRow === 0 ? firstRowBarTop : nextRowBarTop) + barHeight
+
+          top = absoluteBarTop - firstRowBarTop
+          height = absoluteBarBottom - absoluteBarTop
         }
       }
 
@@ -427,7 +438,7 @@ function recalculateConflicts() {
       const canvasRight = Math.min(viewportWidth, viewportRight)
       const canvasWidth = canvasRight - canvasLeft
 
-      // v1.9.5 修复：根据冲突任务所在的行号计算正确的top和height
+      // v1.12.x: 根据冲突任务所在的行号计算精确的 bar-to-bar top和height
       let top = 0
       let height = props.height
 
@@ -442,24 +453,29 @@ function recalculateConflicts() {
         }
 
         if (rowNumbers.length > 0) {
-          // 找到最小和最大行号
           const minRow = Math.min(...rowNumbers)
           const maxRow = Math.max(...rowNumbers)
 
-          // 计算top：从第一行的顶部开始（相对于Canvas内部坐标）
-          // Canvas本身已有topOffset，所以这里直接累加行高即可
-          top = 0
-          for (let i = 0; i < minRow; i++) {
-            top += props.rowHeights[i] || 51
-          }
+          // 行内 bar 定位常量（与 TaskBar.vue 的 taskBarStyle 公式一致）
+          const pad = props.barTopPad || 0
+          const firstRowBarTop = pad + 5.5    // row 0 bar 顶边
+          const nextRowBarTop = pad + 0.5     // row N>0 bar 顶边（相对行起点的偏移）
+          const barHeight = (props.rowHeights[0] || 51) - pad - 10
 
-          // 计算height：从minRow到maxRow所有行的高度之和
-          height = 0
-          for (let i = minRow; i <= maxRow; i++) {
-            height += props.rowHeights[i] || 51
-          }
-          // 减去底部边距（约2.5px），让冲突区域不超出TaskBar底部边界
-          height = Math.max(1, height - 10)
+          // absoluteBarTop: minRow 中 bar 的顶边（相对于 row container 顶部）
+          let cumBeforeMin = 0
+          for (let i = 0; i < minRow; i++) cumBeforeMin += props.rowHeights[i] || 51
+          const absoluteBarTop = cumBeforeMin + (minRow === 0 ? firstRowBarTop : nextRowBarTop)
+
+          // absoluteBarBottom: maxRow 中 bar 的底边
+          let cumBeforeMax = 0
+          for (let i = 0; i < maxRow; i++) cumBeforeMax += props.rowHeights[i] || 51
+          const absoluteBarBottom =
+            cumBeforeMax + (maxRow === 0 ? firstRowBarTop : nextRowBarTop) + barHeight
+
+          // Canvas 坐标：Canvas 顶部位于 firstRowBarTop，故减去它得到内部坐标
+          top = absoluteBarTop - firstRowBarTop
+          height = absoluteBarBottom - absoluteBarTop
         }
       }
 

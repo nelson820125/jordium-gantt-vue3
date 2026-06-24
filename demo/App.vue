@@ -422,7 +422,7 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
   resizeHandleWidth: taskBarOptions.value.resizeHandleWidth,
   enableDragDelay: taskBarOptions.value.enableDragDelay,
   dragDelayTime: taskBarOptions.value.dragDelayTime,
-  titlePosition: 'above', // 标题显示在任务条上方
+  // titlePosition: 'above', // 标题显示在任务条上方
 }))
 
 // 配置面板折叠状态
@@ -2523,7 +2523,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :use-default-drawer="useDefaultDrawer"
         :enable-task-drawer-auto-close="false"
         :enable-parent-task-auto-schedule="enableParentAutoSchedule"
-        :enable-resource-lane-stacking="false"
+        :enable-resource-lane-stacking="true"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
