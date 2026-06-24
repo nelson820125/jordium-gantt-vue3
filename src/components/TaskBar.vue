@@ -182,7 +182,7 @@ interface Props {
   enableParentTaskAutoSchedule?: boolean
 }
 
-interface TaskStatus {
+export interface TaskStatus {
   type: string
   color: string
   bgColor: string
