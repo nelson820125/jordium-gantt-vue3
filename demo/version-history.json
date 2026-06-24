@@ -788,10 +788,12 @@
     "notes": [
       "🎉 新增：GanttChart 新增 `enableResourceLaneStacking` 属性，控制资源视图的车道堆叠行为。`true`（默认）：启用贪心车道堆叠；`false`：禁用堆叠，每个任务独占一行",
       "🎉 新增：`TaskBarConfig` 新增 `titlePosition` 字段，控制任务标题渲染位置。`'inside'`（默认）：标题渲染在任务条内部；`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比",
-      "<span style=\"font-weight: bold; color: #f00;\">特别感谢GOODBOY008@github的使用与反馈</span>",
+      "🎉 新增：库构建集成 `vite-plugin-dts`，`build:lib` 现可自动生成 TypeScript 声明文件（`index.d.ts` 及各组件 `.vue.d.ts`），TypeScript 消费者可获得完整的类型提示与 IDE 自动补全",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢GOODBOY008 / tombstonedguy@github的使用与反馈</span>",
       "🎉 Added: GanttChart new prop `enableResourceLaneStacking` — controls lane stacking behavior in resource view. `true` (default): enables greedy lane stacking; `false`: disables stacking, each task occupies its own row",
       "🎉 Added: `TaskBarConfig` new field `titlePosition` — controls task title rendering position. `'inside'` (default): title rendered inside the task bar; `'above'`: title floats above the task bar, with only progress percentage shown inside",
-      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to GOODBOY008@github for their use and feedback</span>"
+      "🎉 Added: Library build now integrates `vite-plugin-dts` — `build:lib` automatically generates TypeScript declaration files (`index.d.ts` and per-component `.vue.d.ts`), providing full type hints and IDE autocomplete for TypeScript consumers",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to GOODBOY008 / tombstonedguy@github for their use and feedback</span>"
     ]
   }
 ]

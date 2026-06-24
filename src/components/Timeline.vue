@@ -221,11 +221,13 @@ const ganttRowHeight = inject<ComputedRef<number>>(
 )
 
 // v1.12.x: per-task 行高布局（累计位置），替代 ganttRowHeight * index 固定乘法
-const taskRowLayouts = inject<ComputedRef<{
-  cumulativeHeights: number[]
-  totalHeight: number
-  taskHeights: Map<string | number, number>
-}>>(
+const taskRowLayouts = inject<
+  ComputedRef<{
+    cumulativeHeights: number[]
+    totalHeight: number
+    taskHeights: Map<string | number, number>
+  }>
+>(
   'taskRowLayouts',
   computed(() => ({ cumulativeHeights: [0], totalHeight: 0, taskHeights: new Map() }))
 )
@@ -2126,7 +2128,8 @@ const visibleTaskRange = computed(() => {
 
     // 二分查找：找到 cumulativeHeights[i] <= scrollTop 的最大 i
     const findUpperBound = (target: number): number => {
-      let left = 0, right = cumHeights.length - 1
+      let left = 0,
+        right = cumHeights.length - 1
       while (left < right) {
         const mid = Math.floor((left + right) / 2)
         if (cumHeights[mid] <= target) {
@@ -2140,10 +2143,7 @@ const visibleTaskRange = computed(() => {
 
     const startIndex = Math.max(0, findUpperBound(scrollTop) - VERTICAL_BUFFER)
     const scrollBottom = scrollTop + containerHeight
-    const endIndex = Math.min(
-      total,
-      findUpperBound(scrollBottom) + VERTICAL_BUFFER + 1
-    )
+    const endIndex = Math.min(total, findUpperBound(scrollBottom) + VERTICAL_BUFFER + 1)
 
     return {
       startIndex,
@@ -2292,15 +2292,15 @@ let resourceBatchRafId: number | null = null
 //   - barHeight = 41px（= effectiveRowHeightForBar − 10，与 TaskBar.vue 一致）
 // 这些值独立于用户设置的 rowHeight，因为 assignTaskRows 按 5+bar+5 的结构构造行高。
 const CONFLICT_TITLE_ABOVE_PAD = 18
-const CONFLICT_FIRST_ROW_TOP_MARGIN = 5.5   // 5px padding + 0.5px centering
-const CONFLICT_ROW_BOTTOM_MARGIN = 4.5       // 5px padding − 0.5px centering
+const CONFLICT_FIRST_ROW_TOP_MARGIN = 5.5 // 5px padding + 0.5px centering
+const CONFLICT_ROW_BOTTOM_MARGIN = 4.5 // 5px padding − 0.5px centering
 
 const conflictTitleAbovePad = computed(() =>
   props.taskBarConfig?.titlePosition === 'above' ? CONFLICT_TITLE_ABOVE_PAD : 0
 )
 /** Canvas 顶部偏移：对齐第一行 bar 的顶边（above-title 下方 + 第一行顶部留白） */
-const conflictCanvasTopOffset = computed(() =>
-  conflictTitleAbovePad.value + CONFLICT_FIRST_ROW_TOP_MARGIN
+const conflictCanvasTopOffset = computed(
+  () => conflictTitleAbovePad.value + CONFLICT_FIRST_ROW_TOP_MARGIN
 )
 /** Canvas 高度：覆盖 bar 区域，去除顶部留白和底部留白 */
 const conflictCanvasHeight = (totalHeight: number) =>
@@ -4759,8 +4759,7 @@ const handleTaskBarHighlighted = () => {
 // v1.9.0 资源视图垂直拖拽：处理TaskBar拖放到不同资源行
 const handleResourceTaskBarDrop = (event: Event) => {
   const customEvent = event as CustomEvent
-  // @ts-expect-error - taskId和mouseX预留但当前未使用
-  const { taskId, task, sourceRowIndex, mouseY, mouseX } = customEvent.detail
+  const { task, sourceRowIndex, mouseY } = customEvent.detail
 
   // 计算目标资源行索引
   const timelineBody = timelineBodyElement.value
@@ -6360,7 +6359,7 @@ const handleAddSuccessor = (task: Task) => {
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
               :style="{
                 top: `${taskRowLayouts.cumulativeHeights[originalIndex]}px`,
-                height: `${(taskRowLayouts.cumulativeHeights[originalIndex + 1] ?? taskRowLayouts.cumulativeHeights[originalIndex]) - taskRowLayouts.cumulativeHeights[originalIndex]}px`
+                height: `${(taskRowLayouts.cumulativeHeights[originalIndex + 1] ?? taskRowLayouts.cumulativeHeights[originalIndex]) - taskRowLayouts.cumulativeHeights[originalIndex]}px`,
               }"
               @mouseenter="handleTaskRowHover(task.id)"
               @mouseleave="handleTaskRowHover(null)"
@@ -6541,7 +6540,9 @@ const handleAddSuccessor = (task: Task) => {
                     resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0
                   "
                   :row-heights="
-                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [resourceViewTaskBarRowHeight]
+                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [
+                      resourceViewTaskBarRowHeight,
+                    ]
                   "
                   :day-width="dayWidth"
                   :start-date="

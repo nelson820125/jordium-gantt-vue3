@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - 🎉 新增：GanttChart 新增 `enableResourceLaneStacking` 属性，控制资源视图的车道堆叠行为。`true`（默认）：启用贪心车道堆叠；`false`：禁用堆叠，每个任务独占一行
 - 🎉 新增：`TaskBarConfig` 新增 `titlePosition` 字段，控制任务标题渲染位置。`'inside'`（默认）：标题渲染在任务条内部；`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比
+- 🎉 新增：库构建集成 `vite-plugin-dts`，`build:lib` 现可自动生成 TypeScript 声明文件（`index.d.ts` 及各组件 `.vue.d.ts`），TypeScript 消费者可获得完整的类型提示与 IDE 自动补全
 - 🎉 Added: GanttChart new prop `enableResourceLaneStacking` — controls lane stacking behavior in Resource View. `true` (default): greedy lane packing; `false`: each task occupies its own row
 - 🎉 Added: `TaskBarConfig` new field `titlePosition` — controls task title render position. `'inside'` (default): title rendered inside the bar; `'above'`: title floats above the bar with only the progress percentage shown inside
+- 🎉 Added: Library build now integrates `vite-plugin-dts` — `build:lib` automatically generates TypeScript declaration files (`index.d.ts` and per-component `.vue.d.ts`), providing full type hints and IDE autocomplete for TypeScript consumers
 
 ## [1.11.6] - 2026-06-16
 

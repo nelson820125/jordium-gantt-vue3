@@ -2200,8 +2200,6 @@ const handleMouseUp = () => {
   )
 
   // v1.9.0 资源视图垂直拖拽：检测是否移动到不同资源
-  // @ts-expect-error - targetResourceRowIndex预留变量，未来可能使用
-  let targetResourceRowIndex: number | undefined
   let isCrossRowDrag = false
 
   if (

@@ -230,10 +230,6 @@ const handleTaskRowMoved = (payload: {
 }
 
 // v1.9.0 处理资源行点击事件
-// @ts-expect-error - Reserved for future resource click handling
-const handleResourceClick = (resource: Resource) => {
-  emit('resource-click', resource)
-}
 
 // 全局拖拽管理器
 const { startDrag, handleDragOver } = useTaskRowDrag({
