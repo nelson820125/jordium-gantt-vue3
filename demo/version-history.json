@@ -809,5 +809,13 @@
       "🎉 Added: `TaskListColumnConfig` and `TaskListColumn` new field `fixed` — supports fixing columns on the left (`'left'` / `'right'` / `boolean`). Columns with `fixed:'left'` automatically rearranged to the far left, task name column always fixed at `left:0`, supports multiple left fixed columns with cumulative offset based on width",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yrjj@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.12.2",
+    "date": "2026-06-25",
+    "notes": [
+      "🔧 修复：Socket.dev提示组件库弱点问题，PDF导出时使用了innerHTML，存在XSS攻击风险",
+      "🔧 Fixed: Socket.dev warning about component library vulnerability, PDF export using innerHTML, XSS attack risk"
+    ]
   }
 ]
