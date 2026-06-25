@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, useSlots, computed, inject } from 'vue'
+import { ref, onMounted, onUnmounted, useSlots, computed, inject, nextTick, watch } from 'vue'
 import type { StyleValue, Slots } from 'vue'
 import TaskRow from './taskRow/TaskRow.vue'
 import { useI18n } from '../../composables/useI18n'
@@ -81,7 +81,7 @@ const finalColumnsConfig = computed(() => {
 const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } = useTaskListColumns(
   computed(() => props.taskListColumnRenderMode || 'default'),
   slots,
-  finalColumnsConfig.value as TaskListColumnConfig[]
+  finalColumnsConfig.value as TaskListColumnConfig[],
 )
 
 // 计算实际使用的列配置
@@ -112,8 +112,14 @@ const localTasks = computed(() => {
 })
 
 // 使用布局计算 composable
-const { taskListScrollTop, taskListBodyHeight, visibleTasks, startSpacerHeight, endSpacerHeight } =
-  useTaskListLayout(localTasks)
+const {
+  taskListScrollTop,
+  taskListBodyHeight,
+  visibleTasks,
+  totalContentHeight,
+  startSpacerHeight,
+  endSpacerHeight,
+} = useTaskListLayout(localTasks)
 
 // 悬停状态管理 - v1.9.0 支持资源视图中的字符串ID
 const hoveredTaskId = ref<number | string | null>(null)
@@ -130,6 +136,62 @@ const {
   cleanupResizeObservers,
   updateContainerWidth,
 } = useTaskListResize(isSplitterDragging, taskListScrollTop, taskListBodyHeight)
+
+const taskListVerticalScrollbarRef = ref<HTMLElement | null>(null)
+let isSyncingVerticalScrollbar = false
+let isSyncingTaskListBody = false
+
+const hasVerticalOverflow = computed(
+  () => totalContentHeight.value > taskListBodyHeight.value + 1,
+)
+
+const verticalScrollbarContentHeight = computed(() =>
+  Math.max(totalContentHeight.value, taskListBodyHeight.value),
+)
+
+const resetScrollSyncFlag = (reset: () => void) => {
+  requestAnimationFrame(() => {
+    reset()
+  })
+}
+
+const syncVerticalScrollbarFromBody = () => {
+  if (isSyncingTaskListBody) return
+
+  const scrollbar = taskListVerticalScrollbarRef.value
+  const body = taskListBodyRef.value
+  if (!scrollbar || !body) return
+
+  if (Math.abs(scrollbar.scrollTop - body.scrollTop) <= 1) return
+
+  isSyncingVerticalScrollbar = true
+  scrollbar.scrollTop = body.scrollTop
+  resetScrollSyncFlag(() => {
+    isSyncingVerticalScrollbar = false
+  })
+}
+
+const handleTaskListBodyScroll = (event: Event) => {
+  handleTaskListScroll(event)
+  syncVerticalScrollbarFromBody()
+}
+
+const handleVerticalScrollbarScroll = (event: Event) => {
+  if (isSyncingVerticalScrollbar) return
+
+  const body = taskListBodyRef.value
+  const scrollbar = event.target as HTMLElement | null
+  if (!body || !scrollbar) return
+
+  if (Math.abs(body.scrollTop - scrollbar.scrollTop) <= 1) return
+
+  isSyncingTaskListBody = true
+  body.scrollTop = scrollbar.scrollTop
+  taskListScrollTop.value = scrollbar.scrollTop
+  resetScrollSyncFlag(() => {
+    isSyncingTaskListBody = false
+  })
+}
 
 // 获取列宽度样式（百分比转像素）
 const getColumnWidthStyle = (column: { width?: number | string }) => {
@@ -181,6 +243,10 @@ const {
   taskListBodyRef,
   updateContainerWidth,
   enableParentTaskAutoSchedule: computed(() => props.enableParentTaskAutoSchedule ?? true),
+})
+
+watch([taskListScrollTop, taskListBodyHeight, totalContentHeight], () => {
+  nextTick(syncVerticalScrollbarFromBody)
 })
 
 function toggleCollapse(task: Task) {
@@ -270,125 +336,150 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="taskListRef" class="task-list">
-    <div class="task-list-header">
-      <!-- 声明式模式 -->
-      <template v-if="taskListColumnRenderMode === 'declarative'">
-        <div
-          v-for="(column, index) in columnsToUse"
-          :key="index"
-          class="col"
-          :class="column.cssClass"
-          :style="{
-            ...getColumnWidthStyle(column),
-            justifyContent:
-              (column as any).align === 'center'
-                ? 'center'
-                : (column as any).align === 'right'
-                  ? 'flex-end'
-                  : 'flex-start',
-            textAlign: (column as any).align || 'left',
-          }"
-        >
-          <template v-if="(column as any).headerSlot">
-            <component :is="(column as any).headerSlot" />
-          </template>
-          <template v-else>
-            {{ (column as any).label }}
-          </template>
-        </div>
-      </template>
+  <div
+    ref="taskListRef"
+    class="task-list"
+    :class="{ 'task-list-with-vertical-scrollbar': hasVerticalOverflow }"
+  >
+    <div class="task-list-horizontal">
+      <div class="task-list-header">
+        <!-- 声明式模式 -->
+        <template v-if="taskListColumnRenderMode === 'declarative'">
+          <div
+            v-for="(column, index) in columnsToUse"
+            :key="index"
+            class="col"
+            :class="column.cssClass"
+            :style="{
+              ...getColumnWidthStyle(column),
+              justifyContent:
+                (column as any).align === 'center'
+                  ? 'center'
+                  : (column as any).align === 'right'
+                    ? 'flex-end'
+                    : 'flex-start',
+              textAlign: (column as any).align || 'left',
+            }"
+          >
+            <template v-if="(column as any).headerSlot">
+              <component :is="(column as any).headerSlot" />
+            </template>
+            <template v-else>
+              {{ (column as any).label }}
+            </template>
+          </div>
+        </template>
 
-      <!-- 默认模式 -->
-      <template v-else>
-        <div class="col col-name">
-          <template v-if="columnSlots['header-name']">
-            <component :is="columnSlots['header-name']" />
-          </template>
-          <template v-else>
-            {{
-              viewMode === 'resource'
-                ? (t as any).resourceName || '资源名称'
-                : (t as any).taskName || '任务名称'
-            }}
-          </template>
-        </div>
-        <div
-          v-for="column in visibleColumns"
-          :key="(column as TaskListColumnConfig).key"
-          class="col"
-          :class="
-            (column as TaskListColumnConfig).cssClass ||
-            `col-${(column as TaskListColumnConfig).key}`
+        <!-- 默认模式 -->
+        <template v-else>
+          <div class="col col-name">
+            <template v-if="columnSlots['header-name']">
+              <component :is="columnSlots['header-name']" />
+            </template>
+            <template v-else>
+              {{
+                viewMode === 'resource'
+                  ? (t as any).resourceName || '资源名称'
+                  : (t as any).taskName || '任务名称'
+              }}
+            </template>
+          </div>
+          <div
+            v-for="column in visibleColumns"
+            :key="(column as TaskListColumnConfig).key"
+            class="col"
+            :class="
+              (column as TaskListColumnConfig).cssClass ||
+              `col-${(column as TaskListColumnConfig).key}`
+            "
+            :style="getColumnWidthStyle(column)"
+          >
+            <template v-if="columnSlots[`header-${(column as TaskListColumnConfig).key}`]">
+              <component :is="columnSlots[`header-${(column as TaskListColumnConfig).key}`]" />
+            </template>
+            <template v-else>
+              {{
+                (t as any)[(column as TaskListColumnConfig).key] ||
+                (column as TaskListColumnConfig).label
+              }}
+            </template>
+          </div>
+        </template>
+      </div>
+      <div ref="taskListBodyRef" class="task-list-body" @scroll="handleTaskListBodyScroll">
+        <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
+
+        <TaskRow
+          v-for="{ task, level, rowIndex } in visibleTasks"
+          :key="task.id"
+          v-memo="[
+            task.id,
+            task.name,
+            task.collapsed,
+            hoveredTaskId === task.id,
+            task.startDate,
+            task.endDate,
+            task.progress,
+          ]"
+          :task="task"
+          :level="level"
+          :row-index="rowIndex"
+          :is-hovered="hoveredTaskId === task.id"
+          :hovered-task-id="hoveredTaskId"
+          :on-hover="handleTaskRowHover"
+          :columns="
+            taskListColumnRenderMode === 'declarative'
+              ? []
+              : (visibleColumns as TaskListColumnConfig[])
           "
-          :style="getColumnWidthStyle(column)"
+          :declarative-columns="
+            taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined
+          "
+          :render-mode="taskListColumnRenderMode"
+          :get-column-width-style="getColumnWidthStyle"
+          :disable-children-render="true"
+          :show-task-icon="props.taskListConfig?.showTaskIcon"
+          :enable-drag="props.enableTaskRowMove"
+          :drag-start="startDrag"
+          :drag-over="handleDragOver"
+          :task-list-row-class-name="props.taskListRowClassName"
+          :task-list-row-style="props.taskListRowStyle"
+          @toggle="toggleCollapse"
+          @dblclick="handleTaskRowDoubleClick"
+          @contextmenu="handleTaskRowContextMenu"
+          @start-timer="handleStartTimer"
+          @stop-timer="handleStopTimer"
+          @add-predecessor="handleAddPredecessor"
+          @add-successor="handleAddSuccessor"
+          @delete="handleTaskDelete"
         >
-          <template v-if="columnSlots[`header-${(column as TaskListColumnConfig).key}`]">
-            <component :is="columnSlots[`header-${(column as TaskListColumnConfig).key}`]" />
+          <template v-if="hasRowSlot" #custom-task-content="rowScope">
+            <slot name="custom-task-content" v-bind="rowScope" />
           </template>
-          <template v-else>
-            {{
-              (t as any)[(column as TaskListColumnConfig).key] ||
-              (column as TaskListColumnConfig).label
-            }}
+          <template
+            v-if="slots['task-list-context-menu']"
+            #task-list-context-menu="contextMenuScope"
+          >
+            <slot name="task-list-context-menu" v-bind="contextMenuScope" />
           </template>
-        </div>
-      </template>
+        </TaskRow>
+
+        <div class="task-list-body-spacer" :style="{ height: `${endSpacerHeight}px` }"></div>
+      </div>
     </div>
-    <div ref="taskListBodyRef" class="task-list-body" @scroll="handleTaskListScroll">
-      <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
-
-      <TaskRow
-        v-for="{ task, level, rowIndex } in visibleTasks"
-        :key="task.id"
-        v-memo="[
-          task.id,
-          task.name,
-          task.collapsed,
-          hoveredTaskId === task.id,
-          task.startDate,
-          task.endDate,
-          task.progress,
-        ]"
-        :task="task"
-        :level="level"
-        :row-index="rowIndex"
-        :is-hovered="hoveredTaskId === task.id"
-        :hovered-task-id="hoveredTaskId"
-        :on-hover="handleTaskRowHover"
-        :columns="
-          taskListColumnRenderMode === 'declarative'
-            ? []
-            : (visibleColumns as TaskListColumnConfig[])
-        "
-        :declarative-columns="taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined"
-        :render-mode="taskListColumnRenderMode"
-        :get-column-width-style="getColumnWidthStyle"
-        :disable-children-render="true"
-        :show-task-icon="props.taskListConfig?.showTaskIcon"
-        :enable-drag="props.enableTaskRowMove"
-        :drag-start="startDrag"
-        :drag-over="handleDragOver"
-        :task-list-row-class-name="props.taskListRowClassName"
-        :task-list-row-style="props.taskListRowStyle"
-        @toggle="toggleCollapse"
-        @dblclick="handleTaskRowDoubleClick"
-        @contextmenu="handleTaskRowContextMenu"
-        @start-timer="handleStartTimer"
-        @stop-timer="handleStopTimer"
-        @add-predecessor="handleAddPredecessor"
-        @add-successor="handleAddSuccessor"
-        @delete="handleTaskDelete"
-      >
-        <template v-if="hasRowSlot" #custom-task-content="rowScope">
-          <slot name="custom-task-content" v-bind="rowScope" />
-        </template>
-        <template v-if="slots['task-list-context-menu']" #task-list-context-menu="contextMenuScope">
-          <slot name="task-list-context-menu" v-bind="contextMenuScope" />
-        </template>
-      </TaskRow>
-
-      <div class="task-list-body-spacer" :style="{ height: `${endSpacerHeight}px` }"></div>
+    <div
+      v-if="hasVerticalOverflow"
+      ref="taskListVerticalScrollbarRef"
+      class="task-list-vertical-scrollbar"
+      :style="{ height: `${taskListBodyHeight}px` }"
+      aria-hidden="true"
+      tabindex="-1"
+      @scroll="handleVerticalScrollbarScroll"
+    >
+      <div
+        class="task-list-vertical-scrollbar-spacer"
+        :style="{ height: `${verticalScrollbarContentHeight}px` }"
+      ></div>
     </div>
   </div>
 </template>
@@ -403,12 +494,45 @@ defineExpose({
   font-size: 15px;
   color: var(--gantt-text-primary);
   background: var(--gantt-bg-primary);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.task-list-horizontal {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow-x: auto;
+  overflow-y: hidden;
 
   scrollbar-width: thin;
   scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+.task-list-horizontal::-webkit-scrollbar {
+  height: 8px;
+}
+
+.task-list-horizontal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-list-horizontal::-webkit-scrollbar-thumb {
+  background-color: var(--gantt-scrollbar-thumb);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.task-list-horizontal::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gantt-scrollbar-thumb-hover);
+}
+
+.task-list-horizontal::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .task-list-header {
@@ -473,6 +597,54 @@ defineExpose({
 }
 
 .task-list-body::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.task-list-with-vertical-scrollbar .task-list-body {
+  scrollbar-width: none;
+}
+
+.task-list-with-vertical-scrollbar .task-list-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.task-list-vertical-scrollbar {
+  position: absolute;
+  top: 80px;
+  right: 0;
+  width: 8px;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  z-index: 20;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+.task-list-vertical-scrollbar-spacer {
+  width: 1px;
+}
+
+.task-list-vertical-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.task-list-vertical-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-list-vertical-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--gantt-scrollbar-thumb);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.task-list-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gantt-scrollbar-thumb-hover);
+}
+
+.task-list-vertical-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
 </style>
