@@ -38,6 +38,7 @@ import {
   parseWidthValue,
 } from '../models/configs/TaskListConfig'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
+import { DEFAULT_LINK_CONFIG, type LinkConfig } from '../models/configs/TaskBarConfig'
 import { TimelineScale, SCALE_CONFIGS } from '../models/types/TimelineScale'
 import type { TimelineScaleConfig } from '../models/types/TimelineScale'
 import { detectConflicts } from '../utils/conflictUtils'
@@ -131,6 +132,23 @@ const emit = defineEmits([
   'taskbar-resource-change', // 任务跨资源移动事件
   'resource-drag-end', // v1.9.0 资源视图垂直拖拽结束事件
 ])
+
+// R2: 动态连线配置（可通过 setLinkConfig 运行时修改，优先级高于 props.linkConfig）
+const currentLinkConfig = ref<LinkConfig>(props.linkConfig || {})
+
+// 监听 props.linkConfig 变化同步到内部状态
+watch(
+  () => props.linkConfig,
+  val => {
+    currentLinkConfig.value = val || {}
+  }
+)
+
+// 合并后的连线配置（传给 Timeline → GanttLinks）
+const resolvedLinkConfig = computed(() => ({
+  ...DEFAULT_LINK_CONFIG,
+  ...currentLinkConfig.value,
+}))
 
 // 根元素引用
 const ganttRootRef = ref<HTMLElement>()
@@ -694,6 +712,8 @@ interface Props {
    * false：禁用堆叠——每个任务独占一行，适合任务密集、需要清晰辨识的场景
    */
   enableResourceLaneStacking?: boolean
+  /** R1: 连线样式配置 */
+  linkConfig?: LinkConfig
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -3877,6 +3897,21 @@ defineExpose({
   },
   /** 切换 TaskList 展开/收起（仅在 enableTaskListCollapsible=true 时生效，带动画） */
   toggleTaskList,
+
+  // R2: 连线配置 API
+  /**
+   * 动态设置连线样式配置（与 props.linkConfig 合并，运行时调用优先级更高）
+   * @example ganttRef.value.setLinkConfig({ type: 'orthogonal', color: '#ff0000' })
+   */
+  setLinkConfig: (config: Partial<LinkConfig>) => {
+    currentLinkConfig.value = { ...currentLinkConfig.value, ...config }
+  },
+  /**
+   * 获取当前生效的完整连线配置（合并 DEFAULT + props + setLinkConfig）
+   */
+  getLinkConfig: (): Required<LinkConfig> => {
+    return { ...DEFAULT_LINK_CONFIG, ...currentLinkConfig.value }
+  },
 })
 </script>
 
@@ -3989,6 +4024,7 @@ defineExpose({
           :enable-task-bar-tooltip="props.enableTaskBarTooltip"
           :enable-milestone-tooltip="props.enableMilestoneTooltip"
           :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
+          :link-config="resolvedLinkConfig"
           :pending-task-background-color="props.pendingTaskBackgroundColor"
           :delay-task-background-color="props.delayTaskBackgroundColor"
           :complete-task-background-color="props.completeTaskBackgroundColor"

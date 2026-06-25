@@ -4274,7 +4274,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     transform 0.3s,
     filter 0.3s,
     z-index 0s; /* v1.9.0 z-index不使用动画 */
-  z-index: var(--gantt-z-bar);
+  z-index: auto; /* 不建立层叠上下文，子元素参与父级层叠（hover/highlight 用 !important 覆盖） */
   border: 2px solid;
   /* 添加半透明黑色边框增强对比度 */
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
@@ -4735,13 +4735,13 @@ const handleAnchorDragEnd = (anchorEvent: {
   gap: 10px; /* 头像和标题之间的间距 */
   margin-left: 6px;
   pointer-events: none;
-  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
+  z-index: var(--gantt-z-avatar); /* actual-bar 内部局部层叠前景 */
 }
 
 /* 实际TaskBar的标题容器 */
 .actual-task-name-wrapper {
   position: relative;
-  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
+  z-index: var(--gantt-z-avatar); /* actual-bar 内部局部层叠前景 */
   display: flex;
   align-items: center; /* 垂直居中 */
 }
@@ -4753,7 +4753,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   line-height: 1.2;
   font-size: 12px;
   font-weight: 700; /* 加粗显示 */
-  z-index: 10;
+  z-index: var(--gantt-z-avatar);
   /* 移除背景样式，保持原始状态 */
 }
 
@@ -4794,6 +4794,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   left: calc(var(--handle-width, 5px) + 3px); /* 手柄宽度 + 3px 间距 */
   top: 50%;
   transform: translateY(-50%);
+  z-index: var(--gantt-z-avatar); /* 头像在连线(33)之上 */
 }
 
 .actual-avatars-container {
@@ -4927,7 +4928,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   font-weight: 600;
   line-height: 1.2;
   pointer-events: none;
-  z-index: 11; /* 高于 task-bar-content，避免被遮挡 */
+  z-index: var(--gantt-z-avatar); /* 标题在连线(33)之上 */
   text-overflow: ellipsis;
   max-width: 100%;
   transition: left 0.15s ease-out;

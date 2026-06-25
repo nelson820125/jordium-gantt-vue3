@@ -28,3 +28,36 @@ export const DEFAULT_TASK_BAR_CONFIG: TaskBarConfig = {
   dragDelayTime: 150,
   titlePosition: 'inside',
 }
+
+// ==================== R1: 连线样式配置 ====================
+
+/** 连线路径类型 */
+export type LinkType = 'bezier' | 'straight' | 'orthogonal'
+
+/** 连线样式配置 */
+export interface LinkConfig {
+  /** 连线路径类型，默认 'bezier' */
+  type?: LinkType
+  /** 普通连线颜色，默认 '#c0c4cc' */
+  color?: string
+  /** 高亮连线颜色，默认 '#409eff' */
+  highlightColor?: string
+  /** 悬停连线颜色，默认 '#67c23a' */
+  hoverColor?: string
+  /** 普通连线线宽，默认 2 */
+  width?: number
+  /** 高亮连线线宽，默认 4 */
+  highlightWidth?: number
+  /** 连线样式，'dotted' 虚线 | 'solid' 实线，默认 'dotted' */
+  style?: 'dotted' | 'solid'
+}
+
+export const DEFAULT_LINK_CONFIG: Required<LinkConfig> = {
+  type: 'bezier',
+  color: '#c0c4cc',
+  highlightColor: '#409eff',
+  hoverColor: '#67c23a',
+  width: 2,
+  highlightWidth: 4,
+  style: 'dotted',
+}

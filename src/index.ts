@@ -31,7 +31,7 @@ export type {
   ResourceListColumnType,
   ResourceColumnFormatter,
 } from './models/configs/ResourceListConfig' // v1.9.0 导出资源配置类型
-export type { TaskBarConfig } from './models/configs/TaskBarConfig'
+export type { TaskBarConfig, LinkConfig, LinkType } from './models/configs/TaskBarConfig'
 export type { ToolbarConfig } from './models/configs/ToolbarConfig'
 
 // 导出样式文件

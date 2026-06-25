@@ -22,7 +22,7 @@ import type { Resource } from '../src/models/classes/Resource'
 import { createResource, addTaskToResource, updateResourceUtilization } from '../src/utils/resourceUtils'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
-import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
+import type { TaskBarConfig, LinkConfig } from '../src/models/configs/TaskBarConfig'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
@@ -425,6 +425,23 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
   // titlePosition: 'above', // 标题显示在任务条上方
 }))
 
+// [v1.12.1] Gantt Links配置 - 独立状态便于Demo面板调控
+const linkType = ref<'bezier' | 'straight' | 'orthogonal'>('orthogonal')
+const linkStyle = ref<'dotted' | 'solid'>('solid')
+const linkColor = ref('#aaa')
+const linkHighlightColor = ref('#409eff')
+const linkWidth = ref(2)
+const linkHighlightWidth = ref(4)
+
+const linkConfig = computed<LinkConfig>(() => ({
+  type: linkType.value,
+  color: linkColor.value,
+  style: linkStyle.value,
+  width: linkWidth.value,
+  highlightColor: linkHighlightColor.value,
+  highlightWidth: linkHighlightWidth.value,
+}))
+
 // 配置面板折叠状态
 const isConfigPanelCollapsed = ref(true)
 const isDataSourcePanelCollapsed = ref(true)
@@ -434,6 +451,9 @@ const isTaskListConfigCollapsed = ref(true)
 
 // TaskBar 配置区域折叠状态（默认收起）
 const isTaskBarConfigCollapsed = ref(true)
+
+// GanttLink 配置区域折叠状态（默认收起）
+const isGanttLinkConfigCollapsed = ref(true)
 
 // TimeScale 配置演示（直接使用符合 scaleConfigs prop 结构的静态配置）
 const scaleConfigs = {
@@ -536,6 +556,11 @@ const toggleTaskListConfig = () => {
 // 切换 TaskBar 配置区域
 const toggleTaskBarConfig = () => {
   isTaskBarConfigCollapsed.value = !isTaskBarConfigCollapsed.value
+}
+
+// 切换 GanttLink 配置区域
+const toggleGanttLinkConfig = () => {
+  isGanttLinkConfigCollapsed.value = !isGanttLinkConfigCollapsed.value
 }
 
 // 切换 Tool 设置区域
@@ -1945,6 +1970,71 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             </transition>
           </div>
 
+          <!-- GanttLink 配置区域 -->
+          <div class="config-section">
+            <div class="section-header" @click="toggleGanttLinkConfig">
+              <div class="section-header-title">
+                <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 3h18v2H3V3zm0 5h18v2H3V8zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <path d="M4 4l5 5M17 4l-5 5" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+                </svg>
+                GanttLink 配置
+              </div>
+              <button class="section-collapse-button" :class="{ collapsed: isGanttLinkConfigCollapsed }">
+                <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <transition name="section-content">
+              <div v-show="!isGanttLinkConfigCollapsed" class="section-content">
+                <div class="subsection">
+                  <div class="control-row" style="flex-wrap: wrap; gap: 14px;">
+                    <!-- type 下拉 -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">type:</span>
+                      <select v-model="linkType" class="field-select" style="width: 130px;">
+                        <option value="bezier">bezier</option>
+                        <option value="straight">straight</option>
+                        <option value="orthogonal">orthogonal</option>
+                      </select>
+                    </div>
+                    <!-- style 下拉 -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">style:</span>
+                      <select v-model="linkStyle" class="field-select" style="width: 100px;">
+                        <option value="dotted">dotted</option>
+                        <option value="solid">solid</option>
+                      </select>
+                    </div>
+                    <!-- color -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">color:</span>
+                      <input v-model="linkColor" type="color" class="control-input" style="width: 36px; height: 30px; padding: 2px; cursor: pointer;" />
+                      <input v-model="linkColor" type="text" class="control-input" style="width: 80px;" />
+                    </div>
+                    <!-- highlightColor -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">highlightColor:</span>
+                      <input v-model="linkHighlightColor" type="color" class="control-input" style="width: 36px; height: 30px; padding: 2px; cursor: pointer;" />
+                      <input v-model="linkHighlightColor" type="text" class="control-input" style="width: 80px;" />
+                    </div>
+                    <!-- width -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">width:</span>
+                      <input v-model.number="linkWidth" type="number" min="1" max="10" step="1" class="control-input" style="width: 60px;" />
+                    </div>
+                    <!-- highlightWidth -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">highlightWidth:</span>
+                      <input v-model.number="linkHighlightWidth" type="number" min="1" max="10" step="1" class="control-input" style="width: 60px;" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+
           <!-- Tool 设置区域 -->
           <div class="config-section">
             <div class="section-header" @click="toggleToolSettings">
@@ -2500,6 +2590,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :expand-all="controlMode === 'props' ? propsExpandAll : undefined"
         :toolbar-config="toolbarConfig"
         :task-list-config="taskListConfig"
+        :link-config="linkConfig"
         :enable-task-list-collapsible="enableTaskListCollapsible"
         :task-list-visible="enableTaskListCollapsible ? taskListVisible : undefined"
         :task-bar-config="taskBarConfig"

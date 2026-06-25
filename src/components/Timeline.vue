@@ -75,6 +75,8 @@ interface Props {
   scaleConfigs?: Record<TimelineScale, TimelineScaleConfig>
   // 父级任务自动调度：true=父级跟suivant子任务范围（默认），false=保持自身设定日期
   enableParentTaskAutoSchedule?: boolean
+  /** R1: 连线样式配置（透传给 GanttLinks） */
+  linkConfig?: import('../models/configs/TaskBarConfig').LinkConfig
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -6123,29 +6125,6 @@ const handleAddSuccessor = (task: Task) => {
     <!-- Timeline Body (Task Bar Area) -->
     <div class="timeline-body" @scroll="handleTimelineBodyScroll">
       <div ref="bodyContentRef" class="timeline-body-content">
-        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染）-->
-        <!-- 任务视图：同时绘制连接线 + 周视图1号竖线 -->
-        <!-- 资源视图：仅绘制周视图1号竖线（show-links=false 跳过连接线绘制） -->
-        <GanttLinks
-          v-if="
-            viewMode === 'task' ||
-            (viewMode === 'resource' && currentTimeScale === TimelineScale.WEEK)
-          "
-          :tasks="tasks"
-          :task-bar-positions="allBarPositions"
-          :width="canvasWidth"
-          :height="canvasHeight"
-          :offset-left="canvasOffsetLeft"
-          :offset-top="canvasOffsetTop"
-          :highlighted-task-id="highlightedTaskId"
-          :highlighted-task-ids="highlightedTaskIds"
-          :hovered-task-id="hoveredTaskId"
-          :vertical-lines="monthFirstVerticalLines"
-          :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
-          :show-links="viewMode === 'task'"
-          :is-scrolling="isTimelineScrolling"
-        />
-
         <!-- 连接线拖拽引导线 - 🚀 优化：使用命令式 API，由 RAF 直接调用 draw() -->
         <LinkDragGuide
           ref="linkDragGuideRef"
@@ -6349,6 +6328,27 @@ const handleAddSuccessor = (task: Task) => {
         <!-- top按照50px增加是为了保证和左侧TaskList中row的高度保持一致 -->
         <!-- 同时需要考虑左侧TaskList包含1px的bottom border -->
         <div class="task-bar-container" :style="{ height: `${contentHeight}px` }">
+          <!-- 关系线 Canvas（位于 container 内部，z-index 在 taskbar 之上、avatar 之下） -->
+          <GanttLinks
+            v-if="
+              viewMode === 'task' ||
+              (viewMode === 'resource' && currentTimeScale === TimelineScale.WEEK)
+            "
+            :tasks="tasks"
+            :task-bar-positions="allBarPositions"
+            :width="canvasWidth"
+            :height="canvasHeight"
+            :offset-left="canvasOffsetLeft"
+            :offset-top="canvasOffsetTop"
+            :highlighted-task-id="highlightedTaskId"
+            :highlighted-task-ids="highlightedTaskIds"
+            :hovered-task-id="hoveredTaskId"
+            :vertical-lines="monthFirstVerticalLines"
+            :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
+            :show-links="viewMode === 'task'"
+            :is-scrolling="isTimelineScrolling"
+            :link-config="props.linkConfig"
+          />
           <div class="task-rows" :style="{ height: `${contentHeight}px` }">
             <!-- 任务视图：使用虚拟滚动分批渲染可见任务（taskRenderedItems 每帧限流 3 行新增）-->
             <div
@@ -7317,7 +7317,7 @@ const handleAddSuccessor = (task: Task) => {
   width: 100%;
   /* height由内联样式动态设置，不使用固定值 */
   pointer-events: auto;
-  z-index: 11;
+  z-index: var(--gantt-z-row);
   transition: background-color 0.2s ease;
 }
 
