@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.1] - 2026-06-25
+
+### Added
+- 🎉 新增：`LinkConfig` 配置类型，支持连线样式切换（`bezier` 贝塞尔 / `straight` 直线 / `orthogonal` 折线），支持自定义连线颜色、线宽、虚线/实线样式
+- 🎉 新增：GanttChart 暴露 `setLinkConfig(config)` 和 `getLinkConfig()` 方法，支持运行时动态切换连线样式和颜色
+- 🎉 新增：`TaskListColumnConfig` 和 `TaskListColumn` 新增 `fixed` 字段，支持左侧表格列固定（`'left'` / `'right'` / `boolean`）。`fixed:'left'` 的列自动重排至最左侧，任务名称列始终固定在 `left:0`，支持多个左侧固定列按宽度累加偏移
+- 🎉 Added: `LinkConfig` type — switch link line style between `bezier`, `straight`, and `orthogonal`; customise link color, width, and dotted/solid style
+- 🎉 Added: GanttChart exposes `setLinkConfig(config)` and `getLinkConfig()` methods for runtime dynamic link style switching
+- 🎉 Added: `TaskListColumnConfig` and `TaskListColumn` new `fixed` field — sticky table columns (`'left'` / `'right'` / `boolean`). Left-fixed columns auto-reorder to the far left; task name column always sticks at `left:0`; multiple left-fixed columns offset cumulatively
+
 ## [1.12.0] - 2026-06-23
 
 ### Added

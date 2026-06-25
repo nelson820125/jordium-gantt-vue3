@@ -27,6 +27,8 @@ export interface TaskListColumnConfig {
   width?: number | string // 列宽度，支持像素（120）或百分比（'15%'）
   visible?: boolean // 是否显示，默认true
   formatter?: ColumnFormatter // 自定义格式化函数（优先级低于 slot）
+  /** 列固定位置，'left'/true 固定在左侧，'right' 固定在右侧 */
+  fixed?: 'left' | 'right' | boolean
 }
 
 export interface TaskListConfig {
@@ -53,7 +55,7 @@ export const DEFAULT_TASK_LIST_MAX_WIDTH = 1160 // 最大宽度
 export function parseWidthValue(
   value: number | string | undefined,
   containerWidth: number,
-  defaultValue: number,
+  defaultValue: number
 ): number {
   if (value === undefined || value === null) {
     return defaultValue

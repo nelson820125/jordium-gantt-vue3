@@ -795,5 +795,19 @@
       "🎉 Added: Library build now integrates `vite-plugin-dts` — `build:lib` automatically generates TypeScript declaration files (`index.d.ts` and per-component `.vue.d.ts`), providing full type hints and IDE autocomplete for TypeScript consumers",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to GOODBOY008 / tombstonedguy@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.12.1",
+    "date": "2026-06-25",
+    "notes": [
+      "🎉 新增：`LinkConfig` 配置类型，支持连线样式切换（`bezier` 贝塞尔 / `straight` 直线 / `orthogonal` 折线），支持自定义连线颜色、线宽、虚线/实线样式",
+      "🎉 新增：GanttChart 暴露 `setLinkConfig(config)` 和 `getLinkConfig()` 方法，支持运行时动态切换连线样式和颜色",
+      "🎉 新增：`TaskListColumnConfig` 和 `TaskListColumn` 新增 `fixed` 字段，支持左侧表格列固定（`'left'` / `'right'` / `boolean`）。`fixed:'left'` 的列自动重排至最左侧，任务名称列始终固定在 `left:0`，支持多个左侧固定列按宽度累加偏移",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢yrjj@gitee的使用与反馈</span>",
+      "🎉 Added: `LinkConfig` type — switch link line style between `bezier`, `straight`, and `orthogonal`; customise link color, width, and dotted/solid style",
+      "🎉 Added: GanttChart now exposes `setLinkConfig(config)` and `getLinkConfig()` methods — allows dynamic switching of link line style and color at runtime",
+      "🎉 Added: `TaskListColumnConfig` and `TaskListColumn` new field `fixed` — supports fixing columns on the left (`'left'` / `'right'` / `boolean`). Columns with `fixed:'left'` automatically rearranged to the far left, task name column always fixed at `left:0`, supports multiple left fixed columns with cumulative offset based on width",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yrjj@gitee for their use and feedback</span>"
+    ]
   }
 ]

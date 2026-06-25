@@ -627,7 +627,7 @@ watch(
     // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
     scheduleRedraw()
   },
-  { deep: true }
+  { deep: false }
 )
 
 // 组件挂载后初始化绘制

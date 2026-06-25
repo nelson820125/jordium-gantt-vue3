@@ -86,3 +86,51 @@
 .col:last-child {
   border-right: none;
 }
+
+/* ── R3: 固定列基础样式 ── */
+/*
+ * header 已移入 .task-list-body（overflow:auto），与 body 行共享滚动容器。
+ * position:sticky 的 left/right 偏移由各列内联 style 设置，
+ * GPU compositor 原生处理，零延迟无抖动。
+ */
+.col-fixed {
+  position: sticky;
+  z-index: 10;
+  background-color: inherit;
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.12);
+}
+
+.col-fixed-right {
+  position: sticky;
+  z-index: 10;
+  background-color: inherit;
+  box-shadow: -2px 0 6px -2px rgba(0, 0, 0, 0.12);
+}
+
+/* 暗色主题 */
+[data-theme='dark'] .col-fixed,
+.gantt-root[data-theme='dark'] .col-fixed {
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .col-fixed-right,
+.gantt-root[data-theme='dark'] .col-fixed-right {
+  box-shadow: -2px 0 6px -2px rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * 名称列左侧彩色边框指示条。
+ * CSS 自定义属性 --left-border-color 由 .task-row 通过 CSS 类或内联样式设置，
+ * 沿 DOM 向下继承到此处。sticky 定位使列始终可见，指示条随列固定，不随滚动消失。
+ */
+.col-name.col-fixed::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--left-border-color, transparent);
+  pointer-events: none;
+  z-index: 1;
+}

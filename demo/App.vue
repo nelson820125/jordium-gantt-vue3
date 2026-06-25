@@ -2715,7 +2715,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </template>
 
         <!-- 使用 TaskListColumn 组件自定义列 声明式模式 -->
-        <TaskListColumn prop="name" :label="viewMode === 'task' ? t.taskName : t.resourceName" width="300" align="center">
+        <TaskListColumn prop="name" fixed="left" :label="viewMode === 'task' ? t.taskName : t.resourceName" width="300" align="center">
           <template #header>
             <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="32" height="32" style="border-radius: 50%;" />
             <strong style="font-size: 14px;">{{ viewMode === 'task' ? t.taskName : t.resourceName }}</strong>

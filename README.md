@@ -248,6 +248,7 @@ npm run dev
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | Row height (px) shared by both Timeline and TaskList. Valid range: `30`–`60`. Values below 30 are clamped to 30, values above 60 are clamped to 60. When set below 40, TaskBar content (name + progress) automatically switches to a compact horizontal layout to fit the smaller row |
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to enable auto-scheduling for parent tasks. `true`: parent task's TaskBar time window automatically stretches to span the earliest start and latest end of its children. `false`: parent task displays its own configured date range; a red indicator line appears above its TaskBar when children overflow the configured bounds |
 | `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Resource view lane stacking mode. `true`: greedy lane packing — non-overlapping tasks share the same row, maximizing space efficiency. `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters |
+| `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | Link line style configuration. Supports switching line type (bezier/straight/orthogonal), customizing colors, line width, and dotted/solid style. See [LinkConfig Configuration](#linkconfig-configuration) |
 
 #### TaskListColumn Component Props
 
@@ -260,6 +261,7 @@ The `TaskListColumn` component is used to define task list columns in declarativ
 | `width`    | `number \| string`             | -        | Column width. Number represents pixels (e.g., `200`), string supports percentage (e.g., `'20%'`)                                                 |
 | `align`    | `'left' \| 'center' \| 'right'` | `'left'` | Column content alignment                                                                                                                         |
 | `cssClass` | `string`                       | -        | Custom CSS class name for column styling                                                                                                         |
+| `fixed` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'right' \| boolean` | - | Column pinning. `'left'`: column auto-reorders to far left and sticks; `'right'`: column sticks to far right. `true` is equivalent to `'left'` |
 
 **Usage Example**:
 
@@ -276,10 +278,36 @@ The `TaskListColumn` component is used to define task list columns in declarativ
 </GanttChart>
 ```
 
+**Fixed Columns Example** (`fixed` prop):
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  task-list-column-render-mode="declarative"
+>
+  <!-- First column (name) always sticky at left:0 -->
+  <TaskListColumn prop="name" label="Task Name" width="300" />
+
+  <!-- fixed="left": reorders to the right of name column and sticks -->
+  <TaskListColumn prop="assignee" label="Assignee" width="150" fixed="left" />
+
+  <!-- fixed (no value): equivalent to fixed="left" -->
+  <TaskListColumn prop="predecessor" label="Predecessor" width="120" fixed />
+
+  <!-- Normal columns: scroll with the table -->
+  <TaskListColumn prop="startDate" label="Start Date" width="140" />
+  <TaskListColumn prop="endDate" label="End Date" width="140" />
+
+  <!-- fixed="right": sticks to the far right -->
+  <TaskListColumn prop="progress" label="Progress" width="100" fixed="right" />
+</GanttChart>
+```
+
 > **💡 Tips**:
 > - The `TaskListColumn` component itself does not render any content, it only declares column configuration
 > - Must be used inside the `GanttChart` component with `task-list-column-render-mode="declarative"` set
-> - Column display order is determined by the declaration order of `TaskListColumn` components
+> - Column display order is determined by the declaration order of `TaskListColumn` components, but `fixed` columns are auto-reordered: `fixed='left'` to the far left, `fixed='right'` to the far right
+> - Using `fixed` without a value (e.g. `<TaskListColumn fixed />`) is equivalent to `fixed="left"`
 > - For detailed column content customization and slot usage, see [Slots](#slots) section
 
 #### TaskListContextMenu Component Props
@@ -697,6 +725,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `tasks`               | `Task[]`         | `[]`        | Array of task data                                                                            |
 | `useDefaultDrawer`    | `boolean`        | `true`      | Whether to use built-in task edit drawer (TaskDrawer)                                         |
 | `taskBarConfig`       | `TaskBarConfig`  | `{}`        | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
+| `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | Link line style configuration, see [LinkConfig Configuration](#linkconfig-configuration) |
 | `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
 | `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
 | `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  |
@@ -1980,6 +2009,7 @@ Customize task list display columns, width limits, etc. Task list is located on 
 | `cssClass` | `string`  | -        | Custom CSS class name                                                                           |
 | `width`    | `number`  | -        | Column width (unit: pixels)                                                                     |
 | `visible`  | `boolean` | -        | Whether to show this column, default `true`. This setting is invalid when `showAllColumns=true` |
+| `fixed` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'right' \| boolean` | - | Column pinning. `'left'`: column auto-reorders to far left and sticks (name column always at `left:0`, multiple left-fixed columns offset cumulatively). `'right'`: column sticks to far right. `true` is equivalent to `'left'` |
 
 **Example1：Basic Configuration (Adjust Width)**
 
@@ -2280,6 +2310,65 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 </script>
 ```
 
+#### LinkConfig (Link Line Style Configuration) ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Controls the style and interaction behavior of dependency links (GanttLinks) in the Gantt chart.
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | `'bezier' \| 'straight' \| 'orthogonal'` | `'bezier'` | Link path type. `'bezier'`: Bézier curve (default); `'straight'`: straight line; `'orthogonal'`: L/Z-shaped orthogonal polyline |
+| `color` | `string` | `'#c0c4cc'` | Normal link color |
+| `highlightColor` | `string` | `'#409eff'` | Highlight link color (when hovering over dependent task) |
+| `hoverColor` | `string` | `'#67c23a'` | Hover link color |
+| `width` | `number` | `2` | Normal link line width |
+| `highlightWidth` | `number` | `4` | Highlight link line width |
+| `style` | `'dotted' \| 'solid'` | `'dotted'` | Link style. `'dotted'`: dashed line; `'solid'`: solid line |
+
+**Example 1: Static Configuration**
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :link-config="linkConfig" />
+</template>
+
+<script setup lang="ts">
+import type { LinkConfig } from 'jordium-gantt-vue3'
+
+const linkConfig: LinkConfig = {
+  type: 'orthogonal',
+  color: '#ff6b6b',
+  style: 'solid',
+  width: 3,
+}
+</script>
+```
+
+**Example 2: Runtime Dynamic Switching**
+
+```vue
+<template>
+  <GanttChart ref="ganttRef" :tasks="tasks" />
+  <button @click="switchToStraight">Switch to Straight</button>
+  <button @click="switchToOrthogonal">Switch to Orthogonal</button>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const ganttRef = ref()
+
+function switchToStraight() {
+  ganttRef.value?.setLinkConfig({ type: 'straight', color: '#409eff' })
+}
+
+function switchToOrthogonal() {
+  ganttRef.value?.setLinkConfig({ type: 'orthogonal', style: 'solid' })
+}
+</script>
+```
+
 #### scaleConfigs (Timeline Scale Configuration) ![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF)
 
 Customize the cell width, header formatter strings, and buffer sizes for each time scale. Only pass the scales you want to override — unspecified scales continue using built-in defaults.
@@ -2481,6 +2570,8 @@ The GanttChart component exposes a series of methods through `defineExpose`, all
 | `getTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get the current visibility state of TaskList |
 | `setTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `visible: boolean` | `void` | Imperatively set TaskList visibility (only effective when `enableTaskListCollapsible=true`) |
 | `toggleTaskList` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle TaskList expand/collapse state with animation |
+| `setLinkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `config: Partial<LinkConfig>` | `void` | Dynamically update link line style configuration (takes effect immediately at runtime) |
+| `getLinkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `Required<LinkConfig>` | Get current complete link configuration (merged with defaults) |
 
 #### Usage Example
 

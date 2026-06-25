@@ -3,12 +3,7 @@ import type { Resource } from '../classes/Resource'
 /**
  * 资源列表列类型枚举
  */
-export type ResourceListColumnType =
-  | 'name'
-  | 'type'
-  | 'department'
-  | 'capacity'
-  | 'taskCount'
+export type ResourceListColumnType = 'name' | 'type' | 'department' | 'capacity' | 'taskCount'
 
 /**
  * 资源列格式化函数类型
@@ -18,7 +13,7 @@ export type ResourceListColumnType =
  */
 export type ResourceColumnFormatter = (
   resource: Resource,
-  column: ResourceListColumnConfig,
+  column: ResourceListColumnConfig
 ) => string
 
 /**
@@ -32,6 +27,8 @@ export interface ResourceListColumnConfig {
   width?: number | string // 列宽度，支持像素（120）或百分比（'15%'）
   visible?: boolean // 是否显示，默认true
   formatter?: ResourceColumnFormatter // 自定义格式化函数（优先级低于 slot）
+  /** 列固定位置，'left'/true 固定在左侧，'right' 固定在右侧 */
+  fixed?: 'left' | 'right' | boolean
 }
 
 /**

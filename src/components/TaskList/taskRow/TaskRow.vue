@@ -101,6 +101,35 @@ const resourceTaskLayouts = inject<
   computed(() => new Map())
 )
 
+// ── R3: 固定列支持 ──
+
+interface FixedColInfo {
+  side: 'left' | 'right'
+  baseOffset: number
+}
+
+/** 固定列偏移映射（从 TaskList provide） */
+const fixedColumnOffsets = inject<ComputedRef<Map<string, FixedColInfo>>>(
+  'gantt-fixed-column-offsets',
+  computed(() => new Map())
+)
+
+/**
+ * body 固定列内联样式。
+ * position:sticky 由 .col-fixed CSS 类提供，此处设置 left/right 偏移量。
+ * .task-list-body 的 overflow:auto 是 sticky 的滚动容器。
+ */
+const getBodyFixedColStyle = (colKey: string) => {
+  const info = fixedColumnOffsets.value.get(colKey)
+  if (!info) return {}
+
+  if (info.side === 'left') {
+    return { left: `${info.baseOffset}px` }
+  }
+  // right-fixed
+  return { right: `${info.baseOffset}px` }
+}
+
 // v1.9.0 Detect if current row is a resource
 const isResourceRow = computed(() => {
   return viewMode.value === 'resource' && 'tasks' in props.task
@@ -122,9 +151,11 @@ const ganttRowHeight = inject<ComputedRef<number>>(
 )
 
 // v1.12.x: per-task 行高布局（用于 task 视图下的 per-task 高度）
-const taskRowLayouts = inject<ComputedRef<{
-  taskHeights: Map<string | number, number>
-}>>(
+const taskRowLayouts = inject<
+  ComputedRef<{
+    taskHeights: Map<string | number, number>
+  }>
+>(
   'taskRowLayouts',
   computed(() => ({ taskHeights: new Map() }))
 )
@@ -326,13 +357,10 @@ const leftBorderColor = computed(() => {
 })
 
 // 计算自定义边框样式
+// 改为设置 CSS 自定义属性 --left-border-color，由 .col-name.col-fixed::before 继承并显示
 const customBorderStyle = computed((): StyleValue => {
   if (leftBorderColor.value) {
-    return {
-      borderLeftColor: `${leftBorderColor.value} !important` as any,
-      borderLeftWidth: '3px',
-      borderLeftStyle: 'solid' as const,
-    }
+    return { '--left-border-color': leftBorderColor.value } as any
   }
   return {}
 })
@@ -402,10 +430,24 @@ const assigneeDisplayData = computed(() => {
           v-for="(column, index) in columnsToRender"
           :key="index"
           class="col"
-          :class="[column.cssClass, { 'col-name': isFirstColumn(index) }]"
+          :class="[
+            column.cssClass,
+            {
+              'col-name': isFirstColumn(index),
+              // 第一列始终固定（充当名称列角色），其余按 fixed 属性决定
+              'col-fixed':
+                isFirstColumn(index) ||
+                (column as any).fixed === 'left' ||
+                (column as any).fixed === true,
+              'col-fixed-right': (column as any).fixed === 'right',
+            },
+          ]"
           :style="[
             getColumnWidthStyle ? getColumnWidthStyle(column) : {},
             getDeclarativeColumnAlign(column),
+            isFirstColumn(index)
+              ? { left: '0px' }
+              : getBodyFixedColStyle((column as any).prop || (column as any).key || ''),
           ]"
         >
           <!-- 第一列：保留 collapse-btn, milestone-spacer, leaf-spacer -->
@@ -438,7 +480,8 @@ const assigneeDisplayData = computed(() => {
 
       <!-- 默认渲染模式 -->
       <template v-else>
-        <div class="col col-name" :style="{ paddingLeft: indent }">
+        <!-- 名称列：始终固定在最左侧（CSS sticky，在 .task-list-body overflow:auto 内生效） -->
+        <div class="col col-name col-fixed" :style="{ paddingLeft: indent, left: '0px' }">
           <TaskRowCollapseButton
             :collapsed="!!props.task.collapsed"
             :visible="(isStoryTask || hasChildren) && !isMilestoneGroup"
@@ -456,7 +499,6 @@ const assigneeDisplayData = computed(() => {
 
           <!-- v1.9.0 资源视图：直接显示资源名称 -->
           <div v-if="isResourceRow" class="resource-row-name">
-            <!-- v1.9.0 资源超载警示图标 -->
             <svg
               v-if="isResourceOverloadedComputed"
               class="resource-warning-icon"
@@ -499,13 +541,22 @@ const assigneeDisplayData = computed(() => {
           </TaskRowNameContent>
         </div>
 
-        <!-- 动态渲染列 -->
+        <!-- 动态渲染列（排序后 fixed-left 在前） -->
         <div
           v-for="column in columns"
           :key="column.key"
           class="col"
-          :class="column.cssClass || `col-${column.key}`"
-          :style="getColumnWidthStyle ? getColumnWidthStyle(column) : undefined"
+          :class="[
+            column.cssClass || `col-${column.key}`,
+            {
+              'col-fixed': column.fixed === 'left' || column.fixed === true,
+              'col-fixed-right': column.fixed === 'right',
+            },
+          ]"
+          :style="[
+            getColumnWidthStyle ? getColumnWidthStyle(column) : undefined,
+            getBodyFixedColStyle(column.key),
+          ]"
         >
           <!-- 里程碑分组显示空列 -->
           <template v-if="isMilestoneGroup">
@@ -716,9 +767,9 @@ const assigneeDisplayData = computed(() => {
   z-index: 10 !important;
 }
 
-/* 里程碑分组行特殊样式 - 使用红色边框 */
+/* 里程碑分组行特殊样式 - 使用红色边框指示条（通过 CSS 变量传递给 ::before） */
 .milestone-group-row {
-  border-left: 3px solid var(--gantt-danger, #f56c6c);
+  --left-border-color: var(--gantt-danger, #f56c6c);
   background: linear-gradient(90deg, var(--gantt-bg-tertiary) 0%, var(--gantt-bg-primary) 100%);
 }
 
@@ -728,80 +779,45 @@ const assigneeDisplayData = computed(() => {
     0 1px 3px 0 rgba(60, 64, 67, 0.3),
     0 4px 8px 3px rgba(60, 64, 67, 0.15);
   z-index: 10;
-  border-left-color: var(--gantt-danger, #f56c6c);
 }
 
-/* 任务类型左边框颜色 */
+/* 任务类型左边框颜色（通过 --left-border-color 传递给 .col-name.col-fixed::before） */
 .task-type-story {
-  border-left: 3px solid var(--gantt-primary, #409eff);
+  --left-border-color: var(--gantt-primary, #409eff);
 }
 
 .task-type-task {
-  border-left: 3px solid var(--gantt-warning, #e6a23c);
+  --left-border-color: var(--gantt-warning, #e6a23c);
 }
 
 .task-type-milestone {
-  border-left: 3px solid var(--gantt-danger, #f56c6c);
+  --left-border-color: var(--gantt-danger, #f56c6c);
 }
 
 /* v1.9.0 资源类型左边框颜色 */
 .task-type-resource {
-  border-left: 3px solid var(--gantt-success, #67c23a);
+  --left-border-color: var(--gantt-success, #67c23a);
 }
 
-/* 任务类型悬停时保持左边框，无需加粗 */
-.task-type-story:hover {
-  border-left: 3px solid var(--gantt-primary, #409eff);
-}
-
-.task-type-task:hover {
-  border-left: 3px solid var(--gantt-warning, #e6a23c);
-}
-
-.task-type-milestone:hover {
-  border-left: 3px solid var(--gantt-danger, #f56c6c);
-}
-
-.task-type-resource:hover {
-  border-left: 3px solid var(--gantt-success, #67c23a);
-}
-
-/* 悬停状态下的左边框保持 */
-.task-row-hovered.task-type-story {
-  border-left: 3px solid var(--gantt-primary, #409eff) !important;
-}
-
-.task-row-hovered.task-type-task {
-  border-left: 3px solid var(--gantt-warning, #e6a23c) !important;
-}
-
-.task-row-hovered.task-type-milestone {
-  border-left: 3px solid var(--gantt-danger, #f56c6c) !important;
-}
-
-.task-row-hovered.task-type-resource {
-  border-left: 3px solid var(--gantt-success, #67c23a) !important;
-}
-
+/* 暗黑模式覆盖 */
 :global(.gantt-root[data-theme='dark']) .milestone-group-row {
-  border-left-color: var(--gantt-danger, #f67c7c);
+  --left-border-color: var(--gantt-danger, #f67c7c);
 }
 
-/* 暗黑模式下的任务类型左边框颜色 */
 :global(.gantt-root[data-theme='dark']) .task-type-story {
-  border-left-color: var(--gantt-primary, #7db4f0);
+  --left-border-color: var(--gantt-primary, #7db4f0);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-type-task {
-  border-left-color: var(--gantt-warning, #f0b83c);
+  --left-border-color: var(--gantt-warning, #f0b83c);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-type-milestone {
-  border-left-color: var(--gantt-danger, #f67c7c);
+  --left-border-color: var(--gantt-danger, #f67c7c);
 }
 
 :global(.gantt-root[data-theme='dark']) .task-type-resource {
-  border-left-color: var(--gantt-success, #85ce61);
+  --left-border-color: var(--gantt-success, #85ce61);
 }
 
 .collapse-btn:hover {

@@ -33,23 +33,26 @@ defineSlots<{
 <template>
   <!-- 优先级1: 列级自定义 Slot (#column-name) - 覆盖整列内容（图标+文本+徽章） -->
   <component
-    :is="() => renderColumnSlot?.('name', {
-      task: props.task,
-      column: { key: 'name' },
-      value: props.task.name,
-      isParentTask,
-      hasChildren,
-      isStoryTask,
-      isMilestoneGroup,
-      isMilestoneTask,
-      showTaskIcon,
-      formattedTimer,
-      isOvertime,
-      overdueDays,
-      overtimeText,
-      overdueText,
-      daysText,
-    })"
+    :is="
+      () =>
+        renderColumnSlot?.('name', {
+          task: props.task,
+          column: { key: 'name' },
+          value: props.task.name,
+          isParentTask,
+          hasChildren,
+          isStoryTask,
+          isMilestoneGroup,
+          isMilestoneTask,
+          showTaskIcon,
+          formattedTimer,
+          isOvertime,
+          overdueDays,
+          overtimeText,
+          overdueText,
+          daysText,
+        })
+    "
     v-if="hasColumnSlot?.('name')"
   />
 
@@ -63,11 +66,7 @@ defineSlots<{
       :show-icon="showTaskIcon"
     />
 
-    <span
-      class="task-name-text"
-      :class="{ 'parent-task': isParentTask }"
-      :title="task.name"
-    >
+    <span class="task-name-text" :class="{ 'parent-task': isParentTask }" :title="task.name">
       <slot name="custom-task-content" />
       <TaskRowBadges
         :formatted-timer="formattedTimer"
@@ -92,11 +91,7 @@ defineSlots<{
       :show-icon="showTaskIcon"
     />
 
-    <span
-      class="task-name-text"
-      :class="{ 'parent-task': isParentTask }"
-      :title="task.name"
-    >
+    <span class="task-name-text" :class="{ 'parent-task': isParentTask }" :title="task.name">
       {{ task.name }}
       <TaskRowBadges
         :formatted-timer="formattedTimer"
