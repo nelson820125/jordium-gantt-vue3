@@ -2795,13 +2795,12 @@ const pdfExportHandler = async () => {
 
     // 创建加载提示
     const loadingEl = document.createElement('div')
-    loadingEl.innerHTML = `
-      <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                  background: rgba(0,0,0,0.5); display: flex; align-items: center;
-                  justify-content: center; z-index: 10000; color: white; font-size: 16px;">
-        ${loadingText}
-      </div>
+    loadingEl.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center;
+      justify-content: center; z-index: 10000; color: white; font-size: 16px;
     `
+    loadingEl.textContent = loadingText
     document.body.appendChild(loadingEl)
 
     // 获取甘特图容器元素
