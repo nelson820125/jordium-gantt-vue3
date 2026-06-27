@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.4] - 2026-06-27
+
+### Added
+- 🔧 修复：GanttToolbar中Default TimeScalesKeys缺少季度
+- 🔧 修复：GanttToolbar中视图模式Segmented Control 样式问题
+- 🔧 Fixed: GanttToolbar Default TimeScalesKeys missing quarter
+- 🔧 Fixed: GanttToolbar Segmented Control style issue
+
 ## [1.12.3] - 2026-06-27
 
 ### Added

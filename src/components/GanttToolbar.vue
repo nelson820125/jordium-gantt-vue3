@@ -403,7 +403,7 @@ const timeScaleMap = {
 }
 
 type TimeScaleKey = keyof typeof timeScaleMap
-const defaultScaleKeys: TimeScaleKey[] = ['hour', 'day', 'week', 'month', 'year']
+const defaultScaleKeys: TimeScaleKey[] = ['hour', 'day', 'week', 'month', 'quarter', 'year']
 
 // 获取可用的时间刻度维度
 const availableTimeScales = computed<TimeScaleKey[]>(() => {
@@ -1442,6 +1442,7 @@ onUnmounted(() => {
   border-radius: 4px;
   /* margin-right: 12px; */
   overflow: hidden;
+  padding: 1px;
   transition: border-color 0.2s ease;
   height: 36px;
 }
