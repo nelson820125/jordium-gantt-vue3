@@ -1332,7 +1332,7 @@ onUnmounted(() => {
   margin-right: 12px;
   overflow: hidden;
   transition: border-color 0.2s ease;
-  height: 36px;
+  height: 38px;
 }
 
 .gantt-view-mode-control:hover {
