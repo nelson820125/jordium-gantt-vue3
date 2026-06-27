@@ -104,6 +104,49 @@ const showLanguageDropdown = ref(false)
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 const currentViewMode = ref<'task' | 'resource'>('task') // v1.9.0 视图模式状态
 
+// v1.9.0 视图模式按钮的实际渲染宽度测量
+const taskBtnRef = ref<HTMLElement>()
+const resourceBtnRef = ref<HTMLElement>()
+const taskBtnWidth = ref(0)
+const resourceBtnWidth = ref(0)
+
+let _viewModeResizeObserver: ResizeObserver | null = null
+
+const measureViewModeButtons = () => {
+  if (taskBtnRef.value) {
+    taskBtnWidth.value = taskBtnRef.value.offsetWidth
+  }
+  if (resourceBtnRef.value) {
+    resourceBtnWidth.value = resourceBtnRef.value.offsetWidth
+  }
+}
+
+// 滑块样式：根据实际按钮宽度动态计算 translateX 和 width
+const viewModeThumbStyle = computed(() => {
+  const taskW = taskBtnWidth.value
+  const resourceW = resourceBtnWidth.value
+
+  // 尚未测量到实际宽度时，回退到等宽百分比
+  if (taskW === 0 && resourceW === 0) {
+    const pct = currentViewMode.value === 'task' ? 0 : 100
+    return {
+      transform: `translateX(${pct}%)`,
+      width: '50%',
+    }
+  }
+
+  if (currentViewMode.value === 'task') {
+    return {
+      transform: 'translateX(0px)',
+      width: `${taskW}px`,
+    }
+  }
+  return {
+    transform: `translateX(${taskW}px)`,
+    width: `${resourceW}px`,
+  }
+})
+
 // v1.9.0 监听 viewMode prop
 watch(
   () => props.viewMode,
@@ -420,30 +463,76 @@ const currentTimeScaleKey = computed<TimeScaleKey>(() => {
   return matchedKey ?? resolvedDefaultScaleKey.value
 })
 
-// 计算分段控制器滑块位置
-const getThumbStyle = () => {
-  const currentIndex = availableTimeScales.value.findIndex(
-    scale => scale === currentTimeScaleKey.value
-  )
+// 时间刻度按钮的实际渲染宽度测量（v-for 动态按钮，用 Map 收集）
+const scaleBtnRefs = ref<Map<string, HTMLElement>>(new Map())
+const scaleBtnWidths = ref<Record<string, number>>({})
 
-  const totalScales = availableTimeScales.value.length
-  if (totalScales === 0 || currentIndex < 0) {
+/** 模板中 v-for 的函数 ref 回调 */
+const setScaleBtnRef = (key: string, el: unknown) => {
+  if (el instanceof HTMLElement) {
+    scaleBtnRefs.value.set(key, el)
+  } else {
+    scaleBtnRefs.value.delete(key)
+  }
+}
+
+const measureScaleButtons = () => {
+  const widths: Record<string, number> = {}
+  scaleBtnRefs.value.forEach((el, key) => {
+    widths[key] = el.offsetWidth
+  })
+  scaleBtnWidths.value = widths
+}
+
+/** 观察所有时间刻度按钮的 ResizeObserver，按钮列表变化时重建 */
+let _scaleResizeObserver: ResizeObserver | null = null
+
+const observeScaleButtons = () => {
+  if (_scaleResizeObserver) {
+    _scaleResizeObserver.disconnect()
+  }
+  _scaleResizeObserver = new ResizeObserver(() => {
+    measureScaleButtons()
+  })
+  scaleBtnRefs.value.forEach(el => {
+    _scaleResizeObserver!.observe(el)
+  })
+  measureScaleButtons()
+}
+
+/** 时间刻度滑块样式：根据实际按钮宽度动态计算 */
+const timeScaleThumbStyle = computed(() => {
+  const keys = availableTimeScales.value
+  const activeKey = currentTimeScaleKey.value
+  const activeIndex = keys.findIndex(k => k === activeKey)
+
+  if (activeIndex < 0) {
+    return { transform: 'translateX(0px)', width: '0px' }
+  }
+
+  const widths = scaleBtnWidths.value
+  const activeWidth = widths[activeKey]
+
+  // 累计 activeIndex 之前所有按钮的宽度作为 translateX
+  let translateX = 0
+  for (let i = 0; i < activeIndex; i++) {
+    translateX += widths[keys[i]] || 0
+  }
+
+  // 尚未测量到实际宽度时回退百分比
+  if (!activeWidth) {
+    const pct = 100 / keys.length
     return {
-      transform: 'translateX(0%)',
-      width: `${100 / totalScales || 25}%`,
+      transform: `translateX(${activeIndex * 100}%)`,
+      width: `${pct}%`,
     }
   }
 
-  // 每个按钮占据的百分比宽度
-  const itemWidth = 100 / totalScales
-  // 滑块的位置（左移的距离）
-  const translateX = currentIndex * 100
-
   return {
-    transform: `translateX(${translateX}%)`,
-    width: `${itemWidth}%`,
+    transform: `translateX(${translateX}px)`,
+    width: `${activeWidth}px`,
   }
-}
+})
 
 // 点击外部关闭下拉菜单
 const handleClickOutside = (event: MouseEvent) => {
@@ -460,17 +549,42 @@ onMounted(() => {
   const currentLocale = locale.value
   currentLanguage.value = currentLocale === 'zh-CN' ? 'zh' : 'en'
 
-  // 不再直接设置document.documentElement，由GanttChart统一管理
-
   // 添加点击外部关闭下拉菜单的监听
   document.addEventListener('click', handleClickOutside)
 
-  // 不再监听系统主题变化，由GanttChart统一管理
+  // 监听视图模式按钮的实际渲染宽度变化
+  _viewModeResizeObserver = new ResizeObserver(() => {
+    measureViewModeButtons()
+  })
+  if (taskBtnRef.value) {
+    _viewModeResizeObserver.observe(taskBtnRef.value)
+  }
+  if (resourceBtnRef.value) {
+    _viewModeResizeObserver.observe(resourceBtnRef.value)
+  }
+  measureViewModeButtons()
+
+  // 监听时间刻度按钮的实际渲染宽度变化
+  observeScaleButtons()
+})
+
+// 时间刻度按钮列表变化时重建 ResizeObserver
+watch(availableTimeScales, () => {
+  observeScaleButtons()
 })
 
 onUnmounted(() => {
   // 清理事件监听
   document.removeEventListener('click', handleClickOutside)
+  // 清理 ResizeObserver
+  if (_viewModeResizeObserver) {
+    _viewModeResizeObserver.disconnect()
+    _viewModeResizeObserver = null
+  }
+  if (_scaleResizeObserver) {
+    _scaleResizeObserver.disconnect()
+    _scaleResizeObserver = null
+  }
 })
 </script>
 
@@ -536,14 +650,10 @@ onUnmounted(() => {
       <!-- v1.9.0 视图模式切换按钮组 - 使用 Segmented Control 样式 -->
       <div v-if="config.showViewMode !== false" class="gantt-view-mode-control">
         <div class="view-mode-track">
-          <div
-            class="view-mode-thumb"
-            :style="{
-              transform: `translateX(${currentViewMode === 'task' ? '0%' : '100%'})`,
-            }"
-          ></div>
+          <div class="view-mode-thumb" :style="viewModeThumbStyle"></div>
         </div>
         <button
+          ref="taskBtnRef"
           class="view-mode-item"
           :class="{ active: currentViewMode === 'task' }"
           :title="t('taskView') || '任务视图'"
@@ -564,6 +674,7 @@ onUnmounted(() => {
           {{ t('taskView') || '任务视图' }}
         </button>
         <button
+          ref="resourceBtnRef"
           class="view-mode-item"
           :class="{ active: currentViewMode === 'resource' }"
           :title="t('resourceView') || '资源视图'"
@@ -672,11 +783,12 @@ onUnmounted(() => {
       <!-- 时间刻度分段控制器 (Segmented) -->
       <div v-if="config.showTimeScale !== false" class="segmented-control time-scale-segmented">
         <div class="segmented-track">
-          <div class="segmented-thumb" :style="getThumbStyle()"></div>
+          <div class="segmented-thumb" :style="timeScaleThumbStyle"></div>
         </div>
         <button
           v-for="scale in availableTimeScales"
           :key="scale"
+          :ref="(el: unknown) => setScaleBtnRef(scale, el)"
           class="segmented-item"
           :class="{ active: currentTimeScaleKey === scale }"
           :title="t('timeScaleTooltip')"
@@ -1198,7 +1310,7 @@ onUnmounted(() => {
 /* 按钮组样式 - Element Plus primary button group 风格 */
 .gantt-btn-group {
   display: inline-flex;
-  margin-right: 8px;
+  /* margin-right: 8px; */
   overflow: hidden;
   transition: all 0.2s ease;
 }
@@ -1213,7 +1325,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 16px;
+  padding: 10px;
   border: 1px solid;
   background: #ffffff;
   color: #606266;
@@ -1327,12 +1439,11 @@ onUnmounted(() => {
   display: inline-flex;
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #dcdfe6);
-  border-radius: 6px;
-  padding: 1px;
-  margin-right: 12px;
+  border-radius: 4px;
+  /* margin-right: 12px; */
   overflow: hidden;
   transition: border-color 0.2s ease;
-  height: 38px;
+  height: 36px;
 }
 
 .gantt-view-mode-control:hover {
@@ -1355,7 +1466,7 @@ onUnmounted(() => {
   width: 50%;
   height: 100%;
   background: var(--gantt-primary, #409eff);
-  border-radius: 5px;
+  border-radius: 4px;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.1),
@@ -1368,8 +1479,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex: 1;
-  height: 34px;
-  padding: 0 12px;
+  padding: 10px;
   border: none;
   background: transparent;
   font-size: 14px;
@@ -1377,9 +1487,9 @@ onUnmounted(() => {
   cursor: pointer;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 100px;
+  min-width: fit-content;
   z-index: 1;
-  border-radius: 5px;
+  border-radius: 4px;
   user-select: none;
   color: var(--gantt-text-primary, #303133);
 }
@@ -1487,7 +1597,7 @@ onUnmounted(() => {
   display: inline-flex;
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #dcdfe6);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 1px;
   margin-right: 8px;
   overflow: hidden;
@@ -1515,7 +1625,7 @@ onUnmounted(() => {
   width: 25%; /* 默认宽度，将通过内联样式动态设置 */
   height: 100%;
   background: var(--gantt-primary, #409eff);
-  border-radius: 5px;
+  border-radius: 4px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.1),
@@ -1528,8 +1638,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex: 1;
-  height: 34px;
-  padding: 0 12px;
+  /* height: 34px; */
+  padding: 10px;
   border: none;
   background: transparent;
   font-size: 14px;
@@ -1537,9 +1647,9 @@ onUnmounted(() => {
   cursor: pointer;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 40px;
+  min-width: fit-content;
   z-index: 1;
-  border-radius: 5px;
+  border-radius: 4px;
   user-select: none;
 }
 
@@ -1558,13 +1668,13 @@ onUnmounted(() => {
 }
 
 .time-scale-segmented {
-  height: 36px;
+  height: 34px;
 }
 
 .time-scale-segmented .segmented-item {
-  height: 34px;
-  font-size: 13px;
-  min-width: 36px;
+  /* height: 34px; */
+  font-size: 14px;
+  min-width: fit-content;
 }
 
 /* 暗黑模式下的分段控制器样式 */
