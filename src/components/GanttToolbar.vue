@@ -495,7 +495,9 @@ const observeScaleButtons = () => {
     measureScaleButtons()
   })
   scaleBtnRefs.value.forEach(el => {
-    _scaleResizeObserver!.observe(el)
+    if (el instanceof HTMLElement) {
+      _scaleResizeObserver!.observe(el)
+    }
   })
   measureScaleButtons()
 }
@@ -556,10 +558,10 @@ onMounted(() => {
   _viewModeResizeObserver = new ResizeObserver(() => {
     measureViewModeButtons()
   })
-  if (taskBtnRef.value) {
+  if (taskBtnRef.value instanceof HTMLElement) {
     _viewModeResizeObserver.observe(taskBtnRef.value)
   }
-  if (resourceBtnRef.value) {
+  if (resourceBtnRef.value instanceof HTMLElement) {
     _viewModeResizeObserver.observe(resourceBtnRef.value)
   }
   measureViewModeButtons()
