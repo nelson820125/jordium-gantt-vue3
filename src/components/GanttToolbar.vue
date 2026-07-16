@@ -566,7 +566,7 @@ onUnmounted(() => {
         <button
           class="view-mode-item"
           :class="{ active: currentViewMode === 'resource' }"
-          :title="t('resourceView') || '资源视图'"
+          :title="t('resourceView.desc') || '资源视图'"
           @click="handleViewModeChange('resource')"
         >
           <svg

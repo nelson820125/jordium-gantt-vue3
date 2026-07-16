@@ -22,6 +22,7 @@ import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { DEFAULT_TASK_BAR_CONFIG } from '../models/configs/TaskBarConfig'
 import type { PositionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
+import { formatDateTimeDE } from '../utils/dateFormat'
 
 // 禁用自动继承attributes，手动应用到wrapper
 defineOptions({
@@ -351,14 +352,10 @@ const formatDateToLocalString = (date: Date): string => {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
 
-  // 在小时视图中，格式化为包含时间的字符串
-  if (props.currentTimeScale === TimelineScale.HOUR) {
-    const hour = String(date.getHours()).padStart(2, '0')
-    const minute = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hour}:${minute}`
-  }
-
-  return `${year}-${month}-${day}`
+  // Immer mit Uhrzeit formatieren, damit minutengenaue Zeiten (5-Min-Snapping) auf jeder Skala erhalten bleiben
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hour}:${minute}`
 }
 
 const addDaysToLocalDate = (date: Date, days: number): Date => {
@@ -635,150 +632,35 @@ const taskBarStyle = computed(() => {
       renderBaseStart.getDate()
     )
 
-    if (
-      props.timelineData &&
-      props.currentTimeScale &&
-      (props.currentTimeScale === TimelineScale.WEEK ||
-        props.currentTimeScale === TimelineScale.MONTH ||
-        props.currentTimeScale === TimelineScale.QUARTER ||
-        props.currentTimeScale === TimelineScale.YEAR)
-    ) {
-      // v1.9.6 Phase1 - 优先使用缓存查询（O(1)），提升性能
-      // 周/月/季/年视图：从O(n)遍历优化为O(1)查表
-      let startPosition: number
-      let endPosition: number
+    // Alle Nicht-Stunden-Skalen: Tageszellen-Position + minutengenauer Intratag-Offset,
+    // damit 5-Min-genaue Zeiten auf jeder Skala sichtbar sind (props.dayWidth = px/Tag).
+    const pixelPerMinute = props.dayWidth / (24 * 60)
+    const startMinutesIntoDay = renderStartDate.getHours() * 60 + renderStartDate.getMinutes()
+    const endMinutesIntoDay = renderEndDate.getHours() * 60 + renderEndDate.getMinutes()
 
-      if (positionCache) {
-        // 尝试从缓存获取位置
-        const cachedStartPos = positionCache.getPosition(startDateOnly, props.currentTimeScale)
-        if (cachedStartPos !== null) {
-          startPosition = cachedStartPos
-        } else {
-          // 缓存未命中，使用原算法作为fallback
-          startPosition = calculatePositionFromTimelineData(
-            startDateOnly,
-            props.timelineData,
-            props.currentTimeScale
-          )
+    if (props.timelineData) {
+      const timelineData = props.timelineData // Narrowing für die Closure sichern
+      const cellOf = (d: Date): number => {
+        if (positionCache) {
+          const cached = positionCache.getPosition(d, props.currentTimeScale)
+          if (cached !== null) return cached
         }
-
-        // 计算结束位置：为结束日期添加一天来获取正确的结束位置
-        const nextDay = new Date(endDateOnly)
-        nextDay.setDate(nextDay.getDate() + 1)
-        const cachedEndPos = positionCache.getPosition(nextDay, props.currentTimeScale)
-        if (cachedEndPos !== null) {
-          endPosition = cachedEndPos
-        } else {
-          // 缓存未命中，使用原算法作为fallback
-          endPosition = calculatePositionFromTimelineData(
-            nextDay,
-            props.timelineData,
-            props.currentTimeScale
-          )
-        }
-      } else {
-        // 没有缓存，使用原算法（向后兼容）
-        startPosition = calculatePositionFromTimelineData(
-          startDateOnly,
-          props.timelineData,
-          props.currentTimeScale
-        )
-        const nextDay = new Date(endDateOnly)
-        nextDay.setDate(nextDay.getDate() + 1)
-        endPosition = calculatePositionFromTimelineData(
-          nextDay,
-          props.timelineData,
-          props.currentTimeScale
-        )
+        return calculatePositionFromTimelineData(d, timelineData, props.currentTimeScale)
       }
-
-      // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
-      if (endPosition === startPosition) {
-        endPosition =
-          calculatePositionFromTimelineData(
-            endDateOnly,
-            props.timelineData,
-            props.currentTimeScale
-          ) + props.dayWidth
-      }
-
-      left = startPosition
-      width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
-    } else if (props.timelineData && props.currentTimeScale === TimelineScale.DAY) {
-      // v1.9.6 Phase1 - 日视图也使用缓存优化
-      let startPosition: number
-      let endPosition: number
-
-      if (positionCache) {
-        // 尝试从缓存获取位置
-        const cachedStartPos = positionCache.getPosition(startDateOnly, props.currentTimeScale)
-        if (cachedStartPos !== null) {
-          startPosition = cachedStartPos
-        } else {
-          // 缓存未命中，使用原算法
-          startPosition = calculatePositionFromTimelineData(
-            startDateOnly,
-            props.timelineData,
-            props.currentTimeScale
-          )
-        }
-
-        // 计算结束位置：为结束日期添加一天
-        const nextDay = new Date(endDateOnly)
-        nextDay.setDate(nextDay.getDate() + 1)
-        const cachedEndPos = positionCache.getPosition(nextDay, props.currentTimeScale)
-        if (cachedEndPos !== null) {
-          endPosition = cachedEndPos
-        } else {
-          endPosition = calculatePositionFromTimelineData(
-            nextDay,
-            props.timelineData,
-            props.currentTimeScale
-          )
-        }
-      } else {
-        // 没有缓存，使用原算法
-        startPosition = calculatePositionFromTimelineData(
-          startDateOnly,
-          props.timelineData,
-          props.currentTimeScale
-        )
-        const nextDay = new Date(endDateOnly)
-        nextDay.setDate(nextDay.getDate() + 1)
-        endPosition = calculatePositionFromTimelineData(
-          nextDay,
-          props.timelineData,
-          props.currentTimeScale
-        )
-      }
-
-      // 如果结束日期+1天超出范围，使用结束日期的位置+一天的宽度
-      if (endPosition === startPosition) {
-        endPosition =
-          calculatePositionFromTimelineData(
-            endDateOnly,
-            props.timelineData,
-            props.currentTimeScale
-          ) + SCALE_CONFIGS['day'].cellWidth
-      }
-
-      left = startPosition
-      width = Math.max(endPosition - startPosition, 4) // 确保最小4px宽度
+      left = cellOf(startDateOnly) + startMinutesIntoDay * pixelPerMinute
+      const endPos = cellOf(endDateOnly) + endMinutesIntoDay * pixelPerMinute
+      width = Math.max(endPos - left, 4) // 确保最小4px宽度
     } else {
-      // 其他情况（没有 timelineData）：基于日期的简单计算
-      const startDiff = Math.floor(
+      // Ohne timelineData: Tagesdifferenz zur Basis + Intratag-Offset
+      const startDiffDays = Math.floor(
         (startDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24)
       )
-
-      // 计算持续天数（基于日期，忽略时间）
-      const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
-      const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
-
-      // 如果开始和结束是同一天，duration = 1；否则是实际天数差 + 1（包含结束日期）
-      const duration = daysDiff === 0 ? 1 : daysDiff + 1
-
-      left = startDiff * props.dayWidth
-      width = duration * props.dayWidth
+      const endDiffDays = Math.floor(
+        (endDateOnly.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24)
+      )
+      left = startDiffDays * props.dayWidth + startMinutesIntoDay * pixelPerMinute
+      const endPos = endDiffDays * props.dayWidth + endMinutesIntoDay * pixelPerMinute
+      width = Math.max(endPos - left, 4) // 确保最小4px宽度
     }
   }
 
@@ -1245,65 +1127,48 @@ const overflowBarStyle = computed(() => {
     baseStartOnly.getDate()
   )
 
+  // ponytail: Position/Breite exakt wie taskBarStyle rechnen (minuten-genau) - taskBarStyle ist
+  // die Formel-Quelle. So laeuft der Overflow-Strich deckungsgleich mit den Task-Balken. Frueher
+  // wurde date-only + ein ganzer Extra-Tag gerechnet und die Uhrzeit ignoriert -> der Strich war
+  // rechts und links zu lang. Bewusste Duplikation der taskBarStyle-Formel; bei Aenderung dort
+  // mitziehen. (Die Datums-Only-String-Sonderfaelle aus taskBarStyle entfallen, weil Buchungs-
+  // Bookmarks hier immer eine Uhrzeit tragen.)
   let overflowLeft = 0
   let overflowWidth = 4
 
-  if (
-    props.timelineData &&
-    props.currentTimeScale &&
-    (props.currentTimeScale === TimelineScale.WEEK ||
-      props.currentTimeScale === TimelineScale.MONTH ||
-      props.currentTimeScale === TimelineScale.QUARTER ||
-      props.currentTimeScale === TimelineScale.YEAR)
-  ) {
-    const startPosition = calculatePositionFromTimelineData(
-      startDateOnly,
-      props.timelineData,
-      props.currentTimeScale
-    )
-    const nextDay = new Date(endDateOnly)
-    nextDay.setDate(nextDay.getDate() + 1)
-    let endPosition = calculatePositionFromTimelineData(
-      nextDay,
-      props.timelineData,
-      props.currentTimeScale
-    )
-    if (endPosition === startPosition) {
-      endPosition =
-        calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
-        props.dayWidth
+  const pixelPerMinute = props.dayWidth / (24 * 60)
+  const startMinutesIntoDay = minStart.getHours() * 60 + minStart.getMinutes()
+  const endMinutesIntoDay = maxEnd.getHours() * 60 + maxEnd.getMinutes()
+
+  if (props.currentTimeScale === TimelineScale.HOUR) {
+    const timelineStartOfDay = new Date(baseOnly)
+    timelineStartOfDay.setHours(0, 0, 0, 0)
+    const startMinutesTotal = getMinutesDiff(timelineStartOfDay, minStart)
+    const endMinutesTotal = getMinutesDiff(timelineStartOfDay, maxEnd)
+    overflowLeft = Math.max(0, startMinutesTotal * pixelPerMinute)
+    overflowWidth = Math.max((endMinutesTotal - startMinutesTotal) * pixelPerMinute, 4)
+  } else if (props.timelineData) {
+    const timelineData = props.timelineData
+    const cellOf = (d: Date): number => {
+      if (positionCache) {
+        const cached = positionCache.getPosition(d, props.currentTimeScale)
+        if (cached !== null) return cached
+      }
+      return calculatePositionFromTimelineData(d, timelineData, props.currentTimeScale)
     }
-    overflowLeft = startPosition
-    overflowWidth = Math.max(endPosition - startPosition, 4)
-  } else if (props.timelineData && props.currentTimeScale === TimelineScale.DAY) {
-    const startPosition = calculatePositionFromTimelineData(
-      startDateOnly,
-      props.timelineData,
-      props.currentTimeScale
-    )
-    const nextDay = new Date(endDateOnly)
-    nextDay.setDate(nextDay.getDate() + 1)
-    let endPosition = calculatePositionFromTimelineData(
-      nextDay,
-      props.timelineData,
-      props.currentTimeScale
-    )
-    if (endPosition === startPosition) {
-      endPosition =
-        calculatePositionFromTimelineData(endDateOnly, props.timelineData, props.currentTimeScale) +
-        props.dayWidth
-    }
-    overflowLeft = startPosition
-    overflowWidth = Math.max(endPosition - startPosition, 4)
+    overflowLeft = cellOf(startDateOnly) + startMinutesIntoDay * pixelPerMinute
+    const endPos = cellOf(endDateOnly) + endMinutesIntoDay * pixelPerMinute
+    overflowWidth = Math.max(endPos - overflowLeft, 4)
   } else {
-    const startDiff = Math.floor(
+    const startDiffDays = Math.floor(
       (startDateOnly.getTime() - baseOnly.getTime()) / (1000 * 60 * 60 * 24)
     )
-    const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
-    const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
-    const duration = daysDiff === 0 ? 1 : daysDiff + 1
-    overflowLeft = startDiff * props.dayWidth
-    overflowWidth = duration * props.dayWidth
+    const endDiffDays = Math.floor(
+      (endDateOnly.getTime() - baseOnly.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    overflowLeft = startDiffDays * props.dayWidth + startMinutesIntoDay * pixelPerMinute
+    const endPos = endDiffDays * props.dayWidth + endMinutesIntoDay * pixelPerMinute
+    overflowWidth = Math.max(endPos - overflowLeft, 4)
   }
 
   // 父级 TaskBar 的实际视觉顶部由 CSS 决定：
@@ -1910,13 +1775,13 @@ const handleMouseMove = (e: MouseEvent) => {
     const deltaX = e.clientX - resizeStartX.value
 
     if (props.currentTimeScale === TimelineScale.HOUR) {
-      // 小时视图：15分钟刻度对齐
+      // 小时视图：5分钟刻度对齐
       const pixelPerMinute = props.dayWidth / (24 * 60)
-      const pixelPer15Minutes = pixelPerMinute * 15
+      const pixelPer5Minutes = pixelPerMinute * 5
 
-      // 计算新的左侧位置，对齐到15分钟刻度
+      // 计算新的左侧位置，对齐到5分钟刻度
       const newLeftRaw = Math.max(0, resizeStartLeft.value + deltaX)
-      const newLeft = Math.round(newLeftRaw / pixelPer15Minutes) * pixelPer15Minutes
+      const newLeft = Math.round(newLeftRaw / pixelPer5Minutes) * pixelPer5Minutes
 
       // 计算新的开始时间
       const newStartMinutes = Math.round(newLeft / pixelPerMinute)
@@ -1969,65 +1834,39 @@ const handleMouseMove = (e: MouseEvent) => {
         endDate: props.task.endDate || '',
       }
     } else {
-      // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
-      const maxLeft = resizeStartLeft.value + resizeStartWidth.value - props.dayWidth
-      const newLeft = Math.min(maxLeft, Math.max(0, resizeStartLeft.value + deltaX))
+      // Alle übrigen Skalen (Tag/Woche/Monat/Jahr): minutengenau mit 5-Minuten-Snapping.
+      // props.dayWidth ist auf jeder Skala "px pro Tag", daher skaliert pixelPerMinute korrekt.
+      const pixelPerMinute = props.dayWidth / (24 * 60)
+      const snapMs = 5 * 60 * 1000
+      const originalStartDate = createLocalDate(props.task.startDate) || props.startDate
+      const endDate = createLocalDate(props.task.endDate) || originalStartDate
+      let newStartDate = addMinutesToDate(originalStartDate, deltaX / pixelPerMinute)
+      newStartDate = new Date(Math.round(newStartDate.getTime() / snapMs) * snapMs)
+      // Mindestlänge von 5 Minuten gegenüber dem Ende sichern
+      if (newStartDate.getTime() > endDate.getTime() - snapMs) {
+        newStartDate = new Date(endDate.getTime() - snapMs)
+      }
 
-      // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
-      if (
-        (props.currentTimeScale === TimelineScale.DAY ||
-          props.currentTimeScale === TimelineScale.MONTH ||
-          props.currentTimeScale === TimelineScale.QUARTER ||
-          props.currentTimeScale === TimelineScale.YEAR) &&
-        props.timelineData
-      ) {
-        const newStartDate = calculateDateFromPosition(
-          newLeft,
-          props.timelineData,
-          props.currentTimeScale
-        )
-
-        if (newStartDate) {
-          // 只更新临时数据，不触发事件
-          tempTaskData.value = {
-            startDate: formatDateToLocalString(newStartDate),
-            endDate: props.task.endDate, // 保持原来的结束日期
-          }
-
-          // 更新拖拽提示框内容
-          dragTooltipContent.value = {
-            startDate: formatDateToLocalString(newStartDate),
-            endDate: props.task.endDate || '',
-          }
-        }
-      } else {
-        // 其他情况：使用原有的简单计算
-        const newStartDate = addDaysToLocalDate(props.startDate, newLeft / props.dayWidth)
-
-        // 只更新临时数据，不触发事件
-        tempTaskData.value = {
-          startDate: formatDateToLocalString(newStartDate),
-          endDate: props.task.endDate, // 保持原来的结束日期
-        }
-
-        // 更新拖拽提示框内容
-        dragTooltipContent.value = {
-          startDate: formatDateToLocalString(newStartDate),
-          endDate: props.task.endDate || '',
-        }
+      tempTaskData.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate, // Ende bleibt unverändert
+      }
+      dragTooltipContent.value = {
+        startDate: formatDateToLocalString(newStartDate),
+        endDate: props.task.endDate || '',
       }
     }
   } else if (isResizingRight.value) {
     const deltaX = e.clientX - resizeStartX.value
 
     if (props.currentTimeScale === TimelineScale.HOUR) {
-      // 小时视图：15分钟刻度对齐
+      // 小时视图：5分钟刻度对齐
       const pixelPerMinute = props.dayWidth / (24 * 60)
-      const pixelPer15Minutes = pixelPerMinute * 15
+      const pixelPer5Minutes = pixelPerMinute * 5
 
-      // 计算新的宽度，对齐到15分钟刻度
-      const newWidthRaw = Math.max(pixelPer15Minutes, resizeStartWidth.value + deltaX)
-      const newWidth = Math.round(newWidthRaw / pixelPer15Minutes) * pixelPer15Minutes
+      // 计算新的宽度，对齐到5分钟刻度
+      const newWidthRaw = Math.max(pixelPer5Minutes, resizeStartWidth.value + deltaX)
+      const newWidth = Math.round(newWidthRaw / pixelPer5Minutes) * pixelPer5Minutes
 
       // 计算新的持续时间（分钟）
       const newDurationMinutes = Math.round(newWidth / pixelPerMinute)
@@ -2079,57 +1918,27 @@ const handleMouseMove = (e: MouseEvent) => {
         endDate: formatDateToLocalString(newEndDate),
       }
     } else {
-      // 其他视图（包括日视图、周视图、月视图、季度视图、年度视图）：保持原有逻辑
-      const newWidth = Math.max(props.dayWidth, resizeStartWidth.value + deltaX)
+      // Alle übrigen Skalen (Tag/Woche/Monat/Jahr): minutengenau mit 5-Minuten-Snapping.
+      // props.dayWidth ist auf jeder Skala "px pro Tag", daher skaliert pixelPerMinute korrekt.
+      const pixelPerMinute = props.dayWidth / (24 * 60)
+      const snapMs = 5 * 60 * 1000
+      const startDate = createLocalDate(props.task.startDate) || props.startDate
+      const originalEndDate =
+        createLocalDate(props.task.endDate) || createLocalDate(props.task.startDate) || props.startDate
+      let newEndDate = addMinutesToDate(originalEndDate, deltaX / pixelPerMinute)
+      newEndDate = new Date(Math.round(newEndDate.getTime() / snapMs) * snapMs)
+      // Mindestlänge von 5 Minuten gegenüber dem Start sichern
+      if (newEndDate.getTime() < startDate.getTime() + snapMs) {
+        newEndDate = new Date(startDate.getTime() + snapMs)
+      }
 
-      // 日视图、月视图、季度视图或年度视图：如果有 timelineData，使用精确计算
-      if (
-        (props.currentTimeScale === TimelineScale.DAY ||
-          props.currentTimeScale === TimelineScale.MONTH ||
-          props.currentTimeScale === TimelineScale.QUARTER ||
-          props.currentTimeScale === TimelineScale.YEAR) &&
-        props.timelineData
-      ) {
-        // 计算新的结束位置（左侧位置 + 新宽度）
-        const newRightPosition = resizeStartLeft.value + newWidth
-        const newEndDate = calculateDateFromPosition(
-          newRightPosition,
-          props.timelineData,
-          props.currentTimeScale
-        )
-
-        if (newEndDate) {
-          // 只更新临时数据，不触发事件
-          tempTaskData.value = {
-            startDate: props.task.startDate, // 保持原来的开始日期
-            endDate: formatDateToLocalString(addDaysToLocalDate(newEndDate, -1)),
-          }
-
-          // 更新拖拽提示框内容
-          dragTooltipContent.value = {
-            startDate: props.task.startDate || '',
-            endDate: formatDateToLocalString(addDaysToLocalDate(newEndDate, -1)),
-          }
-        }
-      } else {
-        // 其他情况：使用原有的简单计算
-        const newDurationDays = newWidth / props.dayWidth
-        const newEndDate = addDaysToLocalDate(
-          props.startDate,
-          resizeStartLeft.value / props.dayWidth + newDurationDays - 1
-        )
-
-        // 只更新临时数据，不触发事件
-        tempTaskData.value = {
-          startDate: props.task.startDate, // 保持原来的开始日期
-          endDate: formatDateToLocalString(newEndDate),
-        }
-
-        // 更新拖拽提示框内容
-        dragTooltipContent.value = {
-          startDate: props.task.startDate || '',
-          endDate: formatDateToLocalString(newEndDate),
-        }
+      tempTaskData.value = {
+        startDate: props.task.startDate, // Start bleibt unverändert
+        endDate: formatDateToLocalString(newEndDate),
+      }
+      dragTooltipContent.value = {
+        startDate: props.task.startDate || '',
+        endDate: formatDateToLocalString(newEndDate),
       }
     }
   }
@@ -3097,14 +2906,7 @@ watch(isTabHovered, tabHovered => {
 
 // 格式化日期显示
 const formatDisplayDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return t('dateNotSet')
-  const date = createLocalDate(dateStr)
-  if (!date) return t('dateNotSet')
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return formatDateTimeDE(dateStr) ?? t('dateNotSet')
 }
 
 // 计算工时信息

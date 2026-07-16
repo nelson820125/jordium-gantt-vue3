@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 
 // 支持的语言类型
-export type Locale = 'zh-CN' | 'en-US'
+export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
 
 // 多语言配置
 const messages = {
@@ -76,6 +76,7 @@ const messages = {
     milestoneDetails: '里程碑详情',
     milestoneName: '里程碑名称',
     milestoneDate: '里程碑日期',
+    selectMilestoneDate: '请选择里程碑日期',
     milestoneIcon: '里程碑图标',
     diamond: '菱形',
     rocket: '火箭',
@@ -215,6 +216,7 @@ const messages = {
     resourceAllocation: '资源分配',
     selectResource: '选择资源',
     addResource: '添加资源',
+    deleteResource: '删除资源',
     percentMinError: '最小占比为20%',
     percentMaxWarning: '占比超过100%将标记为超负荷',
     // 通用消息
@@ -396,6 +398,7 @@ const messages = {
     milestoneDetails: 'Milestone Details',
     milestoneName: 'Milestone Name',
     milestoneDate: 'Milestone Date',
+    selectMilestoneDate: 'Select milestone date',
     milestoneIcon: 'Milestone Icon',
     diamond: 'Diamond',
     rocket: 'Rocket',
@@ -537,6 +540,7 @@ const messages = {
     resourceAllocation: 'Resource Allocation',
     selectResource: 'Select resource',
     addResource: 'Add Resource',
+    deleteResource: 'Remove resource',
     percentMinError: 'Minimum percentage is 20%',
     percentMaxWarning: 'Percentage over 100% will be marked as overloaded',
     // Common messages
@@ -651,6 +655,332 @@ const messages = {
       conflictSuffix: '',
     },
   },
+  'de-DE': {
+    dateNotSet: 'Nicht gesetzt',
+    // TaskList Header
+    taskName: 'Aufgabenname',
+    resourceName: 'Ressourcenname',
+    predecessor: 'Vorgänger',
+    assignee: 'Zugewiesen an',
+    startDate: 'Startdatum',
+    endDate: 'Enddatum',
+    plannedStartDate: 'Geplanter Start',
+    plannedEndDate: 'Geplantes Ende',
+    actualStartDate: 'Tatsächlicher Start',
+    actualEndDate: 'Tatsächliches Ende',
+    childrenEarliestStart: 'Frühester Start (Unteraufgaben)',
+    childrenLatestEnd: 'Spätestes Ende (Unteraufgaben)',
+    childrenOverflow: 'Unteraufgaben überschreiten den Rahmen der übergeordneten Aufgabe',
+    estimatedHours: 'Gesch. Std.',
+    actualHours: 'Ist-Std.',
+    progress: 'Fortschritt',
+    type: 'Typ',
+    // CSV Export Headers
+    csvHeaders: {
+      id: 'ID',
+      taskName: 'Aufgabenname',
+      predecessor: 'Vorgänger',
+      assignee: 'Zugewiesen an',
+      startDate: 'Startdatum',
+      endDate: 'Enddatum',
+      plannedStartDate: 'Geplanter Start',
+      plannedEndDate: 'Geplantes Ende',
+      actualStartDate: 'Tatsächlicher Start',
+      actualEndDate: 'Tatsächliches Ende',
+      estimatedHours: 'Gesch. Std.',
+      actualHours: 'Ist-Std.',
+      progress: 'Fortschritt (%)',
+      type: 'Typ',
+      description: 'Beschreibung',
+    },
+
+    // Datumsformat
+    yearMonthFormat: (year: number, month: number) => `${String(month).padStart(2, '0')}/${year}`,
+    // Monatsformat
+    monthFormat: (month: number) => `${String(month).padStart(2, '0')}`,
+
+    // Monatsnamen
+    monthNames: [
+      'Jan',
+      'Feb',
+      'Mär',
+      'Apr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Dez',
+    ],
+    weekDays: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+
+    // Sonstiges
+    milestone: 'Meilenstein',
+    today: 'Heute',
+    targetDate: 'Zieldatum',
+    // Meilenstein-Dialog
+    milestoneDetails: 'Meilenstein-Details',
+    milestoneName: 'Meilensteinname',
+    milestoneDate: 'Meilensteindatum',
+    selectMilestoneDate: 'Meilensteindatum wählen',
+    milestoneIcon: 'Meilenstein-Symbol',
+    diamond: 'Raute',
+    rocket: 'Rakete',
+    enterMilestoneName: 'Meilensteinname eingeben',
+    enterAssignee: 'Zuständigen eingeben',
+    enterDescription: 'Beschreibung eingeben',
+    milestoneNameRequired: 'Meilensteinname ist erforderlich',
+    milestoneDateRequired: 'Meilensteindatum ist erforderlich',
+    save: 'Speichern',
+    close: 'Schließen',
+    confirm: 'Bestätigen',
+    description: 'Beschreibung',
+    delete: 'Löschen',
+    confirmDelete: 'Möchten Sie diesen Meilenstein wirklich löschen?',
+    // Toolbar-Buttons
+    addTask: 'Anforderung/Aufgabe hinzufügen',
+    addMilestone: 'Meilenstein hinzufügen',
+    todayLocate: 'Heute',
+    todayLocateTooltip: 'Zu heute springen',
+    exportCsv: 'CSV exportieren',
+    exportPdf: 'PDF exportieren',
+    expandAll: 'Alle ausklappen',
+    collapseAll: 'Alle einklappen',
+    // Ansichtsmodus
+    taskView: 'Aufgabenansicht',
+    language: 'Deutsch',
+    languageTooltip: 'Sprache wählen',
+    lightMode: 'Heller Modus',
+    darkMode: 'Dunkler Modus',
+    fullscreen: 'Vollbild',
+    exitFullscreen: 'Vollbild beenden',
+    githubDocs: 'GitHub-Doku',
+    giteeDocs: 'Gitee-Doku',
+    // Zeitskala-Buttons
+    timeScaleHour: 'Stunde',
+    timeScaleDay: 'Tag',
+    timeScaleWeek: 'Woche',
+    timeScaleMonth: 'Monat',
+    timeScaleQuarter: 'Quartal',
+    timeScaleYear: 'Jahr',
+    timeScaleTooltip: 'Zeitskala wechseln',
+    halfYearFirst: 'Erstes Halbjahr',
+    halfYearSecond: 'Zweites Halbjahr',
+    // Bestätigungsdialog
+    confirmDialogMessage: 'Möchten Sie diese Einstellung speichern?',
+    taskNamePlaceholder: 'Aufgabennamen eingeben',
+    assigneePlaceholder: 'Zuständigen eingeben',
+    progressPlaceholder: '0-100',
+    hoursPlaceholder: 'Stunden',
+    descriptionPlaceholder: 'Aufgabenbeschreibung eingeben...',
+    hours: 'Stunden',
+    create: 'Erstellen',
+    taskNameRequired: 'Aufgabenname ist erforderlich',
+    startDateRequired: 'Startdatum ist erforderlich',
+    endDateRequired: 'Enddatum ist erforderlich',
+    endDateInvalid: 'Enddatum darf nicht vor dem Startdatum liegen',
+    plannedStartDateRequired: 'Geplantes Startdatum ist erforderlich',
+    plannedEndDateRequired: 'Geplantes Enddatum ist erforderlich',
+    plannedEndDateInvalid: 'Geplantes Enddatum darf nicht vor dem geplanten Start liegen',
+    actualEndDateInvalid: 'Tatsächliches Enddatum darf nicht vor dem tatsächlichen Start liegen',
+    // Aufgabenstatus
+    statusPending: 'Ausstehend',
+    statusOngoing: 'Laufend',
+    statusDelayed: 'Verzögert',
+    statusCompleted: 'Abgeschlossen',
+    // Meilenstein-Dialog (neu)
+    newMilestone: 'Neuer Meilenstein',
+    editMilestone: 'Meilenstein bearbeiten',
+    cancel: 'Abbrechen',
+    // Kontextmenü
+    timerStarted: 'Timer gestartet',
+    timerStopped: 'Timer gestoppt',
+    startTimer: 'Timer starten',
+    stopTimer: 'Timer stoppen',
+    addPredecessor: 'Vorgänger hinzufügen',
+    addSuccessor: 'Nachfolger hinzufügen',
+
+    // PDF-Export
+    pdfExportLoading: 'PDF wird erstellt, bitte warten...',
+    pdfExportTitle: 'Gantt-Diagramm Export',
+    pdfExportDate: 'Exportdatum',
+
+    milestoneGroup: 'Meilenstein',
+    collapseTaskList: 'Aufgabenliste einklappen',
+    expandTaskList: 'Aufgabenliste ausklappen',
+    // TaskDrawer
+    taskType: 'Aufgabentyp',
+    taskTypeRequired: 'Bitte Aufgabentyp wählen',
+    taskTypeMap: {
+      task: 'Aufgabe',
+      milestone: 'Meilenstein',
+      story: 'Story',
+      epic: 'Epic',
+      bug: 'Bug',
+    },
+    editTask: 'Aufgabe bearbeiten',
+    newTask: 'Neue Aufgabe',
+    parentTask: 'Übergeordnete Aufgabe',
+
+    // Zeitauswahl
+    time: 'Zeit',
+    selectTime: 'Zeit wählen',
+    hour: 'Stunde',
+    minute: 'Minute',
+    // Datepicker-Platzhalter
+    selectDate: 'Datum wählen',
+    to: 'bis',
+    noParentTask: 'Keine übergeordnete Aufgabe',
+    update: 'Aktualisieren',
+    taskNameTooLong: 'Aufgabenname darf 50 Zeichen nicht überschreiten',
+    predecessorPlaceholder: 'Vorgänger wählen',
+    selectPredecessor: 'Vorgänger wählen',
+    removePredecessor: 'Vorgänger entfernen',
+    deleteLinks: 'Verknüpfungen löschen',
+    noLinks: 'Keine Verknüpfungen',
+    predecessorLink: 'Vorgänger: {name}',
+    successorLink: 'Nachfolger: {name}',
+    operationFailed: 'Vorgang fehlgeschlagen, bitte erneut versuchen',
+    taskUpdateSuccess: 'Aufgabe erfolgreich aktualisiert',
+    taskCreateSuccess: 'Aufgabe erfolgreich erstellt',
+    confirmDeleteTask:
+      'Möchten Sie die Aufgabe „{name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+    taskDeleteFailed: 'Löschen fehlgeschlagen, bitte erneut versuchen',
+    // Story-Löschung
+    confirmDeleteStory:
+      'Möchten Sie die Anforderung {name} und alle Unteraufgaben löschen? Diese Aktion kann nicht rückgängig gemacht werden',
+    storyDeleteYes: 'Ja, fortfahren',
+    storyDeleteNo: 'Nein, nur Anforderung löschen',
+    storyDeleteAllSuccess: 'Anforderung [{name}] und alle Unteraufgaben gelöscht',
+    storyDeleteOnlySuccess: 'Anforderung [{name}] gelöscht, {count} Unteraufgaben wurden hochgestuft',
+    storyNotFound: 'Anforderung nicht gefunden, ID: {id}',
+    // Meilenstein-Löschung erfolgreich
+    milestoneDeleteSuccess: 'Meilenstein erfolgreich gelöscht',
+    // Weitere Lösch-Meldungen
+    taskDeletedSuccess: 'Aufgabe gelöscht',
+    // Auswahl-Platzhalter
+    selectAssignee: 'Zuständigen wählen',
+    // Ressourcenzuweisung
+    resourceAllocation: 'Ressourcenzuweisung',
+    selectResource: 'Ressource wählen',
+    addResource: 'Ressource hinzufügen',
+    deleteResource: 'Ressource entfernen',
+    percentMinError: 'Mindestprozentsatz ist 20 %',
+    percentMaxWarning: 'Über 100 % wird als überlastet markiert',
+    // Allgemeine Meldungen
+    customCsvExportCalled: 'Benutzerdefinierter CSV-Export aufgerufen',
+    languageSwitchedTo: 'Sprache gewechselt zu: {language}',
+    themeSwitchedTo: 'Thema gewechselt zu: {theme}',
+    lightModeText: 'Heller Modus',
+    darkModeText: 'Dunkler Modus',
+    taskNotFound: 'Aufgabe zum Aktualisieren nicht gefunden, ID: {id}',
+    newParentTaskNotFound:
+      'Neue übergeordnete Aufgabe nicht gefunden, ID: {parentId}, wird als oberste Aufgabe hinzugefügt',
+    inPlaceUpdateFailed: 'Aktualisierung fehlgeschlagen, Aufgabe nicht gefunden, ID: {id}',
+    taskToDeleteNotFound: 'Zu löschende Aufgabe nicht gefunden, ID: {id}',
+    milestoneIconUpdateNotFound: 'Meilenstein für Symbol-Aktualisierung nicht gefunden, ID: {id}',
+    overtime: 'Über',
+    overdue: 'Überfällig',
+    days: ' Tage',
+    // Timer-Bestätigung
+    timerConfirmPrefix: 'Zeiterfassung wird gestartet für',
+    timerConfirmSuffix: '. Bei besonderen Hinweisen bitte die Beschreibung unten ausfüllen.',
+    timerConfirmPlaceholder: 'Bitte Timer-Beschreibung eingeben',
+    // Demo-Konfigurationspanel
+    configDemo: 'Konfigurations-Demo',
+    // TaskList-Konfiguration
+    taskListConfig: {
+      title: 'TaskList-Konfiguration',
+      columns: {
+        title: 'Spalten (nur im Standard-Render-Modus wirksam)',
+        renderMode: 'Render-Modus',
+        renderModeDefault: 'Standard (via TaskListColumnConfig)',
+        renderModeDeclarative: 'Deklarativ (via TaskListColumn)',
+      },
+      width: {
+        title: 'Breiten-Einstellungen',
+        defaultWidth: 'Standardbreite',
+        minWidth: 'Min. Breite',
+        maxWidth: 'Max. Breite',
+        pixelsModel: 'Pixel (px)',
+        percentageModel: 'Prozent (%)',
+      },
+      collapsible: {
+        title: 'Einklapp-Steuerung',
+        enableCollapsible: 'Einklappbare Aufgabenliste aktivieren',
+        enableCollapsibleHint: 'Erlaubt das Ein-/Ausklappen der Aufgabenliste',
+        visible: 'Sichtbarkeit der Aufgabenliste',
+        visibleExpanded: 'Ausgeklappt',
+        visibleCollapsed: 'Eingeklappt',
+        visibleHint: 'Steuert den anfänglichen/aktuellen Sichtbarkeitszustand der Aufgabenliste',
+      },
+    },
+    // TaskBar-Konfiguration
+    taskBarConfig: {
+      title: 'TaskBar-Konfiguration',
+      display: {
+        title: 'Anzeigeoptionen',
+        showAvatar: 'Avatar anzeigen',
+        showTitle: 'Titel anzeigen',
+        showProgress: 'Fortschritt anzeigen',
+      },
+      mistouch: {
+        title: 'Fehlbedienungs-Schutz',
+        dragThreshold: 'Zieh-Schwelle (px)',
+        dragThresholdHint: 'Distanz zum Auslösen des Ziehens',
+        resizeHandleWidth: 'Breite des Größengriffs (px)',
+        resizeHandleWidthHint: 'Klickbare Breite des Größengriffs (5-15px)',
+        enableDragDelay: 'Zieh-Verzögerung aktivieren',
+        enableDragDelayHint: 'Zum Ziehen nach kurzer Verzögerung halten',
+        dragDelayTime: 'Verzögerungszeit (ms)',
+        dragDelayTimeHint: 'Verzögerung, bevor das Ziehen beginnt',
+        allowDragOnClick: 'Ziehen und Größenänderung von TaskBars und Meilensteinen erlauben',
+        allowDragOnClickHint:
+          'Steuert, ob TaskBars und Meilensteine gezogen sowie die Länge von TaskBars geändert werden darf',
+      },
+    },
+    disableTaskbarFocusMode: 'Fokus-Modus deaktivieren',
+    dataSourceAlreadyLoaded: '{name} ist bereits aktiv',
+    dataSourceLoadSuccess: '{name} erfolgreich geladen',
+    dataSourceLoadFailed: '{name} konnte nicht geladen werden',
+    dataSourceSwitch: {
+      title: 'Datenquellen',
+      subtitle: 'Standard- vs. Mega-Datensatz-Initialisierung vergleichen',
+      loading: 'Daten werden geladen, bitte warten…',
+      alreadyLoaded: '{name} ist bereits aktiv',
+      loadSuccess: '{name} erfolgreich geladen',
+      loadFailed: '{name} konnte nicht geladen werden',
+      sources: {
+        normal: {
+          label: 'Standard-Datensatz',
+          description: 'data.json · Vollständiger Vorgänger-Graph für Feature-Demos',
+          badge: 'data.json',
+        },
+        medium: {
+          label: 'Mittlerer Datensatz',
+          description: 'data-100.json · Vollständiger Vorgänger-Graph für Feature-Demos',
+          badge: 'data-100.json',
+        },
+        large: {
+          label: 'Riesiger Datensatz',
+          description: 'data-large-1m.json · Millionen Aufgaben zum Stresstest des virtuellen Renderings',
+          badge: 'data-large-1m.json',
+        },
+      },
+    },
+    resourceView: {
+      desc: 'Ressourcenansicht',
+      capacity: 'Kapazität',
+      overloaded: 'überlastet',
+      duration: 'Dauer',
+      overloadWarning: 'Überlastungswarnung',
+      conflictDuration: 'Konfliktdauer',
+      conflictWith: 'Konflikt mit',
+      conflictSuffix: '',
+    },
+  },
 }
 
 // 允许外部合并自定义多语言
@@ -680,7 +1010,7 @@ const LOCALE_STORAGE_KEY = 'gantt-locale'
 const getInitialLocale = (): Locale => {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
-    if (stored && (stored === 'zh-CN' || stored === 'en-US')) {
+    if (stored && (stored === 'zh-CN' || stored === 'en-US' || stored === 'de-DE')) {
       return stored as Locale
     }
   }

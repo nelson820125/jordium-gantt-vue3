@@ -95,6 +95,7 @@ const props = withDefaults(defineProps<Props>(), {
   scaleConfigs: undefined,
   rowHeight: 51,
   enableParentTaskAutoSchedule: true,
+  enableTimeDraw: false,
 })
 
 const emit = defineEmits([
@@ -129,6 +130,7 @@ const emit = defineEmits([
   // v1.9.0 资源视图事件
   'taskbar-resource-change', // 任务跨资源移动事件
   'resource-drag-end', // v1.9.0 资源视图垂直拖拽结束事件
+  'time-draw', // Aufgezogene Zeitspanne auf einer Row { task, startDate, endDate }
 ])
 
 // 根元素引用
@@ -509,6 +511,14 @@ interface Props {
   resources?: Resource[]
   // v1.9.0 视图模式：'task' 任务计划视图 | 'resource' 资源计划视图
   viewMode?: 'task' | 'resource'
+  // PATCH (viur): expliziter Zeitachsen-Override. Wenn beide gesetzt, wird die Timeline-Range
+  // NICHT aus den Tasks/Container abgeleitet, sondern fix gesetzt — nötig, um zwei GanttChart-
+  // Instanzen (z. B. Booking + Resource-Planner) deckungsgleich auszurichten (Scroll-Sync).
+  timelineStartDate?: string | Date | null
+  timelineEndDate?: string | Date | null
+  // PATCH (viur): Anker-Datum für den initialen Scroll. Wenn gesetzt, scrollt die Timeline beim
+  // Laden (und bei Scale-Wechsel) LINKSBÜNDIG auf dieses Datum, statt „heute" zu zentrieren.
+  initialScrollDate?: string | Date | null
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
   // 是否使用默认的MilestoneDialog
@@ -521,7 +531,7 @@ interface Props {
   onTodayLocate?: () => void
   onExportCsv?: () => boolean | void
   onExportPdf?: () => void
-  onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
+  onLanguageChange?: (lang: 'zh-CN' | 'en-US' | 'de-DE') => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onSettingsConfirm?: (
@@ -615,7 +625,7 @@ interface Props {
   // 展开/收起所有任务（响应式）
   expandAll?: boolean
   // 语言设置（响应式）
-  locale?: 'zh-CN' | 'en-US'
+  locale?: 'zh-CN' | 'en-US' | 'de-DE'
   // 时间刻度（响应式）
   timeScale?: TimelineScale
   // 主题模式（响应式）
@@ -666,6 +676,11 @@ interface Props {
    * false：父级 TaskBar 保持自身设定日期；子任务溢出时显示2px红色指示条
    */
   enableParentTaskAutoSchedule?: boolean
+  /**
+   * Cursor-Zeit-Anzeige + Aufziehen einer Zeitspanne auf Rows mit task.allowTimeDraw (5-Min-Snap).
+   * Emittiert 'time-draw' { task, startDate, endDate }. Default false.
+   */
+  enableTimeDraw?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -2040,6 +2055,15 @@ const timelineDateRange = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   updateTaskTrigger.value
 
+  // PATCH (viur): expliziter Override → feste, instanzübergreifend identische Range.
+  if (props.timelineStartDate && props.timelineEndDate) {
+    const oMin = new Date(props.timelineStartDate)
+    const oMax = new Date(props.timelineEndDate)
+    if (!Number.isNaN(oMin.getTime()) && !Number.isNaN(oMax.getTime())) {
+      return { min: oMin, max: oMax }
+    }
+  }
+
   // 扁平化所有任务和子任务
   const flattenTasks = (tasks: Task[]): Task[] => {
     let result: Task[] = []
@@ -3177,7 +3201,7 @@ const currentLocale = (): string => {
  * 设置语言
  * @param locale 语言代码
  */
-const setLocale = (locale: 'zh-CN' | 'en-US') => {
+const setLocale = (locale: 'zh-CN' | 'en-US' | 'de-DE') => {
   const { setLocale: setI18nLocale } = useI18n()
   setI18nLocale(locale)
 }
@@ -3916,6 +3940,7 @@ defineExpose({
           :milestones="milestonesForTimeline"
           :start-date="timelineDateRange.min"
           :end-date="timelineDateRange.max"
+          :initial-scroll-date="props.initialScrollDate"
           :scale-configs="mergedScaleConfigs"
           :working-hours="props.workingHours"
           :task-bar-config="props.taskBarConfig"
@@ -3924,6 +3949,7 @@ defineExpose({
           :enable-task-bar-tooltip="props.enableTaskBarTooltip"
           :enable-milestone-tooltip="props.enableMilestoneTooltip"
           :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
+          :enable-time-draw="props.enableTimeDraw"
           :pending-task-background-color="props.pendingTaskBackgroundColor"
           :delay-task-background-color="props.delayTaskBackgroundColor"
           :complete-task-background-color="props.completeTaskBackgroundColor"
@@ -3944,6 +3970,7 @@ defineExpose({
           @delete="handleTaskDelete"
           @link-deleted="handleLinkDeleted"
           @resource-drag-end="handleResourceDragEnd"
+          @time-draw="(payload) => emit('time-draw', payload)"
         >
           <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
             <slot name="custom-task-content" v-bind="barScope" />
