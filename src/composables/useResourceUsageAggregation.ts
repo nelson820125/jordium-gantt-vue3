@@ -159,6 +159,7 @@ export function useResourceUsageAggregation(options: UseResourceUsageAggregation
         }
       }
 
+      const scale = options.scale.value
       const cells: ResourceUsageCellData[] = periods.map(period => {
         const workingDaysInPeriod = enumerateWorkingDays(period.start, period.end)
         const taskTotals = new Map<number | string, { name: string; hours: number }>()
@@ -194,6 +195,7 @@ export function useResourceUsageAggregation(options: UseResourceUsageAggregation
           totalHours,
           totalPercent,
           isOverloaded: totalPercent > overloadThreshold,
+          isWeekend: scale === 'day' ? isWeekend(period.start) : false,
           taskBreakdown,
         }
       })

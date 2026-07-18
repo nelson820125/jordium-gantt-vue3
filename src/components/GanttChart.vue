@@ -23,6 +23,7 @@ import type {
   CalendarTaskMovePayload,
 } from '../models/types/CalendarTypes'
 import ResourceUsageView from './ResourceUsage/ResourceUsageView.vue'
+import type { ResourceUsageScale } from '../models/types/ResourceUsageTypes'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
@@ -2171,8 +2172,11 @@ const timelineDateRange = computed(() => {
 
   let allTasks: Task[] = []
 
-  if (currentViewMode.value === 'resource' && props.resources) {
-    // 资源视图：从 resource.tasks 提取日期，避免传入基于任务视图的错误范围
+  if (
+    (currentViewMode.value === 'resource' || currentViewMode.value === 'resource-usage') &&
+    props.resources
+  ) {
+    // 资源视图/资源工时视图：从 resource.tasks 提取日期，避免传入基于任务视图的错误范围
     for (const resource of props.resources as Resource[]) {
       if (resource.tasks && Array.isArray(resource.tasks)) {
         allTasks = allTasks.concat(flattenTasks(resource.tasks as Task[]))
@@ -2597,6 +2601,21 @@ const calendarScaleFromToolbar = computed<CalendarScale>(() => {
   if (currentTimeScale.value === TimelineScale.MONTH) return 'month'
   return 'day'
 })
+
+// 资源工时视图刻度映射：同样复用工具栏 日/周/月 按钮驱动内部 ResourceUsageView 的 scale，
+// 不再由 ResourceUsageView 内置切换按钮控制；时/季/年不适用，回退为 'day'
+const resourceUsageScaleFromToolbar = computed<ResourceUsageScale>(() => {
+  if (currentTimeScale.value === TimelineScale.WEEK) return 'week'
+  if (currentTimeScale.value === TimelineScale.MONTH) return 'month'
+  return 'day'
+})
+
+// 资源工时视图默认时间范围：与资源计划视图一致，取所有资源任务的最小/最大日期，
+// 确保切换到工时视图时默认即可看到完整数据（而非仅当月），resourceUsageProps.dateRange 可覆盖
+const resourceUsageDateRangeFromTimeline = computed(() => ({
+  start: timelineDateRange.value.min,
+  end: timelineDateRange.value.max,
+}))
 
 // Timeline组件时间刻度变化完成后的处理函数
 const handleTimelineScaleChanged = (scale: TimelineScale) => {
@@ -4095,6 +4114,8 @@ defineExpose({
         class="gantt-panel-full-view"
         :resources="props.resources"
         :resource-list-config="props.resourceListConfig"
+        :scale="resourceUsageScaleFromToolbar"
+        :date-range="resourceUsageDateRangeFromTimeline"
         v-bind="props.resourceUsageProps"
         @scale-change="payload => emit('resource-usage-scale-change', payload)"
         @cell-click="payload => emit('resource-usage-cell-click', payload)"

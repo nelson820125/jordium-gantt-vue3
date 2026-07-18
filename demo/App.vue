@@ -235,12 +235,14 @@ const toolbarConfig = reactive({
   showViewMode: true, // 显示 Task/Resource 视图切换按钮组
 })
 
-// 全部时间刻度维度，供日历视图退出时恢复使用
+// 全部时间刻度维度，供日历视图/工时视图退出时恢复使用
 const ALL_TIME_SCALE_DIMENSIONS = ['hour', 'day', 'week', 'month', 'quarter', 'year']
-// 日历视图仅支持日/周/月粒度，切入日历视图时联动收窄 Gantt 工具栏的时间刻度按钮组
+// 日历视图/工时视图仅支持日/周/月粒度，切入这两个视图时联动收窄 Gantt 工具栏的时间刻度按钮组
 watch(viewMode, mode => {
   toolbarConfig.timeScaleDimensions =
-    mode === 'calendar' ? ['day', 'week', 'month'] : ALL_TIME_SCALE_DIMENSIONS
+    mode === 'calendar' || mode === 'resource-usage'
+      ? ['day', 'week', 'month']
+      : ALL_TIME_SCALE_DIMENSIONS
 })
 
 // TaskList列渲染模式配置
@@ -362,6 +364,17 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
     widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
 }))
 
+// 工时视图（resource-usage）配置：直接复用 resources 数据集，无需单独转换数据结构；
+// 这里演示自定义阈值背景色（覆盖组件默认配色），scale/dateRange 由 GanttChart 根据工具栏
+// 日/周/月 与任务时间范围自动推导，无需在此重复传入
+const resourceUsageProps = computed(() => ({
+  overloadThreshold: 100,
+  underloadThreshold: 60,
+  overloadColor: '#fde2e2',
+  normalColor: '#e1f3d8',
+  underloadColor: '#fdf6ec',
+  weekendColor: '#f0f0f0',
+}))
 
 // 控制是否允许拖拽和拉伸
 const allowDragAndResize = ref(true)
@@ -2603,6 +2616,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :view-mode="viewMode"
         :available-view-modes="['task', 'resource', 'calendar', 'resource-usage']"
         :resource-list-config="resourceListConfig"
+        :resource-usage-props="resourceUsageProps"
         :locale="controlMode === 'props' ? propsLocale : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
         :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
