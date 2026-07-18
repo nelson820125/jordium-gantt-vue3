@@ -835,5 +835,21 @@
       "🔧 Fixed: GanttToolbar Default TimeScalesKeys missing quarter",
       "🔧 Fixed: GanttToolbar Segmented Control style issue"
     ]
+  },
+  {
+    "version": "1.13.0",
+    "date": "2026-07-01",
+    "notes": [
+      "🎉 新增：CalendarView 日历视图组件（日/周/月三种刷度），支持拖拽创建任务、当前时间指示线、全天任务行、工作时间高亮",
+      "🎉 新增：任务卡片样式可配置（taskCardOpacity/taskAccentWidth/#task-card 插槽）",
+      "🎉 新增：日历任务卡片支持点击（打开TaskDrawer编辑）与左键拖拽移动（日/周/月视图），拖拽中卡片视觉强调",
+      "🔧 修复：周/月视图切换后新建任务不可见的问题",
+      "🔧 修复：日历视图新建/编辑任务未同步到资源数据集的问题",
+      "🎉 Added: CalendarView component (Day/Week/Month) with drag-to-create, current-time indicator, all-day row, working-hours highlight",
+      "🎉 Added: configurable task card style (taskCardOpacity/taskAccentWidth/#task-card slot)",
+      "🎉 Added: calendar task cards support click (opens TaskDrawer for editing) and left-click drag to move (Day/Week/Month views), with visual emphasis while dragging",
+      "🔧 Fixed: newly created tasks disappearing after switching Week/Month view",
+      "🔧 Fixed: tasks created/edited in Calendar view not synced to resource dataset"
+    ]
   }
 ]

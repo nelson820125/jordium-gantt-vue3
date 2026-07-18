@@ -1778,6 +1778,70 @@ const handleDelete = () => {
 
 ---
 
+### CalendarView Component ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`CalendarView` powers GanttChart's calendar view (`view-mode="calendar"`) and can also be mounted standalone via `import`, for viewing/creating day/week/month-level task schedules per resource.
+
+#### Data Model
+
+`CalendarView` has **no separate calendar-only data structure** — it reuses the same `Task[]` / `Resource[]` model as the task/resource views (see [Task Management](#task-management) and [Resource Management](#resource-management-)). `CalendarTypes.ts` only adds calendar-specific helper types: `WorkingHoursConfig`, `CalendarScale` (`'day' | 'week' | 'month'`), `CalendarSelectionDraft` / `CalendarSelectionRange`, and `CalendarTaskMovePayload` (![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) the old/new time range after dragging a task, containing `task` (the fully updated Task object), `previousStartDate` / `previousEndDate` / `newStartDate` / `newEndDate` (Date), and `resourceId`).
+
+This means the same `tasks` / `resources` datasets passed to GanttChart via `:tasks` / `:resources` are reused directly by the calendar view; tasks created or edited in the calendar view are synced back into that same dataset — no adapter/mapping code is required.
+
+#### CalendarView Props
+
+| Prop                    | Type                                                     | Default                                    | Description                                                                 |
+| ----------------------- | --------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------- |
+| `tasks`                 | `Task[]`                                                   | -                                             | Task dataset (shared with GanttChart)                                           |
+| `resources`             | `Resource[]`                                               | `[]`                                          | Resource dataset (shared with GanttChart)                                       |
+| `scale` / `defaultScale`| `'day' \| 'week' \| 'month'`                                | `'day'`                                       | Current / default view scale                                                    |
+| `currentDate`           | `Date \| string`                                            | today                                         | Anchor date                                                                      |
+| `selectedResourceId`    | `string \| number \| null`                                  | -                                             | Selected resource ID; no tasks are shown when unset                             |
+| `workingHours`          | `WorkingHoursConfig`                                        | 8-11am / 1-5pm                                | Working hours config, used for highlighting/snapping                            |
+| `selectionMinuteStep`   | `number`                                                    | `15`                                          | Minute-snap granularity for drag selection                                       |
+| `disabled`              | `boolean`                                                   | `false`                                       | Disable drag-to-create                                                          |
+| `allDayLabel`           | `string`                                                    | `'全天'`                                      | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Label text for the all-day task row in Day/Week views |
+| `taskCardOpacity`       | `number`                                                    | `0.18`                                        | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Task card background opacity (0-1) in Day/Week views; base color is `task.barColor` or the theme accent |
+| `taskAccentWidth`       | `number`                                                    | `5`                                           | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Left accent bar width (px) of task cards in Day/Week views |
+| `onBeforeSelect`        | `(range) => boolean \| Promise<boolean>`                     | -                                             | Hook before a drag selection is confirmed; return `false` to cancel             |
+| `onBeforeResourceChange`| `(nextId, prevId) => boolean \| Promise<boolean>`             | -                                             | Hook before switching the selected resource                                     |
+| `onBeforeViewChange`    | `(next, prev) => boolean \| Promise<boolean>`                 | -                                             | Hook before switching day/week/month scale                                      |
+| `onTaskClick`           | `(task, event) => void`                                     | -                                             | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired when an existing task card is clicked |
+| `onTaskMove`            | `(payload: CalendarTaskMovePayload) => void`                 | -                                             | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired after an existing task card is dragged and dropped |
+
+#### CalendarView Slots
+
+| Slot        | Params            | Description                                                                          |
+| ----------- | ----------------- | ------------------------------------------------------------------------------------- |
+| `task-card` | `{ task, style }` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Custom render slot for task cards in Day/Week views; defaults to `task.name`; `style` already includes position/color styles and can be bound directly to the custom card root |
+
+#### CalendarView Events
+
+| Event                 | Payload                    | Description                    |
+| ---------------------- | --------------------------- | -------------------------------- |
+| `selection-complete`   | `CalendarSelectionRange`    | Fired after a drag selection is confirmed |
+| `selection-cancel`     | `{ reason }`                | Fired after a drag selection is cancelled |
+| `resource-change`      | `{ next, prev }`            | Fired after the selected resource changes |
+| `view-change`          | `{ next, prev }`            | Fired after day/week/month scale changes  |
+| `date-change`          | `{ next, prev }`            | Fired after the anchor date changes       |
+| `task-click`           | `(task: Task, event: MouseEvent)` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired when an existing task card is clicked |
+| `task-move`            | `CalendarTaskMovePayload`   | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired after an existing task card is dragged and dropped: Day view supports moving within the same day, Week view supports both time and cross-day moves, Month view supports dropping onto any day cell |
+
+> When used inside GanttChart, these two events are forwarded as `calendar-task-click` / `calendar-task-move` (consistent with the other `calendar-*` prefixed events), and the built-in TaskDrawer is opened automatically for editing when `useDefaultDrawer=true`.
+
+#### Expose Methods
+
+| Method              | Description                    |
+| -------------------- | -------------------------------- |
+| `goToToday()`         | Jump to today                     |
+| `goToDate(date)`      | Jump to a specific date            |
+| `setScale(scale)`     | Switch day/week/month scale         |
+| `clearSelection()`    | Clear the current drag selection highlight |
+
+Within GanttChart, all CalendarView props above can be forwarded via the `calendarProps` prop (e.g. `:calendar-props="{ taskCardOpacity: 0.25, taskAccentWidth: 4 }"`).
+
+---
+
 ## ⚙️ Configuration & Customization
 
 This section details the configuration options and extension capabilities of the GanttChart component, including Component Configuration, Theme & Internationalization, and Custom Extensions.

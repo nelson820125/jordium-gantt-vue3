@@ -40,7 +40,7 @@ const gantt = ref<InstanceType<typeof import('../src/components/GanttChart.vue')
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
 const resources = ref<Resource[]>([])
-const viewMode = ref<'task' | 'resource'>('task')
+const viewMode = ref<'task' | 'resource' | 'calendar' | 'resource-usage'>('task')
 const useDefaultDrawer = ref(true)
 
 const rawDataSources = [
@@ -233,6 +233,14 @@ const toolbarConfig = reactive({
   defaultTimeScale: 'month',
   showExpandCollapse: true, // 显示全部展开/折叠按钮
   showViewMode: true, // 显示 Task/Resource 视图切换按钮组
+})
+
+// 全部时间刻度维度，供日历视图退出时恢复使用
+const ALL_TIME_SCALE_DIMENSIONS = ['hour', 'day', 'week', 'month', 'quarter', 'year']
+// 日历视图仅支持日/周/月粒度，切入日历视图时联动收窄 Gantt 工具栏的时间刻度按钮组
+watch(viewMode, mode => {
+  toolbarConfig.timeScaleDimensions =
+    mode === 'calendar' ? ['day', 'week', 'month'] : ALL_TIME_SCALE_DIMENSIONS
 })
 
 // TaskList列渲染模式配置
@@ -734,7 +742,7 @@ const closeResourceEditHint = () => {
 }
 
 // v1.9.7 处理视图模式变化事件，同步GanttChart内部状态
-const handleViewModeChanged = (newMode: 'task' | 'resource') => {
+const handleViewModeChanged = (newMode: 'task' | 'resource' | 'calendar' | 'resource-usage') => {
   viewMode.value = newMode
   // useDefaultDrawer会由watch(viewMode)自动更新
 }
@@ -1026,6 +1034,16 @@ function handleTaskbarDragOrResizeEnd(newTask) {
     `任务【${newTask.name}】已更新\n` +
       `开始日期: ${newTask.startDate}\n` +
       `结束日期: ${newTask.endDate}`,
+    'success',
+    { closable: true },
+  )
+}
+// v1.13.0 日历视图拖拽已创建任务后监听：GanttChart 已经更新了 props.tasks，这里展示新旧日期供参考
+function handleCalendarTaskMove(payload) {
+  showMessage(
+    `任务【${payload.task.name}】已通过日历拖拽更新\n` +
+      `开始日期: ${payload.task.startDate}\n` +
+      `结束日期: ${payload.task.endDate}`,
     'success',
     { closable: true },
   )
@@ -2583,6 +2601,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :milestones="milestones"
         :resources="resources"
         :view-mode="viewMode"
+        :available-view-modes="['task', 'resource', 'calendar', 'resource-usage']"
         :resource-list-config="resourceListConfig"
         :locale="controlMode === 'props' ? propsLocale : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
@@ -2642,6 +2661,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         @task-updated="handleTaskUpdateEvent"
         @task-row-moved="handleTaskRowMoved"
         @resource-drag-end="handleResourceDragEnd"
+        @calendar-task-move="handleCalendarTaskMove"
       >
         <!-- 自定义任务名称内容 (TaskRow 和 TaskBar) -->
         <template #custom-task-content="item">

@@ -1771,6 +1771,70 @@ const handleDelete = () => {
 
 ---
 
+### CalendarView 组件 ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`CalendarView` 是内嵌于 GanttChart 的"日历视图"（`view-mode="calendar"`）所使用的组件，也可脱离 GanttChart 单独 `import` 挂载使用，用于按资源查看/新建日、周、月粒度的任务安排。
+
+#### 数据结构说明
+
+`CalendarView` **不存在独立的日历专属数据结构**，直接复用与任务视图、资源视图相同的 `Task[]` / `Resource[]` 数据模型（详见 [任务管理](#任务管理) 与 [资源管理](#资源管理-)）。`CalendarTypes.ts` 中仅额外定义了日历视图自身的辅助类型：`WorkingHoursConfig`（工作时间段配置）、`CalendarScale`（'day' | 'week' | 'month'）、`CalendarSelectionDraft` / `CalendarSelectionRange`（拖拽选区草稿与确认结果）、`CalendarTaskMovePayload`（![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 拖拽移动任务后的新旧时间范围，包含 `task`（日期已更新的完整 Task 对象）、`previousStartDate` / `previousEndDate` / `newStartDate` / `newEndDate`（Date）与 `resourceId`）。
+
+这意味着：在 GanttChart 中通过 `:tasks` / `:resources` 传入的数据集会被日历视图直接复用；在日历视图中新建或编辑的任务，会同步更新到同一份 `tasks` / `resources` 数据（无需额外的映射或适配代码）。
+
+#### CalendarView 属性
+
+| 属性名                 | 类型                                                   | 默认值                                    | 说明                                                                 |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------- |
+| `tasks`                | `Task[]`                                               | -                                           | 任务数据（与 GanttChart 共用同一数据集）                                |
+| `resources`             | `Resource[]`                                           | `[]`                                        | 资源数据（与 GanttChart 共用同一数据集）                                |
+| `scale` / `defaultScale`| `'day' \| 'week' \| 'month'`                            | `'day'`                                     | 当前 / 默认视图粒度                                                     |
+| `currentDate`           | `Date \| string`                                        | 今天                                        | 当前锚点日期                                                            |
+| `selectedResourceId`    | `string \| number \| null`                              | -                                           | 当前选中的资源 ID，未选中时不展示任务                                    |
+| `workingHours`          | `WorkingHoursConfig`                                    | 上午 8-11 点 / 下午 13-17 点                | 工作时间段配置，用于高亮工作时段 / 拖拽吸附                              |
+| `selectionMinuteStep`   | `number`                                                | `15`                                        | 拖拽选区吸附的分钟粒度                                                  |
+| `disabled`              | `boolean`                                               | `false`                                     | 是否禁用拖拽创建任务                                                    |
+| `allDayLabel`           | `string`                                                | `'全天'`                                    | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 日/周视图中全天任务行的标签文字 |
+| `taskCardOpacity`       | `number`                                                | `0.18`                                      | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 日/周视图任务卡片底色透明度（0-1），底色取 `task.barColor` 或主题色与透明色的混合 |
+| `taskAccentWidth`       | `number`                                                | `5`                                         | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 日/周视图任务卡片左侧强调条宽度（px） |
+| `onBeforeSelect`        | `(range) => boolean \| Promise<boolean>`                 | -                                           | 拖拽选区完成前的拦截钩子，返回 `false` 可取消                            |
+| `onBeforeResourceChange`| `(nextId, prevId) => boolean \| Promise<boolean>`         | -                                           | 切换选中资源前的拦截钩子                                                |
+| `onBeforeViewChange`    | `(next, prev) => boolean \| Promise<boolean>`             | -                                           | 切换日/周/月视图前的拦截钩子                                            |
+| `onTaskClick`           | `(task, event) => void`                                 | -                                           | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 点击已创建任务卡片时触发 |
+| `onTaskMove`            | `(payload: CalendarTaskMovePayload) => void`             | -                                           | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 拖拽已创建任务卡片松开后触发 |
+
+#### CalendarView 插槽
+
+| 插槽名      | 参数              | 说明                                                                          |
+| ----------- | ----------------- | ------------------------------------------------------------------------------- |
+| `task-card` | `{ task, style }` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 日/周视图任务卡片自定义渲染插槽，未提供时默认展示 `task.name`；`style` 已包含位置与颜色样式，可直接绑定到自定义卡片根节点 |
+
+#### CalendarView 事件
+
+| 事件名               | 参数                       | 说明                     |
+| --------------------- | -------------------------- | ------------------------ |
+| `selection-complete`  | `CalendarSelectionRange`   | 拖拽选区确认后触发       |
+| `selection-cancel`    | `{ reason }`               | 拖拽选区取消后触发       |
+| `resource-change`     | `{ next, prev }`           | 选中资源变更后触发       |
+| `view-change`         | `{ next, prev }`           | 日/周/月视图切换后触发   |
+| `date-change`         | `{ next, prev }`           | 锚点日期变更后触发       |
+| `task-click`          | `(task: Task, event: MouseEvent)` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 点击已创建任务卡片时触发 |
+| `task-move`           | `CalendarTaskMovePayload`  | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 拖拽已创建任务卡片松开后触发：日视图仅支持在同日内上下拖拽改变时段，周视图支持上下改时段+左右改日期，月视图支持拖拽至任意日期格 |
+
+> 在 GanttChart 中使用时，以上两个事件会以 `calendar-task-click` / `calendar-task-move` 命名转发（与其他 `calendar-*` 前缀事件保持命名一致），并在 `useDefaultDrawer=true` 时自动打开内置 TaskDrawer 允许修改。
+
+#### Expose 方法
+
+| 方法名             | 说明                             |
+| ------------------ | -------------------------------- |
+| `goToToday()`       | 回到今天                         |
+| `goToDate(date)`    | 跳转到指定日期                    |
+| `setScale(scale)`   | 切换日/周/月视图                  |
+| `clearSelection()`  | 清除当前拖拽选区高亮              |
+
+在 GanttChart 中，可通过 `calendarProps` 属性透传上述所有 CalendarView 属性（如 `:calendar-props="{ taskCardOpacity: 0.25, taskAccentWidth: 4 }"`）。
+
+---
+
 ## ⚙️ 配置与扩展
 
 本章节详细介绍 GanttChart 组件的配置选项和扩展能力，包括组件配置、主题与国际化、自定义扩展三个部分。

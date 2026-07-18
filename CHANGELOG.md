@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-07-01
+
+### Added
+- 🎉 新增：`CalendarView` 日历视图组件（日/周/月三种刷度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等
+- 🎉 新增：`CalendarView`/`CalendarDayView`/`CalendarWeekView` 新增 `taskCardOpacity`、`taskAccentWidth`、`allDayLabel` 属性以及 `#task-card` 插槽，支持自定义任务卡片外观（默认为半透明蓝色底 + 左侧 5px 深色强调条）
+- 🎉 新增：GanttChart 通过 `calendarProps` 透传上述所有 CalendarView 属性
+- 🎉 新增：`CalendarView` 新增 `task-click`/`task-move` 事件（GanttChart 转发为 `calendar-task-click`/`calendar-task-move`），日/周/月视图的任务卡片支持单击（打开内置 TaskDrawer 编辑）与左键拖拽移动（日视图改时段、周视图改时段+跨日、月视图跨日期 cell），拖拽中任务卡片高亮凸显
+### Fixed
+- 🔧 修复：周视图缺少任务渲染逻辑导致切换周/月视图后新建的任务不可见的问题
+- 🔧 修复：月视图任务归属判断因非零点时间比较而遗漏的问题
+- 🔧 修复：日历视图/资源工时视图下新建/编辑任务未同步到 `resources[].tasks` 数据集的问题
+
+### Added
+- 🎉 Added: `CalendarView` component (Day/Week/Month scales) with drag-to-create tasks, current-time indicator, all-day task row, and working-hours highlight
+- 🎉 Added: `CalendarView`/`CalendarDayView`/`CalendarWeekView` new `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` props and `#task-card` slot for customizing task card appearance (defaults to a translucent accent-colored body with a 5px left accent bar)
+- 🎉 Added: GanttChart forwards all CalendarView props via `calendarProps`
+- 🎉 Added: `CalendarView` new `task-click`/`task-move` events (forwarded by GanttChart as `calendar-task-click`/`calendar-task-move`); Day/Week/Month task cards now support click (opens the built-in TaskDrawer for editing) and left-click drag to move (Day: reschedule within the day, Week: reschedule + move across days, Month: drop onto any day cell), with visual emphasis on the dragged card
+### Fixed
+- 🔧 Fixed: Week view missing task rendering, causing newly created tasks to disappear after switching to Week/Month view
+- 🔧 Fixed: Month view task-ownership check missed tasks with non-midnight start/end times
+- 🔧 Fixed: Tasks created/edited in Calendar view or Resource-Usage view were not synced to `resources[].tasks`
+
 ## [1.12.4] - 2026-06-27
 
 ### Added
