@@ -9,15 +9,47 @@ const __dirname = path.dirname(__filename)
 // 用于测试资源视图的垂直滚动性能和区间树算法优化效果
 function generateLargeResourceData() {
   const resources = []
-  const departments = ['研发部', '临床部', '质量部', '注册部', '生产部', '市场部', '工程部', '测试部']
-  const types = ['研究员', '试验主任', '数据分析师', '质量专员', '注册专员', '项目经理', '工程师', '测试工程师']
-  const colors = ['#2196f3', '#4caf50', '#ff9800', '#f44336', '#9c27b0', '#00bcd4', '#8bc34a', '#ffc107', '#e91e63', '#3f51b5']
+  const departments = [
+    '研发部',
+    '临床部',
+    '质量部',
+    '注册部',
+    '生产部',
+    '市场部',
+    '工程部',
+    '测试部',
+  ]
+  const types = [
+    '研究员',
+    '试验主任',
+    '数据分析师',
+    '质量专员',
+    '注册专员',
+    '项目经理',
+    '工程师',
+    '测试工程师',
+  ]
+  const colors = [
+    '#2196f3',
+    '#4caf50',
+    '#ff9800',
+    '#f44336',
+    '#9c27b0',
+    '#00bcd4',
+    '#8bc34a',
+    '#ffc107',
+    '#e91e63',
+    '#3f51b5',
+  ]
 
   for (let i = 1; i <= 100; i++) {
     const resourceId = `resource-${i.toString().padStart(3, '0')}`
     const taskCount = 20 + Math.floor(Math.random() * 11) // 20-30个任务
     const tasks = []
-    const taskIdStart = i * 1000
+    // 加上偏移量，避免与 data-large-1m.json（主任务树，view-mode='task'）的任务 id 撞车：
+    // resource.tasks 与 props.tasks 是两套独立数据源，但 CalendarView 会将两者合并去重，
+    // id 冲突会导致资源视图里的任务被误判为"已存在于主任务树"而被跳过。
+    const taskIdStart = 9000000 + i * 1000
 
     // 为每个资源生成任务
     for (let j = 0; j < taskCount; j++) {
@@ -68,7 +100,8 @@ function generateLargeResourceData() {
       generated: new Date().toISOString(),
       resourceCount: resources.length,
       taskCount: resources.reduce((sum, r) => sum + r.tasks.length, 0),
-      description: '性能测试用大数据集 - 100个资源，约2500个任务，用于测试垂直滚动性能和区间树算法优化效果',
+      description:
+        '性能测试用大数据集 - 100个资源，约2500个任务，用于测试垂直滚动性能和区间树算法优化效果',
     },
   }
 }
@@ -76,11 +109,7 @@ function generateLargeResourceData() {
 const data = generateLargeResourceData()
 const outputPath = path.join(__dirname, '..', 'demo', 'data-resources-large.json')
 
-fs.writeFileSync(
-  outputPath,
-  JSON.stringify(data, null, 2),
-  'utf-8',
-)
+fs.writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf-8')
 
 console.log('✅ 已生成大数据集:')
 console.log(`  - 资源数: ${data.meta.resourceCount}`)

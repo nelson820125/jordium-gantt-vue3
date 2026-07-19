@@ -50,7 +50,7 @@
         @mousedown="handleTaskMouseDown(task, $event)"
       >
         <slot name="task-card" :task="task" :style="taskBlockStyle(task, tIndex)">
-          <div class="gantt-calendar-task-card-title">{{ taskCardTitle(task) }}</div>
+          <div class="gantt-calendar-task-card-title">{{ taskCardTitle(task, tIndex) }}</div>
           <div v-if="task.description" class="gantt-calendar-task-card-desc">
             {{ task.description }}
           </div>
@@ -82,7 +82,9 @@ import {
   minutesSinceMidnight,
   computeTimedTaskLayout,
   formatTaskDateTime,
-  formatTaskCardTitle,
+  classifyTaskForDate,
+  formatTaskCardTitleByMinutes,
+  parseTaskDateTime,
 } from '../../utils/calendarTimeUtils'
 import type {
   WorkingHoursConfig,
@@ -134,71 +136,63 @@ const nowIndicatorTop = computed(() => {
   return (minutesSinceMidnight(new Date()) / 60) * HOUR_HEIGHT
 })
 
-const parseTaskDate = (value?: string): Date | null => {
-  if (!value) return null
-  const d = new Date(value)
-  return isNaN(d.getTime()) ? null : d
-}
+const parseTaskDate = parseTaskDateTime
 
-/** 全天/跨天任务：无法用小时坐标精确表达，展示为全天条目 */
+/** 全天/跨天任务：无法用小时坐标精确表达，展示为全天条目（判定规则见 classifyTaskForDate） */
 const allDayTasks = computed(() => {
   return props.tasks.filter(task => {
     const start = parseTaskDate(task.startDate)
     const end = parseTaskDate(task.endDate)
     if (!start || !end) return false
-    if (
-      !isSameDay(start, props.date) &&
-      !isSameDay(end, props.date) &&
-      !(start < props.date && end > props.date)
-    ) {
-      return false
-    }
-    // 起止均为 00:00（未带时间信息）或跨越多天，归为全天展示
-    const sameDayTimed =
-      isSameDay(start, end) && (start.getHours() !== 0 || start.getMinutes() !== 0)
-    return !sameDayTimed
+    return classifyTaskForDate(start, end, props.date).type === 'all-day'
   })
 })
 
-/** 当天有明确起止小时的任务，按坐标定位渲染 */
-const timedTasks = computed(() => {
-  return props.tasks.filter(task => {
+/** 当天有明确起止小时的任务（含跨天任务在起始日/结束日的当日片段），按坐标定位渲染 */
+interface TimedEntry {
+  task: Task
+  startMinutes: number
+  endMinutes: number
+}
+
+const timedEntries = computed<TimedEntry[]>(() => {
+  const entries: TimedEntry[] = []
+  for (const task of props.tasks) {
     const start = parseTaskDate(task.startDate)
     const end = parseTaskDate(task.endDate)
-    if (!start || !end) return false
-    return (
-      isSameDay(start, end) &&
-      isSameDay(start, props.date) &&
-      (start.getHours() !== 0 || start.getMinutes() !== 0)
-    )
-  })
+    if (!start || !end) continue
+    const classification = classifyTaskForDate(start, end, props.date)
+    if (classification.type !== 'timed') continue
+    const startMinutes = classification.startMinutes!
+    const endMinutes = Math.max(classification.endMinutes!, startMinutes + 15)
+    entries.push({ task, startMinutes, endMinutes })
+  }
+  return entries
 })
 
+/** 供模板 `v-for` 与既有 taskBlockStyle(task, index) 调用方式保持不变 */
+const timedTasks = computed(() => timedEntries.value.map(entry => entry.task))
+
 /** 任务卡片默认展示标题：具体时段任务展示 "标题 - HH:mm ~ HH:mm"（v1.13.0，供 #task-card 插槽默认内容使用） */
-const taskCardTitle = (task: Task): string => {
-  const start = parseTaskDate(task.startDate)
-  const end = parseTaskDate(task.endDate)
-  if (!start || !end) return task.name
-  return formatTaskCardTitle(task.name, false, start, end)
+const taskCardTitle = (task: Task, index: number): string => {
+  const entry = timedEntries.value[index]
+  if (!entry) return task.name
+  return formatTaskCardTitleByMinutes(task.name, entry.startMinutes, entry.endMinutes)
 }
 
 /** timedTasks 的重叠列布局（同一时段内多个任务并排显示，而非层叠覆盖） */
 const timedTaskLayout = computed(() => {
-  const intervals = timedTasks.value.map(task => {
-    const start = parseTaskDate(task.startDate)!
-    const end = parseTaskDate(task.endDate)!
-    const startMinutes = start.getHours() * 60 + start.getMinutes()
-    const endMinutes = Math.max(end.getHours() * 60 + end.getMinutes(), startMinutes + 15)
-    return { start: startMinutes, end: endMinutes }
-  })
+  const intervals = timedEntries.value.map(entry => ({
+    start: entry.startMinutes,
+    end: entry.endMinutes,
+  }))
   return computeTimedTaskLayout(intervals)
 })
 
 const taskBlockStyle = (task: Task, index: number) => {
-  const start = parseTaskDate(task.startDate)!
-  const end = parseTaskDate(task.endDate)!
-  const startMinutes = start.getHours() * 60 + start.getMinutes()
-  const endMinutes = Math.max(end.getHours() * 60 + end.getMinutes(), startMinutes + 15)
+  const entry = timedEntries.value[index]
+  const startMinutes = entry?.startMinutes ?? 0
+  const endMinutes = entry?.endMinutes ?? startMinutes + 15
   let top = (startMinutes / 60) * HOUR_HEIGHT
   if (isTaskDragging.value && draggingTaskId.value === task.id) {
     top += taskDragDelta.value.deltaY
@@ -284,6 +278,8 @@ const {
     const start = parseTaskDate(task.startDate)
     const end = parseTaskDate(task.endDate)
     if (!start || !end) return
+    // 跨天任务在当日仅展示起始日/结束日的局部片段，不支持在单日网格内直接拖拽改时段
+    if (!isSameDay(start, end)) return
     const durationMs = end.getTime() - start.getTime()
     const deltaMinutesRaw = (delta.deltaY / HOUR_HEIGHT) * 60
     const snappedDelta =

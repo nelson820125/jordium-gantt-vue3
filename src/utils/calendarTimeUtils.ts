@@ -39,6 +39,28 @@ export function isToday(date: Date): boolean {
 }
 
 /**
+ * 解析任务 startDate/endDate 字符串为 Date 对象，正确处理"仅日期"格式（如 "2025-04-15"）。
+ *
+ * 修复：`new Date("2025-04-15")` 这类不带时间部分的 ISO 8601 日期字符串，会被 JS 引擎按
+ * **UTC 零点**解析（规范行为），在东八区等非 UTC 时区下会被转换成本地时间 08:00 而非
+ * 00:00，导致 `classifyTaskForDate` 里的"整点判断"（`start.getHours()===0`）失真，把本应
+ * 全天展示的任务误判为"从 08:00 开始的具体时段"（表现为日历日/周视图里全天任务被错误地
+ * 画进小时网格，标题显示为 "08:00 ~ 24:00"）。
+ * 而 `"2025-04-15 00:00"`（空格分隔，带时间部分）等格式本身就会被解析为本地时间，不受
+ * 此问题影响，无需特殊处理，直接走 `new Date(value)` 即可。
+ */
+export function parseTaskDateTime(value?: string): Date | null {
+  if (!value) return null
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (dateOnlyMatch) {
+    const [, y, m, d] = dateOnlyMatch
+    return new Date(Number(y), Number(m) - 1, Number(d))
+  }
+  const parsed = new Date(value)
+  return isNaN(parsed.getTime()) ? null : parsed
+}
+
+/**
  * 计算某个时间点距当日零点的分钟数（用于"当前时间指示线"定位）
  */
 export function minutesSinceMidnight(date: Date): number {
@@ -281,6 +303,81 @@ export function formatTaskCardTitle(
   return isAllDay
     ? `${taskName} - ${allDayLabel}`
     : `${taskName} - ${formatTaskTimeRange(start, end)}`
+}
+
+/** 任务在指定日期（date）上的展示分类结果，供日/周视图统一判定全天/具体时段 */
+export interface TaskDateClassification {
+  /** 'all-day' 展示为全天条目；'timed' 按分钟区间绘制具体时段；'none' 与该日期无关，不展示 */
+  type: 'all-day' | 'timed' | 'none'
+  /** type === 'timed' 时有效：当日区间起点（距当日零点的分钟数） */
+  startMinutes?: number
+  /** type === 'timed' 时有效：当日区间止点（距当日零点的分钟数）；跨天任务在起始日的止点固定为 1440（当日24:00） */
+  endMinutes?: number
+}
+
+/**
+ * 判断任务在指定日期（date）应如何展示。仅依据 startDate/endDate 的日期与时间部分判断，
+ * 不依赖 estimatedHours（预计工时仅用于资源利用率占比计算，与日历展示位置无关）。
+ *
+ * 规则：
+ * 1. 起止日期为同一天：起止时间均为 00:00 -> 全天；否则按实际起止时间绘制具体时段。
+ * 2. 起止日期不同（跨天任务），按 date 与起止日期的关系分别处理：
+ *    a. date 等于起始日期：起始时间为 00:00 -> 全天；否则从起始时间 ~ 当日24:00 绘制。
+ *    b. date 等于结束日期：结束时间为 00:00 -> 全天；否则从当日00:00 ~ 结束时间绘制。
+ *    c. date 严格介于起止日期之间（不含两端）-> 全天。
+ * 与 date 无任何交集 -> 'none'。
+ */
+export function classifyTaskForDate(start: Date, end: Date, date: Date): TaskDateClassification {
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime()
+  const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  const startIsMidnight = start.getHours() === 0 && start.getMinutes() === 0
+  const endIsMidnight = end.getHours() === 0 && end.getMinutes() === 0
+  const startMinutesRaw = start.getHours() * 60 + start.getMinutes()
+  const endMinutesRaw = end.getHours() * 60 + end.getMinutes()
+
+  if (startDay === endDay) {
+    if (targetDay !== startDay) return { type: 'none' }
+    if (startIsMidnight && endIsMidnight) return { type: 'all-day' }
+    return { type: 'timed', startMinutes: startMinutesRaw, endMinutes: endMinutesRaw }
+  }
+
+  if (targetDay === startDay) {
+    if (startIsMidnight) return { type: 'all-day' }
+    return { type: 'timed', startMinutes: startMinutesRaw, endMinutes: 24 * 60 }
+  }
+
+  if (targetDay === endDay) {
+    if (endIsMidnight) return { type: 'all-day' }
+    return { type: 'timed', startMinutes: 0, endMinutes: endMinutesRaw }
+  }
+
+  if (targetDay > startDay && targetDay < endDay) {
+    return { type: 'all-day' }
+  }
+
+  return { type: 'none' }
+}
+
+/** 将"距当日零点分钟数"格式化为 HH:mm；跨天任务当日片段的终点 1440 分钟格式化为 24:00 */
+export function formatMinutesLabel(minutes: number): string {
+  const clamped = Math.max(0, Math.min(minutes, 24 * 60))
+  if (clamped === 24 * 60) return '24:00'
+  const hh = Math.floor(clamped / 60)
+  const mm = clamped % 60
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
+/**
+ * 依据"距当日零点分钟数"区间生成任务卡片标题："标题 - HH:mm ~ HH:mm"。
+ * 用于跨天任务：传入的是当日片段区间（如起始日的 "09:30 ~ 24:00"），而非任务整体起止时间。
+ */
+export function formatTaskCardTitleByMinutes(
+  taskName: string,
+  startMinutes: number,
+  endMinutes: number
+): string {
+  return `${taskName} - ${formatMinutesLabel(startMinutes)} ~ ${formatMinutesLabel(endMinutes)}`
 }
 
 /** Outlook 风格拖拽选区的分段渲染数据：每个半小时（或指定粒度）槽位一组 slot(底色)/indicator(精确覆盖比例) 矩形 */

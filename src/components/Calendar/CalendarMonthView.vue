@@ -76,6 +76,7 @@ import {
   isTaskOnDate,
   snapToDayStart,
   formatTaskDateTime,
+  parseTaskDateTime,
 } from '../../utils/calendarTimeUtils'
 import type {
   CalendarSelectionDraft,
@@ -112,11 +113,7 @@ const openMorePopover = (date: Date, event: MouseEvent) => {
   morePopover.value = { date, anchor: event.currentTarget as HTMLElement }
 }
 
-const parseTaskDate = (value?: string): Date | null => {
-  if (!value) return null
-  const d = new Date(value)
-  return isNaN(d.getTime()) ? null : d
-}
+const parseTaskDate = parseTaskDateTime
 
 const tasksForDay = (date: Date): Task[] => {
   return props.tasks.filter(task => {

@@ -838,18 +838,20 @@
   },
   {
     "version": "1.13.0",
-    "date": "2026-07-01",
+    "date": "2026-07-19",
     "notes": [
-      "🎉 新增：CalendarView 日历视图组件（日/周/月三种刷度），支持拖拽创建任务、当前时间指示线、全天任务行、工作时间高亮",
-      "🎉 新增：任务卡片样式可配置（taskCardOpacity/taskAccentWidth/#task-card 插槽）",
-      "🎉 新增：日历任务卡片支持点击（打开TaskDrawer编辑）与左键拖拽移动（日/周/月视图），拖拽中卡片视觉强调",
-      "🔧 修复：周/月视图切换后新建任务不可见的问题",
-      "🔧 修复：日历视图新建/编辑任务未同步到资源数据集的问题",
-      "🎉 Added: CalendarView component (Day/Week/Month) with drag-to-create, current-time indicator, all-day row, working-hours highlight",
-      "🎉 Added: configurable task card style (taskCardOpacity/taskAccentWidth/#task-card slot)",
-      "🎉 Added: calendar task cards support click (opens TaskDrawer for editing) and left-click drag to move (Day/Week/Month views), with visual emphasis while dragging",
-      "🔧 Fixed: newly created tasks disappearing after switching Week/Month view",
-      "🔧 Fixed: tasks created/edited in Calendar view not synced to resource dataset"
+      "🎉 新增：`CalendarView` 日历视图组件（日/周/月三种维度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等",
+      "🎉 新增：`CalendarView`/`CalendarDayView`/`CalendarWeekView` 新增 `taskCardOpacity`、`taskAccentWidth`、`allDayLabel` 属性以及 `#task-card` 插槽，支持自定义任务卡片外观（默认为半透明蓝色底 + 左侧 5px 深色强调条）",
+      "🎉 新增：GanttChart 可通过 `calendarProps` 透传上述所有 CalendarView 属性",
+      "🎉 新增：`CalendarView` 新增 `task-click`/`task-move` 事件（GanttChart 转发为 `calendar-task-click`/`calendar-task-move`），日/周/月视图的任务卡片支持单击（打开内置 TaskDrawer 编辑）与左键拖拽移动（日视图改时段、周视图改时段+跨日、月视图跨日期 cell），拖拽中任务卡片高亮凸显",
+      "🎉 新增：`ResourceUsageView`资源利用率组件（日/周/月三种维度）, 以资源为单位汇总各个维度的分配工时，并配置不同颜色表示利用率级别",
+      "🎉 新增：GanttChart 的 `resourceUsageProps` 透传新增 `columnRenderMode`，并在 `view-mode='resource-usage'` 下转发默认插槽（用于声明式列定义），与 `TaskList` 分支保持一致",
+      "🎉 Added: New `CalendarView` calendar view component (Day/Week/Month three time dimensions), supporting drag-to-select task creation by resource, current time indicator line, all-day task row, working hours highlighting, and more",
+      "🎉 Added: Added `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` properties and the `#task-card` slot to `CalendarView`/`CalendarDayView`/`CalendarWeekView`, enabling customization of task card appearance (default: semi-transparent blue background with a 5px dark accent bar on the left)",
+      "🎉 Added: `GanttChart` now supports passing through all the above `CalendarView` properties via `calendarProps`",
+      "🎉 Added: Added `task-click`/`task-move` events to `CalendarView` (`GanttChart` forwards them as `calendar-task-click`/`calendar-task-move`). Task cards in Day/Week/Month views now support single-click actions (opening the built-in `TaskDrawer` for editing) and left-click drag-and-drop movement (Day view: change time slot; Week view: change time slot and move across days; Month view: move across date cells). The dragged task card is highlighted during the drag operation",
+      "🎉 Added: New `ResourceUsageView` resource utilization component (Day/Week/Month three time dimensions), which aggregates allocated working hours by resource across different dimensions and uses different colors to represent utilization levels",
+      "🎉 Added: `GanttChart`'s `resourceUsageProps` now passes through the new `columnRenderMode` property, and forwards the default slot (for declarative column definitions) when `view-mode='resource-usage'`, keeping it consistent with the `TaskList` branch"
     ]
   }
 ]

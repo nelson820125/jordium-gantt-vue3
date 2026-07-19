@@ -5,33 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.13.0] - 2026-07-01
+## [1.13.0] - 2026-07-19
 
 ### Added
-- 🎉 新增：`CalendarView` 日历视图组件（日/周/月三种刷度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等
+- 🎉 新增：`CalendarView` 日历视图组件（日/周/月三种维度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等
 - 🎉 新增：`CalendarView`/`CalendarDayView`/`CalendarWeekView` 新增 `taskCardOpacity`、`taskAccentWidth`、`allDayLabel` 属性以及 `#task-card` 插槽，支持自定义任务卡片外观（默认为半透明蓝色底 + 左侧 5px 深色强调条）
-- 🎉 新增：GanttChart 通过 `calendarProps` 透传上述所有 CalendarView 属性
+- 🎉 新增：GanttChart 可通过 `calendarProps` 透传上述所有 CalendarView 属性
 - 🎉 新增：`CalendarView` 新增 `task-click`/`task-move` 事件（GanttChart 转发为 `calendar-task-click`/`calendar-task-move`），日/周/月视图的任务卡片支持单击（打开内置 TaskDrawer 编辑）与左键拖拽移动（日视图改时段、周视图改时段+跨日、月视图跨日期 cell），拖拽中任务卡片高亮凸显
-- 🎉 新增：`ResourceUsageView`（资源工时视图）左侧资源列表面板改为直接内嵌资源计划视图的 `TaskList` 组件本体（而非样式/结构模仿），天然获得声明式列（`TaskListColumn`）、列级/表头 slot、粘性表头与首列固定等既有能力；新增 `columnRenderMode` 属性（`'default' | 'declarative'`），与右侧工时网格面板之间的滚动位置、行悬停高亮联动通过与 `TaskList`/`Timeline` 一致的事件协议自动桥接
+- 🎉 新增：`ResourceUsageView`资源利用率组件（日/周/月三种维度）, 以资源为单位汇总各个维度的分配工时，并配置不同颜色表示利用率级别
 - 🎉 新增：GanttChart 的 `resourceUsageProps` 透传新增 `columnRenderMode`，并在 `view-mode="resource-usage"` 下转发默认插槽（用于声明式列定义），与 `TaskList` 分支保持一致
-### Fixed
-- 🔧 修复：周视图缺少任务渲染逻辑导致切换周/月视图后新建的任务不可见的问题
-- 🔧 修复：月视图任务归属判断因非零点时间比较而遗漏的问题
-- 🔧 修复：日历视图/资源工时视图下新建/编辑任务未同步到 `resources[].tasks` 数据集的问题
-- 🔧 修复：资源工时视图默认列配置（`DEFAULT_RESOURCE_LIST_COLUMNS`）与内嵌 `TaskList` 硬编码的名称列重复渲染的问题，并修正资源类型列 key 与 `Resource.type` 字段不匹配导致显示为 `-` 的问题
 
 ### Added
-- 🎉 Added: `CalendarView` component (Day/Week/Month scales) with drag-to-create tasks, current-time indicator, all-day task row, and working-hours highlight
-- 🎉 Added: `CalendarView`/`CalendarDayView`/`CalendarWeekView` new `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` props and `#task-card` slot for customizing task card appearance (defaults to a translucent accent-colored body with a 5px left accent bar)
-- 🎉 Added: GanttChart forwards all CalendarView props via `calendarProps`
-- 🎉 Added: `CalendarView` new `task-click`/`task-move` events (forwarded by GanttChart as `calendar-task-click`/`calendar-task-move`); Day/Week/Month task cards now support click (opens the built-in TaskDrawer for editing) and left-click drag to move (Day: reschedule within the day, Week: reschedule + move across days, Month: drop onto any day cell), with visual emphasis on the dragged card
-- 🎉 Added: `ResourceUsageView`'s left resource-list panel now embeds the real `TaskList` component (instead of a look-alike reimplementation), gaining declarative columns (`TaskListColumn`), column/header slots, sticky header and first-column pinning for free; new `columnRenderMode` prop (`'default' | 'declarative'`); scroll position and row-hover highlight sync with the right work-hour grid panel is bridged automatically through the same event protocol used by `TaskList`/`Timeline`
-- 🎉 Added: GanttChart's `resourceUsageProps` passthrough now includes `columnRenderMode`, and the default slot is forwarded when `view-mode="resource-usage"` (for declarative column definitions), consistent with the `TaskList` branch
-### Fixed
-- 🔧 Fixed: Week view missing task rendering, causing newly created tasks to disappear after switching to Week/Month view
-- 🔧 Fixed: Month view task-ownership check missed tasks with non-midnight start/end times
-- 🔧 Fixed: Tasks created/edited in Calendar view or Resource-Usage view were not synced to `resources[].tasks`
-- 🔧 Fixed: Resource-Usage view's default column config (`DEFAULT_RESOURCE_LIST_COLUMNS`) duplicated the name column already hardcoded by the embedded `TaskList`, and the resource-type column key didn't match `Resource.type`, rendering as `-`
+- 🎉 Added: New `CalendarView` calendar view component (Day/Week/Month three time dimensions), supporting drag-to-select task creation by resource, current time indicator line, all-day task row, working hours highlighting, and more
+- 🎉 Added: Added `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` properties and the `#task-card` slot to `CalendarView`/`CalendarDayView`/`CalendarWeekView`, enabling customization of task card appearance (default: semi-transparent blue background with a 5px dark accent bar on the left)
+- 🎉 Added: `GanttChart` now supports passing through all the above `CalendarView` properties via `calendarProps`
+- 🎉 Added: Added `task-click`/`task-move` events to `CalendarView` (`GanttChart` forwards them as `calendar-task-click`/`calendar-task-move`). Task cards in Day/Week/Month views now support single-click actions (opening the built-in `TaskDrawer` for editing) and left-click drag-and-drop movement (Day view: change time slot; Week view: change time slot and move across days; Month view: move across date cells). The dragged task card is highlighted during the drag operation
+- 🎉 Added: New `ResourceUsageView` resource utilization component (Day/Week/Month three time dimensions), which aggregates allocated working hours by resource across different dimensions and uses different colors to represent utilization levels
+- 🎉 Added: `GanttChart`'s `resourceUsageProps` now supports passing through the new `columnRenderMode`. When `view-mode="resource-usage"` is enabled, the default slot is forwarded (for declarative column definitions), keeping it consistent with the `TaskList` branch
 
 ## [1.12.4] - 2026-06-27
 

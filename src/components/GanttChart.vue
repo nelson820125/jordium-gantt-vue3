@@ -3413,12 +3413,31 @@ watch(taskDrawerVisible, visible => {
  * 将 props.milestones（里程碑，独立于 props.tasks 传入）合并进日历视图的数据源。
  * 修复：里程碑任务此前仅传给 Timeline/TaskList，未传给 CalendarView，导致日历
  * 日/周/月视图下，仅分配了里程碑任务（无普通任务）的资源看起来"没有任何任务"。
+ *
+ * 修复2：资源视图/资源利用率视图使用的是 resource.tasks（每个资源自带的任务分配列表），
+ * 与 props.tasks（主任务树）是两套独立数据源（参见 GanttChart 资源视图渲染逻辑）。
+ * 此前 CalendarView 只读取 props.tasks，导致仅通过 resource.tasks 分配给某资源的任务，
+ * 在日历视图按该资源筛选时完全不可见（无论日期是否落在选中日期范围内）。
+ * 这里将 resource.tasks 中尚未出现在主任务树/里程碑里的任务一并合并进来
+ * （按 id 去重，避免同一任务在两套数据源中都存在时重复渲染）。
  */
 const tasksForCalendarView = computed<Task[]>(() => {
+  const merged: Task[] = [...(props.tasks || [])]
   if (props.milestones && props.milestones.length > 0) {
-    return [...(props.tasks || []), ...props.milestones]
+    merged.push(...props.milestones)
   }
-  return props.tasks || []
+  if (props.resources && props.resources.length > 0) {
+    const seenIds = new Set(merged.map(t => t.id))
+    for (const resource of props.resources as Resource[]) {
+      if (!resource.tasks || !Array.isArray(resource.tasks)) continue
+      for (const task of resource.tasks) {
+        if (seenIds.has(task.id)) continue
+        seenIds.add(task.id)
+        merged.push(task)
+      }
+    }
+  }
+  return merged
 })
 
 // MilestoneDialog 相关变量

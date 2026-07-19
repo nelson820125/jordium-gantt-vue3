@@ -203,6 +203,30 @@ provide(
   'gantt-row-height',
   computed(() => Math.max(0, props.rowHeight - 5))
 )
+// 修复：ResourceUsageView 不做任务堆叠布局，所有资源行应统一为 props.rowHeight。
+// 必须显式 provide('resourceTaskLayouts', ...) 覆盖祖先 GanttChart 可能提供的同名值——
+// GanttChart 仅在其自身 currentViewMode === 'resource' 时才计算真实堆叠布局，
+// view-mode="resource-usage" 下该值恒为空 Map。若不覆盖，内嵌 TaskList 的虚拟滚动
+// 累计高度（useTaskListLayout）会在找不到 layout 时回退用 ganttRowHeight（= rowHeight - 5），
+// 而 TaskRow.vue 实际渲染行高回退用 ganttRowHeight + 5（= rowHeight），5px/行的落差
+// 随资源行数累积，导致向下滚动越多，左侧资源列表与右侧工时网格的行错位越明显。
+provide(
+  'resourceTaskLayouts',
+  computed(() => {
+    const layouts = new Map<
+      string,
+      { taskRowMap: Map<string | number, number>; rowHeights: number[]; totalHeight: number }
+    >()
+    for (const resource of props.resources) {
+      layouts.set(String(resource.id), {
+        taskRowMap: new Map(),
+        rowHeights: [props.rowHeight],
+        totalHeight: props.rowHeight,
+      })
+    }
+    return layouts
+  })
+)
 
 const emit = defineEmits<{
   'scale-change': [payload: { next: ResourceUsageScale; prev: ResourceUsageScale }]
