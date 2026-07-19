@@ -23,15 +23,14 @@
       </div>
 
       <div class="gantt-calendar-controls">
-        <select
+        <ResourceFilterSelect
           v-if="resources && resources.length"
           class="gantt-calendar-resource-select"
-          :value="selectedResourceIdInternal ?? ''"
-          @change="handleResourceSelectChange"
-        >
-          <option value="">全部资源</option>
-          <option v-for="res in resources" :key="res.id" :value="res.id">{{ res.name }}</option>
-        </select>
+          :resources="resources"
+          :model-value="selectedResourceIdInternal"
+          :disabled="disabled"
+          @change="handleResourceFilterChange"
+        />
       </div>
     </div>
 
@@ -106,6 +105,7 @@ import CalendarDayView from './CalendarDayView.vue'
 import CalendarWeekView from './CalendarWeekView.vue'
 import CalendarMonthView from './CalendarMonthView.vue'
 import DatePicker from '../DatePicker.vue'
+import ResourceFilterSelect from './ResourceFilterSelect.vue'
 import type {
   WorkingHoursConfig,
   CalendarScale,
@@ -212,14 +212,46 @@ const selectedResourceIdInternal = computed(() =>
 )
 
 /**
- * 日历视图强依赖"资源"维度：未选择具体资源时不加载/展示任何任务（含全天任务），
- * 避免所有资源的任务混杂展示在同一日期格子里造成误解；仅当选中某个资源后，
- * 才加载该资源名下的任务到日历网格上。
+ * 判断任务是否分配给指定资源：优先匹配 task.resources（id 数组，v1.9.0 资源占比字段），
+ * 若任务未填充该字段（本仓库 demo 数据仅在任务上填充 assignee 字符串），
+ * 则回退按 assignee（支持字符串或字符串数组）与资源 name/id 做匹配。
+ */
+const isTaskAssignedToResource = (task: Task, resource: Resource): boolean => {
+  if (task.resources?.some(r => String(r.id) === String(resource.id))) return true
+  const assignee = task.assignee
+  if (!assignee) return false
+  const assignees = Array.isArray(assignee) ? assignee : [assignee]
+  return assignees.some(a => a === resource.name || String(a) === String(resource.id))
+}
+
+/**
+ * ResourceFilterSelect 未选择具体资源时占位文案为"请选择资源"：此时刻意不展示任何任务，
+ * 避免海量任务未经资源筛选而混杂展示；仅当用户主动选中某个具体资源后，才按资源展示其任务。
+ *
+ * 递归遍历整棵任务树（而非仅取叶子任务）：只要某个节点（无论是否有 children）直接分配给
+ * 选中的资源，就纳入日历渲染；同时继续递归其 children 以便树中其他分配给该资源的子任务
+ * 也能展示。修复：此前仅保留叶子任务导致「仅在项目/阶段等汇总任务层级被指派、未在任何
+ * 叶子任务上被指派」的资源（如负责人、总监等角色）在日历视图下始终显示为空。
  */
 const filteredTasks = computed(() => {
   const resId = selectedResourceIdInternal.value
   if (resId === null || resId === undefined || resId === '') return []
-  return props.tasks.filter(task => task.resources?.some(r => r.id === resId))
+  const resource = props.resources.find(r => String(r.id) === String(resId))
+  if (!resource) return []
+  const result: Task[] = []
+  const walk = (list?: Task[]) => {
+    if (!list) return
+    for (const task of list) {
+      if (isTaskAssignedToResource(task, resource)) {
+        result.push(task)
+      }
+      if (task.children && task.children.length > 0) {
+        walk(task.children)
+      }
+    }
+  }
+  walk(props.tasks)
+  return result
 })
 
 const currentLabel = computed(() => {
@@ -295,17 +327,15 @@ const setScale = (scale: CalendarScale) => {
 }
 
 // ------ 资源筛选切换（含前置钩子） ------
-const handleResourceSelectChange = async (event: Event) => {
-  const raw = (event.target as HTMLSelectElement).value
-  const next: string | number | null = raw === '' ? null : raw
-  const prev = selectedResourceIdInternal.value
+const handleResourceFilterChange = async (payload: {
+  next: string | number | null
+  prev: string | number | null
+}) => {
+  const { next, prev } = payload
 
   if (props.onBeforeResourceChange) {
     const allowed = await props.onBeforeResourceChange(next, prev)
-    if (!allowed) {
-      ;(event.target as HTMLSelectElement).value = String(prev ?? '')
-      return
-    }
+    if (!allowed) return
   }
 
   if (props.selectedResourceId === undefined) {
@@ -433,16 +463,10 @@ defineExpose({ goToToday, goToDate, clearSelection, setScale })
   gap: 12px;
 }
 
-.gantt-calendar-resource-select {
-  border: 1px solid var(--gantt-border-medium, #dcdfe6);
-  background-color: var(--gantt-bg-primary, #ffffff);
-  color: var(--gantt-text-primary, #606266);
-  border-radius: 4px;
-  padding: 8px;
-  font-size: 14px;
-  font-weight: 500;
+/* ResourceFilterSelect 根元素为自身组件样式，此处仅统一其在日历工具栏中的触发按钮高度，
+   与相邻的上一页/下一页/今天按钮（36px）保持一致 */
+.gantt-calendar-resource-select :deep(.gantt-resource-filter-trigger) {
   height: 36px;
-  box-sizing: border-box;
 }
 
 .gantt-calendar-body {

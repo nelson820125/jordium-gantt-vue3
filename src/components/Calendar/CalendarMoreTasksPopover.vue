@@ -74,6 +74,34 @@ const popoverStyle = computed(() => {
   border: 1px solid var(--gantt-border-medium);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+
+  /* 细滚动条，对齐 .timeline/.task-list-body 容器 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+.gantt-calendar-more-popover::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.gantt-calendar-more-popover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gantt-calendar-more-popover::-webkit-scrollbar-thumb {
+  background-color: var(--gantt-scrollbar-thumb);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.gantt-calendar-more-popover::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gantt-scrollbar-thumb-hover);
+}
+
+.gantt-calendar-more-popover::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .gantt-calendar-more-popover-header {

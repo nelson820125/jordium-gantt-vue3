@@ -1813,7 +1813,7 @@ This means the same `tasks` / `resources` datasets passed to GanttChart via `:ta
 
 | Slot        | Params            | Description                                                                          |
 | ----------- | ----------------- | ------------------------------------------------------------------------------------- |
-| `task-card` | `{ task, style }` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Custom render slot for task cards in Day/Week views; defaults to `task.name`; `style` already includes position/color styles and can be bound directly to the custom card root |
+| `task-card` | `{ task, style }` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Custom render slot for timed task cards in Day/Week views. Default content: a title line showing `"task.name - HH:mm ~ HH:mm"` (or just `task.name` for all-day tasks), plus a description line below when `task.description` is set; `style` already includes position/color styles and can be bound directly to the custom card root |
 
 #### CalendarView Events
 
@@ -1839,6 +1839,142 @@ This means the same `tasks` / `resources` datasets passed to GanttChart via `:ta
 | `clearSelection()`    | Clear the current drag selection highlight |
 
 Within GanttChart, all CalendarView props above can be forwarded via the `calendarProps` prop (e.g. `:calendar-props="{ taskCardOpacity: 0.25, taskAccentWidth: 4 }"`).
+
+#### Example: Custom `#task-card` Slot
+
+```vue
+<template>
+  <CalendarView :tasks="tasks" :resources="resources" :selected-resource-id="selectedResourceId">
+    <template #task-card="{ task, style }">
+      <div :style="style" class="my-task-card">
+        <strong>{{ task.name }}</strong>
+        <span class="my-task-card-time">{{ formatTime(task.startDate) }} ~ {{ formatTime(task.endDate) }}</span>
+        <p v-if="task.description" class="my-task-card-desc">{{ task.description }}</p>
+      </div>
+    </template>
+  </CalendarView>
+</template>
+```
+
+The scoped `style` object already contains the card's position/color styles computed by CalendarView (top/height/left/width/background/border-left, etc.) — bind it directly to your custom card's root element so it stays correctly positioned on the day/week grid; you're then free to lay out the title, time range, description, or any other custom content inside.
+
+---
+
+### ResourceUsageView Component ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`ResourceUsageView` powers GanttChart's resource-usage view (`view-mode="resource-usage"`) and can also be mounted standalone via `import`, displaying an MS-Project-style dual-panel layout (left resource list + right work-hour grid) to inspect each resource's workload percentage and overload status across day/week/month periods.
+
+Since v1.13.0, the left resource-list panel **directly embeds the same `TaskList` component instance** used by the resource-planning view (rather than a look-alike reimplementation), gaining declarative columns (`TaskListColumn`), column/header slots, sticky header, and first-column pinning — identical to the resource-planning view. Vertical scroll position and row-hover highlight are synced with the right work-hour grid panel automatically, bridged through the same global event protocol used by `TaskList`/`Timeline`, requiring no extra configuration. Both axes use virtual scrolling (rendering only the visible viewport plus a buffer), so the view scales to many resources and long time spans (e.g. a full year at "day" scale) without impacting scroll performance.
+
+#### Data Model
+
+`ResourceUsageView` requires **no separate data structure or conversion step** — it reuses the same `Resource[]` dataset already used by GanttChart (identical to the `resources` passed for the resource-planning view, `view-mode="resource"`):
+
+- `resource.id` / `resource.name`: shown in the left resource list
+- `resource.tasks: Task[]`: the tasks assigned to this resource, used for workload aggregation; each task needs `startDate` / `endDate` (required), `estimatedHours` (optional, defaults to 8h/workday), `resources: [{ id, capacity }]` (optional, defaults to 100%)
+
+`ResourceUsageTypes.ts` adds a few helper types specific to this view: `ResourceUsageScale` (`'day' | 'week' | 'month'`), `ResourceUsageCellData` (a single resource's aggregated workload for one time bucket, containing `totalHours`/`totalPercent`/`isOverloaded`/`taskBreakdown`), and `ResourceUsageCellPayload` (the payload for `cell-click`/`cell-hover`).
+
+#### ResourceUsageView Props
+
+| Prop                    | Type                                                          | Default     | Description                                                                                    |
+| ----------------------- | -------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `resources`             | `Resource[]`                                                    | -           | Resource dataset (shared with GanttChart)                                                        |
+| `scale` / `defaultScale`| `'day' \| 'week' \| 'month'`                                      | `'week'`    | Current / default workload scale                                                                 |
+| `dateRange`             | `{ start: Date; end: Date }`                                    | current month | Time range for workload aggregation                                                           |
+| `resourceListConfig`    | `ResourceListConfig`                                            | `undefined` | Left resource-list column config; falls back to the built-in `DEFAULT_RESOURCE_LIST_COLUMNS`      |
+| `columnRenderMode`      | `'default' \| 'declarative'`                                     | `'default'` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) `'default'` uses `resourceListConfig.columns`; `'declarative'` uses `TaskListColumn` declared in the default slot |
+| `overloadThreshold`     | `number`                                                        | `100`       | Overload threshold (percentage)                                                                   |
+| `underloadThreshold`    | `number`                                                        | `60`        | Underload threshold (percentage)                                                                  |
+| `overloadColor`         | `string`                                                        | theme default | Overloaded cell background color                                                               |
+| `normalColor`           | `string`                                                        | theme default | Normal cell background color                                                                    |
+| `underloadColor`        | `string`                                                        | theme default | Underloaded cell background color                                                               |
+| `weekendColor`          | `string`                                                        | theme default | Weekend column background color (only effective at `scale === 'day'`)                            |
+| `rowHeight`             | `number`                                                        | `51`        | Row height (px), shared by both panels                                                            |
+| `columnWidth`           | `number`                                                        | scale-based | Cell column width (px); defaults by `scale` when unset (day: 56 / week: 80 / month: 100)          |
+| `disabled`              | `boolean`                                                       | `false`     | Disable the component (dimmed and non-interactive)                                                |
+| `onBeforeScaleChange`   | `(next, prev) => boolean \| Promise<boolean>`                    | -           | Hook before the scale changes; return `false` to cancel                                            |
+| `onCellClick`           | `(payload: ResourceUsageCellPayload) => void`                    | -           | Fired when a work-hour cell is clicked                                                            |
+
+#### ResourceUsageView Slots
+
+| Slot      | Description                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Forwarded to the embedded `TaskList`'s default slot; when `columnRenderMode="declarative"`, place `TaskListColumn` declarations here, identical to the resource-planning view |
+
+#### ResourceUsageView Events
+
+| Event                | Payload                                                                    | Description                       |
+| --------------------- | ----------------------------------------------------------------------------- | ------------------------------------ |
+| `scale-change`       | `{ next: ResourceUsageScale; prev: ResourceUsageScale }`                       | Fired after the workload scale changes |
+| `cell-click`         | `ResourceUsageCellPayload`                                                     | Fired when a work-hour cell is clicked |
+| `cell-hover`         | `ResourceUsageCellPayload \| null`                                              | Fired on mouse enter/leave of a work-hour cell |
+| `overload-detected`  | `{ resourceId: string \| number; periods: ResourceUsageCellData[] }`           | Fired when a resource has overloaded periods (re-evaluated automatically as data changes) |
+
+#### Expose Methods
+
+| Method                 | Description                                                       |
+| ----------------------- | --------------------------------------------------------------------- |
+| `setScale(scale)`        | Programmatically switch day/week/month scale                          |
+| `refreshAggregation()`   | Force-refresh workload aggregation (rarely needed; reacts to data changes automatically) |
+
+There is no built-in UI for scale switching — it's driven by the controlled `scale` prop from an external control (e.g. GanttChart toolbar's Day/Week/Month buttons). When used standalone, set an initial value via `defaultScale`, or call `setScale()` programmatically.
+
+Within GanttChart, set `view-mode="resource-usage"` to switch to the resource-usage view; all props in the table above can be forwarded via the `resourceUsageProps` prop (e.g. `:resource-usage-props="{ columnRenderMode: 'declarative', overloadColor: '#fde2e2' }"`), and the four events above are forwarded as `resource-usage-scale-change` / `resource-usage-cell-click` / `resource-usage-cell-hover` / `resource-usage-overload-detected`. GanttChart's default slot (declarative column definitions) is also forwarded to the embedded `TaskList` under `view-mode="resource-usage"`, consistent with the `TaskList` branch.
+
+#### Example: Resource-Usage View via GanttChart
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :resources="resources"
+      view-mode="resource-usage"
+      :resource-usage-props="{ overloadThreshold: 100, underloadThreshold: 60 }"
+      @resource-usage-cell-click="handleCellClick"
+      @resource-usage-overload-detected="handleOverloadDetected"
+    >
+      <!-- With columnRenderMode="declarative", declarative columns work exactly like the resource-planning view -->
+      <TaskListColumn key="type" label="Type" />
+      <TaskListColumn key="department" label="Department" />
+      <TaskListColumn key="capacity" label="Utilization" />
+    </GanttChart>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
+import type { Resource } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const resources: Resource[] = [
+  {
+    id: 'dev-001',
+    name: 'Zhang San',
+    type: 'developer',
+    department: 'R&D',
+    tasks: [
+      {
+        id: 1,
+        name: 'Frontend Development',
+        startDate: '2026-02-01',
+        endDate: '2026-02-10',
+        progress: 50,
+        resources: [{ id: 'dev-001', capacity: 60 }],
+      },
+    ],
+  },
+]
+
+const handleCellClick = (payload: any) => {
+  console.log('Cell clicked:', payload)
+}
+
+const handleOverloadDetected = (payload: any) => {
+  console.log('Overload detected:', payload)
+}
+</script>
+```
 
 ---
 

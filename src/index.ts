@@ -11,6 +11,7 @@ export { default as MilestonePoint } from './components/MilestonePoint.vue'
 export { default as MilestoneDialog } from './components/MilestoneDialog.vue'
 export { default as TaskRow } from './components/TaskList/taskRow/TaskRow.vue'
 export { default as CalendarView } from './components/Calendar/CalendarView.vue' // v1.12.5 导出日历视图（独立可用组件）
+export { default as ResourceFilterSelect } from './components/Calendar/ResourceFilterSelect.vue' // v1.13.0 导出资源筛选下拉组件（P1 待办 T7.1）
 export { default as ResourceUsageView } from './components/ResourceUsage/ResourceUsageView.vue' // v1.12.5 导出资源工时视图（独立可用组件）
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
 export type { Resource } from './models/classes/Resource.ts' // v1.9.0 导出Resource类型
@@ -46,6 +47,7 @@ export type {
   ResourceUsageCellData,
   ResourceUsageCellPayload,
   ResourceUsageTaskBreakdown,
+  ResourceUsageTaskDetailClickPayload,
 } from './models/types/ResourceUsageTypes' // v1.12.5 导出资源工时视图相关类型
 export type { GanttViewMode } from './components/GanttToolbar.vue' // v1.12.5 导出视图模式类型（task/resource/calendar/resource-usage）
 

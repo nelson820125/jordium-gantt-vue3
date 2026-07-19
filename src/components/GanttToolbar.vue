@@ -21,7 +21,7 @@ const VIEW_MODE_FALLBACK_LABELS: Record<GanttViewMode, string> = {
   task: '任务视图',
   resource: '资源视图',
   calendar: '日历视图',
-  'resource-usage': '工时视图',
+  'resource-usage': '资源利用率',
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -750,8 +750,9 @@ onUnmounted(() => {
             stroke="currentColor"
             stroke-width="2"
           >
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg>
           {{ t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode] }}
         </button>

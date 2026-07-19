@@ -253,6 +253,36 @@ export function formatTaskDateTime(date: Date): string {
   return `${year}-${month}-${day} ${hour}:${minute}`
 }
 
+/**
+ * 将时间格式化为 HH:mm（用于任务卡片时间段展示）
+ */
+export function formatHourMinute(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * 格式化任务时间段文案，如 "08:30 ~ 09:30"（v1.13.0 任务卡片标题追加时间信息）
+ */
+export function formatTaskTimeRange(start: Date, end: Date): string {
+  return `${formatHourMinute(start)} ~ ${formatHourMinute(end)}`
+}
+
+/**
+ * 生成日历任务卡片标题：全天任务展示 "任务名 - 全天"，有具体起止时间的任务展示
+ * "任务名 - HH:mm ~ HH:mm"（v1.13.0）
+ */
+export function formatTaskCardTitle(
+  taskName: string,
+  isAllDay: boolean,
+  start: Date,
+  end: Date,
+  allDayLabel = '全天'
+): string {
+  return isAllDay
+    ? `${taskName} - ${allDayLabel}`
+    : `${taskName} - ${formatTaskTimeRange(start, end)}`
+}
+
 /** Outlook 风格拖拽选区的分段渲染数据：每个半小时（或指定粒度）槽位一组 slot(底色)/indicator(精确覆盖比例) 矩形 */
 export interface SelectionSegmentRect {
   /** 槽位（如半小时格）在网格中的像素顶部偏移 */

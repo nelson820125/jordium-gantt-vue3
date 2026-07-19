@@ -42,20 +42,22 @@ export interface ResourceListConfig {
   maxWidth?: number | string // 最大宽度，支持像素数字（如 1160）或百分比字符串（如 '80%'），默认1160px
 }
 
+// 默认宽度配置（与 TaskListConfig 的 DEFAULT_TASK_LIST_* 保持一致数值）
+export const DEFAULT_RESOURCE_LIST_WIDTH = 320 // 默认展开宽度
+export const DEFAULT_RESOURCE_LIST_MIN_WIDTH = 280 // 最小宽度
+export const DEFAULT_RESOURCE_LIST_MAX_WIDTH = 1160 // 最大宽度
+
 /**
  * 默认资源列表列配置
+ * 注：不包含 name 类型列 —— TaskList 在默认渲染模式下始终将名称列硬编码为独立的
+ * .col-name.col-fixed（对齐任务视图的 taskName 处理方式），此处列出的均为随其后渲染的动态列。
+ * key 与 Resource 接口字段名保持一致（type/department/capacity），
+ * 以便 TaskRow 的资源视图兜底渲染（`(task as any)[column.key]`）能直接取到正确的值。
  */
 export const DEFAULT_RESOURCE_LIST_COLUMNS: ResourceListColumnConfig[] = [
   {
-    type: 'name',
-    key: 'resourceName',
-    label: '资源名称',
-    cssClass: 'col-name',
-    visible: true,
-  },
-  {
     type: 'type',
-    key: 'resourceType',
+    key: 'type',
     label: '资源类型',
     cssClass: 'col-type',
     visible: true,
@@ -73,5 +75,6 @@ export const DEFAULT_RESOURCE_LIST_COLUMNS: ResourceListColumnConfig[] = [
     label: '利用率',
     cssClass: 'col-capacity',
     visible: true,
+    formatter: resource => (resource.capacity != null ? `${resource.capacity}%` : '-'),
   },
 ]

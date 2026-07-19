@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
 import { ref, computed, useSlots, toRef, inject, type ComputedRef } from 'vue'
 import type { StyleValue } from 'vue'
+import { DynamicRenderer } from '../composables/taskRow/dynamicRenderer'
 import { useI18n } from '../../../composables/useI18n'
 import { useViewMode } from '../../../composables/useViewMode'
 import { formatPredecessorDisplay } from '../../../utils/predecessorUtils'
@@ -469,12 +470,19 @@ const assigneeDisplayData = computed(() => {
               class="leaf-spacer"
             ></span>
 
-            <!-- 渲染列内容 -->
-            <component :is="() => renderDeclarativeColumn(column, index)" />
+            <!-- 渲染列内容（DynamicRenderer 组件类型固定，避免悬停重渲染时整体重挂载导致头像闪烁） -->
+            <component
+              :is="DynamicRenderer"
+              :render="() => renderDeclarativeColumn(column, index)"
+            />
           </div>
 
           <!-- 其他列：直接渲染内容 -->
-          <component :is="() => renderDeclarativeColumn(column, index)" v-else />
+          <component
+            :is="DynamicRenderer"
+            :render="() => renderDeclarativeColumn(column, index)"
+            v-else
+          />
         </div>
       </template>
 
@@ -564,9 +572,11 @@ const assigneeDisplayData = computed(() => {
           </template>
           <!-- 普通任务显示具体内容 -->
           <template v-else>
-            <!-- 优先级1: 列级自定义 Slot (约定: #column-{key})，通过 renderColumnSlot 动态渲染 -->
+            <!-- 优先级1: 列级自定义 Slot (约定: #column-{key})，通过 renderColumnSlot 动态渲染
+                 （DynamicRenderer 组件类型固定，避免悬停重渲染时整体重挂载导致头像闪烁） -->
             <component
-              :is="
+              :is="DynamicRenderer"
+              :render="
                 () =>
                   renderColumnSlot(column.key, {
                     task: props.task,

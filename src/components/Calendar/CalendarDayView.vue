@@ -8,10 +8,10 @@
           :key="task.id"
           class="gantt-calendar-task-chip"
           :style="{ backgroundColor: task.barColor || 'var(--gantt-primary)' }"
-          :title="task.name"
+          :title="`${task.name} - ${allDayLabel}`"
           @click="emit('task-click', task, $event)"
         >
-          {{ task.name }}
+          {{ task.name }} - {{ allDayLabel }}
         </div>
       </div>
     </div>
@@ -29,18 +29,6 @@
         <div class="gantt-calendar-hour-label">{{ cell.label }}</div>
         <div class="gantt-calendar-hour-cell" :data-hour="cell.hour" />
       </div>
-
-      <div
-        v-for="(highlight, hIndex) in workingHourHighlightRects"
-        :key="'work-highlight-' + hIndex"
-        class="gantt-calendar-workhour-highlight"
-        :style="{
-          top: `${highlight.top}px`,
-          height: `${highlight.height}px`,
-          left: `${highlight.left}px`,
-          width: `${highlight.width}px`,
-        }"
-      />
 
       <div
         v-if="nowIndicatorTop !== null"
@@ -62,7 +50,10 @@
         @mousedown="handleTaskMouseDown(task, $event)"
       >
         <slot name="task-card" :task="task" :style="taskBlockStyle(task, tIndex)">
-          {{ task.name }}
+          <div class="gantt-calendar-task-card-title">{{ taskCardTitle(task) }}</div>
+          <div v-if="task.description" class="gantt-calendar-task-card-desc">
+            {{ task.description }}
+          </div>
         </slot>
       </div>
 
@@ -89,9 +80,9 @@ import {
   isSameDay,
   computeSelectionSegments,
   minutesSinceMidnight,
-  getWorkingHourMinuteRanges,
   computeTimedTaskLayout,
   formatTaskDateTime,
+  formatTaskCardTitle,
 } from '../../utils/calendarTimeUtils'
 import type {
   WorkingHoursConfig,
@@ -183,6 +174,14 @@ const timedTasks = computed(() => {
   })
 })
 
+/** 任务卡片默认展示标题：具体时段任务展示 "标题 - HH:mm ~ HH:mm"（v1.13.0，供 #task-card 插槽默认内容使用） */
+const taskCardTitle = (task: Task): string => {
+  const start = parseTaskDate(task.startDate)
+  const end = parseTaskDate(task.endDate)
+  if (!start || !end) return task.name
+  return formatTaskCardTitle(task.name, false, start, end)
+}
+
 /** timedTasks 的重叠列布局（同一时段内多个任务并排显示，而非层叠覆盖） */
 const timedTaskLayout = computed(() => {
   const intervals = timedTasks.value.map(task => {
@@ -193,20 +192,6 @@ const timedTaskLayout = computed(() => {
     return { start: startMinutes, end: endMinutes }
   })
   return computeTimedTaskLayout(intervals)
-})
-
-/** 选中资源在当天存在全天任务时，将其工作时间段以选区高亮同款的淡蓝色样式呈现 */
-const workingHourHighlightRects = computed(() => {
-  if (!props.resourceId || allDayTasks.value.length === 0) return []
-  const ranges = getWorkingHourMinuteRanges(props.date.getDay(), props.workingHours)
-  const gridWidth = gridRef.value?.clientWidth ?? 0
-  const width = Math.max(gridWidth - HOUR_LABEL_WIDTH - 8, 0)
-  return ranges.map(range => ({
-    top: (range.start / 60) * HOUR_HEIGHT,
-    height: ((range.end - range.start) / 60) * HOUR_HEIGHT,
-    left: HOUR_LABEL_WIDTH,
-    width,
-  }))
 })
 
 const taskBlockStyle = (task: Task, index: number) => {
@@ -391,6 +376,34 @@ defineExpose({ clearSelection: () => selection.clear() })
   height: 100%;
   overflow-y: auto;
   background-color: var(--gantt-bg-primary);
+
+  /* 细滚动条，对齐 .timeline/.task-list-body 容器 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+.gantt-calendar-day-view::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.gantt-calendar-day-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gantt-calendar-day-view::-webkit-scrollbar-thumb {
+  background-color: var(--gantt-scrollbar-thumb);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.gantt-calendar-day-view::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gantt-scrollbar-thumb-hover);
+}
+
+.gantt-calendar-day-view::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .gantt-calendar-allday-row {
@@ -471,11 +484,26 @@ defineExpose({ clearSelection: () => selection.clear() })
   font-size: 12px;
   padding: 2px 6px 2px 8px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   z-index: var(--gantt-z-bar, 10);
   box-sizing: border-box;
   cursor: grab;
+}
+
+/* v1.13.0 任务卡片默认内容：标题（含时间段）+ 描述换行展示，均单行截断避免撑破卡片高度 */
+.gantt-calendar-task-card-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.gantt-calendar-task-card-desc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--gantt-text-secondary);
+  margin-top: 1px;
 }
 
 /* v1.13.0 拖拽移动任务时，凸显当前被拖拽的卡片：提升层级、阴影与轻微放大 */
@@ -486,19 +514,6 @@ defineExpose({ clearSelection: () => selection.clear() })
   cursor: grabbing;
   transform: scale(1.02);
   pointer-events: none;
-}
-
-/* 选中资源存在全天任务时，工作时间段沿用选区高亮同款的淡蓝色样式（与 CalendarSelectionLayer 的
-   .gantt-calendar-selection-layer 视觉保持一致），提示该资源当天已被全天占用 */
-.gantt-calendar-workhour-highlight {
-  position: absolute;
-  z-index: 5;
-  background-color: var(--gantt-primary-light);
-  border: 1px solid var(--gantt-primary);
-  border-radius: var(--gantt-radius-sm, 2px);
-  opacity: 0.5;
-  pointer-events: none;
-  box-sizing: border-box;
 }
 
 /* 当前时间指示线：仅在展示日期为今天时渲染，标注精确到分钟的当前时刻位置 */

@@ -51,6 +51,16 @@ export interface ResourceUsageCellPayload {
   cell: ResourceUsageCellData | null
 }
 
+/**
+ * task-detail-click / onTaskDetailClick 携带的事件负载（v1.13.0 新增，P1 待办 T7.4）
+ * 点击工时单元格 Tooltip 明细中的某个任务时触发
+ */
+export interface ResourceUsageTaskDetailClickPayload {
+  resourceId: string | number
+  taskId: number | string
+  taskName: string
+}
+
 /** 工时格阈值配色，均可选，未提供时回退到主题 CSS 变量的默认配色 */
 export interface ResourceUsageColorConfig {
   /** 超载（totalPercent > overloadThreshold）背景色 */

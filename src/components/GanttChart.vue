@@ -23,7 +23,10 @@ import type {
   CalendarTaskMovePayload,
 } from '../models/types/CalendarTypes'
 import ResourceUsageView from './ResourceUsage/ResourceUsageView.vue'
-import type { ResourceUsageScale } from '../models/types/ResourceUsageTypes'
+import type {
+  ResourceUsageScale,
+  ResourceUsageTaskDetailClickPayload,
+} from '../models/types/ResourceUsageTypes'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
@@ -153,6 +156,8 @@ const emit = defineEmits([
   'resource-usage-cell-click',
   'resource-usage-cell-hover',
   'resource-usage-overload-detected',
+  // v1.13.0 ResourceUsageView Tooltip 明细任务点击转发事件（P1 待办 T7.4）
+  'resource-usage-task-detail-click',
 ])
 
 // R2: 动态连线配置（可通过 setLinkConfig 运行时修改，优先级高于 props.linkConfig）
@@ -3308,6 +3313,18 @@ const scrollToDate = (date: Date | string) => {
   }
 }
 
+/**
+ * 资源工时视图 Tooltip 明细任务点击（v1.13.0，P1 待办 T7.4）
+ * 默认行为：切换回任务视图并滚动定位到对应任务，同时对外转发事件供宿主自定义处理
+ */
+const handleResourceUsageTaskDetailClick = (payload: ResourceUsageTaskDetailClickPayload) => {
+  emit('resource-usage-task-detail-click', payload)
+  handleViewModeChange('task')
+  nextTick(() => {
+    scrollToTask(payload.taskId)
+  })
+}
+
 // === 语言切换相关方法 ===
 /**
  * 获取当前语言
@@ -3389,6 +3406,19 @@ watch(taskDrawerVisible, visible => {
   if (!visible) {
     calendarViewRef.value?.clearSelection()
   }
+})
+
+/**
+ * 供 CalendarView 使用的任务数据：与 tasksForTaskList/flatTasks 保持一致的约定，
+ * 将 props.milestones（里程碑，独立于 props.tasks 传入）合并进日历视图的数据源。
+ * 修复：里程碑任务此前仅传给 Timeline/TaskList，未传给 CalendarView，导致日历
+ * 日/周/月视图下，仅分配了里程碑任务（无普通任务）的资源看起来"没有任何任务"。
+ */
+const tasksForCalendarView = computed<Task[]>(() => {
+  if (props.milestones && props.milestones.length > 0) {
+    return [...(props.tasks || []), ...props.milestones]
+  }
+  return props.tasks || []
 })
 
 // MilestoneDialog 相关变量
@@ -4095,7 +4125,7 @@ defineExpose({
         v-if="currentViewMode === 'calendar'"
         ref="calendarViewRef"
         class="gantt-panel-full-view"
-        :tasks="props.tasks"
+        :tasks="tasksForCalendarView"
         :resources="props.resources"
         :working-hours="props.workingHours"
         :scale="calendarScaleFromToolbar"
@@ -4108,20 +4138,28 @@ defineExpose({
         @task-click="handleCalendarTaskClick"
         @task-move="handleCalendarTaskMove"
       />
-      <!-- v1.12.5 资源工时视图：与任务/资源视图互斥渲染，不依赖 TaskList/Timeline -->
+      <!-- v1.12.5 资源工时视图：与任务/资源视图互斥渲染；左侧列表内嵌复用资源视图/任务视图共用的 TaskList 组件本体 -->
       <ResourceUsageView
         v-else-if="currentViewMode === 'resource-usage'"
         class="gantt-panel-full-view"
         :resources="props.resources"
         :resource-list-config="props.resourceListConfig"
+        :column-render-mode="props.taskListColumnRenderMode"
         :scale="resourceUsageScaleFromToolbar"
         :date-range="resourceUsageDateRangeFromTimeline"
+        :scale-configs="mergedScaleConfigs"
         v-bind="props.resourceUsageProps"
         @scale-change="payload => emit('resource-usage-scale-change', payload)"
         @cell-click="payload => emit('resource-usage-cell-click', payload)"
         @cell-hover="payload => emit('resource-usage-cell-hover', payload)"
         @overload-detected="payload => emit('resource-usage-overload-detected', payload)"
-      />
+        @task-detail-click="handleResourceUsageTaskDetailClick"
+      >
+        <!-- 传递默认 slot (用于声明式列定义)，与 TaskList 分支保持一致 -->
+        <template v-if="$slots.default" #default>
+          <slot />
+        </template>
+      </ResourceUsageView>
       <template v-else>
         <div
           v-if="isTaskListVisible"

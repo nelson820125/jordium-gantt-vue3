@@ -367,13 +367,23 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
 // 工时视图（resource-usage）配置：直接复用 resources 数据集，无需单独转换数据结构；
 // 这里演示自定义阈值背景色（覆盖组件默认配色），scale/dateRange 由 GanttChart 根据工具栏
 // 日/周/月 与任务时间范围自动推导，无需在此重复传入
+// 自定义色需要跟随明暗主题切换，否则暗黑模式下单元格仍会保持浅色底（与主题背景冲突）
 const resourceUsageProps = computed(() => ({
   overloadThreshold: 100,
   underloadThreshold: 60,
-  overloadColor: '#fde2e2',
-  normalColor: '#e1f3d8',
-  underloadColor: '#fdf6ec',
-  weekendColor: '#f0f0f0',
+  ...(currentThemeStatus.value === 'dark'
+    ? {
+        overloadColor: '#5c3232',
+        normalColor: '#2f4a2a',
+        underloadColor: '#5c4a26',
+        weekendColor: '#5a5a5a',
+      }
+    : {
+        overloadColor: '#fde2e2',
+        normalColor: '#e1f3d8',
+        underloadColor: '#fdf6ec',
+        weekendColor: '#f0f0f0',
+      }),
 }))
 
 // 控制是否允许拖拽和拉伸
