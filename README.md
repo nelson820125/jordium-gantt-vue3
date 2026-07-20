@@ -217,7 +217,10 @@ npm run dev
 | `tasks`                     | `Task[]`  | `[]`    | Array of task data                                                        |
 | `milestones`                | `Task[]`  | `[]`    | Array of milestone data (Note: Type is Task[], must set type='milestone') |
 | `resources` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Resource[]` | `[]` | Array of resource data (used in resource planning view) |
-| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource'` | `'task'` | View mode: 'task' for task planning view \| 'resource' for resource planning view |
+| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource' \| 'calendar' \| 'resource-usage'` | `'task'` | View mode: 'task' for task planning view \| 'resource' for resource planning view \| 'calendar' for calendar view ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) \| 'resource-usage' for resource-usage view ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) |
+| `availableViewModes` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Array<'task' \| 'resource' \| 'calendar' \| 'resource-usage'>` | `['task', 'resource']` | View mode buttons actually displayed on the toolbar; defaults to task/resource only (backward-compatible with pre-upgrade behavior). Add `'calendar'` / `'resource-usage'` to enable calendar or resource-usage views |
+| `calendarProps` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Partial<CalendarView props>` | `undefined` | Props forwarded to the internal `CalendarView` component when `viewMode='calendar'` (e.g. `taskCardOpacity`, `allDayLabel`, etc.). See [CalendarView Component](#calendarview-component) for the full list and [CalendarView Configuration (calendarProps)](#calendarview-configuration-calendarprops-) for forwarding details |
+| `resourceUsageProps` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Partial<ResourceUsageView props>` | `undefined` | Props forwarded to the internal `ResourceUsageView` component when `viewMode='resource-usage'` (e.g. `overloadColor`, `columnRenderMode`, etc.). See [ResourceUsageView Component](#resourceusageview-component-) for the full list and [ResourceUsageView Configuration (resourceUsageProps)](#resourceusageview-configuration-resourceusageprops-) for forwarding details |
 | `showToolbar`               | `boolean` | `true`  | Whether to show the toolbar                                               |
 | `useDefaultDrawer`          | `boolean` | `true`  | Whether to use the built-in task edit drawer (TaskDrawer)                 |
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
@@ -447,6 +450,8 @@ For complete event documentation, see:
 
 - **Task-related events**: See [Task Management](#task-management) section below
 - **Milestone-related events**: See [Milestone Management](#milestone-management) section below
+- **Calendar view events** ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF): See [CalendarView Component](#calendarview-component) section below
+- **Resource-usage view events** ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF): See [ResourceUsageView Component](#resourceusageview-component-) section below
 
 **Event List Overview:**
 
@@ -471,6 +476,20 @@ For complete event documentation, see:
 | `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
 | `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) |
 | `taskbar-resource-change` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | Task moved across resources (dragging task to another resource row in resource view) |
+| `view-mode-changed` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(mode: 'task' \| 'resource' \| 'calendar' \| 'resource-usage')` | Triggered after view mode switch (via toolbar button click or `viewMode` property change) |
+| `resource-drag-end` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(task: Task)` | Triggered after vertical task drag ends in resource view |
+| `calendar-selection-complete` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `CalendarSelectionRange` | Triggered after calendar view drag selection is confirmed (forwarded from `CalendarView`'s `selection-complete`) |
+| `calendar-selection-cancel` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ reason }` | Triggered when calendar view drag selection is cancelled |
+| `calendar-resource-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after selected resource changes in calendar view |
+| `calendar-view-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after day/week/month switch in calendar view |
+| `calendar-date-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after anchor date changes in calendar view |
+| `calendar-task-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(task: Task, event: MouseEvent)` | Triggered when an existing task card is clicked in calendar view |
+| `calendar-task-move` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `CalendarTaskMovePayload` | Triggered after an existing task card is dragged and dropped in calendar view |
+| `resource-usage-scale-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after scale switch in resource-usage view |
+| `resource-usage-cell-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageCellPayload` | Triggered when a workload cell is clicked in resource-usage view |
+| `resource-usage-cell-hover` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageCellPayload \| null` | Triggered when mouse enters/leaves a workload cell in resource-usage view |
+| `resource-usage-overload-detected` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ resourceId, periods }` | Triggered when an overload period is detected for a resource in resource-usage view |
+| `resource-usage-task-detail-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageTaskDetailClickPayload` | Triggered when a task item inside the workload cell tooltip detail is clicked; automatically switches to `'task'` view and scrolls to that task |
 
 #### Example 1: Simplest Gantt Chart
 
@@ -1829,6 +1848,10 @@ This means the same `tasks` / `resources` datasets passed to GanttChart via `:ta
 
 > When used inside GanttChart, these two events are forwarded as `calendar-task-click` / `calendar-task-move` (consistent with the other `calendar-*` prefixed events), and the built-in TaskDrawer is opened automatically for editing when `useDefaultDrawer=true`.
 
+> 💡 **Expose Methods** (`goToToday()`, `goToDate()`, `setScale()`, `clearSelection()`) are also documented in [Configuration & Customization → Expose Methods → CalendarView Expose Methods](#calendarview-expose-methods-); note that GanttChart **does not** forward these methods — they are only callable via `CalendarView`'s own template ref when [using it standalone](#calendarview-component).
+>
+> Within GanttChart, all CalendarView props above can be forwarded via the `calendarProps` prop (e.g. `:calendar-props="{ taskCardOpacity: 0.25, taskAccentWidth: 4 }"`). See [Configuration & Customization → CalendarView Configuration (calendarProps)](#calendarview-configuration-calendarprops-).
+
 #### Expose Methods
 
 | Method              | Description                    |
@@ -1837,8 +1860,6 @@ This means the same `tasks` / `resources` datasets passed to GanttChart via `:ta
 | `goToDate(date)`      | Jump to a specific date            |
 | `setScale(scale)`     | Switch day/week/month scale         |
 | `clearSelection()`    | Clear the current drag selection highlight |
-
-Within GanttChart, all CalendarView props above can be forwarded via the `calendarProps` prop (e.g. `:calendar-props="{ taskCardOpacity: 0.25, taskAccentWidth: 4 }"`).
 
 #### Example: Custom `#task-card` Slot
 
@@ -1895,6 +1916,7 @@ Since v1.13.0, the left resource-list panel **directly embeds the same `TaskList
 | `disabled`              | `boolean`                                                       | `false`     | Disable the component (dimmed and non-interactive)                                                |
 | `onBeforeScaleChange`   | `(next, prev) => boolean \| Promise<boolean>`                    | -           | Hook before the scale changes; return `false` to cancel                                            |
 | `onCellClick`           | `(payload: ResourceUsageCellPayload) => void`                    | -           | Fired when a work-hour cell is clicked                                                            |
+| `onTaskDetailClick` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(payload: ResourceUsageTaskDetailClickPayload) => void` | -           | Fired when a task item inside the workload cell tooltip detail is clicked; when used via GanttChart, automatically switches to `'task'` view and scrolls to that task |
 
 #### ResourceUsageView Slots
 
@@ -1910,17 +1932,11 @@ Since v1.13.0, the left resource-list panel **directly embeds the same `TaskList
 | `cell-click`         | `ResourceUsageCellPayload`                                                     | Fired when a work-hour cell is clicked |
 | `cell-hover`         | `ResourceUsageCellPayload \| null`                                              | Fired on mouse enter/leave of a work-hour cell |
 | `overload-detected`  | `{ resourceId: string \| number; periods: ResourceUsageCellData[] }`           | Fired when a resource has overloaded periods (re-evaluated automatically as data changes) |
+| `task-detail-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageTaskDetailClickPayload` | Fired when a task item inside the workload cell tooltip detail is clicked |
 
-#### Expose Methods
-
-| Method                 | Description                                                       |
-| ----------------------- | --------------------------------------------------------------------- |
-| `setScale(scale)`        | Programmatically switch day/week/month scale                          |
-| `refreshAggregation()`   | Force-refresh workload aggregation (rarely needed; reacts to data changes automatically) |
-
-There is no built-in UI for scale switching — it's driven by the controlled `scale` prop from an external control (e.g. GanttChart toolbar's Day/Week/Month buttons). When used standalone, set an initial value via `defaultScale`, or call `setScale()` programmatically.
-
-Within GanttChart, set `view-mode="resource-usage"` to switch to the resource-usage view; all props in the table above can be forwarded via the `resourceUsageProps` prop (e.g. `:resource-usage-props="{ columnRenderMode: 'declarative', overloadColor: '#fde2e2' }"`), and the four events above are forwarded as `resource-usage-scale-change` / `resource-usage-cell-click` / `resource-usage-cell-hover` / `resource-usage-overload-detected`. GanttChart's default slot (declarative column definitions) is also forwarded to the embedded `TaskList` under `view-mode="resource-usage"`, consistent with the `TaskList` branch.
+> 💡 **Expose Methods** (`setScale()`, `refreshAggregation()`) are also documented in [Configuration & Customization → Expose Methods → ResourceUsageView Expose Methods](#resourceusageview-expose-methods-); GanttChart **does not** forward these methods — they are only callable when [using `ResourceUsageView` standalone](#resourceusageview-component-). Scale switching is driven by the controlled `scale` prop from an external control (e.g. GanttChart toolbar's Day/Week/Month buttons); when used standalone, set an initial value via `defaultScale`, or call `setScale()` programmatically.
+>
+> Within GanttChart, set `view-mode="resource-usage"` to switch to the resource-usage view; all props in the table above can be forwarded via the `resourceUsageProps` prop (e.g. `:resource-usage-props="{ columnRenderMode: 'declarative', overloadColor: '#fde2e2' }"`). See [Configuration & Customization → ResourceUsageView Configuration (resourceUsageProps)](#resourceusageview-configuration-resourceusageprops-). The five events above are forwarded as `resource-usage-scale-change` / `resource-usage-cell-click` / `resource-usage-cell-hover` / `resource-usage-overload-detected` / `resource-usage-task-detail-click`. GanttChart's default slot (declarative column definitions) is also forwarded to the embedded `TaskList` under `view-mode="resource-usage"`, consistent with the `TaskList` branch.
 
 #### Example: Resource-Usage View via GanttChart
 
@@ -2740,6 +2756,42 @@ The component has built-in intelligent timeline range calculation logic, ensurin
 > - Avoids issues with timeline being too narrow or having excessive whitespace
 > - Suitable for displaying at different resolutions
 
+#### CalendarView Configuration (calendarProps) ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Setting `view-mode="calendar"` on `GanttChart` renders the internal `CalendarView` component; `calendarProps` is a dedicated forwarding channel (to avoid bloating GanttChart's top-level props), where fields are bound to `CalendarView` via `v-bind` as-is.
+
+For the complete property/slot/event list, see the [CalendarView Component](#calendarview-component) section's "CalendarView Props" table. Expose methods are documented in the [Expose Methods](#expose-methods) section below.
+
+```vue
+<GanttChart
+  view-mode="calendar"
+  :calendar-props="{
+    allDayLabel: 'All Day',       // All-day task row label text
+    taskCardOpacity: 0.25,        // Task card background opacity
+    taskAccentWidth: 4,           // Task card left accent bar width (px)
+    selectionMinuteStep: 30,      // Drag selection snap-to-grid (minutes)
+  }"
+/>
+```
+
+#### ResourceUsageView Configuration (resourceUsageProps) ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Setting `view-mode="resource-usage"` on `GanttChart` renders the internal `ResourceUsageView` component; `resourceUsageProps` is similarly forwarded to `ResourceUsageView`.
+
+For the complete property/slot/event list, see the [ResourceUsageView Component](#resourceusageview-component-) section's "ResourceUsageView Props" table. Expose methods are documented in the [Expose Methods](#expose-methods) section below.
+
+```vue
+<GanttChart
+  view-mode="resource-usage"
+  :resource-usage-props="{
+    columnRenderMode: 'declarative', // Use declarative TaskListColumn columns in resource list sidebar
+    overloadThreshold: 100,          // Overload threshold (percentage)
+    underloadThreshold: 60,          // Underload threshold (percentage)
+    overloadColor: '#fde2e2',        // Overload cell background color
+  }"
+/>
+```
+
 ### Expose Methods
 
 The GanttChart component exposes a series of methods through `defineExpose`, allowing parent components to directly call these methods via template references (`ref`) to control component behavior. This imperative control approach is suitable for scenarios requiring precise timing control.
@@ -2906,6 +2958,26 @@ const handleScrollToDate = () => {
 **Complete examples can be found in:**
 - npm-demo project: `npm-demo/src/components/GanttTest.vue`
 - npm-webpack-demo project: `npm-webpack-demo/src/App.vue`
+
+#### CalendarView Expose Methods ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+| Method              | Description                          |
+| ------------------- | ------------------------------------ |
+| `goToToday()`       | Navigate to today                    |
+| `goToDate(date)`    | Navigate to the specified date       |
+| `setScale(scale)`   | Switch day/week/month scale           |
+| `clearSelection()`  | Clear current drag selection highlight |
+
+> ⚠️ **Note**: `GanttChart` holds an internal `CalendarView` ref, but **does not forward** the above methods through `defineExpose`. They can only be called via `CalendarView`'s own template ref when [using it standalone](#calendarview-component); they are not accessible through `GanttChart` integration.
+
+#### ResourceUsageView Expose Methods ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+| Method                   | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `setScale(scale)`         | Programmatically switch day/week/month scale                                 |
+| `refreshAggregation()`    | Force-refresh work-hour aggregation (normally unnecessary; data changes trigger reactive updates automatically) |
+
+> ⚠️ **Note**: Like `CalendarView`, `resourceUsageProps` only forwards props; `ResourceUsageView`'s expose methods **are not forwarded** through `GanttChart`'s `ref`. They can only be called when [using `ResourceUsageView` standalone](#resourceusageview-component-). Scale switching within `GanttChart` is already driven by the toolbar Day/Week/Month buttons, so manual `setScale()` calls are generally unnecessary.
 
 ---
 

@@ -57,6 +57,8 @@
     "resource-management",
     "resource-scheduler",
     "scheduler",
+    "calendar",
+    "resource-usage",
     "vue3-resource-planning",
     "vue3-scheduler"
   ],
