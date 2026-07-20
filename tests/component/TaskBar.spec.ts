@@ -163,3 +163,47 @@ describe('TaskBar parent-overflow-bar', () => {
     )
   })
 })
+
+// progress wird im Booking-Gantt als Ressourcen-Belegung (gebucht/gesamt) genutzt, nicht als
+// Fertigstellung. Ein zu 100% belegter Bedarf muss weiter zeitlich verschieb- und resizebar sein.
+// allowDragAndResize=true spiegelt die Produktion (GanttChart/Timeline reichen den Default durch).
+describe('TaskBar: Verschieben/Resize trotz 100% Belegung (progress=100)', () => {
+  const fullyBooked: Partial<Task> = {
+    id: 3,
+    name: 'full',
+    startDate: '2026-07-20 08:00',
+    endDate: '2026-07-24 12:00',
+    progress: 100,
+  }
+  const mountBooked = (extra: Record<string, unknown> = {}) =>
+    mountBar({ isParent: false, allowDragAndResize: true, task: fullyBooked, ...extra })
+
+  it('rendert die Resize-Griffe auch bei progress=100 (Nicht-Parent)', () => {
+    const w = mountBooked()
+    expect(w.find('.resize-handle-left').exists()).toBe(true)
+    expect(w.find('.resize-handle-right').exists()).toBe(true)
+  })
+
+  it('blockiert den Drag-Start bei progress=100 nicht (mousedown wird verarbeitet)', () => {
+    const w = mountBooked()
+    const ev = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    w.find('.task-bar-content').element.dispatchEvent(ev)
+    // handleMouseDown ruft preventDefault erst, wenn es NICHT frueh abbricht (progress>=100 brach ab).
+    expect(ev.defaultPrevented).toBe(true)
+  })
+
+  it('zeigt cursor:move bei progress=100 (Nicht-Parent)', () => {
+    const el = mountBooked().find('.task-bar').element as HTMLElement
+    expect(el.style.cursor).toBe('move')
+  })
+
+  it('sperrt Parent-Balken auch bei progress=100 weiterhin (keine Griffe)', () => {
+    const w = mountBar({
+      isParent: true,
+      allowDragAndResize: true,
+      task: { ...fullyBooked, isParent: true },
+    })
+    expect(w.find('.resize-handle-left').exists()).toBe(false)
+    expect(w.find('.resize-handle-right').exists()).toBe(false)
+  })
+})
