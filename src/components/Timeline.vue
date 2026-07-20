@@ -744,21 +744,13 @@ const getDayTimelineRange = () => {
   const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
   const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
 
-  if (!taskRange) {
-    // 如果没有任务，根据容器宽度计算范围
-    const today = new Date()
-    const daysNeeded = Math.max(Math.ceil(containerWidth / cellWidthDay), 60) // 至少60天
-
-    const startDate = new Date(today)
-    startDate.setDate(startDate.getDate() - Math.floor(daysNeeded / 2))
-
-    const endDate = new Date(today)
-    endDate.setDate(endDate.getDate() + Math.ceil(daysNeeded / 2))
-
-    return { startDate, endDate }
-  }
-
-  const { minDate, maxDate } = taskRange
+  // bugfix: 无任务（tasks=[]）时以"今天"作为 minDate/maxDate 锚点，复用下方与"有任务"时
+  // 完全相同的月对齐 + buffer 计算逻辑，而不是另用一套固定 ±30天窗口。
+  // 原因：旧的无任务分支不遵循 preBuffer/sufBuffer 配置、也不按月对齐，计算出的范围
+  // 比"有任务"分支窄很多（约60天 vs 三个月），当任务从空数组变为真实数据时，
+  // getDayTimelineRange 会从这条分支切换到下方分支，导致 timelineConfig 范围突变、
+  // 引发不必要的 timelineData 重新生成和滚动位置跳变。统一锚点后两条路径结果一致。
+  const { minDate, maxDate } = taskRange || { minDate: new Date(), maxDate: new Date() }
 
   // 开始日期：自定义preBuffer月前对齐月初，或默认前一个月月初
   // 对齐到月初原因：避免日期溢出导致 generateDayTimelineData 月份迭代 setMonth(+1) 跳过月份
@@ -3455,15 +3447,27 @@ watch(
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
 let hasInitialAutoScroll = false
+// bugfix: 任务视图下 tasks 从空数组变为真实数据时，timelineConfig 可能被连续更新两次——
+// 1) GanttChart 的 timelineDateRange 通过 props.startDate/endDate 驱动的 watch（同步生效）
+// 2) 本组件内部 debouncedUpdateTimelineRange（50ms 延迟，基于当前 currentTimeScale 重算）
+// 若不做防抖，第一次（可能不是最终范围）就会消费掉 hasInitialAutoScroll 标记并立即滚动，
+// 第二次真正生效的范围到达时标记已为 true，不会再次滚动，导致今日定位到错误位置（仅默认的
+// "天"刻度会暴露，因为其他刻度都是用户手动切换触发 updateTimeScale()，该函数会无条件调用
+// scrollToTodayCenter()，不依赖这个标记）。改为防抖：短时间内的多次变化只取最后一次生效后的状态。
+let initialScrollDebounceTimer: number | null = null
 watch(
   () => [timelineData.value, timelineConfig.value.startDate, timelineConfig.value.endDate],
   () => {
-    if (!hasInitialAutoScroll) {
+    if (hasInitialAutoScroll) return
+    if (initialScrollDebounceTimer) clearTimeout(initialScrollDebounceTimer)
+    initialScrollDebounceTimer = setTimeout(() => {
+      initialScrollDebounceTimer = null
+      if (hasInitialAutoScroll) return
+      hasInitialAutoScroll = true
       nextTick(() => {
         scrollToTodayCenter()
-        hasInitialAutoScroll = true
       })
-    }
+    }, 120) // 大于内部各处 updateTimelineRange 相关防抖延迟（50ms/100ms），确保拿到最终稳定范围
   }
   // 优化：移除 deep: true，因为监听的是基础类型（startDate/endDate）和 shallowRef（timelineData）
   // 不需要深度监听，可减少 90% 的监听开销
@@ -4619,6 +4623,11 @@ watch(
     // 真实数据到来后范围扩展，若不重置则 scrollToTodayCenter 不会再次触发
     if (oldLength === 0 && newLength > 0) {
       hasInitialAutoScroll = false
+      // bugfix: 资源视图下 updateTimelineRange 默认短路，需显式打开一次性阀门，
+      // 否则首次由空数组变为真实数据时范围不会重算（天刻度默认场景下尤为明显）
+      if (viewMode.value === 'resource') {
+        forceTimelineRangeInResourceView = true
+      }
       debouncedUpdateTimelineRange(50)
     }
 
@@ -5444,9 +5453,13 @@ watch([timelineData, timelineContainerWidth], () => {
 })
 
 // 监听viewMode和dataSource变化，刷新缓存和时间线
-watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
+watch([viewMode, dataSource], ([newViewMode, newDataSource], [oldViewMode, oldDataSource]) => {
   invalidateTaskDateRangeCache()
   const viewModeChanged = newViewMode !== oldViewMode
+  // bugfix: 资源视图下宿主重新查询并整体替换 resources 数组（首次填充或切换查询条件）时，
+  // dataSource 引用会变化但 viewMode 不变，此前只判断 viewModeChanged 会导致漏掉这个场景，
+  // timelineConfig 停留在旧/空数据兜底范围，表现为无法自动定位今天、或定位后任务不在可见窗口内
+  const dataSourceChanged = newDataSource !== oldDataSource
   if (newViewMode === 'task') {
     // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
     // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
@@ -5454,8 +5467,9 @@ watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
     hasInitialAutoScroll = false
     debouncedUpdateTimelineRange()
   } else if (newViewMode === 'resource') {
-    if (viewModeChanged) {
-      // 切换到资源视图：基于资源任务重算日期范围，重算完成后由 watch([timelineData,...]) 触发滚到今日
+    if (viewModeChanged || dataSourceChanged) {
+      // 切换到资源视图 / 资源数据整体替换：基于资源任务重算日期范围，
+      // 重算完成后由 watch([timelineData,...]) 触发滚到今日
       // 重置 hasInitialAutoScroll，确保 watch([timelineData, timelineConfig...]) 在重算完成后能滚到今日
       // 不在此处直接调用 scrollToTodayCenter()，因为 debouncedUpdateTimelineRange 有 50ms 延迟，
       // nextTick 会在 50ms 之前就执行，导致用旧的 task 视图坐标滚到错误位置

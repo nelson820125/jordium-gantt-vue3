@@ -853,5 +853,15 @@
       "🎉 Added: New `ResourceUsageView` resource utilization component (Day/Week/Month three time dimensions), which aggregates allocated working hours by resource across different dimensions and uses different colors to represent utilization levels",
       "🎉 Added: `GanttChart`'s `resourceUsageProps` now passes through the new `columnRenderMode` property, and forwards the default slot (for declarative column definitions) when `view-mode='resource-usage'`, keeping it consistent with the `TaskList` branch"
     ]
+  },
+  {
+    "version": "1.13.2",
+    "date": "2026-07-20",
+    "notes": [
+      "🔧 修复：资源视图中`日`维度下今日定位和Taskbar消失的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢zhanmqGithub@github的使用与反馈</span>",
+      "🔧 Fixed: Today's positioning and Taskbar disappearance issue in the 'Day' view of the Resource view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to zhanmqGithub@github for their use and feedback</span>"
+    ]
   }
 ]

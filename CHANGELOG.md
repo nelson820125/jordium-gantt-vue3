@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.2] - 2026-07-20
+
+### Added
+- 🔧 修复：资源视图中`日`维度下今日定位和Taskbar消失的问题
+- 🔧 Fixed: Today's positioning and Taskbar disappearance issue in the 'Day' view of the Resource view
+
 ## [1.13.0] - 2026-07-19
 
 ### Added
