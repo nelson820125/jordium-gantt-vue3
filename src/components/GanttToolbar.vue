@@ -129,7 +129,7 @@ const currentViewMode = ref<GanttViewMode>('task') // v1.9.0 视图模式状态
 const viewModeBtnRefs = new Map<GanttViewMode, HTMLElement>()
 const viewModeBtnWidths = ref<Partial<Record<GanttViewMode, number>>>({})
 
-const setViewModeBtnRef = (mode: GanttViewMode) => (el: Element | null) => {
+const setViewModeBtnRef = (mode: GanttViewMode) => (el: unknown) => {
   if (el instanceof HTMLElement) {
     viewModeBtnRefs.set(mode, el)
   } else {
