@@ -1209,8 +1209,9 @@ const handleMouseDown = (e: MouseEvent, type: 'drag' | 'resize-left' | 'resize-r
     return
   }
 
-  // 如果已完成或是父级任务或年度视图，禁用所有交互
-  if (isCompleted.value || props.isParent || isInteractionDisabled.value) {
+  // PATCH (viur): kein isCompleted-Check mehr - progress>=100 ist im Booking-Gantt die
+  // Ressourcen-Belegung (nicht Fertigstellung) und darf Drag/Resize nicht sperren.
+  if (props.isParent || isInteractionDisabled.value) {
     return
   }
 
@@ -3544,7 +3545,8 @@ const handleAnchorDragEnd = (anchorEvent: {
             }
           : {}),
         color: taskStatus.color,
-        cursor: isCompleted || isParent ? 'default' : 'move',
+        // PATCH (viur): kein isCompleted mehr - progress>=100 (Ressourcen-Belegung) sperrt Move nicht.
+        cursor: isParent ? 'default' : 'move',
         '--row-height': `${rowHeight}px` /* 传递行高给CSS变量 */,
         '--handle-width': `${actualHandleWidth}px` /* 传递手柄宽度给CSS变量 */,
         '--parent-color': taskStatus.color /* 传递父级TaskBar颜色给伪元素箭头使用 */,
@@ -3619,9 +3621,10 @@ const handleAnchorDragEnd = (anchorEvent: {
       />
 
       <!-- 左侧调整把手 -->
+      <!-- PATCH (viur): kein !isCompleted mehr - progress>=100 ist im Booking-Gantt die
+           Ressourcen-Belegung (nicht Fertigstellung) und darf Resize nicht sperren. -->
       <div
         v-if="
-          !isCompleted &&
           !isParent &&
           !isInteractionDisabled &&
           props.allowDragAndResize !== false &&
@@ -3756,9 +3759,10 @@ const handleAnchorDragEnd = (anchorEvent: {
       </div>
 
       <!-- 右侧调整把手 -->
+      <!-- PATCH (viur): kein !isCompleted mehr - progress>=100 ist im Booking-Gantt die
+           Ressourcen-Belegung (nicht Fertigstellung) und darf Resize nicht sperren. -->
       <div
         v-if="
-          !isCompleted &&
           !isParent &&
           !isInteractionDisabled &&
           props.allowDragAndResize !== false &&
@@ -4026,13 +4030,10 @@ const handleAnchorDragEnd = (anchorEvent: {
   cursor: pointer;
 }
 
-.task-bar.completed {
-  cursor: pointer !important;
-}
-
+/* PATCH (viur): kein cursor-Override mehr - progress>=100 (Ressourcen-Belegung) ist
+   verschiebbar, der Cursor muss dem Inline-Style (move) folgen, nicht pointer erzwingen. */
 .task-bar.completed:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
 }
 
 /* v1.9.1 资源视图TaskBar全高度占比设计 */
