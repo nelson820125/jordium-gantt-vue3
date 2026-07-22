@@ -625,6 +625,7 @@ interface Props {
   localeMessages?: Partial<{
     'zh-CN'?: Partial<import('../composables/useI18n').Messages['zh-CN']>
     'en-US'?: Partial<import('../composables/useI18n').Messages['en-US']>
+    'de-DE'?: Partial<import('../composables/useI18n').Messages['de-DE']>
   }>
   // 工作时间配置
   workingHours?: {
