@@ -724,14 +724,6 @@ onUnmounted(() => {
             <rect x="3" y="14" width="7" height="7" rx="1"></rect>
             <rect x="14" y="14" width="7" height="7" rx="1"></rect>
           </svg>
-          {{ t('taskView') || '任务视图' }}
-        </button>
-        <button
-          class="view-mode-item"
-          :class="{ active: currentViewMode === 'resource' }"
-          :title="t('resourceView.desc') || '资源视图'"
-          @click="handleViewModeChange('resource')"
-        >
           <svg
             v-else-if="mode === 'resource'"
             class="gantt-btn-icon"
