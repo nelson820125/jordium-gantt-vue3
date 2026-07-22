@@ -4,7 +4,7 @@ import { ref, computed } from 'vue'
 export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
 
 // 多语言配置
-const messages = {
+const messages: Record<Locale, any> = {
   'zh-CN': {
     dateNotSet: '未设置',
     // TaskList Header

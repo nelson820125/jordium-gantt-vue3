@@ -141,11 +141,26 @@ const emit = defineEmits<{
 }>()
 
 // 多语言
-const { formatYearMonth, formatMonth, getTranslation } = useI18n()
+const { formatYearMonth, formatMonth, getTranslation, locale: i18nLocale } = useI18n()
 
 // 翻译函数
 const t = (key: string): string => {
   return getTranslation(key)
+}
+
+const formatHourHeaderDate = (date: Date): string => {
+  if (i18nLocale.value === 'de-DE') {
+    return new Intl.DateTimeFormat('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(date)
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}/${month}/${day}`
 }
 
 // v1.9.9 使用useViewMode统一管理视图模式状态
@@ -3232,7 +3247,7 @@ const generateHourTimelineData = () => {
       month,
       day,
       date: new Date(currentDate),
-      dateLabel: `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`,
+      dateLabel: formatHourHeaderDate(new Date(currentDate)),
       isToday: isToday(currentDate),
       hours,
     })
