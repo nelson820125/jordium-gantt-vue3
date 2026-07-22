@@ -377,8 +377,14 @@ const confirmSaveSettings = async () => {
     }
     saveThemeToStorage()
   } else if (confirmAction.value === 'language') {
-    const newLocale = pendingValue.value as 'zh-CN' | 'en-US'
-    currentLanguage.value = newLocale === 'zh-CN' ? 'zh' : 'en'
+    const newLocale = pendingValue.value as 'zh-CN' | 'en-US' | 'de-DE'
+    if (newLocale === 'zh-CN') {
+      currentLanguage.value = 'zh'
+    } else if (newLocale === 'de-DE') {
+      currentLanguage.value = 'de'
+    } else {
+      currentLanguage.value = 'en'
+    }
     setLocale(newLocale)
     if (props.onLanguageChange && typeof props.onLanguageChange === 'function') {
       props.onLanguageChange(newLocale)
