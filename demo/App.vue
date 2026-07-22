@@ -318,13 +318,6 @@ const taskListVisible = ref(true)
 const resourceListConfig = computed<ResourceListConfig>(() => ({
   columns: [
     {
-      key: 'name',
-      label: '资源名称',
-      visible: true,
-      width: 200,
-      formatter: (resource: Resource) => resource.name || '-',
-    },
-    {
       key: 'capacity',
       label: '利用率',
       visible: true,
