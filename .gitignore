@@ -40,3 +40,13 @@ yarn.lock
 .ai/
 demo/data-custome.json
 website/
+
+# Claude backups
+*.claude-*
+
+# Backups
+*.orig
+
+# Webpack
+npm-webpack-demo*
+
