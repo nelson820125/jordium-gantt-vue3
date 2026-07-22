@@ -217,7 +217,10 @@ npm run dev
 | `tasks`                     | `Task[]`  | `[]`    | Array of task data                                                        |
 | `milestones`                | `Task[]`  | `[]`    | Array of milestone data (Note: Type is Task[], must set type='milestone') |
 | `resources` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Resource[]` | `[]` | Array of resource data (used in resource planning view) |
-| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource'` | `'task'` | View mode: 'task' for task planning view \| 'resource' for resource planning view |
+| `viewMode` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'task' \| 'resource' \| 'calendar' \| 'resource-usage'` | `'task'` | View mode: 'task' for task planning view \| 'resource' for resource planning view \| 'calendar' for calendar view ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) \| 'resource-usage' for resource-usage view ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) |
+| `availableViewModes` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Array<'task' \| 'resource' \| 'calendar' \| 'resource-usage'>` | `['task', 'resource']` | View mode buttons actually displayed on the toolbar; defaults to task/resource only (backward-compatible with pre-upgrade behavior). Add `'calendar'` / `'resource-usage'` to enable calendar or resource-usage views |
+| `calendarProps` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Partial<CalendarView props>` | `undefined` | Props forwarded to the internal `CalendarView` component when `viewMode='calendar'` (e.g. `taskCardOpacity`, `allDayLabel`, etc.). See [CalendarView Component](#calendarview-component) for the full list and [CalendarView Configuration (calendarProps)](#calendarview-configuration-calendarprops-) for forwarding details |
+| `resourceUsageProps` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `Partial<ResourceUsageView props>` | `undefined` | Props forwarded to the internal `ResourceUsageView` component when `viewMode='resource-usage'` (e.g. `overloadColor`, `columnRenderMode`, etc.). See [ResourceUsageView Component](#resourceusageview-component-) for the full list and [ResourceUsageView Configuration (resourceUsageProps)](#resourceusageview-configuration-resourceusageprops-) for forwarding details |
 | `showToolbar`               | `boolean` | `true`  | Whether to show the toolbar                                               |
 | `useDefaultDrawer`          | `boolean` | `true`  | Whether to use the built-in task edit drawer (TaskDrawer)                 |
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use the built-in milestone edit dialog (MilestoneDialog)       |
@@ -247,6 +250,8 @@ npm run dev
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow TaskDrawer to auto-close (closes on outside click or Esc key). Set to `false` to disable auto-close — the drawer can only be closed via its internal close button |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | Row height (px) shared by both Timeline and TaskList. Valid range: `30`–`60`. Values below 30 are clamped to 30, values above 60 are clamped to 60. When set below 40, TaskBar content (name + progress) automatically switches to a compact horizontal layout to fit the smaller row |
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to enable auto-scheduling for parent tasks. `true`: parent task's TaskBar time window automatically stretches to span the earliest start and latest end of its children. `false`: parent task displays its own configured date range; a red indicator line appears above its TaskBar when children overflow the configured bounds |
+| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Resource view lane stacking mode. `true`: greedy lane packing — non-overlapping tasks share the same row, maximizing space efficiency. `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters |
+| `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | Link line style configuration. Supports switching line type (bezier/straight/orthogonal), customizing colors, line width, and dotted/solid style. See [LinkConfig Configuration](#linkconfig-configuration) |
 
 #### TaskListColumn Component Props
 
@@ -259,6 +264,7 @@ The `TaskListColumn` component is used to define task list columns in declarativ
 | `width`    | `number \| string`             | -        | Column width. Number represents pixels (e.g., `200`), string supports percentage (e.g., `'20%'`)                                                 |
 | `align`    | `'left' \| 'center' \| 'right'` | `'left'` | Column content alignment                                                                                                                         |
 | `cssClass` | `string`                       | -        | Custom CSS class name for column styling                                                                                                         |
+| `fixed` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'right' \| boolean` | - | Column pinning. `'left'`: column auto-reorders to far left and sticks; `'right'`: column sticks to far right. `true` is equivalent to `'left'` |
 
 **Usage Example**:
 
@@ -275,10 +281,36 @@ The `TaskListColumn` component is used to define task list columns in declarativ
 </GanttChart>
 ```
 
+**Fixed Columns Example** (`fixed` prop):
+
+```vue
+<GanttChart 
+  :tasks="tasks" 
+  task-list-column-render-mode="declarative"
+>
+  <!-- First column (name) always sticky at left:0 -->
+  <TaskListColumn prop="name" label="Task Name" width="300" />
+
+  <!-- fixed="left": reorders to the right of name column and sticks -->
+  <TaskListColumn prop="assignee" label="Assignee" width="150" fixed="left" />
+
+  <!-- fixed (no value): equivalent to fixed="left" -->
+  <TaskListColumn prop="predecessor" label="Predecessor" width="120" fixed />
+
+  <!-- Normal columns: scroll with the table -->
+  <TaskListColumn prop="startDate" label="Start Date" width="140" />
+  <TaskListColumn prop="endDate" label="End Date" width="140" />
+
+  <!-- fixed="right": sticks to the far right -->
+  <TaskListColumn prop="progress" label="Progress" width="100" fixed="right" />
+</GanttChart>
+```
+
 > **💡 Tips**:
 > - The `TaskListColumn` component itself does not render any content, it only declares column configuration
 > - Must be used inside the `GanttChart` component with `task-list-column-render-mode="declarative"` set
-> - Column display order is determined by the declaration order of `TaskListColumn` components
+> - Column display order is determined by the declaration order of `TaskListColumn` components, but `fixed` columns are auto-reordered: `fixed='left'` to the far left, `fixed='right'` to the far right
+> - Using `fixed` without a value (e.g. `<TaskListColumn fixed />`) is equivalent to `fixed="left"`
 > - For detailed column content customization and slot usage, see [Slots](#slots) section
 
 #### TaskListContextMenu Component Props
@@ -418,6 +450,8 @@ For complete event documentation, see:
 
 - **Task-related events**: See [Task Management](#task-management) section below
 - **Milestone-related events**: See [Milestone Management](#milestone-management) section below
+- **Calendar view events** ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF): See [CalendarView Component](#calendarview-component) section below
+- **Resource-usage view events** ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF): See [ResourceUsageView Component](#resourceusageview-component-) section below
 
 **Event List Overview:**
 
@@ -442,6 +476,20 @@ For complete event documentation, see:
 | `milestone-drag-end`     | `(milestone: Task)`               | Milestone drag ended                   |
 | `task-row-moved`     | `payload: { draggedTask: Task, targetTask: Task, position: 'after' \| 'child', oldParent: Task \| null, newParent: Task \| null }` | TaskRow drag ended (optional) |
 | `taskbar-resource-change` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `payload: { task: Task, oldResourceId: string \| number, newResourceId: string \| number }` | Task moved across resources (dragging task to another resource row in resource view) |
+| `view-mode-changed` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(mode: 'task' \| 'resource' \| 'calendar' \| 'resource-usage')` | Triggered after view mode switch (via toolbar button click or `viewMode` property change) |
+| `resource-drag-end` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(task: Task)` | Triggered after vertical task drag ends in resource view |
+| `calendar-selection-complete` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `CalendarSelectionRange` | Triggered after calendar view drag selection is confirmed (forwarded from `CalendarView`'s `selection-complete`) |
+| `calendar-selection-cancel` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ reason }` | Triggered when calendar view drag selection is cancelled |
+| `calendar-resource-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after selected resource changes in calendar view |
+| `calendar-view-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after day/week/month switch in calendar view |
+| `calendar-date-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after anchor date changes in calendar view |
+| `calendar-task-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(task: Task, event: MouseEvent)` | Triggered when an existing task card is clicked in calendar view |
+| `calendar-task-move` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `CalendarTaskMovePayload` | Triggered after an existing task card is dragged and dropped in calendar view |
+| `resource-usage-scale-change` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ next, prev }` | Triggered after scale switch in resource-usage view |
+| `resource-usage-cell-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageCellPayload` | Triggered when a workload cell is clicked in resource-usage view |
+| `resource-usage-cell-hover` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageCellPayload \| null` | Triggered when mouse enters/leaves a workload cell in resource-usage view |
+| `resource-usage-overload-detected` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ resourceId, periods }` | Triggered when an overload period is detected for a resource in resource-usage view |
+| `resource-usage-task-detail-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageTaskDetailClickPayload` | Triggered when a task item inside the workload cell tooltip detail is clicked; automatically switches to `'task'` view and scrolls to that task |
 
 #### Example 1: Simplest Gantt Chart
 
@@ -696,6 +744,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `tasks`               | `Task[]`         | `[]`        | Array of task data                                                                            |
 | `useDefaultDrawer`    | `boolean`        | `true`      | Whether to use built-in task edit drawer (TaskDrawer)                                         |
 | `taskBarConfig`       | `TaskBarConfig`  | `{}`        | Task bar style configuration, see [TaskBarConfig Configuration](#taskbarconfig-configuration) |
+| `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | Link line style configuration, see [LinkConfig Configuration](#linkconfig-configuration) |
 | `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
 | `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
 | `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  |
@@ -1748,6 +1797,203 @@ const handleDelete = () => {
 
 ---
 
+### CalendarView Component ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`CalendarView` powers GanttChart's calendar view (`view-mode="calendar"`) and can also be mounted standalone via `import`, for viewing/creating day/week/month-level task schedules per resource.
+
+#### Data Model
+
+`CalendarView` has **no separate calendar-only data structure** — it reuses the same `Task[]` / `Resource[]` model as the task/resource views (see [Task Management](#task-management) and [Resource Management](#resource-management-)). `CalendarTypes.ts` only adds calendar-specific helper types: `WorkingHoursConfig`, `CalendarScale` (`'day' | 'week' | 'month'`), `CalendarSelectionDraft` / `CalendarSelectionRange`, and `CalendarTaskMovePayload` (![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) the old/new time range after dragging a task, containing `task` (the fully updated Task object), `previousStartDate` / `previousEndDate` / `newStartDate` / `newEndDate` (Date), and `resourceId`).
+
+This means the same `tasks` / `resources` datasets passed to GanttChart via `:tasks` / `:resources` are reused directly by the calendar view; tasks created or edited in the calendar view are synced back into that same dataset — no adapter/mapping code is required.
+
+#### CalendarView Props
+
+| Prop                    | Type                                                     | Default                                    | Description                                                                 |
+| ----------------------- | --------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------- |
+| `tasks`                 | `Task[]`                                                   | -                                             | Task dataset (shared with GanttChart)                                           |
+| `resources`             | `Resource[]`                                               | `[]`                                          | Resource dataset (shared with GanttChart)                                       |
+| `scale` / `defaultScale`| `'day' \| 'week' \| 'month'`                                | `'day'`                                       | Current / default view scale                                                    |
+| `currentDate`           | `Date \| string`                                            | today                                         | Anchor date                                                                      |
+| `selectedResourceId`    | `string \| number \| null`                                  | -                                             | Selected resource ID; no tasks are shown when unset                             |
+| `workingHours`          | `WorkingHoursConfig`                                        | 8-11am / 1-5pm                                | Working hours config, used for highlighting/snapping                            |
+| `selectionMinuteStep`   | `number`                                                    | `15`                                          | Minute-snap granularity for drag selection                                       |
+| `disabled`              | `boolean`                                                   | `false`                                       | Disable drag-to-create                                                          |
+| `allDayLabel`           | `string`                                                    | `'全天'`                                      | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Label text for the all-day task row in Day/Week views |
+| `taskCardOpacity`       | `number`                                                    | `0.18`                                        | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Task card background opacity (0-1) in Day/Week views; base color is `task.barColor` or the theme accent |
+| `taskAccentWidth`       | `number`                                                    | `5`                                           | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Left accent bar width (px) of task cards in Day/Week views |
+| `onBeforeSelect`        | `(range) => boolean \| Promise<boolean>`                     | -                                             | Hook before a drag selection is confirmed; return `false` to cancel             |
+| `onBeforeResourceChange`| `(nextId, prevId) => boolean \| Promise<boolean>`             | -                                             | Hook before switching the selected resource                                     |
+| `onBeforeViewChange`    | `(next, prev) => boolean \| Promise<boolean>`                 | -                                             | Hook before switching day/week/month scale                                      |
+| `onTaskClick`           | `(task, event) => void`                                     | -                                             | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired when an existing task card is clicked |
+| `onTaskMove`            | `(payload: CalendarTaskMovePayload) => void`                 | -                                             | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired after an existing task card is dragged and dropped |
+
+#### CalendarView Slots
+
+| Slot        | Params            | Description                                                                          |
+| ----------- | ----------------- | ------------------------------------------------------------------------------------- |
+| `task-card` | `{ task, style }` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Custom render slot for timed task cards in Day/Week views. Default content: a title line showing `"task.name - HH:mm ~ HH:mm"` (or just `task.name` for all-day tasks), plus a description line below when `task.description` is set; `style` already includes position/color styles and can be bound directly to the custom card root |
+
+#### CalendarView Events
+
+| Event                 | Payload                    | Description                    |
+| ---------------------- | --------------------------- | -------------------------------- |
+| `selection-complete`   | `CalendarSelectionRange`    | Fired after a drag selection is confirmed |
+| `selection-cancel`     | `{ reason }`                | Fired after a drag selection is cancelled |
+| `resource-change`      | `{ next, prev }`            | Fired after the selected resource changes |
+| `view-change`          | `{ next, prev }`            | Fired after day/week/month scale changes  |
+| `date-change`          | `{ next, prev }`            | Fired after the anchor date changes       |
+| `task-click`           | `(task: Task, event: MouseEvent)` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired when an existing task card is clicked |
+| `task-move`            | `CalendarTaskMovePayload`   | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Fired after an existing task card is dragged and dropped: Day view supports moving within the same day, Week view supports both time and cross-day moves, Month view supports dropping onto any day cell |
+
+> When used inside GanttChart, these two events are forwarded as `calendar-task-click` / `calendar-task-move` (consistent with the other `calendar-*` prefixed events), and the built-in TaskDrawer is opened automatically for editing when `useDefaultDrawer=true`.
+
+> 💡 **Expose Methods** (`goToToday()`, `goToDate()`, `setScale()`, `clearSelection()`) are also documented in [Configuration & Customization → Expose Methods → CalendarView Expose Methods](#calendarview-expose-methods-); note that GanttChart **does not** forward these methods — they are only callable via `CalendarView`'s own template ref when [using it standalone](#calendarview-component).
+>
+> Within GanttChart, all CalendarView props above can be forwarded via the `calendarProps` prop (e.g. `:calendar-props="{ taskCardOpacity: 0.25, taskAccentWidth: 4 }"`). See [Configuration & Customization → CalendarView Configuration (calendarProps)](#calendarview-configuration-calendarprops-).
+
+#### Expose Methods
+
+| Method              | Description                    |
+| -------------------- | -------------------------------- |
+| `goToToday()`         | Jump to today                     |
+| `goToDate(date)`      | Jump to a specific date            |
+| `setScale(scale)`     | Switch day/week/month scale         |
+| `clearSelection()`    | Clear the current drag selection highlight |
+
+#### Example: Custom `#task-card` Slot
+
+```vue
+<template>
+  <CalendarView :tasks="tasks" :resources="resources" :selected-resource-id="selectedResourceId">
+    <template #task-card="{ task, style }">
+      <div :style="style" class="my-task-card">
+        <strong>{{ task.name }}</strong>
+        <span class="my-task-card-time">{{ formatTime(task.startDate) }} ~ {{ formatTime(task.endDate) }}</span>
+        <p v-if="task.description" class="my-task-card-desc">{{ task.description }}</p>
+      </div>
+    </template>
+  </CalendarView>
+</template>
+```
+
+The scoped `style` object already contains the card's position/color styles computed by CalendarView (top/height/left/width/background/border-left, etc.) — bind it directly to your custom card's root element so it stays correctly positioned on the day/week grid; you're then free to lay out the title, time range, description, or any other custom content inside.
+
+---
+
+### ResourceUsageView Component ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`ResourceUsageView` powers GanttChart's resource-usage view (`view-mode="resource-usage"`) and can also be mounted standalone via `import`, displaying an MS-Project-style dual-panel layout (left resource list + right work-hour grid) to inspect each resource's workload percentage and overload status across day/week/month periods.
+
+Since v1.13.0, the left resource-list panel **directly embeds the same `TaskList` component instance** used by the resource-planning view (rather than a look-alike reimplementation), gaining declarative columns (`TaskListColumn`), column/header slots, sticky header, and first-column pinning — identical to the resource-planning view. Vertical scroll position and row-hover highlight are synced with the right work-hour grid panel automatically, bridged through the same global event protocol used by `TaskList`/`Timeline`, requiring no extra configuration. Both axes use virtual scrolling (rendering only the visible viewport plus a buffer), so the view scales to many resources and long time spans (e.g. a full year at "day" scale) without impacting scroll performance.
+
+#### Data Model
+
+`ResourceUsageView` requires **no separate data structure or conversion step** — it reuses the same `Resource[]` dataset already used by GanttChart (identical to the `resources` passed for the resource-planning view, `view-mode="resource"`):
+
+- `resource.id` / `resource.name`: shown in the left resource list
+- `resource.tasks: Task[]`: the tasks assigned to this resource, used for workload aggregation; each task needs `startDate` / `endDate` (required), `estimatedHours` (optional, defaults to 8h/workday), `resources: [{ id, capacity }]` (optional, defaults to 100%)
+
+`ResourceUsageTypes.ts` adds a few helper types specific to this view: `ResourceUsageScale` (`'day' | 'week' | 'month'`), `ResourceUsageCellData` (a single resource's aggregated workload for one time bucket, containing `totalHours`/`totalPercent`/`isOverloaded`/`taskBreakdown`), and `ResourceUsageCellPayload` (the payload for `cell-click`/`cell-hover`).
+
+#### ResourceUsageView Props
+
+| Prop                    | Type                                                          | Default     | Description                                                                                    |
+| ----------------------- | -------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `resources`             | `Resource[]`                                                    | -           | Resource dataset (shared with GanttChart)                                                        |
+| `scale` / `defaultScale`| `'day' \| 'week' \| 'month'`                                      | `'week'`    | Current / default workload scale                                                                 |
+| `dateRange`             | `{ start: Date; end: Date }`                                    | current month | Time range for workload aggregation                                                           |
+| `resourceListConfig`    | `ResourceListConfig`                                            | `undefined` | Left resource-list column config; falls back to the built-in `DEFAULT_RESOURCE_LIST_COLUMNS`      |
+| `columnRenderMode`      | `'default' \| 'declarative'`                                     | `'default'` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) `'default'` uses `resourceListConfig.columns`; `'declarative'` uses `TaskListColumn` declared in the default slot |
+| `overloadThreshold`     | `number`                                                        | `100`       | Overload threshold (percentage)                                                                   |
+| `underloadThreshold`    | `number`                                                        | `60`        | Underload threshold (percentage)                                                                  |
+| `overloadColor`         | `string`                                                        | theme default | Overloaded cell background color                                                               |
+| `normalColor`           | `string`                                                        | theme default | Normal cell background color                                                                    |
+| `underloadColor`        | `string`                                                        | theme default | Underloaded cell background color                                                               |
+| `weekendColor`          | `string`                                                        | theme default | Weekend column background color (only effective at `scale === 'day'`)                            |
+| `rowHeight`             | `number`                                                        | `51`        | Row height (px), shared by both panels                                                            |
+| `columnWidth`           | `number`                                                        | scale-based | Cell column width (px); defaults by `scale` when unset (day: 56 / week: 80 / month: 100)          |
+| `disabled`              | `boolean`                                                       | `false`     | Disable the component (dimmed and non-interactive)                                                |
+| `onBeforeScaleChange`   | `(next, prev) => boolean \| Promise<boolean>`                    | -           | Hook before the scale changes; return `false` to cancel                                            |
+| `onCellClick`           | `(payload: ResourceUsageCellPayload) => void`                    | -           | Fired when a work-hour cell is clicked                                                            |
+| `onTaskDetailClick` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(payload: ResourceUsageTaskDetailClickPayload) => void` | -           | Fired when a task item inside the workload cell tooltip detail is clicked; when used via GanttChart, automatically switches to `'task'` view and scrolls to that task |
+
+#### ResourceUsageView Slots
+
+| Slot      | Description                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default` | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Forwarded to the embedded `TaskList`'s default slot; when `columnRenderMode="declarative"`, place `TaskListColumn` declarations here, identical to the resource-planning view |
+
+#### ResourceUsageView Events
+
+| Event                | Payload                                                                    | Description                       |
+| --------------------- | ----------------------------------------------------------------------------- | ------------------------------------ |
+| `scale-change`       | `{ next: ResourceUsageScale; prev: ResourceUsageScale }`                       | Fired after the workload scale changes |
+| `cell-click`         | `ResourceUsageCellPayload`                                                     | Fired when a work-hour cell is clicked |
+| `cell-hover`         | `ResourceUsageCellPayload \| null`                                              | Fired on mouse enter/leave of a work-hour cell |
+| `overload-detected`  | `{ resourceId: string \| number; periods: ResourceUsageCellData[] }`           | Fired when a resource has overloaded periods (re-evaluated automatically as data changes) |
+| `task-detail-click` ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceUsageTaskDetailClickPayload` | Fired when a task item inside the workload cell tooltip detail is clicked |
+
+> 💡 **Expose Methods** (`setScale()`, `refreshAggregation()`) are also documented in [Configuration & Customization → Expose Methods → ResourceUsageView Expose Methods](#resourceusageview-expose-methods-); GanttChart **does not** forward these methods — they are only callable when [using `ResourceUsageView` standalone](#resourceusageview-component-). Scale switching is driven by the controlled `scale` prop from an external control (e.g. GanttChart toolbar's Day/Week/Month buttons); when used standalone, set an initial value via `defaultScale`, or call `setScale()` programmatically.
+>
+> Within GanttChart, set `view-mode="resource-usage"` to switch to the resource-usage view; all props in the table above can be forwarded via the `resourceUsageProps` prop (e.g. `:resource-usage-props="{ columnRenderMode: 'declarative', overloadColor: '#fde2e2' }"`). See [Configuration & Customization → ResourceUsageView Configuration (resourceUsageProps)](#resourceusageview-configuration-resourceusageprops-). The five events above are forwarded as `resource-usage-scale-change` / `resource-usage-cell-click` / `resource-usage-cell-hover` / `resource-usage-overload-detected` / `resource-usage-task-detail-click`. GanttChart's default slot (declarative column definitions) is also forwarded to the embedded `TaskList` under `view-mode="resource-usage"`, consistent with the `TaskList` branch.
+
+#### Example: Resource-Usage View via GanttChart
+
+```vue
+<template>
+  <div style="height: 600px;">
+    <GanttChart
+      :resources="resources"
+      view-mode="resource-usage"
+      :resource-usage-props="{ overloadThreshold: 100, underloadThreshold: 60 }"
+      @resource-usage-cell-click="handleCellClick"
+      @resource-usage-overload-detected="handleOverloadDetected"
+    >
+      <!-- With columnRenderMode="declarative", declarative columns work exactly like the resource-planning view -->
+      <TaskListColumn key="type" label="Type" />
+      <TaskListColumn key="department" label="Department" />
+      <TaskListColumn key="capacity" label="Utilization" />
+    </GanttChart>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
+import type { Resource } from 'jordium-gantt-vue3'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+
+const resources: Resource[] = [
+  {
+    id: 'dev-001',
+    name: 'Zhang San',
+    type: 'developer',
+    department: 'R&D',
+    tasks: [
+      {
+        id: 1,
+        name: 'Frontend Development',
+        startDate: '2026-02-01',
+        endDate: '2026-02-10',
+        progress: 50,
+        resources: [{ id: 'dev-001', capacity: 60 }],
+      },
+    ],
+  },
+]
+
+const handleCellClick = (payload: any) => {
+  console.log('Cell clicked:', payload)
+}
+
+const handleOverloadDetected = (payload: any) => {
+  console.log('Overload detected:', payload)
+}
+</script>
+```
+
+---
+
 ## ⚙️ Configuration & Customization
 
 This section details the configuration options and extension capabilities of the GanttChart component, including Component Configuration, Theme & Internationalization, and Custom Extensions.
@@ -1979,6 +2225,7 @@ Customize task list display columns, width limits, etc. Task list is located on 
 | `cssClass` | `string`  | -        | Custom CSS class name                                                                           |
 | `width`    | `number`  | -        | Column width (unit: pixels)                                                                     |
 | `visible`  | `boolean` | -        | Whether to show this column, default `true`. This setting is invalid when `showAllColumns=true` |
+| `fixed` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'right' \| boolean` | - | Column pinning. `'left'`: column auto-reorders to far left and sticks (name column always at `left:0`, multiple left-fixed columns offset cumulatively). `'right'`: column sticks to far right. `true` is equivalent to `'left'` |
 
 **Example1：Basic Configuration (Adjust Width)**
 
@@ -2175,6 +2422,7 @@ Controls task bar display content and interaction behavior。
 | `resizeHandleWidth` | `number`  | `5`     | Resize handle width (pixels), max 15px                    |
 | `enableDragDelay`   | `boolean` | `false` | Whether to enable drag delay (prevent accidental trigger) |
 | `dragDelayTime`     | `number`  | `150`   | Drag delay time (milliseconds)                            |
+| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above'` | `'inside'` | Task title render position. `'inside'`: title inside the bar (white text, default). `'above'`: title floats above the bar; only progress percentage is shown inside — ideal for narrow bars (1–3 day tasks) or long task names |
 
 > **💡 Edit Permission Control**：
 >
@@ -2275,6 +2523,65 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
   enableDragDelay: isTouchDevice.value,
   dragDelayTime: isTouchDevice.value ? 300 : 150,
 }))
+</script>
+```
+
+#### LinkConfig (Link Line Style Configuration) ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Controls the style and interaction behavior of dependency links (GanttLinks) in the Gantt chart.
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | `'bezier' \| 'straight' \| 'orthogonal'` | `'bezier'` | Link path type. `'bezier'`: Bézier curve (default); `'straight'`: straight line; `'orthogonal'`: L/Z-shaped orthogonal polyline |
+| `color` | `string` | `'#c0c4cc'` | Normal link color |
+| `highlightColor` | `string` | `'#409eff'` | Highlight link color (when hovering over dependent task) |
+| `hoverColor` | `string` | `'#67c23a'` | Hover link color |
+| `width` | `number` | `2` | Normal link line width |
+| `highlightWidth` | `number` | `4` | Highlight link line width |
+| `style` | `'dotted' \| 'solid'` | `'dotted'` | Link style. `'dotted'`: dashed line; `'solid'`: solid line |
+
+**Example 1: Static Configuration**
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :link-config="linkConfig" />
+</template>
+
+<script setup lang="ts">
+import type { LinkConfig } from 'jordium-gantt-vue3'
+
+const linkConfig: LinkConfig = {
+  type: 'orthogonal',
+  color: '#ff6b6b',
+  style: 'solid',
+  width: 3,
+}
+</script>
+```
+
+**Example 2: Runtime Dynamic Switching**
+
+```vue
+<template>
+  <GanttChart ref="ganttRef" :tasks="tasks" />
+  <button @click="switchToStraight">Switch to Straight</button>
+  <button @click="switchToOrthogonal">Switch to Orthogonal</button>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const ganttRef = ref()
+
+function switchToStraight() {
+  ganttRef.value?.setLinkConfig({ type: 'straight', color: '#409eff' })
+}
+
+function switchToOrthogonal() {
+  ganttRef.value?.setLinkConfig({ type: 'orthogonal', style: 'solid' })
+}
 </script>
 ```
 
@@ -2449,6 +2756,42 @@ The component has built-in intelligent timeline range calculation logic, ensurin
 > - Avoids issues with timeline being too narrow or having excessive whitespace
 > - Suitable for displaying at different resolutions
 
+#### CalendarView Configuration (calendarProps) ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Setting `view-mode="calendar"` on `GanttChart` renders the internal `CalendarView` component; `calendarProps` is a dedicated forwarding channel (to avoid bloating GanttChart's top-level props), where fields are bound to `CalendarView` via `v-bind` as-is.
+
+For the complete property/slot/event list, see the [CalendarView Component](#calendarview-component) section's "CalendarView Props" table. Expose methods are documented in the [Expose Methods](#expose-methods) section below.
+
+```vue
+<GanttChart
+  view-mode="calendar"
+  :calendar-props="{
+    allDayLabel: 'All Day',       // All-day task row label text
+    taskCardOpacity: 0.25,        // Task card background opacity
+    taskAccentWidth: 4,           // Task card left accent bar width (px)
+    selectionMinuteStep: 30,      // Drag selection snap-to-grid (minutes)
+  }"
+/>
+```
+
+#### ResourceUsageView Configuration (resourceUsageProps) ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Setting `view-mode="resource-usage"` on `GanttChart` renders the internal `ResourceUsageView` component; `resourceUsageProps` is similarly forwarded to `ResourceUsageView`.
+
+For the complete property/slot/event list, see the [ResourceUsageView Component](#resourceusageview-component-) section's "ResourceUsageView Props" table. Expose methods are documented in the [Expose Methods](#expose-methods) section below.
+
+```vue
+<GanttChart
+  view-mode="resource-usage"
+  :resource-usage-props="{
+    columnRenderMode: 'declarative', // Use declarative TaskListColumn columns in resource list sidebar
+    overloadThreshold: 100,          // Overload threshold (percentage)
+    underloadThreshold: 60,          // Underload threshold (percentage)
+    overloadColor: '#fde2e2',        // Overload cell background color
+  }"
+/>
+```
+
 ### Expose Methods
 
 The GanttChart component exposes a series of methods through `defineExpose`, allowing parent components to directly call these methods via template references (`ref`) to control component behavior. This imperative control approach is suitable for scenarios requiring precise timing control.
@@ -2479,6 +2822,8 @@ The GanttChart component exposes a series of methods through `defineExpose`, all
 | `getTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `boolean` | Get the current visibility state of TaskList |
 | `setTaskListVisible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `visible: boolean` | `void` | Imperatively set TaskList visibility (only effective when `enableTaskListCollapsible=true`) |
 | `toggleTaskList` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | - | `void` | Toggle TaskList expand/collapse state with animation |
+| `setLinkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `config: Partial<LinkConfig>` | `void` | Dynamically update link line style configuration (takes effect immediately at runtime) |
+| `getLinkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | - | `Required<LinkConfig>` | Get current complete link configuration (merged with defaults) |
 
 #### Usage Example
 
@@ -2613,6 +2958,26 @@ const handleScrollToDate = () => {
 **Complete examples can be found in:**
 - npm-demo project: `npm-demo/src/components/GanttTest.vue`
 - npm-webpack-demo project: `npm-webpack-demo/src/App.vue`
+
+#### CalendarView Expose Methods ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+| Method              | Description                          |
+| ------------------- | ------------------------------------ |
+| `goToToday()`       | Navigate to today                    |
+| `goToDate(date)`    | Navigate to the specified date       |
+| `setScale(scale)`   | Switch day/week/month scale           |
+| `clearSelection()`  | Clear current drag selection highlight |
+
+> ⚠️ **Note**: `GanttChart` holds an internal `CalendarView` ref, but **does not forward** the above methods through `defineExpose`. They can only be called via `CalendarView`'s own template ref when [using it standalone](#calendarview-component); they are not accessible through `GanttChart` integration.
+
+#### ResourceUsageView Expose Methods ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+| Method                   | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `setScale(scale)`         | Programmatically switch day/week/month scale                                 |
+| `refreshAggregation()`    | Force-refresh work-hour aggregation (normally unnecessary; data changes trigger reactive updates automatically) |
+
+> ⚠️ **Note**: Like `CalendarView`, `resourceUsageProps` only forwards props; `ResourceUsageView`'s expose methods **are not forwarded** through `GanttChart`'s `ref`. They can only be called when [using `ResourceUsageView` standalone](#resourceusageview-component-). Scale switching within `GanttChart` is already driven by the toolbar Day/Week/Month buttons, so manual `setScale()` calls are generally unnecessary.
 
 ---
 

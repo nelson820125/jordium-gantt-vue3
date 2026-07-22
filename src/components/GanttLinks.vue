@@ -3,6 +3,8 @@ import { ref, watch, nextTick, onMounted, onUnmounted, computed, inject, type Re
 import type { Task } from '../models/classes/Task'
 import { getPredecessorIds } from '../utils/predecessorUtils'
 import { CanvasContextManager } from '../utils/canvasUtils'
+import type { LinkConfig } from '../models/configs/TaskBarConfig'
+import { DEFAULT_LINK_CONFIG } from '../models/configs/TaskBarConfig'
 
 // 定义 TaskBar 位置信息类型
 interface TaskBarPosition {
@@ -37,6 +39,8 @@ interface Props {
   // 主题模式通过inject获取，不再需要props
   // 滚动优化：垂直滚动时跳过 canvas 重绘，等滚动停止后一次性重绘
   isScrolling?: boolean
+  /** R1: 连线样式配置 */
+  linkConfig?: LinkConfig
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,6 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
   offsetLeft: 0,
   offsetTop: 0,
   isScrolling: false,
+  linkConfig: undefined,
 })
 
 // 通过inject获取主题
@@ -146,6 +151,8 @@ const drawLinks = () => {
     c2x: number
     c2y: number
     arrowAngle: number
+    /** R1: 正交折线折点列表（bezier/straight 不使用） */
+    polyPoints?: Array<{ x: number; y: number }>
   }
 
   // 按样式分组线条数据（减少状态切换）
@@ -283,7 +290,51 @@ const drawLinks = () => {
 
       // 预计算箭头角度（使用控制点到终点的角度，更准确）
       const arrowAngle = Math.atan2(y2 - c2y, x2 - c2x)
-      const lineData: LineData = { x1, y1, x2, y2, c1x, c1y, c2x, c2y, arrowAngle }
+
+      // R1: 正交折线折点计算（5 段缝隙路由，统一覆盖 dx≥0 与 dx<0）
+      let polyPoints: Array<{ x: number; y: number }> | undefined
+      if (props.linkConfig?.type === 'orthogonal') {
+        if (Math.abs(dy) < 1) {
+          // 同行同高直连
+          polyPoints = [
+            { x: x1, y: y1 },
+            { x: x2, y: y2 },
+          ]
+        } else {
+          // 计算两 bar 之间的垂直缝隙中点
+          const fromBottom = fromBar.top + fromBar.height
+          const toTopEdge = toBar.top
+          const toBottomEdge = toBar.top + toBar.height
+          const fromTopEdge = fromBar.top
+          let globalGapY: number
+          if (toTopEdge >= fromBottom) {
+            globalGapY = fromBottom + (toTopEdge - fromBottom) / 2
+          } else if (fromTopEdge >= toBottomEdge) {
+            globalGapY = toBottomEdge + (fromTopEdge - toBottomEdge) / 2
+          } else {
+            globalGapY = (fromTopEdge + toTopEdge) / 2
+          }
+          const localGapY = globalGapY - props.offsetTop
+
+          // 5 段路由：出→折→缝隙横线→折→入
+          // x1=barA右边界，x2=barB左边界；step 基于 |dx|，始终向右出、向左入
+          const absDx = Math.abs(dx)
+          const step = dx > 20 ? absDx / 2 : 15
+          const outX = x1 + step
+          const inX = x2 - step
+
+          polyPoints = [
+            { x: x1, y: y1 },
+            { x: outX, y: y1 },
+            { x: outX, y: localGapY },
+            { x: inX, y: localGapY },
+            { x: inX, y: y2 },
+            { x: x2, y: y2 },
+          ]
+        }
+      }
+
+      const lineData: LineData = { x1, y1, x2, y2, c1x, c1y, c2x, c2y, arrowAngle, polyPoints }
 
       // 根据状态分组
       if (isLineHighlighted) {
@@ -298,94 +349,190 @@ const drawLinks = () => {
     }
   }
 
-  // 批量绘制：设置虚线样式（所有线条共用）
-  ctx.setLineDash([6, 4])
+  // R1: 合并连线配置
+  const cfg = { ...DEFAULT_LINK_CONFIG, ...props.linkConfig }
+
+  // 批量绘制：设置虚线/实线样式
+  if (cfg.style === 'dotted') {
+    ctx.setLineDash([6, 4])
+  } else {
+    ctx.setLineDash([])
+  }
+
+  // R1: 根据 type 选择路径绘制函数
+  const drawPath = (ctx: CanvasRenderingContext2D, line: LineData) => {
+    switch (cfg.type) {
+      case 'straight':
+        drawStraightPath(ctx, line)
+        break
+      case 'orthogonal':
+        drawOrthogonalPath(ctx, line)
+        break
+      case 'bezier':
+      default:
+        drawBezierPath(ctx, line)
+        break
+    }
+  }
+
+  // 根据 type 决定箭头角度来源
+  const getArrowAngle = (line: LineData): number => {
+    if (cfg.type === 'straight') {
+      return Math.atan2(line.y2 - line.y1, line.x2 - line.x1)
+    }
+    if (cfg.type === 'orthogonal') {
+      // 从最后两个折点计算实际入射方向，避免 dx 较小时 midX>x2 导致箭头反向
+      const pts = line.polyPoints
+      if (pts && pts.length >= 2) {
+        const last = pts[pts.length - 1]
+        const prev = pts[pts.length - 2]
+        return Math.atan2(last.y - prev.y, last.x - prev.x)
+      }
+      return 0
+    }
+    return line.arrowAngle // bezier 使用控制点推导的角度
+  }
 
   // 批量绘制高亮线条
   if (highlightedLines.length > 0) {
-    ctx.strokeStyle = '#409eff'
-    ctx.fillStyle = '#409eff'
-    ctx.lineWidth = 4
+    ctx.strokeStyle = cfg.highlightColor
+    ctx.fillStyle = cfg.highlightColor
+    ctx.lineWidth = cfg.highlightWidth
     ctx.globalAlpha = 1
 
     ctx.beginPath()
     for (const line of highlightedLines) {
-      ctx.moveTo(line.x1, line.y1)
-      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+      drawPath(ctx, line)
     }
     ctx.stroke()
 
-    // 批量绘制箭头
     for (const line of highlightedLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
     }
   }
 
   // 批量绘制悬停线条
   if (hoveredLines.length > 0) {
-    ctx.strokeStyle = '#67c23a'
-    ctx.fillStyle = '#67c23a'
+    ctx.strokeStyle = cfg.hoverColor
+    ctx.fillStyle = cfg.hoverColor
     ctx.lineWidth = 3
     ctx.globalAlpha = 1
 
     ctx.beginPath()
     for (const line of hoveredLines) {
-      ctx.moveTo(line.x1, line.y1)
-      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+      drawPath(ctx, line)
     }
     ctx.stroke()
 
-    // 批量绘制箭头
     for (const line of hoveredLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
     }
   }
 
   // 批量绘制普通线条
   if (normalLines.length > 0) {
-    ctx.strokeStyle = '#c0c4cc'
-    ctx.fillStyle = '#c0c4cc'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = cfg.color
+    ctx.fillStyle = cfg.color
+    ctx.lineWidth = cfg.width
     ctx.globalAlpha = 1
 
     ctx.beginPath()
     for (const line of normalLines) {
-      ctx.moveTo(line.x1, line.y1)
-      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+      drawPath(ctx, line)
     }
     ctx.stroke()
 
-    // 批量绘制箭头
     for (const line of normalLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
     }
   }
 
   // 批量绘制半透明线条（高亮模式下的普通线条）
   if (fadedLines.length > 0) {
-    ctx.strokeStyle = '#c0c4cc'
-    ctx.fillStyle = '#c0c4cc'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = cfg.color
+    ctx.fillStyle = cfg.color
+    ctx.lineWidth = cfg.width
     ctx.globalAlpha = 0.2
 
     ctx.beginPath()
     for (const line of fadedLines) {
-      ctx.moveTo(line.x1, line.y1)
-      ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+      drawPath(ctx, line)
     }
     ctx.stroke()
 
-    // 批量绘制箭头
     for (const line of fadedLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, line.arrowAngle)
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
     }
 
-    // 恢复透明度
     ctx.globalAlpha = 1
   }
 
   // uni-app 环境需要调用 draw() 方法将绘制内容渲染到画布
   canvasManager.draw()
+}
+
+// ==================== R1: 路径绘制函数 ====================
+
+/**
+ * 贝塞尔曲线路径（现有逻辑迁移，保持不变）
+ */
+const drawBezierPath = (
+  ctx: CanvasRenderingContext2D,
+  line: {
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+    c1x: number
+    c1y: number
+    c2x: number
+    c2y: number
+  }
+) => {
+  ctx.moveTo(line.x1, line.y1)
+  ctx.bezierCurveTo(line.c1x, line.c1y, line.c2x, line.c2y, line.x2, line.y2)
+}
+
+/**
+ * 直线路径：起点 → 终点直连
+ */
+const drawStraightPath = (
+  ctx: CanvasRenderingContext2D,
+  line: {
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+  }
+) => {
+  ctx.moveTo(line.x1, line.y1)
+  ctx.lineTo(line.x2, line.y2)
+}
+
+/**
+ * 正交折线路径：沿折点列表依次连线
+ */
+const drawOrthogonalPath = (
+  ctx: CanvasRenderingContext2D,
+  line: {
+    polyPoints?: Array<{ x: number; y: number }>
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+  }
+) => {
+  const pts = line.polyPoints
+  if (!pts || pts.length < 2) {
+    // 兜底：降级为直线
+    ctx.moveTo(line.x1, line.y1)
+    ctx.lineTo(line.x2, line.y2)
+    return
+  }
+  ctx.moveTo(pts[0].x, pts[0].y)
+  for (let i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i].x, pts[i].y)
+  }
 }
 
 /**
@@ -474,12 +621,13 @@ watch(
     () => props.offsetLeft, // 监听虚拟渲染的偏移量变化
     () => props.offsetTop,
     injectedTheme, // 监听inject的主题变化（computed会自动响应）
+    () => props.linkConfig, // R1: 监听连线样式配置变化
   ],
   () => {
     // 使用 RAF 调度重绘，合并连续的多次变化为单次绘制
     scheduleRedraw()
   },
-  { deep: false } // shallowRef 不需要 deep
+  { deep: false }
 )
 
 // 组件挂载后初始化绘制
@@ -518,7 +666,10 @@ defineExpose({
       top: `${offsetTop}px`,
       width: `${width}px`,
       height: `${height}px`,
-      zIndex: highlightedTaskId !== null ? 'var(--gantt-z-canvas-hl)' : 'var(--gantt-z-canvas)',
+      zIndex:
+        highlightedTaskId !== null
+          ? 'var(--gantt-z-canvas-hl) !important'
+          : 'var(--gantt-z-canvas) !important',
       pointerEvents: 'none',
     }"
   />

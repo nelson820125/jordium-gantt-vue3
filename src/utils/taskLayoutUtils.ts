@@ -52,12 +52,16 @@ export function hasTimeOverlap(task1: Task, task2: Task, timeScale?: string): bo
  * @param tasks 任务列表
  * @param resourceId 资源ID（用于获取占比）
  * @param baseRowHeight 基础行高（默认51）
+ * @param enableLaneStacking 是否启用车道堆叠（默认 true）
+ *   true  → 贪心打包：时间不冲突的任务共享同一行（节省空间）
+ *   false → 独立行：每个任务独占一行，按 startDate 排序后依次分配行号
  * @returns { taskRowMap, rowHeights, totalHeight }
  */
 export function assignTaskRows(
   tasks: Task[],
   baseRowHeight = 51,
-  timeScale?: string
+  timeScale?: string,
+  enableLaneStacking = true
 ): {
   taskRowMap: Map<string | number, number>
   rowHeights: number[]
@@ -76,6 +80,21 @@ export function assignTaskRows(
     const timeB = b.startDate ? new Date(b.startDate).getTime() : 0
     return timeA - timeB
   })
+
+  // v1.12.0 独立行模式：禁用堆叠时，每个任务按排序顺序独占一行
+  if (!enableLaneStacking) {
+    const baseTaskBarHeight = baseRowHeight - 10
+    sortedTasks.forEach((task, index) => {
+      taskRowMap.set(task.id, index)
+      const rowHeight =
+        index === 0
+          ? 5 + baseTaskBarHeight + 5 // 第一行：5 + 41 + 5 = 51px
+          : baseTaskBarHeight + 5 // 后续行：41 + 5 = 46px
+      rowHeights.push(rowHeight)
+    })
+    const totalHeight = rowHeights.reduce((sum, h) => sum + h, 0)
+    return { taskRowMap, rowHeights, totalHeight }
+  }
 
   // 记录每一行的所有任务
   const rowTasks: Task[][] = []

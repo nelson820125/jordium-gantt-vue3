@@ -43,9 +43,9 @@
   /* GanttChart 容器级（在 .gantt-root 层叠上下文内） */
   --gantt-z-toggle: 1000; /* task-list-toggle，防被 position:sticky header 遮挡 */
   --gantt-z-sticky: 30; /* focus-close-button、today-line 等浮层装饰 */
-  --gantt-z-canvas-hl: 20; /* GanttLinks canvas 高亮状态（需 > --gantt-z-row:11） */
-  --gantt-z-canvas: 12; /* GanttLinks canvas 普通状态 */
-  --gantt-z-row: 11; /* task-row / resource-row（建立局部层叠上下文） */
+  --gantt-z-canvas-hl: 33; /* GanttLinks canvas 高亮状态（在 task-bar(10~30) 之上、avatar(35) 之下） */
+  --gantt-z-canvas: 33; /* GanttLinks canvas 普通状态 */
+  --gantt-z-row: auto; /* task-row：不建立层叠上下文，子元素参与父级层叠 */
   --gantt-z-container: 10; /* task-bar-container */
 
   /* task-row 内部局部层（值仅在 row 层叠上下文中比较，不与容器级直接竞争） */

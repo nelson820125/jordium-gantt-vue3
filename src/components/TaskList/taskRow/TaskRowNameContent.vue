@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Task } from '../../../models/classes/Task'
+import { DynamicRenderer } from '../composables/taskRow/dynamicRenderer'
 import TaskRowIcon from './TaskRowIcon.vue'
 import TaskRowBadges from './TaskRowBadges.vue'
 
@@ -31,25 +32,30 @@ defineSlots<{
 </script>
 
 <template>
-  <!-- 优先级1: 列级自定义 Slot (#column-name) - 覆盖整列内容（图标+文本+徽章） -->
+  <!-- 优先级1: 列级自定义 Slot (#column-name) - 覆盖整列内容（图标+文本+徽章）
+       （DynamicRenderer 组件类型固定，避免悬停重渲染时整体重挂载导致头像闪烁） -->
   <component
-    :is="() => renderColumnSlot?.('name', {
-      task: props.task,
-      column: { key: 'name' },
-      value: props.task.name,
-      isParentTask,
-      hasChildren,
-      isStoryTask,
-      isMilestoneGroup,
-      isMilestoneTask,
-      showTaskIcon,
-      formattedTimer,
-      isOvertime,
-      overdueDays,
-      overtimeText,
-      overdueText,
-      daysText,
-    })"
+    :is="DynamicRenderer"
+    :render="
+      () =>
+        renderColumnSlot?.('name', {
+          task: props.task,
+          column: { key: 'name' },
+          value: props.task.name,
+          isParentTask,
+          hasChildren,
+          isStoryTask,
+          isMilestoneGroup,
+          isMilestoneTask,
+          showTaskIcon,
+          formattedTimer,
+          isOvertime,
+          overdueDays,
+          overtimeText,
+          overdueText,
+          daysText,
+        })
+    "
     v-if="hasColumnSlot?.('name')"
   />
 
@@ -63,11 +69,7 @@ defineSlots<{
       :show-icon="showTaskIcon"
     />
 
-    <span
-      class="task-name-text"
-      :class="{ 'parent-task': isParentTask }"
-      :title="task.name"
-    >
+    <span class="task-name-text" :class="{ 'parent-task': isParentTask }" :title="task.name">
       <slot name="custom-task-content" />
       <TaskRowBadges
         :formatted-timer="formattedTimer"
@@ -92,11 +94,7 @@ defineSlots<{
       :show-icon="showTaskIcon"
     />
 
-    <span
-      class="task-name-text"
-      :class="{ 'parent-task': isParentTask }"
-      :title="task.name"
-    >
+    <span class="task-name-text" :class="{ 'parent-task': isParentTask }" :title="task.name">
       {{ task.name }}
       <TaskRowBadges
         :formatted-timer="formattedTimer"

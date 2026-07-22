@@ -1,6 +1,6 @@
 {
   "name": "jordium-gantt-vue3",
-  "version": "1.11.6",
+  "version": "1.13.2",
   "type": "module",
   "main": "npm-package/dist/jordium-gantt-vue3.cjs.js",
   "module": "npm-package/dist/jordium-gantt-vue3.es.js",
@@ -57,6 +57,8 @@
     "resource-management",
     "resource-scheduler",
     "scheduler",
+    "calendar",
+    "resource-usage",
     "vue3-resource-planning",
     "vue3-scheduler"
   ],
@@ -102,6 +104,7 @@
     "prettier": "^3.2.5",
     "typescript": "~5.8.3",
     "vite": "6.4.3",
+    "vite-plugin-dts": "^5.0.3",
     "vitest": "^4.0.16",
     "vue-tsc": "^2.2.8"
   },

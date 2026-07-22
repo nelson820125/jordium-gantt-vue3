@@ -58,6 +58,16 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
     computed(() => 51)
   )
 
+  // v1.12.x: per-task 行高布局（累计位置），替代 ganttRowHeight * index 固定乘法
+  const taskRowLayouts = inject<ComputedRef<{
+    cumulativeHeights: number[]
+    totalHeight: number
+    taskHeights: Map<string | number, number>
+  }>>(
+    'taskRowLayouts',
+    computed(() => ({ cumulativeHeights: [0], totalHeight: 0, taskHeights: new Map() }))
+  )
+
   /**
    * 获取当前折叠状态下的可见任务列表（扁平化）
    */
@@ -142,15 +152,34 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
         endIndex: Math.min(endIndex, total),
       }
     } else {
-      // 任务视图：固定行高由 ganttRowHeight 提供，O(1) 直接计算，不访问 cumulativeHeights
+      // 任务视图：per-task 高度支持，使用累计高度数组 + 二分查找
+      const cumHeights = taskRowLayouts.value.cumulativeHeights
       const total = flattenedTasks.value.length
-      if (total === 0) return { startIndex: 0, endIndex: 0 }
-      const startIndex = Math.max(0, Math.floor(scrollTop / ganttRowHeight.value) - VERTICAL_BUFFER)
+      if (total === 0 || cumHeights.length <= 1) return { startIndex: 0, endIndex: 0 }
+
+      const findUpperBound = (target: number): number => {
+        let left = 0, right = cumHeights.length - 1
+        while (left < right) {
+          const mid = Math.floor((left + right) / 2)
+          if (cumHeights[mid] <= target) {
+            left = mid + 1
+          } else {
+            right = mid
+          }
+        }
+        return Math.max(0, left - 1)
+      }
+
+      const startIndex = Math.max(0, findUpperBound(scrollTop) - VERTICAL_BUFFER)
+      const scrollBottom = scrollTop + containerHeight
       const endIndex = Math.min(
         total,
-        Math.ceil((scrollTop + containerHeight) / ganttRowHeight.value) + VERTICAL_BUFFER
+        findUpperBound(scrollBottom) + VERTICAL_BUFFER + 1
       )
-      return { startIndex, endIndex }
+      return {
+        startIndex,
+        endIndex: Math.min(total, Math.max(startIndex + 1, endIndex)),
+      }
     }
   })
 
@@ -175,14 +204,15 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
       const heights = cumulativeHeights.value
       return heights.length > 0 ? heights[heights.length - 1] : 0
     }
-    return flattenedTasks.value.length * ganttRowHeight.value
+    // v1.12.x: 使用 per-task 累计高度
+    return taskRowLayouts.value.totalHeight
   })
 
   const startSpacerHeight = computed(() => {
     if (viewMode.value === 'resource') {
       return cumulativeHeights.value[visibleTaskRange.value.startIndex] || 0
     }
-    return visibleTaskRange.value.startIndex * ganttRowHeight.value
+    return taskRowLayouts.value.cumulativeHeights[visibleTaskRange.value.startIndex] || 0
   })
 
   const endSpacerHeight = computed(() => {
@@ -191,10 +221,9 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
       const endHeight = cumulativeHeights.value[endIdx] || 0
       return Math.max(0, totalContentHeight.value - endHeight)
     }
-    return Math.max(
-      0,
-      (flattenedTasks.value.length - visibleTaskRange.value.endIndex) * ganttRowHeight.value
-    )
+    const endIdx = visibleTaskRange.value.endIndex
+    const endHeight = taskRowLayouts.value.cumulativeHeights[endIdx] || 0
+    return Math.max(0, taskRowLayouts.value.totalHeight - endHeight)
   })
 
   return {

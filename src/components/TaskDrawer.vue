@@ -396,6 +396,17 @@ watch(
         formData.parentId = props.task.parentId ?? undefined
         // 新建模式，自动绑定前置任务
         formData.predecessor = props.task.predecessor ?? []
+        // v1.12.5 日历视图拖拽选区新建任务：将选区起止时间预填到 startDate/endDate
+        if (props.task.startDate) {
+          formData.startDate = processDateForHourView(props.task.startDate, 'start')
+        }
+        if (props.task.endDate) {
+          formData.endDate = processDateForHourView(props.task.endDate, 'end')
+        }
+        // v1.12.5 日历视图选中资源时，将对应资源预填到 resources（占用比例由调用方决定，默认100%）
+        if (props.task.resources && props.task.resources.length > 0) {
+          formData.resources = props.task.resources.map(r => ({ ...r }))
+        }
       } else {
         // 没有 task，也重置表单
         resetForm()

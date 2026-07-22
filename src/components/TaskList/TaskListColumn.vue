@@ -17,7 +17,7 @@ withDefaults(defineProps<Props>(), {
 // 定义 slot
 defineSlots<{
   // 列头部插槽
-  header?:() => any
+  header?: () => any
   // 列内容默认插槽，接收 scope 对象 { row: Task, $index: number }
   default?: (scope: { row: any; $index: number }) => any
 }>()
@@ -33,6 +33,8 @@ interface Props {
   align?: 'left' | 'center' | 'right'
   // CSS 类名
   cssClass?: string
+  /** 列固定位置，'left'/true 固定在左侧，'right' 固定在右侧 */
+  fixed?: 'left' | 'right' | boolean
 }
 
 // 注意：此组件不渲染任何内容，仅用于声明列配置

@@ -20,6 +20,8 @@ export interface DeclarativeColumnConfig {
   width?: number | string
   align?: 'left' | 'center' | 'right'
   cssClass?: string
+  /** 列固定位置 */
+  fixed?: 'left' | 'right' | boolean
   // slot 函数
   headerSlot?: () => VNodeChild
   defaultSlot?: (scope: { row: Task; $index: number }) => VNodeChild
@@ -59,12 +61,20 @@ export function extractColumnConfig(vnode: VNode): DeclarativeColumnConfig | nul
   const headerSlot = children?.header
   const defaultSlot = children?.default
 
+  // 规范化 fixed 值：Vue 3 中 <TaskListColumn fixed> 传递 "" 而非 true
+  const rawFixed = props.fixed as string | boolean | undefined
+  let fixed: 'left' | 'right' | boolean | undefined
+  if (rawFixed === '' || rawFixed === 'true') fixed = true
+  else if (rawFixed === 'false') fixed = false
+  else fixed = rawFixed as 'left' | 'right' | boolean | undefined
+
   return {
     prop: props.prop,
     label: props.label,
     width: props.width,
     align: props.align || 'left',
     cssClass: props.cssClass,
+    fixed,
     headerSlot,
     defaultSlot,
   }

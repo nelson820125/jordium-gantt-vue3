@@ -101,6 +101,9 @@ const messages = {
     collapseAll: '全部折叠',
     // v1.9.0 视图模式
     taskView: '任务视图',
+    // v1.12.5 日历/资源工时视图
+    calendarView: '日历视图',
+    resourceUsageView: '资源利用率',
     language: '中文',
     languageTooltip: '选择语言',
     lightMode: '明亮模式',
@@ -424,6 +427,9 @@ const messages = {
     collapseAll: 'Collapse All',
     // v1.9.0 视图模式
     taskView: 'Task View',
+    // v1.12.5 Calendar/Resource usage view
+    calendarView: 'Calendar View',
+    resourceUsageView: 'Resource Utilization',
     language: 'English',
     languageTooltip: 'Select language',
     lightMode: 'Light Mode',

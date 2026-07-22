@@ -183,7 +183,7 @@ interface Props {
   enableParentTaskAutoSchedule?: boolean
 }
 
-interface TaskStatus {
+export interface TaskStatus {
   type: string
   color: string
   bgColor: string
@@ -296,11 +296,31 @@ const t = (key: string): string => {
 
 const hasContentSlot = computed(() => Boolean(slots['custom-task-content']))
 
+// v1.12.0: titlePosition='above' 时，row 容器高度已增加 TITLE_ABOVE_ROW_PADDING px，
+// 但 TaskBar 本体高度不变，通过 effectiveRowHeightForBar 减去补偿值来计算 bar 尺寸
+const TITLE_ABOVE_ROW_PADDING = 18
+
 // 合并默认配置和用户配置
 const barConfig = computed(() => ({
   ...DEFAULT_TASK_BAR_CONFIG,
   ...props.taskBarConfig,
 }))
+
+// 判断是否有实际进度数据（需要提前定义，供 titleAbovePaddingValue 引用）
+const hasActualProgress = computed(() => {
+  return !!(props.task.actualStartDate || props.task.actualEndDate)
+})
+
+// v1.12.x: above 模式时，仅当 above-title 实际可见时才需要 -18px 补偿
+// - task view: per-task 逻辑，有 actual bar 时 above-title 隐藏 → 0
+// - resource view: 始终全局 +18px（rowHeights 数组独立处理 sub-row 高度，且 resourceViewTaskBarRowHeight 已含 +18px）
+const titleAbovePaddingValue = computed(() => {
+  if (barConfig.value.titlePosition !== 'above') return 0
+  if (viewMode.value === 'resource') return TITLE_ABOVE_ROW_PADDING
+  if (props.showActualTaskbar && hasActualProgress.value) return 0
+  return TITLE_ABOVE_ROW_PADDING
+})
+const effectiveRowHeightForBar = computed(() => props.rowHeight - titleAbovePaddingValue.value)
 
 // 日期工具函数 - 处理时区安全的日期创建和操作
 const createLocalDate = (dateString: string | Date | undefined | null): Date | null => {
@@ -458,8 +478,9 @@ const nameTextWidth = ref(0)
 const taskBarStyle = computed(() => {
   // 季度视图拖拽时使用位置覆盖
   if (quarterDragOverride.value && props.currentTimeScale === TimelineScale.QUARTER) {
-    const taskBarHeight = props.rowHeight - 10
-    const topOffset = (props.rowHeight - taskBarHeight - 4) / 2 // -4: 2px border each side
+    const taskBarHeight = effectiveRowHeightForBar.value - 10
+    const topOffset =
+      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2 // -4: 2px border each side
     return {
       left: `${quarterDragOverride.value.left ?? 0}px`,
       width: `${quarterDragOverride.value.width ?? 100}px`,
@@ -488,8 +509,9 @@ const taskBarStyle = computed(() => {
 
   // 如果startDate和endDate都不存在，返回0宽度（实际不会渲染，由shouldRenderTaskBar控制）
   if (!startDate && !endDate) {
-    const taskBarHeight = props.rowHeight - 10
-    const topOffset = (props.rowHeight - taskBarHeight - 4) / 2
+    const taskBarHeight = effectiveRowHeightForBar.value - 10
+    const topOffset =
+      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2
     return {
       left: '0px',
       width: '0px',
@@ -507,8 +529,9 @@ const taskBarStyle = computed(() => {
   // 安全检查：renderStartDate和renderEndDate必定存在（因为上面已经检查过）
   // 但baseStart可能不存在，如果不存在则无法计算位置
   if (!renderStartDate || !renderEndDate || !renderBaseStart) {
-    const taskBarHeight = props.rowHeight - 10
-    const topOffset = (props.rowHeight - taskBarHeight - 4) / 2
+    const taskBarHeight = effectiveRowHeightForBar.value - 10
+    const topOffset =
+      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2
     return {
       left: '0px',
       width: '0px',
@@ -665,7 +688,8 @@ const taskBarStyle = computed(() => {
   }
 
   // v1.9.1 计算TaskBar高度：资源视图固定41px全高度，不再按占比缩放
-  const baseTaskBarHeight = props.rowHeight - 10 // 基础高度（与任务视图一致）
+  // v1.12.0: above 模式下使用 effectiveRowHeightForBar（已减去 18px 补偿）计算真实 bar 高度
+  const baseTaskBarHeight = effectiveRowHeightForBar.value - 10
   const taskBarHeight = baseTaskBarHeight
 
   // v1.9.1 资源视图：固定全高度，不缩放（占比通过CSS伪元素实现）
@@ -673,7 +697,9 @@ const taskBarStyle = computed(() => {
   // （资源视图的占比视觉效果通过CSS的::before和::after伪元素实现）
 
   // v1.9.1 计算垂直位置：资源视图中支持换行布局
-  let topOffset = (props.rowHeight - taskBarHeight - 4) / 2 // 默认：居中对齐（考虑 2px border）
+  // v1.12.0: above 模式时，topOffset 额外加上 titleAbovePaddingValue，将 bar 推入行内的 bar 工作区域
+  let topOffset =
+    titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2 // 默认：居中对齐（考虑 2px border）
 
   if (
     viewMode.value === 'resource' &&
@@ -685,6 +711,8 @@ const taskBarStyle = computed(() => {
     const subRow = props.taskSubRow
     const rowHeights = props.rowHeights
     const currentRowHeight = rowHeights[subRow] || 51
+    // v1.12.0: above 模式下每个子行高度包含 18px 标题区，需减去补偿才能得到实际 bar 工作区域高度
+    const effectiveCurrentRowHeight = currentRowHeight - titleAbovePaddingValue.value
 
     // 计算当前子行距离顶部的偏移量（累加前面所有行的高度）
     let cumulativeOffset = 0
@@ -693,14 +721,22 @@ const taskBarStyle = computed(() => {
     }
 
     // v1.9.1 在当前子行内居中对齐（因为TaskBar固定41px高度）
+    // v1.12.0: 额外加上 titleAbovePaddingValue，将 bar 推入 bar 工作区域
     // 第一行：padding-top(5px) + 居中
     // 后续行：居中（无padding-top）
     if (subRow === 0) {
       // 第一行：顶部5px padding，居中对齐
-      topOffset = cumulativeOffset + 5 + (currentRowHeight - 5 - taskBarHeight - 4) / 2
+      topOffset =
+        cumulativeOffset +
+        titleAbovePaddingValue.value +
+        5 +
+        (effectiveCurrentRowHeight - 5 - taskBarHeight - 4) / 2
     } else {
       // 后续行：居中对齐
-      topOffset = cumulativeOffset + (currentRowHeight - taskBarHeight - 4) / 2
+      topOffset =
+        cumulativeOffset +
+        titleAbovePaddingValue.value +
+        (effectiveCurrentRowHeight - taskBarHeight - 4) / 2
     }
   }
 
@@ -958,10 +994,12 @@ const avatarList = computed(() => {
 const isCompleted = computed(() => (props.task.progress || 0) >= 100)
 
 // rowHeight < 30 时实际进度条使用紧凑模式（5px高，百分比显示为右上角徽标）
-const isActualBarSmall = computed(() => !!props.showActualTaskbar && props.rowHeight < 30)
+const isActualBarSmall = computed(
+  () => !!props.showActualTaskbar && effectiveRowHeightForBar.value < 30
+)
 
 // 头像尺对随行高等比缩放：rowHeight=51→1=22px，rowHeight=20→1=12px
-const avatarSize = computed(() => Math.max(12, Math.min(22, props.rowHeight - 8)))
+const avatarSize = computed(() => Math.max(12, Math.min(22, effectiveRowHeightForBar.value - 8)))
 
 // 判断是否应该显示为暗淡（处于高亮模式但自己不是高亮的）
 const isDimmed = computed(() => {
@@ -982,11 +1020,6 @@ const isWeekView = computed(() => props.currentTimeScale === TimelineScale.WEEK)
 const isShortTaskBar = computed(() => {
   const width = parseFloat(taskBarStyle.value.width || '0')
   return width < SCALE_CONFIGS['day'].cellWidth
-})
-
-// 判断是否有实际进度数据
-const hasActualProgress = computed(() => {
-  return !!(props.task.actualStartDate || props.task.actualEndDate)
 })
 
 // 计算实际进度条的样式（独立的TaskBar，在下层）
@@ -1088,9 +1121,11 @@ const actualBarStyle = computed(() => {
     actualWidth = duration * props.dayWidth
   }
 
-  // 实际进度条高度随行高等比缩放；rowHeight < 30 时固定 5px
-  const actualHeight = props.rowHeight < 30 ? 5 : Math.round((props.rowHeight - 10) / 2)
-  const topOffset = (props.rowHeight - actualHeight) / 2 // 垂直居中对齐
+  // v1.12.0: above 模式下使用 effectiveRowHeightForBar，并将 bar 推入 bar 工作区域
+  const actualHeight =
+    effectiveRowHeightForBar.value < 30 ? 5 : Math.round((effectiveRowHeightForBar.value - 10) / 2)
+  const topOffset =
+    titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - actualHeight) / 2 // 垂直居中对齐
 
   return {
     left: `${actualLeft}px`,
@@ -1975,8 +2010,6 @@ const handleMouseUp = () => {
   )
 
   // v1.9.0 资源视图垂直拖拽：检测是否移动到不同资源
-  // @ts-expect-error - targetResourceRowIndex预留变量，未来可能使用
-  let targetResourceRowIndex: number | undefined
   let isCrossRowDrag = false
 
   if (
@@ -2466,6 +2499,53 @@ const stickyStyles = computed(() => {
     avatarLeft,
     avatarPosition,
   }
+})
+
+// v1.12.0 above 模式标题磁吸：参考 stickyStyles 的邊緣吸附邏輯，當 TaskBar 部分滾出可視區時，
+// 將上方標題吸附到可視區邊緣。不影響 inside 模式（barConfig.titlePosition !== 'above' 時返回空）。
+const aboveTitleStyle = computed(() => {
+  if (barConfig.value.titlePosition !== 'above') return {}
+
+  const scrollLeft = props.scrollLeft || 0
+  const containerWidth = props.containerWidth || 0
+  if (!containerWidth) return {}
+
+  // 估算文字内容的实际位置
+  const nameWidth = Math.max(nameTextWidth.value, 40) // 最小40px
+  const taskLeft = parseInt(taskBarStyle.value.left)
+  const taskWidth = parseInt(taskBarStyle.value.width)
+  const taskRight = taskLeft + taskWidth
+  const leftBoundary = scrollLeft
+  const rightBoundary = scrollLeft + containerWidth
+  const taskCenterX = taskLeft + taskWidth / 2
+  const nameLeftPos = taskCenterX - nameWidth / 2
+  const nameRightPos = taskCenterX + nameWidth / 2
+
+  const nameNeedsLeftSticky =
+    nameLeftPos < leftBoundary && taskRight > leftBoundary && taskCenterX < leftBoundary
+
+  const nameNeedsRightSticky =
+    nameRightPos > rightBoundary && taskLeft < rightBoundary && taskCenterX > rightBoundary
+
+  // bar 完全在可視區內：保持 CSS 默認居中
+  if (taskLeft >= leftBoundary && taskRight <= rightBoundary) {
+    return {}
+  }
+
+  // 左側被切：標題吸附到左邊界
+  if (nameNeedsLeftSticky) {
+    const offset = leftBoundary - taskLeft + 10
+    return { left: `${offset}px`, transform: 'none' }
+  }
+
+  // 右側被切：標題吸附到右邊界（translateX(-100%) 使標題右邊緣對齊可視區右邊界）
+  if (nameNeedsRightSticky) {
+    const visibleRight = rightBoundary - taskLeft - 10
+    return { left: `${visibleRight}px`, transform: 'translateX(-100%)' }
+  }
+
+  // 完全不可見：不干預
+  return {}
 })
 
 // 计算气泡指示器的显示状态和位置
@@ -3584,10 +3664,26 @@ const handleAnchorDragEnd = (anchorEvent: {
       @mouseenter="handleTaskBarMouseEnter"
       @mouseleave="handleTaskBarMouseLeave"
     >
-      <!-- 父级任务的标题（直接在内部居中显示） -->
-      <div v-if="isParent" class="parent-label-inner">
+      <!-- 父级任务的标题（直接在内部居中显示）：above 模式时隐藏，改由 task-title-above 渲染 -->
+      <div v-if="isParent && barConfig.titlePosition !== 'above'" class="parent-label-inner">
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <template v-else> {{ task.name }} ({{ task.progress || 0 }}%) </template>
+      </div>
+
+      <!-- v1.12.0 标题悬浮在 Bar 上方（titlePosition: 'above' 模式，含 parent 任务）
+           颜色继承自 .task-bar inline style color: taskStatus.color，与 inside 模式配色一致
+           磁吸效果通过 aboveTitleStyle 控制 left/transform，与 inside 的 stickyStyles 對齊 -->
+      <div
+        v-if="
+          barConfig.showTitle &&
+          barConfig.titlePosition === 'above' &&
+          !(showActualTaskbar && hasActualProgress)
+        "
+        class="task-title-above"
+        :style="aboveTitleStyle"
+      >
+        <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+        <span v-else>{{ task.name }}{{ isParent ? ` (${task.progress || 0}%)` : '' }}</span>
       </div>
 
       <!-- 完成进度条（非父级任务） -->
@@ -3722,9 +3818,13 @@ const handleAnchorDragEnd = (anchorEvent: {
           </div>
         </div>
 
-        <!-- 任务名称 - 有实际TaskBar时隐藏 -->
+        <!-- 任务名称 - 有实际TaskBar时隐藏；above 模式时也隐藏（标题已在 bar 上方渲染） -->
         <div
-          v-if="barConfig.showTitle && !(showActualTaskbar && hasActualProgress)"
+          v-if="
+            barConfig.showTitle &&
+            !(showActualTaskbar && hasActualProgress) &&
+            barConfig.titlePosition !== 'above'
+          "
           ref="taskBarNameRef"
           :style="{
             ...getNameStyles(),
@@ -3980,7 +4080,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     transform 0.3s,
     filter 0.3s,
     z-index 0s; /* v1.9.0 z-index不使用动画 */
-  z-index: var(--gantt-z-bar);
+  z-index: auto; /* 不建立层叠上下文，子元素参与父级层叠（hover/highlight 用 !important 覆盖） */
   border: 2px solid;
   /* 添加半透明黑色边框增强对比度 */
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
@@ -4438,13 +4538,13 @@ const handleAnchorDragEnd = (anchorEvent: {
   gap: 10px; /* 头像和标题之间的间距 */
   margin-left: 6px;
   pointer-events: none;
-  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
+  z-index: var(--gantt-z-avatar); /* actual-bar 内部局部层叠前景 */
 }
 
 /* 实际TaskBar的标题容器 */
 .actual-task-name-wrapper {
   position: relative;
-  z-index: var(--gantt-z-bar); /* actual-bar 内部局部层叠前景 */
+  z-index: var(--gantt-z-avatar); /* actual-bar 内部局部层叠前景 */
   display: flex;
   align-items: center; /* 垂直居中 */
 }
@@ -4456,7 +4556,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   line-height: 1.2;
   font-size: 12px;
   font-weight: 700; /* 加粗显示 */
-  z-index: 10;
+  z-index: var(--gantt-z-avatar);
   /* 移除背景样式，保持原始状态 */
 }
 
@@ -4497,6 +4597,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   left: calc(var(--handle-width, 5px) + 3px); /* 手柄宽度 + 3px 间距 */
   top: 50%;
   transform: translateY(-50%);
+  z-index: var(--gantt-z-avatar); /* 头像在连线(33)之上 */
 }
 
 .actual-avatars-container {
@@ -4607,12 +4708,33 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 .task-name {
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
   line-height: 1.2;
   font-size: 12px;
   font-weight: 700; /* 加粗显示 */
   z-index: 10;
-  /* 移除背景样式，保持原始状态 */
+}
+
+/* v1.12.0 标题悬浮在 Bar 上方（taskBarConfig.titlePosition: 'above' 模式，含 parent 任务）
+ * 颜色继承自 .task-bar inline style（color: taskStatus.color），与 inside 模式配色一致。
+ * 使用 left:50% + translateX(-50%) 以 TaskBar 为基准水平居中。
+ * 溢出省略 + 磁吸過渡由 JS aboveTitleStyle 動態控制 left/transform/max-width。 */
+.task-title-above {
+  position: absolute;
+  bottom: calc(100% + 2px); /* 紧贴 bar 上方 2px 间距 */
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: var(--gantt-z-avatar); /* 标题在连线(33)之上 */
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: left 0.15s ease-out;
 }
 
 /* v1.9.0 资源占比文字样式 */

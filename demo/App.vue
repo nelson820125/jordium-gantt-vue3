@@ -22,7 +22,7 @@ import type { Resource } from '../src/models/classes/Resource'
 import { createResource, addTaskToResource, updateResourceUtilization } from '../src/utils/resourceUtils'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
-import type { TaskBarConfig } from '../src/models/configs/TaskBarConfig'
+import type { TaskBarConfig, LinkConfig } from '../src/models/configs/TaskBarConfig'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
@@ -40,7 +40,7 @@ const gantt = ref<InstanceType<typeof import('../src/components/GanttChart.vue')
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
 const resources = ref<Resource[]>([])
-const viewMode = ref<'task' | 'resource'>('task')
+const viewMode = ref<'task' | 'resource' | 'calendar' | 'resource-usage'>('task')
 const useDefaultDrawer = ref(true)
 
 const rawDataSources = [
@@ -235,6 +235,16 @@ const toolbarConfig = reactive({
   showViewMode: true, // 显示 Task/Resource 视图切换按钮组
 })
 
+// 全部时间刻度维度，供日历视图/工时视图退出时恢复使用
+const ALL_TIME_SCALE_DIMENSIONS = ['hour', 'day', 'week', 'month', 'quarter', 'year']
+// 日历视图/工时视图仅支持日/周/月粒度，切入这两个视图时联动收窄 Gantt 工具栏的时间刻度按钮组
+watch(viewMode, mode => {
+  toolbarConfig.timeScaleDimensions =
+    mode === 'calendar' || mode === 'resource-usage'
+      ? ['day', 'week', 'month']
+      : ALL_TIME_SCALE_DIMENSIONS
+})
+
 // TaskList列渲染模式配置
 const taskListColumnRenderMode = ref<'default' | 'declarative'>('default')
 
@@ -354,6 +364,27 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
     widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
 }))
 
+// 工时视图（resource-usage）配置：直接复用 resources 数据集，无需单独转换数据结构；
+// 这里演示自定义阈值背景色（覆盖组件默认配色），scale/dateRange 由 GanttChart 根据工具栏
+// 日/周/月 与任务时间范围自动推导，无需在此重复传入
+// 自定义色需要跟随明暗主题切换，否则暗黑模式下单元格仍会保持浅色底（与主题背景冲突）
+const resourceUsageProps = computed(() => ({
+  overloadThreshold: 100,
+  underloadThreshold: 60,
+  ...(currentThemeStatus.value === 'dark'
+    ? {
+        overloadColor: '#5c3232',
+        normalColor: '#2f4a2a',
+        underloadColor: '#5c4a26',
+        weekendColor: '#5a5a5a',
+      }
+    : {
+        overloadColor: '#fde2e2',
+        normalColor: '#e1f3d8',
+        underloadColor: '#fdf6ec',
+        weekendColor: '#f0f0f0',
+      }),
+}))
 
 // 控制是否允许拖拽和拉伸
 const allowDragAndResize = ref(true)
@@ -422,6 +453,24 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
   resizeHandleWidth: taskBarOptions.value.resizeHandleWidth,
   enableDragDelay: taskBarOptions.value.enableDragDelay,
   dragDelayTime: taskBarOptions.value.dragDelayTime,
+  // titlePosition: 'above', // 标题显示在任务条上方
+}))
+
+// [v1.12.1] Gantt Links配置 - 独立状态便于Demo面板调控
+const linkType = ref<'bezier' | 'straight' | 'orthogonal'>('orthogonal')
+const linkStyle = ref<'dotted' | 'solid'>('solid')
+const linkColor = ref('#aaa')
+const linkHighlightColor = ref('#409eff')
+const linkWidth = ref(2)
+const linkHighlightWidth = ref(4)
+
+const linkConfig = computed<LinkConfig>(() => ({
+  type: linkType.value,
+  color: linkColor.value,
+  style: linkStyle.value,
+  width: linkWidth.value,
+  highlightColor: linkHighlightColor.value,
+  highlightWidth: linkHighlightWidth.value,
 }))
 
 // 配置面板折叠状态
@@ -434,6 +483,9 @@ const isTaskListConfigCollapsed = ref(true)
 // TaskBar 配置区域折叠状态（默认收起）
 const isTaskBarConfigCollapsed = ref(true)
 
+// GanttLink 配置区域折叠状态（默认收起）
+const isGanttLinkConfigCollapsed = ref(true)
+
 // TimeScale 配置演示（直接使用符合 scaleConfigs prop 结构的静态配置）
 const scaleConfigs = {
   week: { cellWidth: 60, preBuffer: 3, sufBuffer: 3, formatter: { primary: 'yyyy-MM', secondary: 'W周' } },
@@ -445,10 +497,10 @@ const scaleConfigs = {
 }
 
 // Tool 设置区域折叠状态（默认展开用于演示）
-const isToolSettingsCollapsed = ref(false)
+const isToolSettingsCollapsed = ref(true)
 
 // ── z-index 测试工具 ─────────────────────────────────────────────────────────
-const isZIndexTestCollapsed = ref(false)
+const isZIndexTestCollapsed = ref(true)
 const zOverrideValue = ref(9999)
 const hostModalZIndex = ref(10000)
 const showHostTestModal = ref(false)
@@ -535,6 +587,11 @@ const toggleTaskListConfig = () => {
 // 切换 TaskBar 配置区域
 const toggleTaskBarConfig = () => {
   isTaskBarConfigCollapsed.value = !isTaskBarConfigCollapsed.value
+}
+
+// 切换 GanttLink 配置区域
+const toggleGanttLinkConfig = () => {
+  isGanttLinkConfigCollapsed.value = !isGanttLinkConfigCollapsed.value
 }
 
 // 切换 Tool 设置区域
@@ -708,7 +765,7 @@ const closeResourceEditHint = () => {
 }
 
 // v1.9.7 处理视图模式变化事件，同步GanttChart内部状态
-const handleViewModeChanged = (newMode: 'task' | 'resource') => {
+const handleViewModeChanged = (newMode: 'task' | 'resource' | 'calendar' | 'resource-usage') => {
   viewMode.value = newMode
   // useDefaultDrawer会由watch(viewMode)自动更新
 }
@@ -1000,6 +1057,16 @@ function handleTaskbarDragOrResizeEnd(newTask) {
     `任务【${newTask.name}】已更新\n` +
       `开始日期: ${newTask.startDate}\n` +
       `结束日期: ${newTask.endDate}`,
+    'success',
+    { closable: true },
+  )
+}
+// v1.13.0 日历视图拖拽已创建任务后监听：GanttChart 已经更新了 props.tasks，这里展示新旧日期供参考
+function handleCalendarTaskMove(payload) {
+  showMessage(
+    `任务【${payload.task.name}】已通过日历拖拽更新\n` +
+      `开始日期: ${payload.task.startDate}\n` +
+      `结束日期: ${payload.task.endDate}`,
     'success',
     { closable: true },
   )
@@ -1944,6 +2011,71 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             </transition>
           </div>
 
+          <!-- GanttLink 配置区域 -->
+          <div class="config-section">
+            <div class="section-header" @click="toggleGanttLinkConfig">
+              <div class="section-header-title">
+                <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 3h18v2H3V3zm0 5h18v2H3V8zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <path d="M4 4l5 5M17 4l-5 5" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+                </svg>
+                GanttLink 配置
+              </div>
+              <button class="section-collapse-button" :class="{ collapsed: isGanttLinkConfigCollapsed }">
+                <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <transition name="section-content">
+              <div v-show="!isGanttLinkConfigCollapsed" class="section-content">
+                <div class="subsection">
+                  <div class="control-row" style="flex-wrap: wrap; gap: 14px;">
+                    <!-- type 下拉 -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">type:</span>
+                      <select v-model="linkType" class="field-select" style="width: 130px;">
+                        <option value="bezier">bezier</option>
+                        <option value="straight">straight</option>
+                        <option value="orthogonal">orthogonal</option>
+                      </select>
+                    </div>
+                    <!-- style 下拉 -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">style:</span>
+                      <select v-model="linkStyle" class="field-select" style="width: 100px;">
+                        <option value="dotted">dotted</option>
+                        <option value="solid">solid</option>
+                      </select>
+                    </div>
+                    <!-- color -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">color:</span>
+                      <input v-model="linkColor" type="color" class="control-input" style="width: 36px; height: 30px; padding: 2px; cursor: pointer;" />
+                      <input v-model="linkColor" type="text" class="control-input" style="width: 80px;" />
+                    </div>
+                    <!-- highlightColor -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">highlightColor:</span>
+                      <input v-model="linkHighlightColor" type="color" class="control-input" style="width: 36px; height: 30px; padding: 2px; cursor: pointer;" />
+                      <input v-model="linkHighlightColor" type="text" class="control-input" style="width: 80px;" />
+                    </div>
+                    <!-- width -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">width:</span>
+                      <input v-model.number="linkWidth" type="number" min="1" max="10" step="1" class="control-input" style="width: 60px;" />
+                    </div>
+                    <!-- highlightWidth -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="control-label" style="flex: none; width: auto;">highlightWidth:</span>
+                      <input v-model.number="linkHighlightWidth" type="number" min="1" max="10" step="1" class="control-input" style="width: 60px;" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+
           <!-- Tool 设置区域 -->
           <div class="config-section">
             <div class="section-header" @click="toggleToolSettings">
@@ -2492,13 +2624,16 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :milestones="milestones"
         :resources="resources"
         :view-mode="viewMode"
+        :available-view-modes="['task', 'resource', 'calendar', 'resource-usage']"
         :resource-list-config="resourceListConfig"
+        :resource-usage-props="resourceUsageProps"
         :locale="controlMode === 'props' ? propsLocale : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
         :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
         :expand-all="controlMode === 'props' ? propsExpandAll : undefined"
         :toolbar-config="toolbarConfig"
         :task-list-config="taskListConfig"
+        :link-config="linkConfig"
         :enable-task-list-collapsible="enableTaskListCollapsible"
         :task-list-visible="enableTaskListCollapsible ? taskListVisible : undefined"
         :task-bar-config="taskBarConfig"
@@ -2522,6 +2657,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :use-default-drawer="useDefaultDrawer"
         :enable-task-drawer-auto-close="false"
         :enable-parent-task-auto-schedule="enableParentAutoSchedule"
+        :enable-resource-lane-stacking="true"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"
@@ -2549,6 +2685,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         @task-updated="handleTaskUpdateEvent"
         @task-row-moved="handleTaskRowMoved"
         @resource-drag-end="handleResourceDragEnd"
+        @calendar-task-move="handleCalendarTaskMove"
       >
         <!-- 自定义任务名称内容 (TaskRow 和 TaskBar) -->
         <template #custom-task-content="item">
@@ -2622,7 +2759,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </template>
 
         <!-- 使用 TaskListColumn 组件自定义列 声明式模式 -->
-        <TaskListColumn prop="name" :label="viewMode === 'task' ? t.taskName : t.resourceName" width="300" align="center">
+        <TaskListColumn prop="name" fixed="left" :label="viewMode === 'task' ? t.taskName : t.resourceName" width="300" align="center">
           <template #header>
             <img src="https://foruda.gitee.com/avatar/1764902889653058860/565633_nelson820125_1764902889.png!avatar200" width="32" height="32" style="border-radius: 50%;" />
             <strong style="font-size: 14px;">{{ viewMode === 'task' ? t.taskName : t.resourceName }}</strong>

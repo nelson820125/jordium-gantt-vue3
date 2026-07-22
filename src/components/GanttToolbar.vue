@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
@@ -8,6 +8,22 @@ import '../styles/app.css'
 // 语言定义 - 使用多语言系统的类型
 type Language = 'zh' | 'en'
 
+// v1.12.5 视图模式类型：新增 'calendar'/'resource-usage' 两态，默认可用列表仍为二态
+export type GanttViewMode = 'task' | 'resource' | 'calendar' | 'resource-usage'
+const DEFAULT_AVAILABLE_VIEW_MODES: GanttViewMode[] = ['task', 'resource']
+const VIEW_MODE_LABEL_KEYS: Record<GanttViewMode, string> = {
+  task: 'taskView',
+  resource: 'resourceView.desc',
+  calendar: 'calendarView',
+  'resource-usage': 'resourceUsageView',
+}
+const VIEW_MODE_FALLBACK_LABELS: Record<GanttViewMode, string> = {
+  task: '任务视图',
+  resource: '资源视图',
+  calendar: '日历视图',
+  'resource-usage': '资源利用率',
+}
+
 const props = withDefaults(defineProps<Props>(), {
   config: () => ({}),
   timeScale: undefined,
@@ -15,6 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
   fullscreen: undefined,
   expandAll: undefined,
   viewMode: 'task', // v1.9.0 默认任务视图
+  availableViewModes: () => ['task', 'resource'], // v1.12.5 默认仅任务/资源二态，不破坏现有行为（withDefaults 工厂函数会被提升到 setup() 外部，不能引用局部变量，故此处使用字面量而非 DEFAULT_AVAILABLE_VIEW_MODES）
   onAddTask: undefined,
   onAddMilestone: undefined,
   onTodayLocate: undefined,
@@ -42,7 +59,7 @@ const emit = defineEmits<{
   'time-scale-change': [scale: TimelineScale]
   'expand-all': []
   'collapse-all': []
-  'view-mode-change': [mode: 'task' | 'resource'] // v1.9.0 视图切换事件
+  'view-mode-change': [mode: GanttViewMode] // v1.9.0 视图切换事件
 }>()
 
 // LocalStorage keys
@@ -61,7 +78,9 @@ interface Props {
   theme?: 'light' | 'dark'
   fullscreen?: boolean
   expandAll?: boolean
-  viewMode?: 'task' | 'resource' // v1.9.0 视图模式
+  viewMode?: GanttViewMode // v1.9.0 视图模式
+  // v1.12.5 工具栏可用的视图模式列表，控制分段控件渲染哪些按钮，默认 ['task','resource'] 与现有行为完全一致
+  availableViewModes?: GanttViewMode[]
   // 自定义事件处理器
   onAddTask?: () => void
   onAddMilestone?: () => void
@@ -74,7 +93,7 @@ interface Props {
   onTimeScaleChange?: (scale: TimelineScale) => void
   onExpandAll?: () => void
   onCollapseAll?: () => void
-  onViewModeChange?: (mode: 'task' | 'resource') => void // v1.9.0 视图切换回调
+  onViewModeChange?: (mode: GanttViewMode) => void // v1.9.0 视图切换回调
   // 外部确认接口
   onSettingsConfirm?: (
     type: 'theme' | 'language',
@@ -102,7 +121,72 @@ const isDarkMode = ref(getInitialTheme())
 const isFullscreen = ref(false)
 const showLanguageDropdown = ref(false)
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
-const currentViewMode = ref<'task' | 'resource'>('task') // v1.9.0 视图模式状态
+const currentViewMode = ref<GanttViewMode>('task') // v1.9.0 视图模式状态
+
+// v1.9.0 视图模式按钮的实际渲染宽度测量
+// v1.12.5 通用化为 N 态：refs/宽度均以 mode 为 key 的 Map/Record 管理，
+// 当 availableViewModes 为默认 ['task','resource'] 时，计算结果与重构前完全等价
+const viewModeBtnRefs = new Map<GanttViewMode, HTMLElement>()
+const viewModeBtnWidths = ref<Partial<Record<GanttViewMode, number>>>({})
+
+const setViewModeBtnRef = (mode: GanttViewMode) => (el: unknown) => {
+  if (el instanceof HTMLElement) {
+    viewModeBtnRefs.set(mode, el)
+  } else {
+    viewModeBtnRefs.delete(mode)
+  }
+}
+
+let _viewModeResizeObserver: ResizeObserver | null = null
+
+const measureViewModeButtons = () => {
+  const widths: Partial<Record<GanttViewMode, number>> = {}
+  viewModeBtnRefs.forEach((el, mode) => {
+    widths[mode] = el.offsetWidth
+  })
+  viewModeBtnWidths.value = widths
+}
+
+const attachViewModeResizeObserver = () => {
+  if (!_viewModeResizeObserver) {
+    _viewModeResizeObserver = new ResizeObserver(() => {
+      measureViewModeButtons()
+    })
+  } else {
+    _viewModeResizeObserver.disconnect()
+  }
+  viewModeBtnRefs.forEach(el => {
+    _viewModeResizeObserver!.observe(el)
+  })
+  measureViewModeButtons()
+}
+
+// 滑块样式：根据实际按钮宽度动态计算 translateX 和 width
+const viewModeThumbStyle = computed(() => {
+  const modes = props.availableViewModes ?? DEFAULT_AVAILABLE_VIEW_MODES
+  const widths = viewModeBtnWidths.value
+  const activeIndex = modes.indexOf(currentViewMode.value)
+
+  // 尚未测量到实际宽度时，回退到等宽百分比（与重构前的双态回退逻辑等价）
+  const allMeasured = modes.every(m => (widths[m] ?? 0) > 0)
+  if (!allMeasured) {
+    const pct = modes.length > 1 ? (Math.max(activeIndex, 0) / (modes.length - 1)) * 100 : 0
+    return {
+      transform: `translateX(${pct}%)`,
+      width: `${100 / Math.max(modes.length, 1)}%`,
+    }
+  }
+
+  let offset = 0
+  for (const m of modes) {
+    if (m === currentViewMode.value) break
+    offset += widths[m] ?? 0
+  }
+  return {
+    transform: `translateX(${offset}px)`,
+    width: `${widths[currentViewMode.value] ?? 0}px`,
+  }
+})
 
 // v1.9.0 监听 viewMode prop
 watch(
@@ -113,6 +197,15 @@ watch(
     }
   },
   { immediate: true }
+)
+
+// v1.12.5 availableViewModes 变化时（如动态开启日历/工时视图），按钮集合会增减，需要重新测量并绑定 ResizeObserver
+watch(
+  () => props.availableViewModes,
+  async () => {
+    await nextTick()
+    attachViewModeResizeObserver()
+  }
 )
 
 // 如果外部通过 Prop 传入 timeScale，则同步到本地状态
@@ -228,7 +321,7 @@ const handleCollapseAll = () => {
 }
 
 // v1.9.0 视图模式切换处理 - 通过回调直接更新父组件状态
-const handleViewModeChange = (mode: 'task' | 'resource') => {
+const handleViewModeChange = (mode: GanttViewMode) => {
   if (currentViewMode.value !== mode) {
     currentViewMode.value = mode
     // 通过回调通知 GanttChart 更新内部状态
@@ -360,7 +453,7 @@ const timeScaleMap = {
 }
 
 type TimeScaleKey = keyof typeof timeScaleMap
-const defaultScaleKeys: TimeScaleKey[] = ['hour', 'day', 'week', 'month', 'year']
+const defaultScaleKeys: TimeScaleKey[] = ['hour', 'day', 'week', 'month', 'quarter', 'year']
 
 // 获取可用的时间刻度维度
 const availableTimeScales = computed<TimeScaleKey[]>(() => {
@@ -420,30 +513,75 @@ const currentTimeScaleKey = computed<TimeScaleKey>(() => {
   return matchedKey ?? resolvedDefaultScaleKey.value
 })
 
-// 计算分段控制器滑块位置
-const getThumbStyle = () => {
-  const currentIndex = availableTimeScales.value.findIndex(
-    scale => scale === currentTimeScaleKey.value
-  )
+// 时间刻度按钮的实际渲染宽度测量（v-for 动态按钮，用 Map 收集）
+const scaleBtnRefs = ref<Map<string, HTMLElement>>(new Map())
+const scaleBtnWidths = ref<Record<string, number>>({})
 
-  const totalScales = availableTimeScales.value.length
-  if (totalScales === 0 || currentIndex < 0) {
-    return {
-      transform: 'translateX(0%)',
-      width: `${100 / totalScales || 25}%`,
+/** 模板中 v-for 的函数 ref 回调 */
+const setScaleBtnRef = (key: string, el: unknown) => {
+  if (el instanceof HTMLElement) {
+    scaleBtnRefs.value.set(key, el)
+  } else {
+    scaleBtnRefs.value.delete(key)
     }
   }
 
-  // 每个按钮占据的百分比宽度
-  const itemWidth = 100 / totalScales
-  // 滑块的位置（左移的距离）
-  const translateX = currentIndex * 100
+const measureScaleButtons = () => {
+  const widths: Record<string, number> = {}
+  scaleBtnRefs.value.forEach((el, key) => {
+    widths[key] = el.offsetWidth
+  })
+  scaleBtnWidths.value = widths
+}
 
+/** 观察所有时间刻度按钮的 ResizeObserver，按钮列表变化时重建 */
+let _scaleResizeObserver: ResizeObserver | null = null
+
+const observeScaleButtons = () => {
+  if (_scaleResizeObserver) {
+    _scaleResizeObserver.disconnect()
+  }
+  _scaleResizeObserver = new ResizeObserver(() => {
+    measureScaleButtons()
+  })
+  scaleBtnRefs.value.forEach(el => {
+    _scaleResizeObserver!.observe(el)
+  })
+  measureScaleButtons()
+}
+
+/** 时间刻度滑块样式：根据实际按钮宽度动态计算 */
+const timeScaleThumbStyle = computed(() => {
+  const keys = availableTimeScales.value
+  const activeKey = currentTimeScaleKey.value
+  const activeIndex = keys.findIndex(k => k === activeKey)
+
+  if (activeIndex < 0) {
+    return { transform: 'translateX(0px)', width: '0px' }
+  }
+
+  const widths = scaleBtnWidths.value
+  const activeWidth = widths[activeKey]
+
+  // 累计 activeIndex 之前所有按钮的宽度作为 translateX
+  let translateX = 0
+  for (let i = 0; i < activeIndex; i++) {
+    translateX += widths[keys[i]] || 0
+  }
+
+  // 尚未测量到实际宽度时回退百分比
+  if (!activeWidth) {
+    const pct = 100 / keys.length
   return {
-    transform: `translateX(${translateX}%)`,
-    width: `${itemWidth}%`,
+      transform: `translateX(${activeIndex * 100}%)`,
+      width: `${pct}%`,
   }
 }
+  return {
+    transform: `translateX(${translateX}px)`,
+    width: `${activeWidth}px`,
+  }
+})
 
 // 点击外部关闭下拉菜单
 const handleClickOutside = (event: MouseEvent) => {
@@ -465,12 +603,30 @@ onMounted(() => {
   // 添加点击外部关闭下拉菜单的监听
   document.addEventListener('click', handleClickOutside)
 
-  // 不再监听系统主题变化，由GanttChart统一管理
+  // 监听视图模式按钮的实际渲染宽度变化
+  attachViewModeResizeObserver()
+
+  // 监听时间刻度按钮的实际渲染宽度变化
+  observeScaleButtons()
+})
+
+// 时间刻度按钮列表变化时重建 ResizeObserver
+watch(availableTimeScales, () => {
+  observeScaleButtons()
 })
 
 onUnmounted(() => {
   // 清理事件监听
   document.removeEventListener('click', handleClickOutside)
+  // 清理 ResizeObserver
+  if (_viewModeResizeObserver) {
+    _viewModeResizeObserver.disconnect()
+    _viewModeResizeObserver = null
+  }
+  if (_scaleResizeObserver) {
+    _scaleResizeObserver.disconnect()
+    _scaleResizeObserver = null
+  }
 })
 </script>
 
@@ -534,22 +690,22 @@ onUnmounted(() => {
       </div>
 
       <!-- v1.9.0 视图模式切换按钮组 - 使用 Segmented Control 样式 -->
+      <!-- v1.12.5 通用化为 v-for 渲染，availableViewModes 默认 ['task','resource'] 时渲染结果与重构前完全一致 -->
       <div v-if="config.showViewMode !== false" class="gantt-view-mode-control">
         <div class="view-mode-track">
-          <div
-            class="view-mode-thumb"
-            :style="{
-              transform: `translateX(${currentViewMode === 'task' ? '0%' : '100%'})`,
-            }"
-          ></div>
+          <div class="view-mode-thumb" :style="viewModeThumbStyle"></div>
         </div>
         <button
+          v-for="mode in props.availableViewModes ?? DEFAULT_AVAILABLE_VIEW_MODES"
+          :key="mode"
+          :ref="setViewModeBtnRef(mode)"
           class="view-mode-item"
-          :class="{ active: currentViewMode === 'task' }"
-          :title="t('taskView') || '任务视图'"
-          @click="handleViewModeChange('task')"
+          :class="{ active: currentViewMode === mode }"
+          :title="t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode]"
+          @click="handleViewModeChange(mode)"
         >
           <svg
+            v-if="mode === 'task'"
             class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
@@ -570,6 +726,7 @@ onUnmounted(() => {
           @click="handleViewModeChange('resource')"
         >
           <svg
+            v-else-if="mode === 'resource'"
             class="gantt-btn-icon"
             viewBox="0 0 24 24"
             fill="none"
@@ -581,7 +738,32 @@ onUnmounted(() => {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
-          {{ t('resourceView.desc') || '资源视图' }}
+          <svg
+            v-else-if="mode === 'calendar'"
+            class="gantt-btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <svg
+            v-else
+            class="gantt-btn-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          {{ t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode] }}
         </button>
       </div>
 
@@ -672,11 +854,12 @@ onUnmounted(() => {
       <!-- 时间刻度分段控制器 (Segmented) -->
       <div v-if="config.showTimeScale !== false" class="segmented-control time-scale-segmented">
         <div class="segmented-track">
-          <div class="segmented-thumb" :style="getThumbStyle()"></div>
+          <div class="segmented-thumb" :style="timeScaleThumbStyle"></div>
         </div>
         <button
           v-for="scale in availableTimeScales"
           :key="scale"
+          :ref="(el: unknown) => setScaleBtnRef(scale, el)"
           class="segmented-item"
           :class="{ active: currentTimeScaleKey === scale }"
           :title="t('timeScaleTooltip')"
@@ -1198,7 +1381,7 @@ onUnmounted(() => {
 /* 按钮组样式 - Element Plus primary button group 风格 */
 .gantt-btn-group {
   display: inline-flex;
-  margin-right: 8px;
+  /* margin-right: 8px; */
   overflow: hidden;
   transition: all 0.2s ease;
 }
@@ -1213,7 +1396,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 16px;
+  padding: 10px;
   border: 1px solid;
   background: #ffffff;
   color: #606266;
@@ -1327,9 +1510,10 @@ onUnmounted(() => {
   display: inline-flex;
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #dcdfe6);
-  border-radius: 6px;
+  border-radius: 4px;
+  /* margin-right: 12px; */
+  overflow: hidden;
   padding: 1px;
-  margin-right: 12px;
   overflow: hidden;
   transition: border-color 0.2s ease;
   height: 36px;
@@ -1355,7 +1539,7 @@ onUnmounted(() => {
   width: 50%;
   height: 100%;
   background: var(--gantt-primary, #409eff);
-  border-radius: 5px;
+  border-radius: 4px;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.1),
@@ -1369,7 +1553,7 @@ onUnmounted(() => {
   justify-content: center;
   flex: 1;
   height: 34px;
-  padding: 0 12px;
+  padding: 10px;
   border: none;
   background: transparent;
   font-size: 14px;
@@ -1377,9 +1561,9 @@ onUnmounted(() => {
   cursor: pointer;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 100px;
+  min-width: fit-content;
   z-index: 1;
-  border-radius: 5px;
+  border-radius: 4px;
   user-select: none;
   color: var(--gantt-text-primary, #303133);
 }
@@ -1487,7 +1671,7 @@ onUnmounted(() => {
   display: inline-flex;
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #dcdfe6);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 1px;
   margin-right: 8px;
   overflow: hidden;
@@ -1515,7 +1699,7 @@ onUnmounted(() => {
   width: 25%; /* 默认宽度，将通过内联样式动态设置 */
   height: 100%;
   background: var(--gantt-primary, #409eff);
-  border-radius: 5px;
+  border-radius: 4px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.1),
@@ -1528,8 +1712,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex: 1;
-  height: 34px;
-  padding: 0 12px;
+  /* height: 34px; */
+  padding: 10px;
   border: none;
   background: transparent;
   font-size: 14px;
@@ -1537,9 +1721,9 @@ onUnmounted(() => {
   cursor: pointer;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 40px;
+  min-width: fit-content;
   z-index: 1;
-  border-radius: 5px;
+  border-radius: 4px;
   user-select: none;
 }
 
@@ -1558,13 +1742,13 @@ onUnmounted(() => {
 }
 
 .time-scale-segmented {
-  height: 36px;
+  height: 34px;
 }
 
 .time-scale-segmented .segmented-item {
-  height: 34px;
-  font-size: 13px;
-  min-width: 36px;
+  /* height: 34px; */
+  font-size: 14px;
+  min-width: fit-content;
 }
 
 /* 暗黑模式下的分段控制器样式 */

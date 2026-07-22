@@ -36,6 +36,7 @@ import type {
   MilestoneTooltipShowPayload,
 } from '../models/types/TimelineDataTypes'
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
+import { applyTimelineFormat } from '../utils/timelineFormat' // v1.13.0 抽取为共享工具，供 ResourceUsageView 复用同一套格式化逻辑
 import { computeTaskViewLogicalPosition } from '../utils/taskPositionUtils' // 逻辑坐标种子填充
 
 // 定义Props接口
@@ -80,6 +81,8 @@ interface Props {
   enableParentTaskAutoSchedule?: boolean
   // Cursor-Zeit-Anzeige + Aufziehen einer Zeitspanne auf Rows mit task.allowTimeDraw (5-Min-Snap)
   enableTimeDraw?: boolean
+  /** R1: 连线样式配置（透传给 GanttLinks） */
+  linkConfig?: import('../models/configs/TaskBarConfig').LinkConfig
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -226,6 +229,27 @@ const ganttRowHeight = inject<ComputedRef<number>>(
   'gantt-row-height',
   computed(() => 51)
 )
+// v1.12.x: per-task 行高布局（累计位置），替代 ganttRowHeight * index 固定乘法
+const taskRowLayouts = inject<
+  ComputedRef<{
+    cumulativeHeights: number[]
+    totalHeight: number
+    taskHeights: Map<string | number, number>
+  }>
+>(
+  'taskRowLayouts',
+  computed(() => ({ cumulativeHeights: [0], totalHeight: 0, taskHeights: new Map() }))
+)
+
+// v1.12.x: resource view TaskBar 使用的 rowHeight
+// resource view 的 rowHeights 数组独立处理自身 sub-row 高度，但 TaskBar.vue 内
+// titleAbovePaddingValue 会从 props.rowHeight 中减去 18px。因此 resource view 传入的
+// rowHeight 仍需包含 +18px 补偿，与 resource view 自身的 baseRowHeight 保持一致。
+const RESOURCE_VIEW_ABOVE_PADDING = 18
+const resourceViewTaskBarRowHeight = computed(() => {
+  const base = ganttRowHeight.value
+  return props.taskBarConfig?.titlePosition === 'above' ? base + RESOURCE_VIEW_ABOVE_PADDING : base
+})
 
 // 纵向虚拟滚动相关状态（需要在useResourceLayout之前定义）
 // ROW_HEIGHT 通过 ganttRowHeight.value 访问，让下面所有使用处保持兼容
@@ -2120,14 +2144,35 @@ const visibleTaskRange = computed(() => {
       endIndex: Math.min(resources.length, endIndex),
     }
   } else {
-    // 任务视图：使用固定行高计算
-    const startIndex = Math.floor(scrollTop / ganttRowHeight.value) - VERTICAL_BUFFER
-    const endIndex =
-      Math.ceil((scrollTop + containerHeight) / ganttRowHeight.value) + VERTICAL_BUFFER
+    // 任务视图：per-task 高度支持，使用累计高度数组 + 二分查找
+    const cumHeights = taskRowLayouts.value.cumulativeHeights
+    const total = tasks.value.length
+    if (total === 0 || cumHeights.length <= 1) {
+      return { startIndex: 0, endIndex: 0 }
+    }
+
+    // 二分查找：找到 cumulativeHeights[i] <= scrollTop 的最大 i
+    const findUpperBound = (target: number): number => {
+      let left = 0,
+        right = cumHeights.length - 1
+      while (left < right) {
+        const mid = Math.floor((left + right) / 2)
+        if (cumHeights[mid] <= target) {
+          left = mid + 1
+        } else {
+          right = mid
+        }
+      }
+      return Math.max(0, left - 1)
+    }
+
+    const startIndex = Math.max(0, findUpperBound(scrollTop) - VERTICAL_BUFFER)
+    const scrollBottom = scrollTop + containerHeight
+    const endIndex = Math.min(total, findUpperBound(scrollBottom) + VERTICAL_BUFFER + 1)
 
     return {
-      startIndex: Math.max(0, startIndex),
-      endIndex: Math.min(tasks.value.length, Math.max(startIndex + 1, endIndex)),
+      startIndex,
+      endIndex: Math.min(total, Math.max(startIndex + 1, endIndex)),
     }
   }
 })
@@ -2263,6 +2308,30 @@ const resourceTaskQueues = shallowRef(new Map<string | number, ResourceTaskQueue
 const resourceTaskRenderLimits = shallowRef(new Map<string | number, number>())
 const resourceRenderPhase = ref<'visible' | 'background'>('visible')
 let resourceBatchRafId: number | null = null
+// v1.12.x: GanttConflicts Canvas 定位常量
+// 资源视图下每行的 bar 位置由 assignTaskRows 的 rowHeight 和 TaskBar.vue 的 topOffset 公式共同决定：
+//   - 第一行 (row 0): bar top = abovePad + 5px(top-margin) + 0.5px(centering) = abovePad + 5.5
+//   - 后续行:       bar top = abovePad + 0px              + 0.5px(centering) = abovePad + 0.5
+//   - 每行底部留白: 4.5px（= 5px bottom-margin − 0.5px centering）
+//   - barHeight = 41px（= effectiveRowHeightForBar − 10，与 TaskBar.vue 一致）
+// 这些值独立于用户设置的 rowHeight，因为 assignTaskRows 按 5+bar+5 的结构构造行高。
+const CONFLICT_TITLE_ABOVE_PAD = 18
+const CONFLICT_FIRST_ROW_TOP_MARGIN = 5.5 // 5px padding + 0.5px centering
+const CONFLICT_ROW_BOTTOM_MARGIN = 4.5 // 5px padding − 0.5px centering
+
+const conflictTitleAbovePad = computed(() =>
+  props.taskBarConfig?.titlePosition === 'above' ? CONFLICT_TITLE_ABOVE_PAD : 0
+)
+/** Canvas 顶部偏移：对齐第一行 bar 的顶边（above-title 下方 + 第一行顶部留白） */
+const conflictCanvasTopOffset = computed(
+  () => conflictTitleAbovePad.value + CONFLICT_FIRST_ROW_TOP_MARGIN
+)
+/** Canvas 高度：覆盖 bar 区域，去除顶部留白和底部留白 */
+const conflictCanvasHeight = (totalHeight: number) =>
+  totalHeight - conflictCanvasTopOffset.value - CONFLICT_ROW_BOTTOM_MARGIN
+const getConflictRowHeights = (resourceId: string | number) => {
+  return resourceTaskLayouts.value.get(resourceId)?.rowHeights
+}
 
 const stopResourceBatchRender = () => {
   if (resourceBatchRafId !== null) {
@@ -3445,15 +3514,27 @@ watch(
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
 let hasInitialAutoScroll = false
+// bugfix: 任务视图下 tasks 从空数组变为真实数据时，timelineConfig 可能被连续更新两次——
+// 1) GanttChart 的 timelineDateRange 通过 props.startDate/endDate 驱动的 watch（同步生效）
+// 2) 本组件内部 debouncedUpdateTimelineRange（50ms 延迟，基于当前 currentTimeScale 重算）
+// 若不做防抖，第一次（可能不是最终范围）就会消费掉 hasInitialAutoScroll 标记并立即滚动，
+// 第二次真正生效的范围到达时标记已为 true，不会再次滚动，导致今日定位到错误位置（仅默认的
+// "天"刻度会暴露，因为其他刻度都是用户手动切换触发 updateTimeScale()，该函数会无条件调用
+// scrollToTodayCenter()，不依赖这个标记）。改为防抖：短时间内的多次变化只取最后一次生效后的状态。
+let initialScrollDebounceTimer: number | null = null
 watch(
   () => [timelineData.value, timelineConfig.value.startDate, timelineConfig.value.endDate],
   () => {
-    if (!hasInitialAutoScroll) {
+    if (hasInitialAutoScroll) return
+    if (initialScrollDebounceTimer) clearTimeout(initialScrollDebounceTimer)
+    initialScrollDebounceTimer = setTimeout(() => {
+      initialScrollDebounceTimer = null
+      if (hasInitialAutoScroll) return
+      hasInitialAutoScroll = true
       nextTick(() => {
         scrollToTodayCenter()
-        hasInitialAutoScroll = true
       })
-    }
+    }, 120) // 大于内部各处 updateTimelineRange 相关防抖延迟（50ms/100ms），确保拿到最终稳定范围
   }
   // 优化：移除 deep: true，因为监听的是基础类型（startDate/endDate）和 shallowRef（timelineData）
   // 不需要深度监听，可减少 90% 的监听开销
@@ -4126,14 +4207,17 @@ function _runSeedChunk(deadline?: IdleDeadline) {
       continue
     }
 
+    const layouts = taskRowLayouts.value
+    const cumulativeTop = layouts.cumulativeHeights[_seedIndex] || 0
+    const taskRowHeight = layouts.taskHeights.get(task.id) ?? ganttRowHeight.value
     const pos = computeTaskViewLogicalPosition(
       task,
-      _seedIndex,
+      cumulativeTop,
       scale as any,
       positionCache,
       dw,
       baseStart,
-      ganttRowHeight.value
+      taskRowHeight
     )
     if (pos) chunkResult[task.id as number] = pos
     _seedIndex++
@@ -4624,6 +4708,11 @@ watch(
     // 真实数据到来后范围扩展，若不重置则 scrollToTodayCenter 不会再次触发
     if (oldLength === 0 && newLength > 0) {
       hasInitialAutoScroll = false
+      // bugfix: 资源视图下 updateTimelineRange 默认短路，需显式打开一次性阀门，
+      // 否则首次由空数组变为真实数据时范围不会重算（天刻度默认场景下尤为明显）
+      if (viewMode.value === 'resource') {
+        forceTimelineRangeInResourceView = true
+      }
       debouncedUpdateTimelineRange(50)
     }
 
@@ -4661,7 +4750,6 @@ const startScrollTop = ref(0)
 const timelineContainer = ref<HTMLElement | null>(null)
 const timelineBodyElement = ref<HTMLElement | null>(null) // 缓存timeline-body元素引用
 let scrollRafId: number | null = null // 时间轴拖拽滚动的 RAF ID
-
 // PATCH (viur): Ein Daten-Refresh im Task-View (neues tasks-Array nach Drag/Drop/Save-Reload)
 // darf den Viewport nicht bewegen. Beim Drag-End-Re-Render kollabiert die Timeline-Breite
 // (scrollWidth) und bleibt bis zum nächsten vollen Range-Recompute kollabiert — der Browser
@@ -4777,8 +4865,7 @@ const handleTaskBarHighlighted = () => {
 // v1.9.0 资源视图垂直拖拽：处理TaskBar拖放到不同资源行
 const handleResourceTaskBarDrop = (event: Event) => {
   const customEvent = event as CustomEvent
-  // @ts-expect-error - taskId和mouseX预留但当前未使用
-  const { taskId, task, sourceRowIndex, mouseY, mouseX } = customEvent.detail
+  const { task, sourceRowIndex, mouseY } = customEvent.detail
 
   // 计算目标资源行索引
   const timelineBody = timelineBodyElement.value
@@ -5496,9 +5583,13 @@ watch([timelineData, timelineContainerWidth], () => {
 })
 
 // 监听viewMode和dataSource变化，刷新缓存和时间线
-watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
+watch([viewMode, dataSource], ([newViewMode, newDataSource], [oldViewMode, oldDataSource]) => {
   invalidateTaskDateRangeCache()
   const viewModeChanged = newViewMode !== oldViewMode
+  // bugfix: 资源视图下宿主重新查询并整体替换 resources 数组（首次填充或切换查询条件）时，
+  // dataSource 引用会变化但 viewMode 不变，此前只判断 viewModeChanged 会导致漏掉这个场景，
+  // timelineConfig 停留在旧/空数据兜底范围，表现为无法自动定位今天、或定位后任务不在可见窗口内
+  const dataSourceChanged = newDataSource !== oldDataSource
   if (newViewMode === 'task') {
     // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
     // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
@@ -5507,12 +5598,13 @@ watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
     // Daten-Refresh im Task-View (Reload nach Drag/Drop/Save); ohne Guard wird dann der
     // Anker-Scroll (scrollToTodayCenter) erneut ausgeführt und der Viewport des Users verworfen.
     if (viewModeChanged) {
-      hasInitialAutoScroll = false
+    hasInitialAutoScroll = false
     }
     debouncedUpdateTimelineRange()
   } else if (newViewMode === 'resource') {
-    if (viewModeChanged) {
-      // 切换到资源视图：基于资源任务重算日期范围，重算完成后由 watch([timelineData,...]) 触发滚到今日
+    if (viewModeChanged || dataSourceChanged) {
+      // 切换到资源视图 / 资源数据整体替换：基于资源任务重算日期范围，
+      // 重算完成后由 watch([timelineData,...]) 触发滚到今日
       // 重置 hasInitialAutoScroll，确保 watch([timelineData, timelineConfig...]) 在重算完成后能滚到今日
       // 不在此处直接调用 scrollToTodayCenter()，因为 debouncedUpdateTimelineRange 有 50ms 延迟，
       // nextTick 会在 50ms 之前就执行，导致用旧的 task 视图坐标滚到错误位置
@@ -5828,7 +5920,6 @@ const handleAddPredecessor = (task: Task) => {
 const handleAddSuccessor = (task: Task) => {
   emit('add-successor', task)
 }
-
 // ── Cursor-Zeit-Anzeige + Drag-to-set (enableTimeDraw) ───────────────────────────
 // Snap-Raster: 5 Minuten (konsistent mit dem Balken-Resize-Snap der App)
 const TIME_DRAW_SNAP_MS = 5 * 60 * 1000
@@ -6518,6 +6609,27 @@ onUnmounted(() => {
         <!-- top按照50px增加是为了保证和左侧TaskList中row的高度保持一致 -->
         <!-- 同时需要考虑左侧TaskList包含1px的bottom border -->
         <div class="task-bar-container" :style="{ height: `${contentHeight}px` }">
+          <!-- 关系线 Canvas（位于 container 内部，z-index 在 taskbar 之上、avatar 之下） -->
+          <GanttLinks
+            v-if="
+              viewMode === 'task' ||
+              (viewMode === 'resource' && currentTimeScale === TimelineScale.WEEK)
+            "
+            :tasks="tasks"
+            :task-bar-positions="allBarPositions"
+            :width="canvasWidth"
+            :height="canvasHeight"
+            :offset-left="canvasOffsetLeft"
+            :offset-top="canvasOffsetTop"
+            :highlighted-task-id="highlightedTaskId"
+            :highlighted-task-ids="highlightedTaskIds"
+            :hovered-task-id="hoveredTaskId"
+            :vertical-lines="monthFirstVerticalLines"
+            :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
+            :show-links="viewMode === 'task'"
+            :is-scrolling="isTimelineScrolling"
+            :link-config="props.linkConfig"
+          />
           <div class="task-rows" :style="{ height: `${contentHeight}px` }">
             <!-- 任务视图：使用虚拟滚动分批渲染可见任务（taskRenderedItems 每帧限流 3 行新增）-->
             <div
@@ -6526,7 +6638,10 @@ onUnmounted(() => {
               :key="task.id"
               class="task-row"
               :class="{ 'task-row-hovered': hoveredTaskId === task.id }"
-              :style="{ top: `${originalIndex * ganttRowHeight}px`, height: `${ganttRowHeight}px` }"
+              :style="{
+                top: `${taskRowLayouts.cumulativeHeights[originalIndex]}px`,
+                height: `${(taskRowLayouts.cumulativeHeights[originalIndex + 1] ?? taskRowLayouts.cumulativeHeights[originalIndex]) - taskRowLayouts.cumulativeHeights[originalIndex]}px`,
+              }"
               @mouseenter="handleTaskRowHover(task.id)"
               @mouseleave="handleTaskRowHover(null)"
               @mousedown="onTimeDrawStart($event, task, originalIndex)"
@@ -6537,7 +6652,7 @@ onUnmounted(() => {
                   v-for="milestone in task.children"
                   :key="milestone.id"
                   :date="milestone.startDate || ''"
-                  :row-height="ganttRowHeight"
+                  :row-height="taskRowLayouts.taskHeights.get(task.id) || ganttRowHeight"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6573,7 +6688,7 @@ onUnmounted(() => {
                 <MilestonePoint
                   :key="task.id"
                   :date="task.startDate || ''"
-                  :row-height="ganttRowHeight"
+                  :row-height="taskRowLayouts.taskHeights.get(task.id) || ganttRowHeight"
                   :day-width="dayWidth"
                   :start-date="
                     currentTimeScale === TimelineScale.YEAR
@@ -6610,7 +6725,7 @@ onUnmounted(() => {
                 :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                 :task="task"
                 :row-index="originalIndex"
-                :row-height="ganttRowHeight"
+                :row-height="taskRowLayouts.taskHeights.get(task.id) || ganttRowHeight"
                 :day-width="dayWidth"
                 :start-date="
                   currentTimeScale === TimelineScale.YEAR
@@ -6680,7 +6795,6 @@ onUnmounted(() => {
                 </template>
               </TaskBar>
             </div>
-
             <!-- Vorschau-Box beim Aufziehen einer Zeitspanne (enableTimeDraw) -->
             <div
               v-if="timeDraw.active"
@@ -6714,12 +6828,14 @@ onUnmounted(() => {
                   :key="`taskbar-${task.id}-${taskBarRenderKey}`"
                   :task="task"
                   :row-index="originalIndex"
-                  :row-height="ganttRowHeight"
+                  :row-height="resourceViewTaskBarRowHeight"
                   :task-sub-row="
                     resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0
                   "
                   :row-heights="
-                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [ganttRowHeight]
+                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [
+                      resourceViewTaskBarRowHeight,
+                    ]
                   "
                   :day-width="dayWidth"
                   :start-date="
@@ -6813,15 +6929,18 @@ onUnmounted(() => {
                         ? getMonthTimelineRange().startDate
                         : timelineConfig.startDate
                   "
-                  :top-offset="5.5"
+                  :top-offset="conflictCanvasTopOffset"
                   :height="
-                    (resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight) - 10
+                    conflictCanvasHeight(
+                      resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight
+                    )
                   "
+                  :bar-top-pad="conflictTitleAbovePad"
                   :width="totalTimelineWidth"
                   :timeline-data="timelineData as any"
                   :current-time-scale="currentTimeScale"
                   :task-row-map="resourceTaskLayouts.get(resource.id)?.taskRowMap"
-                  :row-heights="resourceTaskLayouts.get(resource.id)?.rowHeights"
+                  :row-heights="getConflictRowHeights(resource.id)"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
                   :render-limit="resourceTaskRenderLimits.get(resource.id)"
@@ -6997,7 +7116,6 @@ onUnmounted(() => {
 
 <style scoped>
 @import '../styles/theme-variables.css';
-
 /* ─── Cursor-Zeit-Badge + Aufzieh-Vorschau (enableTimeDraw) ─────────────────── */
 .jg-time-cursor-badge {
   position: fixed;
@@ -7534,7 +7652,7 @@ onUnmounted(() => {
   width: 100%;
   /* height由内联样式动态设置，不使用固定值 */
   pointer-events: auto;
-  z-index: 11;
+  z-index: var(--gantt-z-row);
   transition: background-color 0.2s ease;
 }
 

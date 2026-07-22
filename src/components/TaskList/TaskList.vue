@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, useSlots, computed, inject } from 'vue'
+import { ref, onMounted, onUnmounted, useSlots, computed, inject, provide } from 'vue'
 import type { StyleValue, Slots } from 'vue'
 import TaskRow from './taskRow/TaskRow.vue'
 import { useI18n } from '../../composables/useI18n'
@@ -85,9 +85,22 @@ const { declarativeColumns, getColumnWidthStyle: getDeclarativeColumnWidth } = u
 )
 
 // 计算实际使用的列配置
+/**
+ * fixed 排序优先级：left/true=0, 普通=1, right=2
+ * 保证固定列在各自方向的列组内仍维持用户配置的相对顺序（stable sort）
+ */
+function fixedRank(fixed: 'left' | 'right' | boolean | undefined): number {
+  if (fixed === 'left' || fixed === true) return 0
+  if (fixed === 'right') return 2
+  return 1
+}
+
 const columnsToUse = computed(() => {
   if (props.taskListColumnRenderMode === 'declarative') {
-    return declarativeColumns.value
+    // 声明式模式：fixed-left 排前，fixed-right 排后，组内保持原始顺序
+    return [...declarativeColumns.value].sort(
+      (a, b) => fixedRank((a as any).fixed) - fixedRank((b as any).fixed)
+    )
   }
   const columns = props.taskListConfig?.columns || DEFAULT_TASK_LIST_COLUMNS
   return columns.filter(col => col.visible !== false)
@@ -98,7 +111,9 @@ const visibleColumns = computed(() => {
   if (props.taskListColumnRenderMode === 'declarative') {
     return [] as TaskListColumnConfig[]
   }
-  return finalColumnsConfig.value.filter(col => col.visible !== false)
+  // 默认模式：fixed-left 排前（name 列固定在外层硬编码，此处为其余动态列）
+  const cols = finalColumnsConfig.value.filter(col => col.visible !== false)
+  return [...cols].sort((a, b) => fixedRank(a.fixed) - fixedRank(b.fixed))
 })
 
 // v1.9.0 使用注入的数据源或props.tasks
@@ -117,6 +132,106 @@ const { taskListScrollTop, taskListBodyHeight, visibleTasks, startSpacerHeight, 
 
 // 悬停状态管理 - v1.9.0 支持资源视图中的字符串ID
 const hoveredTaskId = ref<number | string | null>(null)
+
+// ── R3: 固定列支持 ──
+
+/** 固定列偏移信息 */
+interface FixedColInfo {
+  side: 'left' | 'right'
+  baseOffset: number
+}
+
+/** 解析列宽为像素值 */
+function resolveColWidthPx(col: { width?: number | string }, containerWidth: number): number {
+  if (!col.width) return 120
+  if (typeof col.width === 'number') return col.width
+  const trimmed = (col.width as string).trim()
+  if (trimmed.endsWith('%')) {
+    return Math.floor((containerWidth * parseFloat(trimmed)) / 100)
+  }
+  return parseFloat(trimmed) || 120
+}
+
+/** 名称列宽度（col-name 在 CSS 中 flex: 2 0 300px） */
+const NAME_COL_WIDTH = 300
+
+/** 固定列偏移量表：key → { side, baseOffset }，baseOffset = 同方向前序 fixed 列宽度累加 */
+const fixedColumnOffsets = computed((): Map<string, FixedColInfo> => {
+  const result = new Map<string, FixedColInfo>()
+
+  const allCols =
+    props.taskListColumnRenderMode === 'declarative'
+      ? (columnsToUse.value as any[])
+      : (visibleColumns.value as any[])
+
+  const containerW = cachedContainerWidth.value || 0
+
+  // left-fixed: 从左到右累加
+  // 声明式模式下起始为 0（首个左固定列即第一列），默认模式下起始为名称列宽度 300
+  const isDeclarative = props.taskListColumnRenderMode === 'declarative'
+  let leftAcc = isDeclarative ? 0 : NAME_COL_WIDTH
+  for (const col of allCols) {
+    if (col.fixed === 'left' || col.fixed === true) {
+      const key = col.key || col.prop || ''
+      result.set(key, { side: 'left', baseOffset: leftAcc })
+      leftAcc += resolveColWidthPx(col, containerW)
+    }
+  }
+
+  // right-fixed: 从右到左累加后序 right-fixed 列宽
+  let rightAcc = 0
+  for (let i = allCols.length - 1; i >= 0; i--) {
+    const col = allCols[i]
+    if (col.fixed === 'right') {
+      const key = col.key || col.prop || ''
+      result.set(key, { side: 'right', baseOffset: rightAcc })
+      rightAcc += resolveColWidthPx(col, containerW)
+    }
+  }
+
+  return result
+})
+provide('gantt-fixed-column-offsets', fixedColumnOffsets)
+
+/** 名称列 header 固定样式（sticky left:0，在 .task-list-body overflow:auto 内生效） */
+const getNameColHeaderStyle = () => ({
+  position: 'sticky' as const,
+  left: '0px',
+  zIndex: 20,
+  backgroundColor: 'var(--gantt-bg-secondary)',
+})
+
+/**
+ * header 固定列样式。
+ * header 在 .task-list-body（overflow:auto）内，CSS sticky 直接生效，
+ * 与 body 行固定列共享同一滚动上下文。
+ */
+const getHeaderFixedStyle = (col: {
+  key?: string
+  prop?: string
+  fixed?: 'left' | 'right' | boolean
+}) => {
+  if (!col.fixed) return {}
+  const key = col.key || col.prop || ''
+  const info = fixedColumnOffsets.value.get(key)
+  if (!info) return {}
+
+  if (info.side === 'left') {
+    return {
+      position: 'sticky' as const,
+      left: `${info.baseOffset}px`,
+      zIndex: 20,
+      backgroundColor: 'var(--gantt-bg-secondary)',
+    }
+  }
+  // right-fixed
+  return {
+    position: 'sticky' as const,
+    right: `${info.baseOffset}px`,
+    zIndex: 20,
+    backgroundColor: 'var(--gantt-bg-secondary)',
+  }
+}
 
 // 拖拽状态管理
 const isSplitterDragging = ref(false)
@@ -230,10 +345,6 @@ const handleTaskRowMoved = (payload: {
 }
 
 // v1.9.0 处理资源行点击事件
-// @ts-expect-error - Reserved for future resource click handling
-const handleResourceClick = (resource: Resource) => {
-  emit('resource-click', resource)
-}
 
 // 全局拖拽管理器
 const { startDrag, handleDragOver } = useTaskRowDrag({
@@ -275,124 +386,156 @@ defineExpose({
 
 <template>
   <div ref="taskListRef" class="task-list">
-    <div class="task-list-header">
-      <!-- 声明式模式 -->
-      <template v-if="taskListColumnRenderMode === 'declarative'">
-        <div
-          v-for="(column, index) in columnsToUse"
-          :key="index"
-          class="col"
-          :class="column.cssClass"
-          :style="{
-            ...getColumnWidthStyle(column),
-            justifyContent:
-              (column as any).align === 'center'
-                ? 'center'
-                : (column as any).align === 'right'
-                  ? 'flex-end'
-                  : 'flex-start',
-            textAlign: (column as any).align || 'left',
-          }"
-        >
-          <template v-if="(column as any).headerSlot">
-            <component :is="(column as any).headerSlot" />
-          </template>
-          <template v-else>
-            {{ (column as any).label }}
-          </template>
-        </div>
-      </template>
-
-      <!-- 默认模式 -->
-      <template v-else>
-        <div class="col col-name">
-          <template v-if="columnSlots['header-name']">
-            <component :is="columnSlots['header-name']" />
-          </template>
-          <template v-else>
-            {{
-              viewMode === 'resource'
-                ? (t as any).resourceName || '资源名称'
-                : (t as any).taskName || '任务名称'
-            }}
-          </template>
-        </div>
-        <div
-          v-for="column in visibleColumns"
-          :key="(column as TaskListColumnConfig).key"
-          class="col"
-          :class="
-            (column as TaskListColumnConfig).cssClass ||
-            `col-${(column as TaskListColumnConfig).key}`
-          "
-          :style="getColumnWidthStyle(column)"
-        >
-          <template v-if="columnSlots[`header-${(column as TaskListColumnConfig).key}`]">
-            <component :is="columnSlots[`header-${(column as TaskListColumnConfig).key}`]" />
-          </template>
-          <template v-else>
-            {{
-              (t as any)[(column as TaskListColumnConfig).key] ||
-              (column as TaskListColumnConfig).label
-            }}
-          </template>
-        </div>
-      </template>
-    </div>
     <div ref="taskListBodyRef" class="task-list-body" @scroll="handleTaskListScroll">
-      <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
-
-      <TaskRow
-        v-for="{ task, level, rowIndex } in visibleTasks"
-        :key="task.id"
-        v-memo="[
-          task.id,
-          task.name,
-          task.collapsed,
-          hoveredTaskId === task.id,
-          task.startDate,
-          task.endDate,
-          task.progress,
-        ]"
-        :task="task"
-        :level="level"
-        :row-index="rowIndex"
-        :is-hovered="hoveredTaskId === task.id"
-        :hovered-task-id="hoveredTaskId"
-        :on-hover="handleTaskRowHover"
-        :columns="
-          taskListColumnRenderMode === 'declarative'
-            ? []
-            : (visibleColumns as TaskListColumnConfig[])
-        "
-        :declarative-columns="taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined"
-        :render-mode="taskListColumnRenderMode"
-        :get-column-width-style="getColumnWidthStyle"
-        :disable-children-render="true"
-        :show-task-icon="props.taskListConfig?.showTaskIcon"
-        :enable-drag="props.enableTaskRowMove"
-        :drag-start="startDrag"
-        :drag-over="handleDragOver"
-        :task-list-row-class-name="props.taskListRowClassName"
-        :task-list-row-style="props.taskListRowStyle"
-        @toggle="toggleCollapse"
-        @dblclick="handleTaskRowDoubleClick"
-        @contextmenu="handleTaskRowContextMenu"
-        @start-timer="handleStartTimer"
-        @stop-timer="handleStopTimer"
-        @add-predecessor="handleAddPredecessor"
-        @add-successor="handleAddSuccessor"
-        @delete="handleTaskDelete"
-      >
-        <template v-if="hasRowSlot" #custom-task-content="rowScope">
-          <slot name="custom-task-content" v-bind="rowScope" />
+      <div class="task-list-header">
+        <!-- 声明式模式 -->
+        <template v-if="taskListColumnRenderMode === 'declarative'">
+          <div
+            v-for="(column, index) in columnsToUse"
+            :key="index"
+            class="col"
+            :class="[
+              column.cssClass,
+              {
+                'col-fixed':
+                  index === 0 || (column as any).fixed === 'left' || (column as any).fixed === true,
+                'col-fixed-right': (column as any).fixed === 'right',
+              },
+            ]"
+            :style="{
+              ...getColumnWidthStyle(column),
+              justifyContent:
+                (column as any).align === 'center'
+                  ? 'center'
+                  : (column as any).align === 'right'
+                    ? 'flex-end'
+                    : 'flex-start',
+              textAlign: (column as any).align || 'left',
+              ...(index === 0 && !(column as any).fixed
+                ? {
+                    position: 'sticky' as const,
+                    left: '0px',
+                    zIndex: 20,
+                    backgroundColor: 'var(--gantt-bg-secondary)',
+                  }
+                : getHeaderFixedStyle(column as any)),
+            }"
+          >
+            <template v-if="(column as any).headerSlot">
+              <component :is="(column as any).headerSlot" />
+            </template>
+            <template v-else>
+              {{ (column as any).label }}
+            </template>
+          </div>
         </template>
-        <template v-if="slots['task-list-context-menu']" #task-list-context-menu="contextMenuScope">
-          <slot name="task-list-context-menu" v-bind="contextMenuScope" />
-        </template>
-      </TaskRow>
 
-      <div class="task-list-body-spacer" :style="{ height: `${endSpacerHeight}px` }"></div>
+        <!-- 默认模式 -->
+        <template v-else>
+          <div class="col col-name col-fixed" :style="getNameColHeaderStyle()">
+            <template v-if="columnSlots['header-name']">
+              <component :is="columnSlots['header-name']" />
+            </template>
+            <template v-else>
+              {{
+                viewMode === 'resource'
+                  ? (t as any).resourceName || '资源名称'
+                  : (t as any).taskName || '任务名称'
+              }}
+            </template>
+          </div>
+          <div
+            v-for="column in visibleColumns"
+            :key="(column as TaskListColumnConfig).key"
+            class="col"
+            :class="[
+              (column as TaskListColumnConfig).cssClass ||
+                `col-${(column as TaskListColumnConfig).key}`,
+              {
+                'col-fixed':
+                  (column as TaskListColumnConfig).fixed === 'left' ||
+                  (column as TaskListColumnConfig).fixed === true,
+                'col-fixed-right': (column as TaskListColumnConfig).fixed === 'right',
+              },
+            ]"
+            :style="{
+              ...getColumnWidthStyle(column),
+              ...getHeaderFixedStyle(column as TaskListColumnConfig),
+            }"
+          >
+            <template v-if="columnSlots[`header-${(column as TaskListColumnConfig).key}`]">
+              <component :is="columnSlots[`header-${(column as TaskListColumnConfig).key}`]" />
+            </template>
+            <template v-else>
+              {{
+                (t as any)[(column as TaskListColumnConfig).key] ||
+                (column as TaskListColumnConfig).label
+              }}
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="task-list-body-inner">
+        <div class="task-list-body-spacer" :style="{ height: `${startSpacerHeight}px` }"></div>
+
+        <TaskRow
+          v-for="{ task, level, rowIndex } in visibleTasks"
+          :key="task.id"
+          v-memo="[
+            task.id,
+            task.name,
+            task.collapsed,
+            hoveredTaskId === task.id,
+            task.startDate,
+            task.endDate,
+            task.progress,
+          ]"
+          :task="task"
+          :level="level"
+          :row-index="rowIndex"
+          :is-hovered="hoveredTaskId === task.id"
+          :hovered-task-id="hoveredTaskId"
+          :on-hover="handleTaskRowHover"
+          :columns="
+            taskListColumnRenderMode === 'declarative'
+              ? []
+              : (visibleColumns as TaskListColumnConfig[])
+          "
+          :declarative-columns="
+            taskListColumnRenderMode === 'declarative' ? columnsToUse : undefined
+          "
+          :render-mode="taskListColumnRenderMode"
+          :get-column-width-style="getColumnWidthStyle"
+          :disable-children-render="true"
+          :show-task-icon="props.taskListConfig?.showTaskIcon"
+          :enable-drag="props.enableTaskRowMove"
+          :drag-start="startDrag"
+          :drag-over="handleDragOver"
+          :task-list-row-class-name="props.taskListRowClassName"
+          :task-list-row-style="props.taskListRowStyle"
+          @toggle="toggleCollapse"
+          @dblclick="handleTaskRowDoubleClick"
+          @contextmenu="handleTaskRowContextMenu"
+          @start-timer="handleStartTimer"
+          @stop-timer="handleStopTimer"
+          @add-predecessor="handleAddPredecessor"
+          @add-successor="handleAddSuccessor"
+          @delete="handleTaskDelete"
+        >
+          <template v-if="hasRowSlot" #custom-task-content="rowScope">
+            <slot name="custom-task-content" v-bind="rowScope" />
+          </template>
+          <template
+            v-if="slots['task-list-context-menu']"
+            #task-list-context-menu="contextMenuScope"
+          >
+            <slot name="task-list-context-menu" v-bind="contextMenuScope" />
+          </template>
+        </TaskRow>
+
+        <div class="task-list-body-spacer" :style="{ height: `${endSpacerHeight}px` }"></div>
+      </div>
     </div>
   </div>
 </template>
@@ -409,26 +552,23 @@ defineExpose({
   background: var(--gantt-bg-primary);
   display: flex;
   flex-direction: column;
-  overflow-x: auto;
-
-  scrollbar-width: thin;
-  scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+  overflow: hidden;
 }
 
 .task-list-header {
   display: flex;
   background: var(--gantt-bg-secondary);
   border-bottom: 1px solid var(--gantt-border-medium);
-  border-left: 3px solid transparent;
   font-weight: 700;
   padding: 0;
   height: 80px;
   align-items: center;
   width: max-content;
   flex-shrink: 0;
+  /* sticky 在 .task-list-body（overflow:auto）内生效 */
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 20; /* 高于 .task-row:hover 的 z-index:10，防止悬停行覆盖 header */
 }
 
 .task-list-header .col {
@@ -442,14 +582,17 @@ defineExpose({
 }
 
 .task-list-body {
-  width: max-content;
-  background: var(--gantt-bg-primary);
+  width: 100%;
   flex: 1;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: auto;
 
   scrollbar-width: thin;
   scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+/* 内部内容撑开水平滚动 */
+.task-list-body-inner {
+  width: max-content;
 }
 
 .task-list-body-spacer {

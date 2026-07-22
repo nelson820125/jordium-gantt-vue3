@@ -781,5 +781,87 @@
       "🔧 Fixed: Vulnerabilities fix",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yuwenkai1996 / wangyin1234 / DavidKasin / yirongJiang@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.12.0",
+    "date": "2026-06-23",
+    "notes": [
+      "🎉 新增：GanttChart 新增 `enableResourceLaneStacking` 属性，控制资源视图的车道堆叠行为。`true`（默认）：启用贪心车道堆叠；`false`：禁用堆叠，每个任务独占一行",
+      "🎉 新增：`TaskBarConfig` 新增 `titlePosition` 字段，控制任务标题渲染位置。`'inside'`（默认）：标题渲染在任务条内部；`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比",
+      "🎉 新增：库构建集成 `vite-plugin-dts`，`build:lib` 现可自动生成 TypeScript 声明文件（`index.d.ts` 及各组件 `.vue.d.ts`），TypeScript 消费者可获得完整的类型提示与 IDE 自动补全",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢GOODBOY008 / tombstonedguy@github的使用与反馈</span>",
+      "🎉 Added: GanttChart new prop `enableResourceLaneStacking` — controls lane stacking behavior in resource view. `true` (default): enables greedy lane stacking; `false`: disables stacking, each task occupies its own row",
+      "🎉 Added: `TaskBarConfig` new field `titlePosition` — controls task title rendering position. `'inside'` (default): title rendered inside the task bar; `'above'`: title floats above the task bar, with only progress percentage shown inside",
+      "🎉 Added: Library build now integrates `vite-plugin-dts` — `build:lib` automatically generates TypeScript declaration files (`index.d.ts` and per-component `.vue.d.ts`), providing full type hints and IDE autocomplete for TypeScript consumers",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to GOODBOY008 / tombstonedguy@github for their use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.12.1",
+    "date": "2026-06-25",
+    "notes": [
+      "🎉 新增：`LinkConfig` 配置类型，支持连线样式切换（`bezier` 贝塞尔 / `straight` 直线 / `orthogonal` 折线），支持自定义连线颜色、线宽、虚线/实线样式",
+      "🎉 新增：GanttChart 暴露 `setLinkConfig(config)` 和 `getLinkConfig()` 方法，支持运行时动态切换连线样式和颜色",
+      "🎉 新增：`TaskListColumnConfig` 和 `TaskListColumn` 新增 `fixed` 字段，支持左侧表格列固定（`'left'` / `'right'` / `boolean`）。`fixed:'left'` 的列自动重排至最左侧，任务名称列始终固定在 `left:0`，支持多个左侧固定列按宽度累加偏移",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢yrjj@gitee的使用与反馈</span>",
+      "🎉 Added: `LinkConfig` type — switch link line style between `bezier`, `straight`, and `orthogonal`; customise link color, width, and dotted/solid style",
+      "🎉 Added: GanttChart now exposes `setLinkConfig(config)` and `getLinkConfig()` methods — allows dynamic switching of link line style and color at runtime",
+      "🎉 Added: `TaskListColumnConfig` and `TaskListColumn` new field `fixed` — supports fixing columns on the left (`'left'` / `'right'` / `boolean`). Columns with `fixed:'left'` automatically rearranged to the far left, task name column always fixed at `left:0`, supports multiple left fixed columns with cumulative offset based on width",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yrjj@gitee for their use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.12.2",
+    "date": "2026-06-25",
+    "notes": [
+      "🔧 修复：Socket.dev提示组件库弱点问题，PDF导出时使用了innerHTML，存在XSS攻击风险",
+      "🔧 Fixed: Socket.dev warning about component library vulnerability, PDF export using innerHTML, XSS attack risk"
+    ]
+  },
+  {
+    "version": "1.12.3",
+    "date": "2026-06-27",
+    "notes": [
+      "🔧 修复：GanttToolbar中Segmented Control 样式问题",
+      "🔧 Fixed: GanttToolbar Segmented Control style issue"
+    ]
+  },
+  {
+    "version": "1.12.4",
+    "date": "2026-06-27",
+    "notes": [
+      "🔧 修复：GanttToolbar中Default TimeScalesKeys缺少季度",
+      "🔧 修复：GanttToolbar中视图模式Segmented Control 样式问题",
+      "🔧 Fixed: GanttToolbar Default TimeScalesKeys missing quarter",
+      "🔧 Fixed: GanttToolbar Segmented Control style issue"
+    ]
+  },
+  {
+    "version": "1.13.0",
+    "date": "2026-07-19",
+    "notes": [
+      "🎉 新增：`CalendarView` 日历视图组件（日/周/月三种维度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等",
+      "🎉 新增：`CalendarView`/`CalendarDayView`/`CalendarWeekView` 新增 `taskCardOpacity`、`taskAccentWidth`、`allDayLabel` 属性以及 `#task-card` 插槽，支持自定义任务卡片外观（默认为半透明蓝色底 + 左侧 5px 深色强调条）",
+      "🎉 新增：GanttChart 可通过 `calendarProps` 透传上述所有 CalendarView 属性",
+      "🎉 新增：`CalendarView` 新增 `task-click`/`task-move` 事件（GanttChart 转发为 `calendar-task-click`/`calendar-task-move`），日/周/月视图的任务卡片支持单击（打开内置 TaskDrawer 编辑）与左键拖拽移动（日视图改时段、周视图改时段+跨日、月视图跨日期 cell），拖拽中任务卡片高亮凸显",
+      "🎉 新增：`ResourceUsageView`资源利用率组件（日/周/月三种维度）, 以资源为单位汇总各个维度的分配工时，并配置不同颜色表示利用率级别",
+      "🎉 新增：GanttChart 的 `resourceUsageProps` 透传新增 `columnRenderMode`，并在 `view-mode='resource-usage'` 下转发默认插槽（用于声明式列定义），与 `TaskList` 分支保持一致",
+      "🎉 Added: New `CalendarView` calendar view component (Day/Week/Month three time dimensions), supporting drag-to-select task creation by resource, current time indicator line, all-day task row, working hours highlighting, and more",
+      "🎉 Added: Added `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` properties and the `#task-card` slot to `CalendarView`/`CalendarDayView`/`CalendarWeekView`, enabling customization of task card appearance (default: semi-transparent blue background with a 5px dark accent bar on the left)",
+      "🎉 Added: `GanttChart` now supports passing through all the above `CalendarView` properties via `calendarProps`",
+      "🎉 Added: Added `task-click`/`task-move` events to `CalendarView` (`GanttChart` forwards them as `calendar-task-click`/`calendar-task-move`). Task cards in Day/Week/Month views now support single-click actions (opening the built-in `TaskDrawer` for editing) and left-click drag-and-drop movement (Day view: change time slot; Week view: change time slot and move across days; Month view: move across date cells). The dragged task card is highlighted during the drag operation",
+      "🎉 Added: New `ResourceUsageView` resource utilization component (Day/Week/Month three time dimensions), which aggregates allocated working hours by resource across different dimensions and uses different colors to represent utilization levels",
+      "🎉 Added: `GanttChart`'s `resourceUsageProps` now passes through the new `columnRenderMode` property, and forwards the default slot (for declarative column definitions) when `view-mode='resource-usage'`, keeping it consistent with the `TaskList` branch"
+    ]
+  },
+  {
+    "version": "1.13.2",
+    "date": "2026-07-20",
+    "notes": [
+      "🔧 修复：资源视图中`日`维度下今日定位和Taskbar消失的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢zhanmqGithub@github的使用与反馈</span>",
+      "🔧 Fixed: Today's positioning and Taskbar disappearance issue in the 'Day' view of the Resource view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to zhanmqGithub@github for their use and feedback</span>"
+    ]
   }
 ]
