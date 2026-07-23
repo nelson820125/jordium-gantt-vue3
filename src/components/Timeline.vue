@@ -22,6 +22,7 @@ import { useI18n } from '../composables/useI18n'
 import { useViewMode } from '../composables/useViewMode' // v1.9.9 视图模式状态管理
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
+import { formatDateTimeDE } from '../utils/dateFormat'
 import { perfMonitor } from '../utils/perfMonitor'
 import { perfMonitor2 } from '../utils/perfMonitor2' // v1.9.6 性能诊断工具
 import type { Task } from '../models/classes/Task'
@@ -46,6 +47,8 @@ interface Props {
   milestones?: Milestone[]
   startDate: Date
   endDate: Date
+  // PATCH (viur): Anker-Datum für den initialen Scroll (linksbündig). Ohne Wert → „heute" zentriert.
+  initialScrollDate?: string | Date | null
   useDefaultDrawer?: boolean
   useDefaultMilestoneDialog?: boolean
   onTaskDelete?: (task: Task) => void
@@ -76,6 +79,8 @@ interface Props {
   scaleConfigs?: Record<TimelineScale, TimelineScaleConfig>
   // 父级任务自动调度：true=父级跟suivant子任务范围（默认），false=保持自身设定日期
   enableParentTaskAutoSchedule?: boolean
+  // Cursor-Zeit-Anzeige + Aufziehen einer Zeitspanne auf Rows mit task.allowTimeDraw (5-Min-Snap)
+  enableTimeDraw?: boolean
   /** R1: 连线样式配置（透传给 GanttLinks） */
   linkConfig?: import('../models/configs/TaskBarConfig').LinkConfig
 }
@@ -105,6 +110,7 @@ const props = withDefaults(defineProps<Props>(), {
   ongoingTaskBackgroundColor: undefined,
   enableParentTaskAutoSchedule: true,
   scaleConfigs: undefined,
+  enableTimeDraw: false,
 })
 
 // 定义emits
@@ -131,10 +137,11 @@ const emit = defineEmits<{
       newEndDate?: string
     },
   ] // v1.9.0 资源视图垂直拖拽结束
+  'time-draw': [{ task: Task; startDate: string; endDate: string }] // Aufgezogene Zeitspanne auf einer Row
 }>()
 
 // 多语言
-const { formatYearMonth, formatMonth, getTranslation } = useI18n()
+const { formatYearMonth, formatMonth, getTranslation, formatHourHeaderDate } = useI18n()
 
 // 翻译函数
 const t = (key: string): string => {
@@ -222,7 +229,6 @@ const ganttRowHeight = inject<ComputedRef<number>>(
   'gantt-row-height',
   computed(() => 51)
 )
-
 // v1.12.x: per-task 行高布局（累计位置），替代 ganttRowHeight * index 固定乘法
 const taskRowLayouts = inject<
   ComputedRef<{
@@ -296,10 +302,9 @@ const tooltipState = reactive({
   arrowOffset: 0,
 })
 
-/** 格式化日期显示 (YYYY-MM-DD) */
+/** 格式化日期显示 (TT.MM.JJJJ HH:mm) */
 const formatTooltipDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return t('dateNotSet')
-  return String(dateStr).substring(0, 10)
+  return formatDateTimeDE(dateStr) ?? t('dateNotSet')
 }
 
 /** 格式化 Date 对象为 YYYY-MM-DD 字符串（用于父级自动调度日期展示） */
@@ -494,6 +499,16 @@ const timelineConfig = ref<TimelineConfig>({
 const currentTimeScale = ref<TimelineScale>(TimelineScale.DAY)
 
 // 响应外部props变化，动态更新timelineConfig
+// PATCH (viur): zwei Korrekturen gegen den Viewport-Sprung nach Drag/Drop:
+// 1. Werte-Vergleich gegen die zuletzt gesehenen ROHEN Props — GanttChart liefert bei jedem
+//    Task-Update (updateTaskTrigger) neue Date-Objekte mit identischen Werten; der alte
+//    Vergleich gegen die GEBUFFERTE timelineConfig griff nie und schrieb bei jedem Drag-End.
+// 2. Bei echter Range-Änderung durch die scale-bewusste Pipeline gehen (updateTimelineRange
+//    → getDay/Week/…TimelineRange mit Monats-Buffern) statt die rohen Props in timelineConfig
+//    zu schreiben. Der rohe Write ließ die Tagesleiste auf die ungebufferte Range kollabieren
+//    (z. B. 151 → 59 Tage) — der Browser clampte scrollLeft und die Ansicht sprang sichtbar
+//    aus der Drop-Position (je kleiner das Fenster, desto weiter).
+let lastRawRange = { start: timelineStartDate.value.getTime(), end: timelineEndDate.value.getTime() }
 watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
   // 资源视图下不响应 props 变化：
   //   GanttChart 的 timelineDateRange 计算可能传入基于任务视图的日期范围（已 computed 修复，但保留守卫作为二重保险）
@@ -501,14 +516,14 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
   if (viewMode.value === 'resource') return
   if (props.startDate || props.endDate) {
     if (!isUpdatingTimelineConfig) {
-      // 范围值相等时跳过重绘，避免无效 timeline 重新生成（消除微小闪烁）
-      if (
-        newStart.getTime() === timelineConfig.value.startDate.getTime() &&
-        newEnd.getTime() === timelineConfig.value.endDate.getTime()
-      )
-        return
-      timelineConfig.value.startDate = newStart
-      timelineConfig.value.endDate = newEnd
+      if (lastRawRange.start === newStart.getTime() && lastRawRange.end === newEnd.getTime()) return
+      lastRawRange = { start: newStart.getTime(), end: newEnd.getTime() }
+      // Echte externe Range-Änderung (z. B. Projektwechsel im Konsumenten): neu verankern statt
+      // die alte Pixel-Position festzuhalten — die wäre im neuen Koordinatenraum bedeutungslos.
+      // Drag/Save-Reload kommt hier nie an (identische Raw-Range → Early-Return oben).
+      hasInitialAutoScroll = false
+      preservedViewport = null
+      updateTimelineRange()
     }
   }
 })
@@ -550,10 +565,46 @@ function sanitizeBuffer(value: number | undefined): number | null {
 }
 
 /**
- * 将格式字符串应用于指定日期，返回格式化后的标签字符串（实现见 utils/timelineFormat.ts）。
+ * 计算日期的 ISO 周数（W token 使用）
+ */
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayOfWeek = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+/**
+ * 将格式字符串应用于指定日期，返回格式化后的标签字符串。
+ * 支持 token：yyyy, MM, M, dd, d, HH, mm, Q（季度数字1-4）, W（ISO周数）
+ * 特殊 pattern：'AAA|BBB' —— 月份 < 6（1-6月, index 0-5）时返回 AAA，否则返回 BBB
  */
 function applyFormatter(formatStr: string, date: Date): string {
-  return applyTimelineFormat(formatStr, date)
+  if (formatStr.includes('|')) {
+    const parts = formatStr.split('|')
+    return date.getMonth() < 6 ? parts[0] : (parts[1] ?? parts[0])
+  }
+  const yyyy = date.getFullYear().toString()
+  const MM = String(date.getMonth() + 1).padStart(2, '0')
+  const M = String(date.getMonth() + 1)
+  const dd = String(date.getDate()).padStart(2, '0')
+  const d = String(date.getDate())
+  const HH = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  const Q = String(Math.ceil((date.getMonth() + 1) / 3))
+  const W = getISOWeekNumber(date).toString()
+  // 注意替换顺序：多字符 token 优先，避免单字符 token 误替换
+  return formatStr
+    .replace('yyyy', yyyy)
+    .replace('MM', MM)
+    .replace('dd', dd)
+    .replace('HH', HH)
+    .replace('mm', mm)
+    .replace('M', M)
+    .replace('d', d)
+    .replace('Q', Q)
+    .replace('W', W)
 }
 
 /**
@@ -661,6 +712,13 @@ const computeTasksDateRange = (): TaskDateRange => {
 
 // 获取任务数据的日期范围（用于月度/年度视图时间轴范围计算）
 const getTasksDateRange = () => {
+  // PATCH (viur): expliziter Range-Override (props.startDate/endDate) hat Vorrang vor der
+  // Task-abgeleiteten Range. Sonst rechnet jede GanttChart-Instanz ihre Breite aus IHREN Tasks
+  // → zwei gekoppelte Instanzen werden unterschiedlich breit. Mit Override nutzen alle Scale-
+  // Range-Funktionen (Hour/Day/Week/…) dieselbe Basis → deckungsgleiche Timelines.
+  if (props.startDate && props.endDate) {
+    return { minDate: new Date(props.startDate), maxDate: new Date(props.endDate) }
+  }
   if (cachedTaskDateRange) {
     return cachedTaskDateRange
   }
@@ -744,13 +802,21 @@ const getDayTimelineRange = () => {
   const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
   const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
 
-  // bugfix: 无任务（tasks=[]）时以"今天"作为 minDate/maxDate 锚点，复用下方与"有任务"时
-  // 完全相同的月对齐 + buffer 计算逻辑，而不是另用一套固定 ±30天窗口。
-  // 原因：旧的无任务分支不遵循 preBuffer/sufBuffer 配置、也不按月对齐，计算出的范围
-  // 比"有任务"分支窄很多（约60天 vs 三个月），当任务从空数组变为真实数据时，
-  // getDayTimelineRange 会从这条分支切换到下方分支，导致 timelineConfig 范围突变、
-  // 引发不必要的 timelineData 重新生成和滚动位置跳变。统一锚点后两条路径结果一致。
-  const { minDate, maxDate } = taskRange || { minDate: new Date(), maxDate: new Date() }
+  if (!taskRange) {
+    // 如果没有任务，根据容器宽度计算范围
+    const today = new Date()
+    const daysNeeded = Math.max(Math.ceil(containerWidth / cellWidthDay), 60) // 至少60天
+
+    const startDate = new Date(today)
+    startDate.setDate(startDate.getDate() - Math.floor(daysNeeded / 2))
+
+    const endDate = new Date(today)
+    endDate.setDate(endDate.getDate() + Math.ceil(daysNeeded / 2))
+
+    return { startDate, endDate }
+  }
+
+  const { minDate, maxDate } = taskRange
 
   // 开始日期：自定义preBuffer月前对齐月初，或默认前一个月月初
   // 对齐到月初原因：避免日期溢出导致 generateDayTimelineData 月份迭代 setMonth(+1) 跳过月份
@@ -2242,7 +2308,6 @@ const resourceTaskQueues = shallowRef(new Map<string | number, ResourceTaskQueue
 const resourceTaskRenderLimits = shallowRef(new Map<string | number, number>())
 const resourceRenderPhase = ref<'visible' | 'background'>('visible')
 let resourceBatchRafId: number | null = null
-
 // v1.12.x: GanttConflicts Canvas 定位常量
 // 资源视图下每行的 bar 位置由 assignTaskRows 的 rowHeight 和 TaskBar.vue 的 topOffset 公式共同决定：
 //   - 第一行 (row 0): bar top = abovePad + 5px(top-margin) + 0.5px(centering) = abovePad + 5.5
@@ -2997,8 +3062,10 @@ const contentHeight = computed(() => {
     return Math.max(totalHeight, minHeight, timelineBodyHeight.value)
   }
 
-  // 任务视图：使用 per-task 累计高度（支持不同行有不同高度）
-  const minHeightFromTasks = taskRowLayouts.value.totalHeight
+  // 任务视图：每个任务行高度取自 ganttRowHeight
+  const rowHeight = ganttRowHeight.value
+  const taskCount = tasks.value.length
+  const minHeightFromTasks = taskCount * rowHeight
 
   // 返回任务高度、最小高度和容器高度中的最大值
   return Math.max(minHeightFromTasks, minHeight, timelineBodyHeight.value)
@@ -3165,7 +3232,7 @@ const generateHourTimelineData = () => {
       month,
       day,
       date: new Date(currentDate),
-      dateLabel: `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`,
+      dateLabel: formatHourHeaderDate(new Date(currentDate)),
       isToday: isToday(currentDate),
       hours,
     })
@@ -3479,7 +3546,22 @@ const scrollToTodayCenter = (retry = 0) => {
   hideBubbles.value = true
   isInitialScrolling.value = true
 
-  const today = new Date()
+  // PATCH (viur): Scroll-Anker — wenn `initialScrollDate` gesetzt & gültig, dieses Datum (auf lokale
+  // Mitternacht normalisiert) als Anker nehmen und unten LINKSBÜNDIG ansteuern; sonst „heute" (wie
+  // gehabt zentriert). Der Variablenname `today` bleibt, damit die Pixel-Mathematik unten unverändert.
+  let today: Date
+  let useScrollAnchor = false
+  if (props.initialScrollDate) {
+    const anchor = new Date(props.initialScrollDate)
+    if (!isNaN(anchor.getTime())) {
+      today = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())
+      useScrollAnchor = true
+    } else {
+      today = new Date()
+    }
+  } else {
+    today = new Date()
+  }
   const timelineStart = timelineConfig.value.startDate
 
   // 确保日期计算的精确性 - 使用年月日，忽略时分秒
@@ -3682,11 +3764,14 @@ const scrollToTodayCenter = (retry = 0) => {
   }
 
   // 计算将今日列置于中间的滚动位置
-  const centeredScrollPosition = todayPosition - containerWidth / 2 + 15
+  // PATCH (viur): Mit Anker-Datum (initialScrollDate) LINKSBÜNDIG (kleiner Rand), sonst „heute" zentriert.
+  const targetScrollPosition = useScrollAnchor
+    ? todayPosition - 16
+    : todayPosition - containerWidth / 2 + 15
   if (typeof scrollContainer.scrollTo === 'function') {
-    scrollContainer.scrollTo({ left: Math.max(0, centeredScrollPosition), behavior: 'smooth' })
+    scrollContainer.scrollTo({ left: Math.max(0, targetScrollPosition), behavior: 'smooth' })
   } else {
-    scrollContainer.scrollLeft = Math.max(0, centeredScrollPosition)
+    scrollContainer.scrollLeft = Math.max(0, targetScrollPosition)
   }
 
   // 滚动结束后延迟显示半圆，并标记初始化完成
@@ -4665,6 +4750,51 @@ const startScrollTop = ref(0)
 const timelineContainer = ref<HTMLElement | null>(null)
 const timelineBodyElement = ref<HTMLElement | null>(null) // 缓存timeline-body元素引用
 let scrollRafId: number | null = null // 时间轴拖拽滚动的 RAF ID
+// PATCH (viur): Ein Daten-Refresh im Task-View (neues tasks-Array nach Drag/Drop/Save-Reload)
+// darf den Viewport nicht bewegen. Beim Drag-End-Re-Render kollabiert die Timeline-Breite
+// (scrollWidth) und bleibt bis zum nächsten vollen Range-Recompute kollabiert — der Browser
+// clampt scrollLeft, jeder Restore-Versuch clampt erneut. Deshalb: Ziel-Position VOR dem ersten
+// Re-Render sichern (flush: 'pre') und über Folge-Refreshes hinweg festhalten (nicht mit dem
+// geclampten Zwischenwert überschreiben), bis das Layout die Position wieder trägt. Initial-Load
+// (scrollLeft 0) und View-Wechsel (hasInitialAutoScroll false → Anker-Scroll) bleiben unberührt.
+let preservedViewport: { left: number; top: number; expiresAt: number } | null = null
+watch(
+  () => tasks.value,
+  () => {
+    if (viewMode.value !== 'task') return
+    const container = timelineContainer.value
+    if (!container) return
+    if (!preservedViewport || preservedViewport.expiresAt < Date.now()) {
+      const left = container.scrollLeft
+      const top = timelineBodyElement.value?.scrollTop ?? 0
+      if (left <= 0 && top <= 0) return
+      // 10s Lebensdauer: deckt Save+Reload auch bei langsamem Backend ab; danach verfällt das
+      // Ziel, damit ein legitim geschrumpfter Inhalt den User nicht dauerhaft festpinnt.
+      preservedViewport = { left, top, expiresAt: Date.now() + 10_000 }
+    }
+    const target = preservedViewport
+    const restore = (tries: number): void => {
+      if (preservedViewport !== target) return // neuere Konservierung läuft bereits
+      if (!container.isConnected) return // Unmount/Detach: keine Streu-Writes auf totes DOM
+      if (!hasInitialAutoScroll) {
+        preservedViewport = null // Anker-Scroll angefordert → nicht dagegen ankämpfen
+        return
+      }
+      if (Math.abs(container.scrollLeft - target.left) > 1) container.scrollLeft = target.left
+      const body = timelineBodyElement.value
+      if (body && Math.abs(body.scrollTop - target.top) > 1) body.scrollTop = target.top
+      if (Math.abs(container.scrollLeft - target.left) <= 1) {
+        preservedViewport = null // erreicht — Layout trägt die Position wieder
+        return
+      }
+      // Versuche erschöpft: Ziel NICHT verwerfen — die Breite kollabiert vom Drag-End bis zum
+      // Reload-Re-Render; der nächste Daten-Refresh nimmt das Ziel wieder auf (bis expiresAt).
+      if (tries > 0) requestAnimationFrame(() => restore(tries - 1))
+    }
+    nextTick(() => restore(90))
+  },
+  { flush: 'pre' }
+)
 
 // 边界滚动相关状态
 const isAutoScrolling = ref(false)
@@ -5464,7 +5594,12 @@ watch([viewMode, dataSource], ([newViewMode, newDataSource], [oldViewMode, oldDa
     // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
     // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
     // 若不重置则 scrollToTodayCenter 不会被触发，今日标记将出现在视口之外
+    // PATCH (viur): nur beim echten View-Wechsel zurücksetzen — der Watch feuert auch bei jedem
+    // Daten-Refresh im Task-View (Reload nach Drag/Drop/Save); ohne Guard wird dann der
+    // Anker-Scroll (scrollToTodayCenter) erneut ausgeführt und der Viewport des Users verworfen.
+    if (viewModeChanged) {
     hasInitialAutoScroll = false
+    }
     debouncedUpdateTimelineRange()
   } else if (newViewMode === 'resource') {
     if (viewModeChanged || dataSourceChanged) {
@@ -5785,6 +5920,145 @@ const handleAddPredecessor = (task: Task) => {
 const handleAddSuccessor = (task: Task) => {
   emit('add-successor', task)
 }
+// ── Cursor-Zeit-Anzeige + Drag-to-set (enableTimeDraw) ───────────────────────────
+// Snap-Raster: 5 Minuten (konsistent mit dem Balken-Resize-Snap der App)
+const TIME_DRAW_SNAP_MS = 5 * 60 * 1000
+
+// Pixel pro Millisekunde für die aktuelle Skala (spiegelt die interne Viewport-Mathematik,
+// siehe pixelPerMs-Berechnung in der Virtualisierung). MONTH/QUARTER/YEAR: Näherung über dayWidth.
+const timeDrawPixelPerMs = (): number => {
+  const scale = currentTimeScale.value
+  const cfg = effectiveScaleConfigs.value
+  if (scale === TimelineScale.HOUR) return cfg['hour'].cellWidth / (60 * 60 * 1000)
+  if (scale === TimelineScale.DAY) return cfg['day'].cellWidth / (24 * 60 * 60 * 1000)
+  if (scale === TimelineScale.WEEK) return cfg['week'].cellWidth / (7 * 24 * 60 * 60 * 1000)
+  return dayWidth.value / (24 * 60 * 60 * 1000)
+}
+
+// Mitternacht des Timeline-Starttags = Kalenderzeit bei Content-x=0 (positionCache ist tag-genau,
+// HOUR nutzt dayZero) — unabhängig von einer evtl. Uhrzeit-Komponente in startDate.
+const timeDrawOriginMs = (): number => {
+  const s = timelineConfig.value.startDate
+  return new Date(s.getFullYear(), s.getMonth(), s.getDate()).getTime()
+}
+
+// clientX → Timeline-Zeitstempel (ms), gerundet auf 5 Min. null wenn DOM noch nicht bereit.
+// Content-Rect bewegt sich mit dem Scroll → contentX ist scroll-unabhängig korrekt.
+const timeDrawEventToMs = (clientX: number): number | null => {
+  const content = bodyContentRef.value
+  if (!content) return null
+  const contentX = clientX - content.getBoundingClientRect().left
+  const ms = timeDrawOriginMs() + contentX / timeDrawPixelPerMs()
+  return Math.round(ms / TIME_DRAW_SNAP_MS) * TIME_DRAW_SNAP_MS
+}
+
+// Zeitstempel (ms) → Content-Pixel (für die Vorschau-Box)
+const timeDrawMsToContentX = (ms: number): number => {
+  return (ms - timeDrawOriginMs()) * timeDrawPixelPerMs()
+}
+
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+// Anzeige im Cursor-Badge: dd.mm.yyyy HH:mm
+const formatTimeDrawCursor = (ms: number): string => {
+  const d = new Date(ms)
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+// Persistenz-Format für Tasks/Backend: YYYY-MM-DD HH:mm (lokal, wie parseTaskDate erwartet)
+const formatTimeDrawTaskDate = (ms: number): string => {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+// Cursor-Badge-Zustand
+const timeCursor = reactive({ visible: false, x: 0, y: 0, ms: 0 })
+// Aufzieh-Zustand (primitiv → reaktive Vorschau); der Task selbst liegt plain in drawTask
+const timeDraw = reactive({ active: false, rowIndex: 0, startMs: 0, endMs: 0 })
+let drawTask: Task | null = null
+
+// Badge-Text: während des Aufziehens die ganze Spanne (Start – Ende, gleicher Tag nur als
+// Uhrzeit), sonst die Zeit unter dem Cursor — Start/Ende sind so schon beim Ziehen ablesbar.
+const timeCursorLabel = computed(() => {
+  if (!timeDraw.active) return formatTimeDrawCursor(timeCursor.ms)
+  const start = formatTimeDrawCursor(Math.min(timeDraw.startMs, timeDraw.endMs))
+  const end = formatTimeDrawCursor(Math.max(timeDraw.startMs, timeDraw.endMs))
+  return start.slice(0, 10) === end.slice(0, 10) ? `${start} – ${end.slice(11)}` : `${start} – ${end}`
+})
+
+const timeDrawPreviewLeft = computed(() =>
+  timeDrawMsToContentX(Math.min(timeDraw.startMs, timeDraw.endMs))
+)
+const timeDrawPreviewWidth = computed(() =>
+  Math.max(2, Math.abs(timeDrawMsToContentX(timeDraw.endMs) - timeDrawMsToContentX(timeDraw.startMs)))
+)
+
+const onTimeCursorMove = (event: MouseEvent): void => {
+  if (!props.enableTimeDraw) return
+  const ms = timeDrawEventToMs(event.clientX)
+  if (ms === null) return
+  timeCursor.visible = true
+  timeCursor.x = event.clientX
+  timeCursor.y = event.clientY
+  timeCursor.ms = ms
+  if (timeDraw.active) timeDraw.endMs = ms
+}
+
+const onTimeCursorLeave = (): void => {
+  if (timeDraw.active) return // während des Aufziehens sichtbar lassen
+  timeCursor.visible = false
+}
+
+const onTimeDrawMove = (event: MouseEvent): void => {
+  if (!timeDraw.active) return
+  const ms = timeDrawEventToMs(event.clientX)
+  if (ms === null) return
+  timeDraw.endMs = ms
+  timeCursor.visible = true
+  timeCursor.x = event.clientX
+  timeCursor.y = event.clientY
+  timeCursor.ms = ms
+}
+
+const onTimeDrawEnd = (): void => {
+  window.removeEventListener('mousemove', onTimeDrawMove, true)
+  window.removeEventListener('mouseup', onTimeDrawEnd, true)
+  const task = drawTask
+  const wasActive = timeDraw.active
+  timeDraw.active = false
+  drawTask = null
+  if (!wasActive || !task) return
+  const startMs = Math.min(timeDraw.startMs, timeDraw.endMs)
+  let endMs = Math.max(timeDraw.startMs, timeDraw.endMs)
+  if (endMs - startMs < TIME_DRAW_SNAP_MS) endMs = startMs + TIME_DRAW_SNAP_MS // mind. 5 Min
+  emit('time-draw', {
+    task,
+    startDate: formatTimeDrawTaskDate(startMs),
+    endDate: formatTimeDrawTaskDate(endMs),
+  })
+}
+
+// Shift+mousedown auf einer Row → Aufziehen starten (nur enableTimeDraw + task.allowTimeDraw,
+// leere Fläche). Ohne Shift bubbelt das Event → normale Timeline-Navigation (Scroll-Drag).
+const onTimeDrawStart = (event: MouseEvent, task: Task, rowIndex: number): void => {
+  if (!props.enableTimeDraw || !task?.allowTimeDraw || event.button !== 0 || !event.shiftKey) return
+  const target = event.target as HTMLElement
+  if (target.closest('.task-bar') || target.closest('.milestone') || target.closest('button')) return
+  const ms = timeDrawEventToMs(event.clientX)
+  if (ms === null) return
+  event.stopPropagation() // verhindert den Timeline-Scroll-Drag (handleMouseDown)
+  event.preventDefault()
+  drawTask = task
+  timeDraw.active = true
+  timeDraw.rowIndex = rowIndex
+  timeDraw.startMs = ms
+  timeDraw.endMs = ms
+  window.addEventListener('mousemove', onTimeDrawMove, true)
+  window.addEventListener('mouseup', onTimeDrawEnd, true)
+}
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onTimeDrawMove, true)
+  window.removeEventListener('mouseup', onTimeDrawEnd, true)
+})
 </script>
 
 <template>
@@ -6102,8 +6376,36 @@ const handleAddSuccessor = (task: Task) => {
     </div>
 
     <!-- Timeline Body (Task Bar Area) -->
-    <div class="timeline-body" @scroll="handleTimelineBodyScroll">
+    <div
+      class="timeline-body"
+      @scroll="handleTimelineBodyScroll"
+      @mousemove="onTimeCursorMove"
+      @mouseleave="onTimeCursorLeave"
+    >
       <div ref="bodyContentRef" class="timeline-body-content">
+        <!-- 关系线组件（Canvas 渲染，支持虚拟渲染）-->
+        <!-- 任务视图：同时绘制连接线 + 周视图1号竖线 -->
+        <!-- 资源视图：仅绘制周视图1号竖线（show-links=false 跳过连接线绘制） -->
+        <GanttLinks
+          v-if="
+            viewMode === 'task' ||
+            (viewMode === 'resource' && currentTimeScale === TimelineScale.WEEK)
+          "
+          :tasks="tasks"
+          :task-bar-positions="allBarPositions"
+          :width="canvasWidth"
+          :height="canvasHeight"
+          :offset-left="canvasOffsetLeft"
+          :offset-top="canvasOffsetTop"
+          :highlighted-task-id="highlightedTaskId"
+          :highlighted-task-ids="highlightedTaskIds"
+          :hovered-task-id="hoveredTaskId"
+          :vertical-lines="monthFirstVerticalLines"
+          :show-vertical-lines="currentTimeScale === TimelineScale.WEEK"
+          :show-links="viewMode === 'task'"
+          :is-scrolling="isTimelineScrolling"
+        />
+
         <!-- 连接线拖拽引导线 - 🚀 优化：使用命令式 API，由 RAF 直接调用 draw() -->
         <LinkDragGuide
           ref="linkDragGuideRef"
@@ -6342,6 +6644,7 @@ const handleAddSuccessor = (task: Task) => {
               }"
               @mouseenter="handleTaskRowHover(task.id)"
               @mouseleave="handleTaskRowHover(null)"
+              @mousedown="onTimeDrawStart($event, task, originalIndex)"
             >
               <!-- 里程碑分组行：显示所有里程碑在同一行的不同时间列中，不渲染父级TaskBar -->
               <template v-if="task.type === 'milestone-group' && task.children">
@@ -6492,6 +6795,17 @@ const handleAddSuccessor = (task: Task) => {
                 </template>
               </TaskBar>
             </div>
+            <!-- Vorschau-Box beim Aufziehen einer Zeitspanne (enableTimeDraw) -->
+            <div
+              v-if="timeDraw.active"
+              class="jg-time-draw-preview"
+              :style="{
+                top: `${timeDraw.rowIndex * ganttRowHeight + 5}px`,
+                height: `${ganttRowHeight - 10}px`,
+                left: `${timeDrawPreviewLeft}px`,
+                width: `${timeDrawPreviewWidth}px`,
+              }"
+            ></div>
 
             <!-- 资源视图：一行渲染多个 TaskBar -->
             <div
@@ -6784,10 +7098,52 @@ const handleAddSuccessor = (task: Task) => {
       <span class="ms-arrow" :style="{ top: `${milestoneTooltipState.arrowOffsetY}px` }" />
     </div>
   </Teleport>
+
+  <!-- Cursor-Zeit-Badge (folgt dem Cursor über der Timeline; enableTimeDraw) -->
+  <Teleport to="body">
+    <div
+      v-if="props.enableTimeDraw && timeCursor.visible"
+      class="jg-time-cursor-badge"
+      :style="{
+        left: `${timeCursor.x + 14}px`,
+        top: `${timeCursor.y + 18}px`,
+      }"
+    >
+      {{ timeCursorLabel }}
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 @import '../styles/theme-variables.css';
+/* ─── Cursor-Zeit-Badge + Aufzieh-Vorschau (enableTimeDraw) ─────────────────── */
+.jg-time-cursor-badge {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--gantt-primary, rgba(0, 0, 0, 0.82));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Schatten-Balken: deutlich sichtbare Vorwegnahme des künftigen Task-Balkens
+   (kräftige Füllung + gestrichelter Rand = „entsteht gerade", wie .task-bar.has-actual).
+   z-index MUSS über --gantt-z-row (11) liegen: die gezogene Zeile ist immer gehovert und
+   ihr opaker Hover-Stripe übermalt sonst die Vorschau → Drag-Ebene wie ein gezogener Balken. */
+.jg-time-draw-preview {
+  position: absolute;
+  z-index: var(--gantt-z-bar-drag, 40);
+  pointer-events: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gantt-primary, #007bff) 45%, transparent);
+  border: 2px dashed var(--gantt-primary, #007bff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
 
 /* ─── Singleton Tooltip CSS ─────────────────────────────────────────────────── */
 .task-hover-tooltip {

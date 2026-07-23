@@ -27,7 +27,8 @@ import type {
   ResourceUsageScale,
   ResourceUsageTaskDetailClickPayload,
 } from '../models/types/ResourceUsageTypes'
-import { useI18n, setCustomMessages } from '../composables/useI18n'
+import { useI18n, setCustomMessages, DEFAULT_LOCALE } from '../composables/useI18n'
+import type { Locale, Messages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
 import { assignTaskRows } from '../utils/taskLayoutUtils'
@@ -98,7 +99,7 @@ const props = withDefaults(defineProps<Props>(), {
   showTaskbarTab: true,
   fullscreen: false,
   expandAll: true,
-  locale: 'zh-CN',
+  locale: DEFAULT_LOCALE,
   timeScale: 'week',
   theme: undefined, // 不设置默认值，允许自动检测系统主题
   enableTaskListCollapsible: true,
@@ -107,6 +108,7 @@ const props = withDefaults(defineProps<Props>(), {
   scaleConfigs: undefined,
   rowHeight: 51,
   enableParentTaskAutoSchedule: true,
+  enableTimeDraw: false,
   enableResourceLaneStacking: true,
 })
 
@@ -142,6 +144,7 @@ const emit = defineEmits([
   // v1.9.0 资源视图事件
   'taskbar-resource-change', // 任务跨资源移动事件
   'resource-drag-end', // v1.9.0 资源视图垂直拖拽结束事件
+  'time-draw', // Aufgezogene Zeitspanne auf einer Row { task, startDate, endDate }
   // v1.12.5 CalendarView 转发事件
   'calendar-selection-complete',
   'calendar-selection-cancel',
@@ -159,7 +162,6 @@ const emit = defineEmits([
   // v1.13.0 ResourceUsageView Tooltip 明细任务点击转发事件（P1 待办 T7.4）
   'resource-usage-task-detail-click',
 ])
-
 // R2: 动态连线配置（可通过 setLinkConfig 运行时修改，优先级高于 props.linkConfig）
 const currentLinkConfig = ref<LinkConfig>(props.linkConfig || {})
 
@@ -582,6 +584,16 @@ interface Props {
   viewMode?: 'task' | 'resource' | 'calendar' | 'resource-usage'
   // v1.12.5 工具栏中实际展示可切换的视图模式按钮，默认仅 task/resource，与升级前行为一致
   availableViewModes?: Array<'task' | 'resource' | 'calendar' | 'resource-usage'>
+  // 工具栏语言下拉菜单可选择的 Locale 列表，用于限制应用中实际启用的语言，默认展示全部支持的语言
+  availableLocales?: Locale[]
+  // PATCH (viur): expliziter Zeitachsen-Override. Wenn beide gesetzt, wird die Timeline-Range
+  // NICHT aus den Tasks/Container abgeleitet, sondern fix gesetzt — nötig, um zwei GanttChart-
+  // Instanzen (z. B. Booking + Resource-Planner) deckungsgleich auszurichten (Scroll-Sync).
+  timelineStartDate?: string | Date | null
+  timelineEndDate?: string | Date | null
+  // PATCH (viur): Anker-Datum für den initialen Scroll. Wenn gesetzt, scrollt die Timeline beim
+  // Laden (und bei Scale-Wechsel) LINKSBÜNDIG auf dieses Datum, statt „heute" zu zentrieren.
+  initialScrollDate?: string | Date | null
   // 是否使用默认的TaskDrawer
   useDefaultDrawer?: boolean
   // 是否使用默认的MilestoneDialog
@@ -594,7 +606,7 @@ interface Props {
   onTodayLocate?: () => void
   onExportCsv?: () => boolean | void
   onExportPdf?: () => void
-  onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
+  onLanguageChange?: (lang: Locale) => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onSettingsConfirm?: (
@@ -613,10 +625,7 @@ interface Props {
    * 支持嵌套对象（如 csvHeaders、taskTypeMap 等）。
    * 仅在组件初始化时合并，运行时变更会自动响应。
    */
-  localeMessages?: Partial<{
-    'zh-CN'?: Partial<import('../composables/useI18n').Messages['zh-CN']>
-    'en-US'?: Partial<import('../composables/useI18n').Messages['en-US']>
-  }>
+  localeMessages?: Partial<Record<Locale, Partial<Messages[Locale]>>>
   // 工作时间配置
   workingHours?: {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
@@ -693,7 +702,7 @@ interface Props {
   // 展开/收起所有任务（响应式）
   expandAll?: boolean
   // 语言设置（响应式）
-  locale?: 'zh-CN' | 'en-US'
+  locale?: Locale
   // 时间刻度（响应式）
   timeScale?: TimelineScale
   // 主题模式（响应式）
@@ -752,6 +761,11 @@ interface Props {
   enableResourceLaneStacking?: boolean
   /** R1: 连线样式配置 */
   linkConfig?: LinkConfig
+  /**
+   * Cursor-Zeit-Anzeige + Aufziehen einer Zeitspanne auf Rows mit task.allowTimeDraw (5-Min-Snap).
+   * Emittiert 'time-draw' { task, startDate, endDate }. Default false.
+   */
+  enableTimeDraw?: boolean
 }
 
 // TaskList的固定总长度（所有列的最小宽度之和 + 边框等额外空间）
@@ -1152,7 +1166,7 @@ const mergedScaleConfigs = computed((): Record<TimelineScale, TimelineScaleConfi
 })
 
 // v1.9.0 视图模式切换处理函数
-const handleViewModeChange = (newMode: 'task' | 'resource' | 'calendar' | 'resource-usage') => {
+const handleViewModeChange = (newMode: 'task' | 'resource') => {
   if (currentViewMode.value !== newMode) {
     currentViewMode.value = newMode
     // v1.9.7 emit视图模式变化事件，让应用层能够同步状态
@@ -2128,7 +2142,6 @@ const taskRowLayouts = computed<TaskRowLayouts>(() => {
 })
 
 provide('taskRowLayouts', taskRowLayouts)
-
 // 将Task[]转换为Milestone[]的计算属性，确保类型兼容
 const milestonesForTimeline = computed((): Milestone[] => {
   // 通过条件判断访问触发器，确保里程碑更新时重新计算
@@ -2162,6 +2175,15 @@ const timelineDateRange = computed(() => {
   // 触发器依赖：确保拖拽/拉伸后会重新计算
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   updateTaskTrigger.value
+
+  // PATCH (viur): expliziter Override → feste, instanzübergreifend identische Range.
+  if (props.timelineStartDate && props.timelineEndDate) {
+    const oMin = new Date(props.timelineStartDate)
+    const oMax = new Date(props.timelineEndDate)
+    if (!Number.isNaN(oMin.getTime()) && !Number.isNaN(oMax.getTime())) {
+      return { min: oMin, max: oMax }
+    }
+  }
 
   // 扁平化所有任务和子任务
   const flattenTasks = (tasks: Task[]): Task[] => {
@@ -2598,7 +2620,6 @@ const handleTimeScaleChange = (scale: TimelineScale) => {
     timelineRef.value.updateTimeScale(scale)
   }
 }
-
 // v1.12.5 日历视图刻度映射：工具栏 日/周/月 按钮直接驱动内部 CalendarView 的 scale，
 // 时/季/年不适用于日历视图，回退为 'day'（对应 calendarProps.scale 未显式覆盖时的默认行为）
 const calendarScaleFromToolbar = computed<CalendarScale>(() => {
@@ -2861,7 +2882,7 @@ const pdfExportHandler = async () => {
     const loadingEl = document.createElement('div')
     loadingEl.style.cssText = `
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); display: flex; align-items: center;
+                  background: rgba(0,0,0,0.5); display: flex; align-items: center;
       justify-content: center; z-index: 10000; color: white; font-size: 16px;
     `
     loadingEl.textContent = loadingText
@@ -3337,7 +3358,7 @@ const currentLocale = (): string => {
  * 设置语言
  * @param locale 语言代码
  */
-const setLocale = (locale: 'zh-CN' | 'en-US') => {
+const setLocale = (locale: Locale) => {
   const { setLocale: setI18nLocale } = useI18n()
   setI18nLocale(locale)
 }
@@ -3399,7 +3420,6 @@ const contextMenuTask = ref<Task | null>(null)
 const taskDrawerVisible = ref(false)
 const taskDrawerTask = ref<Task | null>(null)
 const taskDrawerEditMode = ref(false)
-
 // v1.12.5 日历视图的组件引用：TaskDrawer 关闭后清空日历的拖拽选区高亮，避免高亮长期滞留
 const calendarViewRef = ref<InstanceType<typeof CalendarView> | null>(null)
 watch(taskDrawerVisible, visible => {
@@ -4086,7 +4106,6 @@ defineExpose({
   },
   /** 切换 TaskList 展开/收起（仅在 enableTaskListCollapsible=true 时生效，带动画） */
   toggleTaskList,
-
   // R2: 连线配置 API
   /**
    * 动态设置连线样式配置（与 props.linkConfig 合并，运行时调用优先级更高）
@@ -4120,6 +4139,7 @@ defineExpose({
       :expand-all="getIsExpandAll()"
       :view-mode="currentViewMode"
       :available-view-modes="props.availableViewModes"
+      :available-locales="props.availableLocales"
       :on-today-locate="todayLocateHandler"
       :on-export-csv="csvExportHandler"
       :on-export-pdf="pdfExportHandler"
@@ -4180,135 +4200,138 @@ defineExpose({
         </template>
       </ResourceUsageView>
       <template v-else>
-        <div
-          v-if="isTaskListVisible"
-          class="gantt-panel gantt-panel-left"
-          :style="{ width: leftPanelWidth + 'px' }"
+      <div
+        v-if="isTaskListVisible"
+        class="gantt-panel gantt-panel-left"
+        :style="{ width: leftPanelWidth + 'px' }"
+      >
+        <TaskList
+          ref="taskListComponentRef"
+          :tasks="tasksForTaskList"
+          :use-default-drawer="props.useDefaultDrawer"
+          :task-list-config="props.taskListConfig"
+          :task-list-column-render-mode="props.taskListColumnRenderMode"
+          :enable-task-row-move="props.enableTaskRowMove"
+          :task-list-row-class-name="props.taskListRowClassName"
+          :task-list-row-style="props.taskListRowStyle"
+          :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
+          @task-collapse-change="handleTaskCollapseChange"
+          @start-timer="handleStartTimer"
+          @stop-timer="handleStopTimer"
+          @add-predecessor="handleAddPredecessor"
+          @add-successor="handleAddSuccessor"
+          @delete="handleTaskDelete"
+          @task-row-moved="handleTaskRowMoved"
         >
-          <TaskList
-            ref="taskListComponentRef"
-            :tasks="tasksForTaskList"
-            :use-default-drawer="props.useDefaultDrawer"
-            :task-list-config="props.taskListConfig"
-            :task-list-column-render-mode="props.taskListColumnRenderMode"
-            :enable-task-row-move="props.enableTaskRowMove"
-            :task-list-row-class-name="props.taskListRowClassName"
-            :task-list-row-style="props.taskListRowStyle"
-            :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
-            @task-collapse-change="handleTaskCollapseChange"
-            @start-timer="handleStartTimer"
-            @stop-timer="handleStopTimer"
-            @add-predecessor="handleAddPredecessor"
-            @add-successor="handleAddSuccessor"
-            @delete="handleTaskDelete"
-            @task-row-moved="handleTaskRowMoved"
+          <!-- 传递默认 slot (用于声明式列定义) -->
+          <template v-if="$slots.default" #default>
+            <slot />
+          </template>
+          <!-- 传递 custom-task-content slot -->
+          <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
+            <slot name="custom-task-content" v-bind="rowScope" />
+          </template>
+        </TaskList>
+      </div>
+      <div v-if="props.enableTaskListCollapsible" class="gantt-splitter" @mousedown="onMouseDown">
+        <!-- TaskList切换按钮 - 贴合splitter右侧 -->
+        <div
+          class="task-list-toggle"
+          :title="isTaskListVisible ? collapseTaskListText : expandTaskListText"
+          :class="{
+            collapsed: !isTaskListVisible,
+            [animationClass]: isAnimating,
+          }"
+          @click.stop="toggleTaskList"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
           >
-            <!-- 传递默认 slot (用于声明式列定义) -->
-            <template v-if="$slots.default" #default>
-              <slot />
-            </template>
-            <!-- 传递 custom-task-content slot -->
-            <template v-if="$slots['custom-task-content']" #custom-task-content="rowScope">
-              <slot name="custom-task-content" v-bind="rowScope" />
-            </template>
-          </TaskList>
+            <!-- 收起图标 (显示任务列表时) -->
+            <polyline v-if="isTaskListVisible" points="15,18 9,12 15,6" />
+            <!-- 展开图标 (隐藏任务列表时) -->
+            <polyline v-else points="9,18 15,12 9,6" />
+          </svg>
         </div>
-        <div v-if="props.enableTaskListCollapsible" class="gantt-splitter" @mousedown="onMouseDown">
-          <!-- TaskList切换按钮 - 贴合splitter右侧 -->
-          <div
-            class="task-list-toggle"
-            :title="isTaskListVisible ? collapseTaskListText : expandTaskListText"
-            :class="{
-              collapsed: !isTaskListVisible,
-              [animationClass]: isAnimating,
-            }"
-            @click.stop="toggleTaskList"
+      </div>
+
+      <div class="gantt-panel gantt-panel-right" :class="{ 'full-width': !isTaskListVisible }">
+        <Timeline
+          ref="timelineRef"
+          :tasks="tasksForTimeline"
+          :milestones="milestonesForTimeline"
+          :start-date="timelineDateRange.min"
+          :end-date="timelineDateRange.max"
+          :initial-scroll-date="props.initialScrollDate"
+          :scale-configs="mergedScaleConfigs"
+          :working-hours="props.workingHours"
+          :task-bar-config="props.taskBarConfig"
+          :allow-drag-and-resize="props.allowDragAndResize"
+          :show-actual-taskbar="props.showActualTaskbar"
+          :enable-task-bar-tooltip="props.enableTaskBarTooltip"
+          :enable-milestone-tooltip="props.enableMilestoneTooltip"
+          :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
+          :enable-time-draw="props.enableTimeDraw"
+          :link-config="resolvedLinkConfig"
+          :pending-task-background-color="props.pendingTaskBackgroundColor"
+          :delay-task-background-color="props.delayTaskBackgroundColor"
+          :complete-task-background-color="props.completeTaskBackgroundColor"
+          :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
+          :use-default-drawer="props.useDefaultDrawer"
+          :use-default-milestone-dialog="props.useDefaultMilestoneDialog"
+          :on-milestone-save="handleMilestoneSave"
+          @timeline-scale-changed="handleTimelineScaleChanged"
+          @click-task="handleTimelineClickTask"
+          @edit-task="handleTimelineEditTask"
+          @milestone-double-click="handleMilestoneDoubleClick"
+          @start-timer="handleStartTimer"
+          @stop-timer="handleStopTimer"
+          @add-predecessor="handleAddPredecessor"
+          @add-successor="handleAddSuccessor"
+          @predecessor-added="handlePredecessorAdded"
+          @successor-added="handleSuccessorAdded"
+          @delete="handleTaskDelete"
+          @link-deleted="handleLinkDeleted"
+          @resource-drag-end="handleResourceDragEnd"
+          @time-draw="(payload) => emit('time-draw', payload)"
+        >
+          <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
+            <slot name="custom-task-content" v-bind="barScope" />
+          </template>
+          <!-- 向 Timeline 转发 #taskbar-tooltip scoped slot（仅此一层，不穿透至 TaskBar） -->
+          <template v-if="$slots['taskbar-tooltip']" #taskbar-tooltip="tooltipScope">
+            <slot name="taskbar-tooltip" v-bind="tooltipScope" />
+          </template>
+          <!-- 向 Timeline 转发 #milestone-tooltip scoped slot -->
+          <template v-if="$slots['milestone-tooltip']" #milestone-tooltip="milestoneScope">
+            <slot name="milestone-tooltip" v-bind="milestoneScope" />
+          </template>
+        </Timeline>
+
+        <!-- 关闭聚焦按钮 - 固定在gantt-panel-right底部居中 -->
+        <div v-if="showCloseButton" class="focus-close-button" @click.stop="handleClearHighlight">
+          <svg
+            class="close-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
+            <path
+              d="M18 6L6 18M6 6l12 12"
               stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <!-- 收起图标 (显示任务列表时) -->
-              <polyline v-if="isTaskListVisible" points="15,18 9,12 15,6" />
-              <!-- 展开图标 (隐藏任务列表时) -->
-              <polyline v-else points="9,18 15,12 9,6" />
-            </svg>
-          </div>
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="close-text">{{ t.disableTaskbarFocusMode }}</span>
         </div>
-
-        <div class="gantt-panel gantt-panel-right" :class="{ 'full-width': !isTaskListVisible }">
-          <Timeline
-            ref="timelineRef"
-            :tasks="tasksForTimeline"
-            :milestones="milestonesForTimeline"
-            :start-date="timelineDateRange.min"
-            :end-date="timelineDateRange.max"
-            :scale-configs="mergedScaleConfigs"
-            :working-hours="props.workingHours"
-            :task-bar-config="props.taskBarConfig"
-            :allow-drag-and-resize="props.allowDragAndResize"
-            :show-actual-taskbar="props.showActualTaskbar"
-            :enable-task-bar-tooltip="props.enableTaskBarTooltip"
-            :enable-milestone-tooltip="props.enableMilestoneTooltip"
-            :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
-            :link-config="resolvedLinkConfig"
-            :pending-task-background-color="props.pendingTaskBackgroundColor"
-            :delay-task-background-color="props.delayTaskBackgroundColor"
-            :complete-task-background-color="props.completeTaskBackgroundColor"
-            :ongoing-task-background-color="props.ongoingTaskBackgroundColor"
-            :use-default-drawer="props.useDefaultDrawer"
-            :use-default-milestone-dialog="props.useDefaultMilestoneDialog"
-            :on-milestone-save="handleMilestoneSave"
-            @timeline-scale-changed="handleTimelineScaleChanged"
-            @click-task="handleTimelineClickTask"
-            @edit-task="handleTimelineEditTask"
-            @milestone-double-click="handleMilestoneDoubleClick"
-            @start-timer="handleStartTimer"
-            @stop-timer="handleStopTimer"
-            @add-predecessor="handleAddPredecessor"
-            @add-successor="handleAddSuccessor"
-            @predecessor-added="handlePredecessorAdded"
-            @successor-added="handleSuccessorAdded"
-            @delete="handleTaskDelete"
-            @link-deleted="handleLinkDeleted"
-            @resource-drag-end="handleResourceDragEnd"
-          >
-            <template v-if="$slots['custom-task-content']" #custom-task-content="barScope">
-              <slot name="custom-task-content" v-bind="barScope" />
-            </template>
-            <!-- 向 Timeline 转发 #taskbar-tooltip scoped slot（仅此一层，不穿透至 TaskBar） -->
-            <template v-if="$slots['taskbar-tooltip']" #taskbar-tooltip="tooltipScope">
-              <slot name="taskbar-tooltip" v-bind="tooltipScope" />
-            </template>
-            <!-- 向 Timeline 转发 #milestone-tooltip scoped slot -->
-            <template v-if="$slots['milestone-tooltip']" #milestone-tooltip="milestoneScope">
-              <slot name="milestone-tooltip" v-bind="milestoneScope" />
-            </template>
-          </Timeline>
-
-          <!-- 关闭聚焦按钮 - 固定在gantt-panel-right底部居中 -->
-          <div v-if="showCloseButton" class="focus-close-button" @click.stop="handleClearHighlight">
-            <svg
-              class="close-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M18 6L6 18M6 6l12 12"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            <span class="close-text">{{ t.disableTaskbarFocusMode }}</span>
-          </div>
-        </div>
+      </div>
       </template>
     </div>
 

@@ -287,7 +287,7 @@ const t = (key: string) => {
                   v-model="formData.startDate"
                   type="date"
                   value-format="YYYY-MM-DD"
-                  placeholder="请选择里程碑日期"
+                  :placeholder="globalT.selectMilestoneDate"
                   :class="{ error: errors.startDate }"
                 />
                 <span v-if="errors.startDate" class="milestone-form-error">{{

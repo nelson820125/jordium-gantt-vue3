@@ -1,8 +1,9 @@
 import { ref, computed } from 'vue'
 import zhCN from './locales/zh-CN.json'
 import enUS from './locales/en-US.json'
+import deDE from './locales/de-DE.json'
 
-export type LocaleKey = 'zh-CN' | 'en-US'
+export type LocaleKey = 'zh-CN' | 'en-US' | 'de-DE'
 
 interface LocaleMessages {
   taskMoveConfirm: {
@@ -135,6 +136,7 @@ interface LocaleMessages {
 const localeMessages: Record<LocaleKey, LocaleMessages> = {
   'zh-CN': zhCN as any,
   'en-US': enUS as any,
+  'de-DE': deDE as any,
 }
 
 const currentLocale = ref<LocaleKey>('zh-CN')

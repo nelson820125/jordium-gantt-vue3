@@ -891,7 +891,7 @@ const taskStatus = computed(() => {
             <button
               v-if="!localTimerRunning"
               class="timer-btn start minimal"
-              title="开始计时"
+              :title="t.startTimer"
               style="
                 width: 24px;
                 height: 24px;
@@ -923,7 +923,7 @@ const taskStatus = computed(() => {
             <button
               v-else
               class="timer-btn stop minimal"
-              title="停止计时"
+              :title="t.stopTimer"
               style="
                 width: 24px;
                 height: 24px;
@@ -1096,7 +1096,7 @@ const taskStatus = computed(() => {
                   <button
                     type="button"
                     class="btn-remove-resource"
-                    title="删除资源"
+                    :title="t.deleteResource"
                     @click="removeResource(index)"
                   >
                     <svg
