@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 // 支持的语言类型
 export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
 
+const DEFAULT_LOCALE: Locale = 'zh-CN'
+
 // 多语言配置
 const messages: Record<Locale, any> = {
   'zh-CN': {
@@ -1018,15 +1020,18 @@ export function setCustomMessages(locale: Locale, custom: Partial<(typeof messag
 // LocalStorage key
 const LOCALE_STORAGE_KEY = 'gantt-locale'
 
+// 判断字符串是否为受支持的 Locale（以 messages 的 key 为准）
+const isLocale = (value: string): value is Locale => value in messages
+
 // 从localStorage读取语言设置，如果没有则使用默认值
 const getInitialLocale = (): Locale => {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
-    if (stored && (stored === 'zh-CN' || stored === 'en-US' || stored === 'de-DE')) {
-      return stored as Locale
+    if (stored && isLocale(stored)) {
+      return stored
     }
   }
-  return 'zh-CN'
+  return DEFAULT_LOCALE
 }
 
 // 当前语言状态 - 从localStorage初始化
