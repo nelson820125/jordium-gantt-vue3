@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { useI18n } from '../composables/useI18n'
+import { useI18n, localeMap, localeToLanguage, languageDisplayNames } from '../composables/useI18n'
 import type { Locale, Language } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
@@ -64,12 +64,8 @@ const emit = defineEmits<{
 const THEME_STORAGE_KEY = 'gantt-theme'
 const LANGUAGE_STORAGE_KEY = 'gantt-locale'
 
-// 保留原始类型以兼容外部API
-const localeMap: Record<Language, Locale> = {
-  zh: 'zh-CN',
-  en: 'en-US',
-  de: 'de-DE',
-}
+// 下拉菜单渲染顺序，从 localeMap 派生（其顺序最终来自 useI18n.ts 中的 LOCALES）
+const languageOptions = Object.keys(localeMap) as Language[]
 
 interface Props {
   config?: ToolbarConfig
@@ -376,13 +372,7 @@ const confirmSaveSettings = async () => {
     saveThemeToStorage()
   } else if (confirmAction.value === 'language') {
     const newLocale = pendingValue.value as Locale
-    if (newLocale === 'zh-CN') {
-      currentLanguage.value = 'zh'
-    } else if (newLocale === 'de-DE') {
-      currentLanguage.value = 'de'
-    } else {
-      currentLanguage.value = 'en'
-    }
+    currentLanguage.value = localeToLanguage[newLocale] ?? 'en'
     setLocale(newLocale)
     if (props.onLanguageChange && typeof props.onLanguageChange === 'function') {
       props.onLanguageChange(newLocale)
@@ -601,13 +591,7 @@ const handleClickOutside = (event: MouseEvent) => {
 onMounted(() => {
   // 初始化语言状态，从多语言系统获取当前语言
   const currentLocale = locale.value
-  if (currentLocale === 'zh-CN') {
-    currentLanguage.value = 'zh'
-  } else if (currentLocale === 'de-DE') {
-    currentLanguage.value = 'de'
-  } else {
-    currentLanguage.value = 'en'
-  }
+  currentLanguage.value = localeToLanguage[currentLocale] ?? 'en'
 
   // 不再直接设置document.documentElement，由GanttChart统一管理
 
@@ -906,14 +890,14 @@ onUnmounted(() => {
         <!-- 下拉菜单 -->
         <div v-if="showLanguageDropdown" class="language-menu">
           <div
-            v-for="lang in ['zh', 'en', 'de']"
+            v-for="lang in languageOptions"
             :key="lang"
             class="language-option"
             :class="{ active: currentLanguage === lang }"
-            @click="selectLanguage(lang as Language)"
+            @click="selectLanguage(lang)"
           >
             <span class="option-text">
-              {{ lang === 'zh' ? '中文' : (lang === 'de' ? 'Deutsch' : 'English') }}
+              {{ languageDisplayNames[lang] }}
             </span>
             <svg
               v-if="currentLanguage === lang"

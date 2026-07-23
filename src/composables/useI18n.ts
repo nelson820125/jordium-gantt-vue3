@@ -6,6 +6,14 @@ export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
 // 语言简码（Locale '-' 前半部分），从 Locale 派生，避免重复硬编码
 export type Language = Locale extends `${infer Lang}-${string}` ? Lang : never
 
+// 语言展示顺序的唯一权威来源；新增语言时只需在此追加一项（并在 messages 中补充对应键）
+export const LOCALES = ['zh-CN', 'en-US', 'de-DE'] as const satisfies readonly Locale[]
+
+// 编译期校验：若 Locale 联合类型新增了成员却忘记加入 LOCALES，这里会编译失败
+type EnsureAllLocalesListed = Locale extends (typeof LOCALES)[number] ? true : never
+const _ensureAllLocalesListed: EnsureAllLocalesListed = true
+void _ensureAllLocalesListed
+
 export const DEFAULT_LOCALE: Locale = 'zh-CN'
 
 // 多语言配置
@@ -999,6 +1007,21 @@ const messages: Record<Locale, any> = {
     },
   },
 }
+
+// 语言简码 -> Locale（如 'zh' -> 'zh-CN'），从 LOCALES 派生
+export const localeMap: Record<Language, Locale> = Object.fromEntries(
+  LOCALES.map(locale => [locale.split('-')[0], locale])
+) as Record<Language, Locale>
+
+// Locale -> 语言简码（如 'zh-CN' -> 'zh'），从 LOCALES 派生
+export const localeToLanguage: Record<Locale, Language> = Object.fromEntries(
+  LOCALES.map(locale => [locale, locale.split('-')[0] as Language])
+) as Record<Locale, Language>
+
+// 语言简码 -> 该语言的本地名称，复用 messages 中已有的 language 字段（无需新增文案）
+export const languageDisplayNames: Record<Language, string> = Object.fromEntries(
+  LOCALES.map(locale => [locale.split('-')[0], messages[locale].language])
+) as Record<Language, string>
 
 // 允许外部合并自定义多语言
 export function setCustomMessages(locale: Locale, custom: Partial<(typeof messages)['zh-CN']>) {
