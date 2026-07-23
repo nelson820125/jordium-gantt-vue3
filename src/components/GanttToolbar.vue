@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import type { Locale } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import '../styles/app.css'
@@ -53,7 +54,7 @@ const emit = defineEmits<{
   'today-locate': []
   'export-csv': []
   'export-pdf': []
-  'language-change': [lang: 'zh-CN' | 'en-US' | 'de-DE']
+  'language-change': [lang: Locale]
   'theme-change': [isDark: boolean]
   'fullscreen-change': [isFullscreen: boolean]
   'time-scale-change': [scale: TimelineScale]
@@ -67,7 +68,7 @@ const THEME_STORAGE_KEY = 'gantt-theme'
 const LANGUAGE_STORAGE_KEY = 'gantt-locale'
 
 // 保留原始类型以兼容外部API
-const localeMap: Record<Language, 'zh-CN' | 'en-US' | 'de-DE'> = {
+const localeMap: Record<Language, Locale> = {
   zh: 'zh-CN',
   en: 'en-US',
   de: 'de-DE',
@@ -88,7 +89,7 @@ interface Props {
   onTodayLocate?: () => void
   onExportCsv?: () => void
   onExportPdf?: () => void
-  onLanguageChange?: (lang: 'zh-CN' | 'en-US' | 'de-DE') => void
+  onLanguageChange?: (lang: Locale) => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onTimeScaleChange?: (scale: TimelineScale) => void
@@ -377,7 +378,7 @@ const confirmSaveSettings = async () => {
     }
     saveThemeToStorage()
   } else if (confirmAction.value === 'language') {
-    const newLocale = pendingValue.value as 'zh-CN' | 'en-US' | 'de-DE'
+    const newLocale = pendingValue.value as Locale
     if (newLocale === 'zh-CN') {
       currentLanguage.value = 'zh'
     } else if (newLocale === 'de-DE') {
