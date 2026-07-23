@@ -3,6 +3,9 @@ import { ref, computed } from 'vue'
 // 支持的语言类型
 export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
 
+// 语言简码（Locale '-' 前半部分），从 Locale 派生，避免重复硬编码
+export type Language = Locale extends `${infer Lang}-${string}` ? Lang : never
+
 export const DEFAULT_LOCALE: Locale = 'zh-CN'
 
 // 多语言配置

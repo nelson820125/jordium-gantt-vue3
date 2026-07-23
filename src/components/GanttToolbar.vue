@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
-import type { Locale } from '../composables/useI18n'
+import type { Locale, Language } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import '../styles/app.css'
-
-// 语言定义 - 使用多语言系统的类型
-type Language = 'zh' | 'en' | 'de'
 
 // v1.12.5 视图模式类型：新增 'calendar'/'resource-usage' 两态，默认可用列表仍为二态
 export type GanttViewMode = 'task' | 'resource' | 'calendar' | 'resource-usage'
