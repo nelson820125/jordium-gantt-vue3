@@ -27,7 +27,8 @@ import type {
   ResourceUsageScale,
   ResourceUsageTaskDetailClickPayload,
 } from '../models/types/ResourceUsageTypes'
-import { useI18n, setCustomMessages } from '../composables/useI18n'
+import { useI18n, setCustomMessages, DEFAULT_LOCALE } from '../composables/useI18n'
+import type { Locale, Messages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
 import { assignTaskRows } from '../utils/taskLayoutUtils'
@@ -98,7 +99,7 @@ const props = withDefaults(defineProps<Props>(), {
   showTaskbarTab: true,
   fullscreen: false,
   expandAll: true,
-  locale: 'zh-CN',
+  locale: DEFAULT_LOCALE,
   timeScale: 'week',
   theme: undefined, // 不设置默认值，允许自动检测系统主题
   enableTaskListCollapsible: true,
@@ -603,7 +604,7 @@ interface Props {
   onTodayLocate?: () => void
   onExportCsv?: () => boolean | void
   onExportPdf?: () => void
-  onLanguageChange?: (lang: 'zh-CN' | 'en-US' | 'de-DE') => void
+  onLanguageChange?: (lang: Locale) => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onSettingsConfirm?: (
@@ -622,11 +623,7 @@ interface Props {
    * 支持嵌套对象（如 csvHeaders、taskTypeMap 等）。
    * 仅在组件初始化时合并，运行时变更会自动响应。
    */
-  localeMessages?: Partial<{
-    'zh-CN'?: Partial<import('../composables/useI18n').Messages['zh-CN']>
-    'en-US'?: Partial<import('../composables/useI18n').Messages['en-US']>
-    'de-DE'?: Partial<import('../composables/useI18n').Messages['de-DE']>
-  }>
+  localeMessages?: Partial<Record<Locale, Partial<Messages[Locale]>>>
   // 工作时间配置
   workingHours?: {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
@@ -703,7 +700,7 @@ interface Props {
   // 展开/收起所有任务（响应式）
   expandAll?: boolean
   // 语言设置（响应式）
-  locale?: 'zh-CN' | 'en-US' | 'de-DE'
+  locale?: Locale
   // 时间刻度（响应式）
   timeScale?: TimelineScale
   // 主题模式（响应式）
@@ -3359,7 +3356,7 @@ const currentLocale = (): string => {
  * 设置语言
  * @param locale 语言代码
  */
-const setLocale = (locale: 'zh-CN' | 'en-US' | 'de-DE') => {
+const setLocale = (locale: Locale) => {
   const { setLocale: setI18nLocale } = useI18n()
   setI18nLocale(locale)
 }

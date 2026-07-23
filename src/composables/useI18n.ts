@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 // 支持的语言类型
 export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
 
-const DEFAULT_LOCALE: Locale = 'zh-CN'
+export const DEFAULT_LOCALE: Locale = 'zh-CN'
 
 // 多语言配置
 const messages: Record<Locale, any> = {
