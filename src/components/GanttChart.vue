@@ -584,6 +584,8 @@ interface Props {
   viewMode?: 'task' | 'resource' | 'calendar' | 'resource-usage'
   // v1.12.5 工具栏中实际展示可切换的视图模式按钮，默认仅 task/resource，与升级前行为一致
   availableViewModes?: Array<'task' | 'resource' | 'calendar' | 'resource-usage'>
+  // 工具栏语言下拉菜单可选择的 Locale 列表，用于限制应用中实际启用的语言，默认展示全部支持的语言
+  availableLocales?: Locale[]
   // PATCH (viur): expliziter Zeitachsen-Override. Wenn beide gesetzt, wird die Timeline-Range
   // NICHT aus den Tasks/Container abgeleitet, sondern fix gesetzt — nötig, um zwei GanttChart-
   // Instanzen (z. B. Booking + Resource-Planner) deckungsgleich auszurichten (Scroll-Sync).
@@ -4137,6 +4139,7 @@ defineExpose({
       :expand-all="getIsExpandAll()"
       :view-mode="currentViewMode"
       :available-view-modes="props.availableViewModes"
+      :available-locales="props.availableLocales"
       :on-today-locate="todayLocateHandler"
       :on-export-csv="csvExportHandler"
       :on-export-pdf="pdfExportHandler"

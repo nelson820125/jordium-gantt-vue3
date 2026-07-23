@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { useI18n, localeMap, localeToLanguage, languageDisplayNames } from '../composables/useI18n'
+import {
+  useI18n,
+  localeMap,
+  localeToLanguage,
+  languageDisplayNames,
+  LOCALES,
+} from '../composables/useI18n'
 import type { Locale, Language } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
@@ -43,6 +49,7 @@ const props = withDefaults(defineProps<Props>(), {
   onExpandAll: undefined,
   onCollapseAll: undefined,
   onViewModeChange: undefined, // v1.9.0
+  availableLocales: undefined, // 默认展示全部支持的 Locale（见下方 languageOptions 的 ?? LOCALES 兜底）
 })
 
 const emit = defineEmits<{
@@ -64,8 +71,14 @@ const emit = defineEmits<{
 const THEME_STORAGE_KEY = 'gantt-theme'
 const LANGUAGE_STORAGE_KEY = 'gantt-locale'
 
-// 下拉菜单渲染顺序，从 localeMap 派生（其顺序最终来自 useI18n.ts 中的 LOCALES）
-const languageOptions = Object.keys(localeMap) as Language[]
+// 下拉菜单渲染的语言选项：从 localeMap 派生顺序，并按 availableLocales 过滤；
+// 未传入 availableLocales 时展示全部支持的 Locale（顺序来自 useI18n.ts 中的 LOCALES）
+const languageOptions = computed<Language[]>(() => {
+  const allowedLocales = props.availableLocales ?? LOCALES
+  return (Object.keys(localeMap) as Language[]).filter(lang =>
+    (allowedLocales as readonly Locale[]).includes(localeMap[lang])
+  )
+})
 
 interface Props {
   config?: ToolbarConfig
@@ -76,6 +89,8 @@ interface Props {
   viewMode?: GanttViewMode // v1.9.0 视图模式
   // v1.12.5 工具栏可用的视图模式列表，控制分段控件渲染哪些按钮，默认 ['task','resource'] 与现有行为完全一致
   availableViewModes?: GanttViewMode[]
+  // 工具栏语言下拉菜单可选择的 Locale 列表，用于限制应用中实际启用的语言，默认展示 useI18n.ts 中 LOCALES 的全部语言
+  availableLocales?: Locale[]
   // 自定义事件处理器
   onAddTask?: () => void
   onAddMilestone?: () => void
