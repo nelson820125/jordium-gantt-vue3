@@ -1128,6 +1128,17 @@ export function useI18n() {
     return t.value.monthFormat(month)
   }
 
+  // 格式化"小时"视图表头日期（如 07/23/2026 / 23.07.2026 / 2026/07/23）
+  // 委托给 Intl.DateTimeFormat，按当前 Locale 输出对应的日期格式；
+  // Intl 原生支持的任意 Locale（包括未来新增的）都能正确格式化，无需逐个特判
+  const formatHourHeaderDate = (date: Date): string => {
+    return new Intl.DateTimeFormat(currentLocale.value, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(date)
+  }
+
   return {
     t,
     getTranslation,
@@ -1136,6 +1147,7 @@ export function useI18n() {
     setLocale,
     formatYearMonth,
     formatMonth,
+    formatHourHeaderDate,
   }
 }
 
