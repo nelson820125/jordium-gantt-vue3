@@ -1,13 +1,13 @@
 import { ref, computed } from 'vue'
 
 // 支持的语言类型
-export type Locale = 'zh-CN' | 'en-US' | 'de-DE'
+export type Locale = 'zh-CN' | 'en-US' | 'de-DE' | 'fr-FR'
 
 // 语言简码（Locale '-' 前半部分），从 Locale 派生，避免重复硬编码
 export type Language = Locale extends `${infer Lang}-${string}` ? Lang : never
 
 // 语言展示顺序的唯一权威来源；新增语言时只需在此追加一项（并在 messages 中补充对应键）
-export const LOCALES = ['zh-CN', 'en-US', 'de-DE'] as const satisfies readonly Locale[]
+export const LOCALES = ['zh-CN', 'en-US', 'de-DE', 'fr-FR'] as const satisfies readonly Locale[]
 
 // 编译期校验：若 Locale 联合类型新增了成员却忘记加入 LOCALES，这里会编译失败
 type EnsureAllLocalesListed = Locale extends (typeof LOCALES)[number] ? true : never
@@ -839,7 +839,7 @@ const messages: Record<Locale, any> = {
     taskTypeMap: {
       task: 'Aufgabe',
       milestone: 'Meilenstein',
-      story: 'Story',
+      story: 'Histoire',
       epic: 'Epic',
       bug: 'Bug',
     },
@@ -1003,6 +1003,337 @@ const messages: Record<Locale, any> = {
       overloadWarning: 'Überlastungswarnung',
       conflictDuration: 'Konfliktdauer',
       conflictWith: 'Konflikt mit',
+      conflictSuffix: '',
+    },
+  },
+  'fr-FR': {
+    dateNotSet: 'N\'est pas defini',
+    // TaskList Header
+    taskName: 'Nom de tâche',
+    resourceName: 'Nom de ressource',
+    predecessor: 'Prédécesseur',
+    assignee: 'Assigné',
+    startDate: 'Date de démarrage',
+    endDate: 'Date de fin',
+    plannedStartDate: 'Date de démarrage prévue',
+    plannedEndDate: 'Date de fin prévue',
+    actualStartDate: 'Date de démarrage réelle',
+    actualEndDate: 'Date de fin réelle',
+    childrenEarliestStart: 'Début au plus tôt (sous-tâches)',
+    childrenLatestEnd: 'Date limite de fin (sous-tâches)',
+    childrenOverflow: 'Sous-tâches dépassent limites de la tâche principale',
+    estimatedHours: 'Heures estimées',
+    actualHours: 'Heures réelles',
+    progress: 'Progres',
+    type: 'Type',
+    // CSV Export Headers（去除重复，仅保留引用）
+    csvHeaders: {
+      id: 'ID',
+      taskName: 'Nom de tâche',
+      predecessor: 'Prédécesseur',
+      assignee: 'Assigné',
+      startDate: 'Date de démarrage',
+      endDate: 'Date de fin',
+      plannedStartDate: 'Date de démarrage prévue',
+      plannedEndDate: 'Date de fin prévue',
+      actualStartDate: 'Date de démarrage réelle',
+      actualEndDate: 'Date de fin réelle',
+      estimatedHours: 'Heures estimées',
+      actualHours: 'Heures réelles',
+      progress: 'Progres (%)',
+      type: 'Type',
+      description: 'Description',
+    },
+
+    // 日期格式
+    yearMonthFormat: (year: number, month: number) => `${String(month).padStart(2, '0')}/${year}`,
+    // 月份格式
+    monthFormat: (month: number) => `${String(month).padStart(2, '0')}`,
+
+    // Month name
+    monthNames: [
+      'Jan',
+      'Fév',
+      'Mar',
+      'Avr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Aoû',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Déc',
+    ],
+    weekDays: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
+
+    // 其他
+    milestone: 'Étape',
+    today: 'Aujourd\'hui',
+    targetDate: 'Date butuare',
+    // 里程碑对话框
+    milestoneDetails: 'Détails de l\'étape',
+    milestoneName: 'Nom de l\'étape',
+    milestoneDate: 'Date de l\'étape',
+    selectMilestoneDate: 'Selectionner une date de l\'étape',
+    milestoneIcon: 'Icône de l\'étape',
+    diamond: 'Diamond',
+    rocket: 'Rocket',
+    enterMilestoneName: 'Nom de l\'étape?',
+    enterAssignee: 'Assigné?',
+    enterDescription: 'Description?',
+    milestoneNameRequired: 'Nom de l\'étape est obligatoire',
+    milestoneDateRequired: 'Date de l\'étape est obligatoire',
+    save: 'Enregistrer',
+    close: 'Clôturer',
+    confirm: 'Confirmer',
+    description: 'Description',
+    delete: 'Supprimer',
+    confirmDelete: 'Voulez vous vraiment supprimer cet étape?',
+    // 工具栏按钮
+    addTask: 'Ajouter exigence/tâche',
+    addMilestone: 'Ajouter étape',
+    todayLocate: 'Aujourd\'hui',
+    todayLocateTooltip: 'Trouver aujourd\'hui',
+    exportCsv: 'Exporter en CSV',
+    exportPdf: 'Exporter en PDF',
+    expandAll: 'Développer tout',
+    collapseAll: 'Plier tout',
+    // v1.9.0 视图模式
+    taskView: 'Vue tâche',
+    // v1.12.5 Calendar/Resource usage view
+    calendarView: 'Vue agenda',
+    resourceUsageView: 'Vue ressource',
+    language: 'Français',
+    languageTooltip: 'Sélectionner langue',
+    lightMode: 'Mode clair',
+    darkMode: 'Mode sombre',
+    fullscreen: 'Mode plein écran',
+    exitFullscreen: 'Annuler mode plein écran',
+    githubDocs: 'GitHub Docs',
+    giteeDocs: 'Gitee Docs',
+    // 时间刻度按钮
+    timeScaleHour: 'Heure',
+    timeScaleDay: 'Jour',
+    timeScaleWeek: 'Semaine',
+    timeScaleMonth: 'Mois',
+    timeScaleQuarter: 'Quartier',
+    timeScaleYear: 'Année',
+    timeScaleTooltip: 'Changer échelle de temps',
+    halfYearFirst: 'Première moitié',
+    halfYearSecond: 'Deuxième moitié',
+    // Confirm dialog
+    confirmDialogMessage: 'Voulez vous vraiment enregistrer ces paramètres?',
+    taskNamePlaceholder: 'Nom de tâche?',
+    assigneePlaceholder: 'Assigné?',
+    progressPlaceholder: '0-100',
+    hoursPlaceholder: 'Heures',
+    descriptionPlaceholder: 'Description de tâche?',
+    hours: 'Heures',
+    create: 'Créer',
+    taskNameRequired: 'Nom de tâche est obligatoire',
+    startDateRequired: 'Date de démarrage est obligatoire',
+    endDateRequired: 'Date de fin est obligatoire',
+    endDateInvalid: 'Date de démarrage ne doit pas dépasser date de fin',
+    plannedStartDateRequired: 'Date de démarrage prévue est obligatoire',
+    plannedEndDateRequired: 'Date de fin prévue est obligatoire',
+    plannedEndDateInvalid: 'Date de démarrage prévue ne doit pas dépasser date de fin prévue',
+    actualEndDateInvalid: 'Date de démarrage réelle ne doit pas dépasser date de fin réelle',
+    // Task status
+    statusPending: 'En attente',
+    statusOngoing: 'En cours',
+    statusDelayed: 'En retard',
+    statusCompleted: 'Terminée',
+    // 新建里程碑对话框
+    newMilestone: 'Nouvel étape',
+    editMilestone: 'Modifier l\'étape',
+    cancel: 'Annuler',
+    // Context menu
+    timerStarted: 'Minuteur démarré',
+    timerStopped: 'Minuteur arrêté',
+    startTimer: 'Démarrer minuteur',
+    stopTimer: 'Arrêter minuteur',
+    addPredecessor: 'Ajouter prédécesseur',
+    addSuccessor: 'Ajouter successeur',
+
+    // PDF export
+    pdfExportLoading: 'Generating PDF, please wait...',
+    pdfExportTitle: 'Gantt Chart Export',
+    pdfExportDate: 'Export Date',
+
+    milestoneGroup: 'Étape',
+    collapseTaskList: 'Plier la liste de tâches',
+    expandTaskList: 'Développer la liste de tâches',
+    // TaskDrawer related
+    taskType: 'Type de tâche',
+    taskTypeRequired: 'Sélectionner le type de tâche',
+    taskTypeMap: {
+      task: 'Tâche',
+      milestone: 'Étape',
+      story: 'Demande',
+      epic: 'Épique',
+      bug: 'Bug',
+    },
+    editTask: 'Modifier la tâche',
+    newTask: 'Nouvelle tâche',
+    parentTask: 'Tâche parent',
+
+    // 时间选择器相关
+    time: 'L\'heure',
+    selectTime: 'Sélectionner l\'heure',
+    hour: 'Heure',
+    minute: 'Minute',
+    // Date picker placeholders
+    selectDate: 'Sélectionner date',
+    to: 'à',
+    noParentTask: 'Pas de tâche parent',
+    update: 'Mise à jour',
+    taskNameTooLong: 'Le nom de la tâche ne peut pas dépasser 50 caractères',
+    predecessorPlaceholder: 'Prédécesseur?',
+    selectPredecessor: 'Sélectionner prédécesseur',
+    removePredecessor: 'Supprimer prédécesseur',
+    deleteLinks: 'Supprimer liens',
+    noLinks: 'Pas de liens',
+    predecessorLink: 'Prédécesseur: {name}',
+    successorLink: 'Successeur: {name}',
+    operationFailed: 'L\'opération a échoué',
+    taskUpdateSuccess: 'Tâche mise à jour avec succès',
+    taskCreateSuccess: 'Tâche créée avec succès',
+    confirmDeleteTask:
+      'Voulez vous vraiment supprimer la tâche "{name}"? Cette action est irréversible.',
+    taskDeleteFailed: 'Delete failed, please try again',
+    // Story deletion related
+    confirmDeleteStory:
+      'Voulez vous vraiment supprimer la demande {name} et toutes ses sous-tâches? Cette action est irréversible.',
+    storyDeleteYes: 'Oui, continuer',
+    storyDeleteNo: 'Non, supprimer la demande seule',
+    storyDeleteAllSuccess: 'Supprimée la demande [{name}] et toutes ses sous-tâches',
+    storyDeleteOnlySuccess: 'Supprimée la demande [{name}], {count} sous-tâches ont été promues',
+    storyNotFound: 'La demande n\'est pas trouvée, ID: {id}',
+    // Milestone deletion success
+    milestoneDeleteSuccess: 'Étape supprimée avec succes',
+    // Other deletion success messages
+    taskDeletedSuccess: 'Tâche supprimée',
+    // Selector placeholders
+    selectAssignee: 'Assigné?',
+    // v1.9.0 Resource allocation
+    resourceAllocation: 'Allocation de ressources',
+    selectResource: 'Sélectionner ressource',
+    addResource: 'Ajouter ressource',
+    deleteResource: 'Supprimer ressource',
+    percentMinError: 'Le pourcentage minimum est de 20%',
+    percentMaxWarning: 'Dépassement de 100% est considéré comme surcharge',
+    // Common messages
+    customCsvExportCalled: 'Custom CSV export called',
+    languageSwitchedTo: 'Langue changée vers: {language}',
+    themeSwitchedTo: 'Thème changé vers: {theme}',
+    lightModeText: 'Mode clair',
+    darkModeText: 'Mode sombre',
+    taskNotFound: 'La tâche n\'est pas trouvée, ID: {id}',
+    newParentTaskNotFound:
+      'Nouvelle tâche parent n\'est pas trouvée, ID: {parentId}, elle sera ajoutée comme tâche racine',
+    inPlaceUpdateFailed: 'Mise à jour sur place a échoué, la tâche n\'est pas trouvée, ID: {id}',
+    taskToDeleteNotFound: 'La tâche n\'est pas trouvée, ID: {id}',
+    milestoneIconUpdateNotFound: 'Étape n\'est pas trouvée, ID: {id}',
+    overtime: 'Supplémentairement',
+    overdue: 'En retard',
+    days: ' jours',
+    // 计时确认弹窗
+    timerConfirmPrefix: 'Démarrage de minuteur pour ',
+    timerConfirmSuffix: '. S\'il y a des notes spécifiques - ajouter la description suivante...',
+    timerConfirmPlaceholder: 'Description de minuteur?',
+    // Demo配置面板
+    configDemo: 'Configuration Demo',
+    // TaskList配置
+    taskListConfig: {
+      title: 'Configuration de liste de tâches',
+      columns: {
+        title: 'Colonnes (fonctionnelles uniquement en mode de rendu standard)',
+        renderMode: 'Mode de rendu',
+        renderModeDefault: 'Par défaut (via TaskListColumnConfig)',
+        renderModeDeclarative: 'Déclarative (via TaskListColumn)',
+      },
+      width: {
+        title: 'Paramètres de largeur',
+        defaultWidth: 'Largeur par défaut',
+        minWidth: 'Largeur Minimum',
+        maxWidth: 'Largeur Maximum',
+        pixelsModel: 'pixels (px)',
+        percentageModel: 'pourcentage (%)',
+      },
+      collapsible: {
+        title: 'Control de pliantabilité',
+        enableCollapsible: 'Activer la liste de tâches pliante',
+        enableCollapsibleHint: 'Laisser plier/développer la liste de tâches',
+        visible: 'Visibilité de la liste de tâches',
+        visibleExpanded: 'Développé',
+        visibleCollapsed: 'Plié',
+        visibleHint: 'Visibilité initiale de la liste de tâches',
+      },
+    },
+    // TaskBar配置
+    taskBarConfig: {
+      title: 'Configuration de TaskBar',
+      display: {
+        title: 'Options d\'affichage',
+        showAvatar: 'Montrer Avatar',
+        showTitle: 'Montrer titre',
+        showProgress: 'Montrer progrès',
+      },
+      mistouch: {
+        title: 'Protection contre glissement accidentel',
+        dragThreshold: 'Seuil de glissement (px)',
+        dragThresholdHint: 'Distance minimale pour démarrer un glissement',
+        resizeHandleWidth: 'Largeur de poignée de redimensionnement (px)',
+        resizeHandleWidthHint: 'Largeur de la poignée de redimensionnement (5-15px)',
+        enableDragDelay: 'Activer le delai de glissement',
+        enableDragDelayHint: 'Tenir l\'objet durant le delai',
+        dragDelayTime: 'Delai de glissement (ms)',
+        dragDelayTimeHint: 'Tenir l\'objet avant le glissement',
+        allowDragOnClick: 'Activer le glissement de TaskBars et étapes',
+        allowDragOnClickHint:
+          'Activer le glissement et redimensionnement de TaskBars et étapes, et redimensionnement de longeurs de TaskBars',
+      },
+    },
+    disableTaskbarFocusMode: 'Désactiver focus de TaskBar',
+    dataSourceAlreadyLoaded: '{name} est deja actif',
+    dataSourceLoadSuccess: '{name} chargé avec succès',
+    dataSourceLoadFailed: '{name} echec de chargement',
+    dataSourceSwitch: {
+      title: 'Data Sources',
+      subtitle: 'Compare default vs. mega dataset initialization',
+      loading: 'Loading data, please wait…',
+      alreadyLoaded: '{name} is already active',
+      loadSuccess: '{name} loaded successfully',
+      loadFailed: '{name} failed to load',
+      sources: {
+        normal: {
+          label: 'Standard Dataset',
+          description: 'data.json · Full predecessor graph for feature demos',
+          badge: 'data.json',
+        },
+        medium: {
+          label: 'Medium Dataset',
+          description: 'data-100.json · Full predecessor graph for feature demos',
+          badge: 'data-100.json',
+        },
+        large: {
+          label: 'Massive Dataset',
+          description: 'data-large-1m.json · Million-level tasks to stress virtual rendering',
+          badge: 'data-large-1m.json',
+        },
+      },
+    },
+    resourceView: {
+      desc: 'Vue ressource',
+      department: 'Département',
+      capacity: 'Capacité',
+      taskCount: 'Nombre de tâches',
+      overloaded: 'Surchargé',
+      duration: 'Durée',
+      overloadWarning: 'Avertissement de surcharge',
+      conflictDuration: 'Durée de conflit ',
+      conflictWith: 'Conflit avec',
       conflictSuffix: '',
     },
   },
