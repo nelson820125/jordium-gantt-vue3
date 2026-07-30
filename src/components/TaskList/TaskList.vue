@@ -469,6 +469,7 @@ defineExpose({
             <template v-else>
               {{
                 (t as any)[(column as TaskListColumnConfig).key] ||
+                (t as any).resourceView?.[(column as TaskListColumnConfig).key] ||
                 (column as TaskListColumnConfig).label
               }}
             </template>

@@ -10,6 +10,9 @@ import type {
   MilestoneTooltipShowPayload,
 } from '../models/types/TimelineDataTypes'
 import { createLocalDate } from '../utils/predecessorUtils'
+import { useI18n } from '../composables/useI18n'
+
+const { t } = useI18n()
 const props = defineProps<Props>()
 
 // 添加事件定义
@@ -892,7 +895,7 @@ const calculateMilestonePositionFromTimelineData = (
   <div
     class="milestone"
     :style="milestoneStyle"
-    :title="milestoneVisibility.isSticky ? '' : props.name || '里程碑'"
+    :title="milestoneVisibility.isSticky ? '' : props.name || t.milestone"
     :class="{
       dragging: isDragging,
       'milestone-sticky': milestoneVisibility.isSticky,

@@ -80,7 +80,8 @@
       "locale": {
         "title": "语言",
         "zhCN": "中文",
-        "enUS": "英文"
+        "enUS": "EN",
+        "deDE": "DE"
       },
       "theme": {
         "title": "主题",

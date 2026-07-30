@@ -75,7 +75,7 @@ describe('conflictUtils', () => {
       expect(intersection).toBeNull()
     })
 
-    it('应该处理边界相接的情况（不算交集）', () => {
+    it('boundary-touching counts as overlap (endDate is inclusive of the whole day)', () => {
       const task1: Task = {
         id: 1,
         name: '任务1',
@@ -92,8 +92,13 @@ describe('conflictUtils', () => {
 
       const intersection = getTimeIntersection(task1, task2)
 
-      // 边界相接不算交集
-      expect(intersection).toBeNull()
+      // endDate is inclusive (a task occupies its whole end day), so both tasks share Jan 15 -> overlap.
+      // The old "touching = null" expectation predates the inclusive-end (+1 day) model and is stale.
+      expect(intersection).not.toBeNull()
+      expect(intersection!.start.getFullYear()).toBe(2026)
+      expect(intersection!.start.getMonth()).toBe(0)
+      expect(intersection!.start.getDate()).toBe(15)
+      expect(intersection!.end.getDate()).toBe(15)
     })
 
     it('应该处理完全包含的情况', () => {
@@ -304,7 +309,7 @@ describe('conflictUtils', () => {
       )).toBe(true)
     })
 
-    it('应该处理没有资源的任务', () => {
+    it('treats a task without resources as 100% on the queried resource', () => {
       const tasks: Task[] = [
         {
           id: 1,
@@ -323,7 +328,11 @@ describe('conflictUtils', () => {
 
       const conflicts = detectConflicts(tasks, 'r1')
 
-      expect(conflicts).toHaveLength(0)
+      // Upstream v1.9.10: a task without a resources field counts as 100% on the queried resource
+      // (in the resource view a task always belongs to a resource). Overlapping task2 (50%) -> 150%
+      // -> one conflict. The old "expect 0" predates that decision and is stale.
+      expect(conflicts).toHaveLength(1)
+      expect(conflicts[0].totalPercent).toBe(150)
     })
 
     it('应该处理占比未超载的情况（<=100%）', () => {

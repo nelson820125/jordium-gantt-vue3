@@ -1,12 +1,16 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { useI18n } from '../composables/useI18n'
+import {
+  useI18n,
+  localeMap,
+  localeToLanguage,
+  languageDisplayNames,
+  LOCALES,
+} from '../composables/useI18n'
+import type { Locale, Language } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
 import { TimelineScale } from '../models/types/TimelineScale'
 import '../styles/app.css'
-
-// 语言定义 - 使用多语言系统的类型
-type Language = 'zh' | 'en'
 
 // v1.12.5 视图模式类型：新增 'calendar'/'resource-usage' 两态，默认可用列表仍为二态
 export type GanttViewMode = 'task' | 'resource' | 'calendar' | 'resource-usage'
@@ -45,6 +49,7 @@ const props = withDefaults(defineProps<Props>(), {
   onExpandAll: undefined,
   onCollapseAll: undefined,
   onViewModeChange: undefined, // v1.9.0
+  availableLocales: undefined, // 默认展示全部支持的 Locale（见下方 languageOptions 的 ?? LOCALES 兜底）
 })
 
 const emit = defineEmits<{
@@ -53,7 +58,7 @@ const emit = defineEmits<{
   'today-locate': []
   'export-csv': []
   'export-pdf': []
-  'language-change': [lang: 'zh-CN' | 'en-US']
+  'language-change': [lang: Locale]
   'theme-change': [isDark: boolean]
   'fullscreen-change': [isFullscreen: boolean]
   'time-scale-change': [scale: TimelineScale]
@@ -66,11 +71,14 @@ const emit = defineEmits<{
 const THEME_STORAGE_KEY = 'gantt-theme'
 const LANGUAGE_STORAGE_KEY = 'gantt-locale'
 
-// 保留原始类型以兼容外部API
-const localeMap: Record<Language, 'zh-CN' | 'en-US'> = {
-  zh: 'zh-CN',
-  en: 'en-US',
-}
+// 下拉菜单渲染的语言选项：从 localeMap 派生顺序，并按 availableLocales 过滤；
+// 未传入 availableLocales 时展示全部支持的 Locale（顺序来自 useI18n.ts 中的 LOCALES）
+const languageOptions = computed<Language[]>(() => {
+  const allowedLocales = props.availableLocales ?? LOCALES
+  return (Object.keys(localeMap) as Language[]).filter(lang =>
+    (allowedLocales as readonly Locale[]).includes(localeMap[lang])
+  )
+})
 
 interface Props {
   config?: ToolbarConfig
@@ -81,13 +89,15 @@ interface Props {
   viewMode?: GanttViewMode // v1.9.0 视图模式
   // v1.12.5 工具栏可用的视图模式列表，控制分段控件渲染哪些按钮，默认 ['task','resource'] 与现有行为完全一致
   availableViewModes?: GanttViewMode[]
+  // 工具栏语言下拉菜单可选择的 Locale 列表，用于限制应用中实际启用的语言，默认展示 useI18n.ts 中 LOCALES 的全部语言
+  availableLocales?: Locale[]
   // 自定义事件处理器
   onAddTask?: () => void
   onAddMilestone?: () => void
   onTodayLocate?: () => void
   onExportCsv?: () => void
   onExportPdf?: () => void
-  onLanguageChange?: (lang: 'zh-CN' | 'en-US') => void
+  onLanguageChange?: (lang: Locale) => void
   onThemeChange?: (isDark: boolean) => void
   onFullscreenChange?: (isFullscreen: boolean) => void
   onTimeScaleChange?: (scale: TimelineScale) => void
@@ -376,8 +386,8 @@ const confirmSaveSettings = async () => {
     }
     saveThemeToStorage()
   } else if (confirmAction.value === 'language') {
-    const newLocale = pendingValue.value as 'zh-CN' | 'en-US'
-    currentLanguage.value = newLocale === 'zh-CN' ? 'zh' : 'en'
+    const newLocale = pendingValue.value as Locale
+    currentLanguage.value = localeToLanguage[newLocale] ?? 'en'
     setLocale(newLocale)
     if (props.onLanguageChange && typeof props.onLanguageChange === 'function') {
       props.onLanguageChange(newLocale)
@@ -523,8 +533,8 @@ const setScaleBtnRef = (key: string, el: unknown) => {
     scaleBtnRefs.value.set(key, el)
   } else {
     scaleBtnRefs.value.delete(key)
+    }
   }
-}
 
 const measureScaleButtons = () => {
   const widths: Record<string, number> = {}
@@ -572,12 +582,11 @@ const timeScaleThumbStyle = computed(() => {
   // 尚未测量到实际宽度时回退百分比
   if (!activeWidth) {
     const pct = 100 / keys.length
-    return {
+  return {
       transform: `translateX(${activeIndex * 100}%)`,
       width: `${pct}%`,
-    }
   }
-
+}
   return {
     transform: `translateX(${translateX}px)`,
     width: `${activeWidth}px`,
@@ -597,7 +606,9 @@ const handleClickOutside = (event: MouseEvent) => {
 onMounted(() => {
   // 初始化语言状态，从多语言系统获取当前语言
   const currentLocale = locale.value
-  currentLanguage.value = currentLocale === 'zh-CN' ? 'zh' : 'en'
+  currentLanguage.value = localeToLanguage[currentLocale] ?? 'en'
+
+  // 不再直接设置document.documentElement，由GanttChart统一管理
 
   // 添加点击外部关闭下拉菜单的监听
   document.addEventListener('click', handleClickOutside)
@@ -894,13 +905,15 @@ onUnmounted(() => {
         <!-- 下拉菜单 -->
         <div v-if="showLanguageDropdown" class="language-menu">
           <div
-            v-for="lang in ['zh', 'en']"
+            v-for="lang in languageOptions"
             :key="lang"
             class="language-option"
             :class="{ active: currentLanguage === lang }"
-            @click="selectLanguage(lang as Language)"
+            @click="selectLanguage(lang)"
           >
-            <span class="option-text">{{ lang === 'zh' ? '中文' : 'English' }}</span>
+            <span class="option-text">
+              {{ languageDisplayNames[lang] }}
+            </span>
             <svg
               v-if="currentLanguage === lang"
               class="check-icon"
@@ -1505,6 +1518,7 @@ onUnmounted(() => {
   /* margin-right: 12px; */
   overflow: hidden;
   padding: 1px;
+  overflow: hidden;
   transition: border-color 0.2s ease;
   height: 36px;
 }
@@ -1542,6 +1556,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex: 1;
+  height: 34px;
   padding: 10px;
   border: none;
   background: transparent;

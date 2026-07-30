@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onUnmounted, inject } from 'vue'
+import { useI18n } from '../composables/useI18n'
+
+const { t } = useI18n()
 
 interface Props {
   // 触点类型
@@ -153,7 +156,7 @@ onUnmounted(() => {
   >
     <!-- Tooltip -->
     <div v-if="!isDragSource && !isDragTarget && !globalDragging" class="anchor-tooltip">
-      {{ type === 'predecessor' ? '添加前置任务' : '添加后置任务' }}
+      {{ type === 'predecessor' ? t.addPredecessor : t.addSuccessor }}
     </div>
   </div>
 </template>

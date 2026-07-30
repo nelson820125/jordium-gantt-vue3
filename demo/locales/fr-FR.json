@@ -81,7 +81,8 @@
         "title": "Locale",
         "zhCN": "中文",
         "enUS": "EN",
-        "deDE": "DE"
+        "deDE": "DE",
+        "frFR": "FR"
       },
       "theme": {
         "title": "Theme",
