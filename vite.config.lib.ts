@@ -18,7 +18,7 @@ export default defineConfig({
     vue(),
     dts({
       rollupTypes: true,
-      outDir: '../npm-package/dist',
+      outDir: 'npm-package/dist',
       tsconfigPath: './tsconfig.build.json',
       include: ['src/**/*.ts', 'src/**/*.vue'],
       exclude: ['tests/**/*', 'demo/**/*'],
@@ -26,7 +26,7 @@ export default defineConfig({
     generateCssExportPlugin(),
   ],
   build: {
-    outDir: '../npm-package/dist',
+    outDir: 'npm-package/dist',
     emptyOutDir: true,
     lib: {
       entry: './src/index.ts',
