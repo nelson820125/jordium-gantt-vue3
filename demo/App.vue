@@ -521,7 +521,7 @@ const scrollToDateValue = ref('')
 const controlMode = ref<'expose' | 'props'>('expose')
 
 // Props控制变量
-const propsLocale = ref<'zh-CN' | 'en-US' | 'de-DE'>('zh-CN')
+const propsLocale = ref<'zh-CN' | 'en-US' | 'de-DE' | 'fr-FR'>('zh-CN')
 const propsTheme = ref<'light' | 'dark'>('light')
 const propsTimeScale = ref<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('week')
 const propsFullscreen = ref(false)
@@ -668,7 +668,7 @@ const handleScrollToDate = () => {
   }
 }
 
-const handleSetLocale = (locale: 'zh-CN' | 'en-US' | 'de-DE') => {
+const handleSetLocale = (locale: 'zh-CN' | 'en-US' | 'de-DE' | 'fr-FR') => {
   // 切换语言
   setDemoLocale(locale)
   gantt.value?.setLocale(locale)
@@ -678,6 +678,8 @@ const handleSetLocale = (locale: 'zh-CN' | 'en-US' | 'de-DE') => {
   let languageText = '中文'
   if (lang === 'de-DE') {
     languageText = 'Deutsch'
+  } else if (lang === 'fr-FR') {
+    languageText = 'Français'
   } else {
     languageText = 'English'
   }
@@ -717,11 +719,13 @@ const clickedTask = ref<Task | null>(null)
 // TaskRow Move 相关（已移除确认对话框，直接显示提示消息）
 
 // 同步语言切换
-const handleLanguageChange = (lang: 'zh-CN' | 'en-US' | 'de-DE') => {
+const handleLanguageChange = (lang: 'zh-CN' | 'en-US' | 'de-DE' | 'fr-FR') => {
   setDemoLocale(lang)
   let languageText = '中文'
   if (lang === 'de-DE') {
     languageText = 'Deutsch'
+  } else if (lang === 'fr-FR') {
+    languageText = 'Français'
   } else {
     languageText = 'English'
   }

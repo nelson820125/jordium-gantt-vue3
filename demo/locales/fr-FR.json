@@ -1,0 +1,167 @@
+{
+  "giteeBadge": {
+    "text": "🥇 Gitee 2025 Open Source Awards 👉 Thanks for Your Vote",
+    "url": "https://gitee.com/activity/2025opensource?ident=IOUNZP"
+  },
+  "resourceEditHint": {
+    "title": "Resource Edit Hint",
+    "message": "The resource row has been double-clicked. This event can be customized to implement resource editing functionality.\n\nCurrent resource: {resourceName}\n\nYou can implement resource property editing here, such as modifying resource name, capacity, cost, and other information.",
+    "confirmText": "Got it"
+  },
+  "taskMoveConfirm": {
+    "title": "Confirm Task Move",
+    "confirmText": "Confirm",
+    "cancelText": "Cancel",
+    "messages": {
+      "moveAfter": "{draggedTaskType} [{draggedTaskName}] will be placed after {targetTaskType} [{targetTaskName}]. Continue?",
+      "moveAsChild": "Task [{draggedTaskName}] will be unlinked from {oldParentName} and linked to {newParentName}. Continue?",
+      "moveAsChildNoOldParent": "Task [{draggedTaskName}] will be linked to {newParentName}. Continue?",
+      "moveAsChildSameParent": "Task [{draggedTaskName}] will be moved to the first position under {newParentName}. Continue?",
+      "moveCanceled": "Task move canceled",
+      "moveSuccess": "Task moved successfully"
+    },
+    "taskTypes": {
+      "story": "Story",
+      "task": "Task"
+    },
+    "parentNames": {
+      "root": "Root",
+      "story": "Story [{name}]",
+      "task": "Task [{name}]"
+    }
+  },
+  "toolSettings": {
+    "title": "Tool Settings",
+    "currentStatus": {
+      "title": "Current Status",
+      "fullscreen": "Fullscreen",
+      "expandAll": "Expand All",
+      "locale": "Locale",
+      "timeScale": "Time Scale",
+      "theme": "Theme",
+      "controlMode": "Control Mode",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expanded": "Expanded",
+      "collapsed": "Collapsed"
+    },
+    "controlMode": {
+      "title": "Control Mode",
+      "expose": "Expose Methods",
+      "props": "Props Control",
+      "exposeHint": "Call component methods via ref.value.method()",
+      "propsHint": "Control component state by modifying Props"
+    },
+    "exposeMethods": {
+      "sectionTitle": "Expose Methods Control",
+      "fullscreen": {
+        "title": "Fullscreen",
+        "enter": "Enter",
+        "exit": "Exit",
+        "toggle": "Toggle"
+      },
+      "expand": {
+        "title": "Expand",
+        "all": "All",
+        "none": "None",
+        "toggle": "Toggle"
+      },
+      "timeScale": {
+        "title": "Scale",
+        "hour": "Hour",
+        "day": "Day",
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter",
+        "year": "Year",
+        "zoomIn": "Zoom In",
+        "zoomOut": "Zoom Out"
+      },
+      "locale": {
+        "title": "Locale",
+        "zhCN": "中文",
+        "enUS": "EN",
+        "deDE": "DE",
+        "frFR": "FR"
+      },
+      "theme": {
+        "title": "Theme",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "navigation": {
+        "title": "Nav",
+        "today": "Today",
+        "taskIdPlaceholder": "Task ID",
+        "go": "Go"
+      }
+    },
+    "propsControl": {
+      "sectionTitle": "Props Control",
+      "locale": {
+        "title": "Locale Prop"
+      },
+      "theme": {
+        "title": "Theme Prop"
+      },
+      "timeScale": {
+        "title": "TimeScale Prop"
+      },
+      "fullscreen": {
+        "title": "Fullscreen Prop",
+        "true": "True",
+        "false": "False"
+      },
+      "expandAll": {
+        "title": "ExpandAll Prop",
+        "true": "True",
+        "false": "False"
+      }
+    },
+    "showViewMode": {
+      "title": "Task/Resource View Toggle",
+      "label": "Show view mode switcher",
+      "hint": "Hides the Task/Resource toggle control from the toolbar when off"
+    },
+    "taskListControl": {
+      "sectionTitle": "TaskList Collapsible Control",
+      "sectionTitle1": "TaskList Show/Hide Control",
+      "show": "Expand",
+      "hide": "Collapse",
+      "toggle": "Toggle (animated)",
+      "enableCollapsible": "enableTaskListCollapsible",
+      "visibleProp": "taskListVisible",
+      "true": "Enabled",
+      "false": "Disabled"
+    }
+  },
+  "taskBarConfig": {
+    "display": {
+      "showActualTaskBar": "Show Actual TaskBar"
+    },
+    "colorConfig": {
+      "title": "Custom Task Status Background Colors",
+      "pendingTask": "Pending Task",
+      "delayTask": "Overdue Task",
+      "completeTask": "Completed Task",
+      "ongoingTask": "Ongoing Task"
+    },
+    "enableTaskRowMove": {
+      "label": "Enable TaskRow Drag and Drop",
+      "hint": "Allow dragging TaskRow to adjust task hierarchy and order"
+    }
+  },
+  "releaseNotes": "Click to view release notes",
+  "collapseExpandClickHint": "Click to expand/collapse",
+  "sponsor": {
+    "btnLabel": "☕ Sponsor",
+    "dialogTitle": "Buy the Author a Coffee ☕",
+    "dialogSubtitle": "Your support keeps this open-source project alive and moving forward!",
+    "wechat": "WeChat Pay",
+    "alipay": "Alipay",
+    "afdian": "Afdian",
+    "kofi": "Ko-fi",
+    "orStar": "Or simply give a ⭐ Star \u2014 it means a lot to open-source authors!",
+    "close": "Close"
+  }
+}
