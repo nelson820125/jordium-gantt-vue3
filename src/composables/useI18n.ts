@@ -1103,7 +1103,7 @@ const messages: Record<Locale, any> = {
     taskView: 'Vue tâche',
     // v1.12.5 Calendar/Resource usage view
     calendarView: 'Vue agenda',
-    resourceUsageView: 'Vue ressource',
+    resourceUsageView: 'Vue ressource usage',
     language: 'Français',
     languageTooltip: 'Sélectionner langue',
     lightMode: 'Mode clair',
