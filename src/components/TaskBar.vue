@@ -673,12 +673,13 @@ const taskBarStyle = computed(() => {
 
     if (props.timelineData) {
       const timelineData = props.timelineData // Narrowing für die Closure sichern
+      const scale = props.currentTimeScale ?? TimelineScale.DAY
       const cellOf = (d: Date): number => {
         if (positionCache) {
-          const cached = positionCache.getPosition(d, props.currentTimeScale)
+          const cached = positionCache.getPosition(d, scale)
           if (cached !== null) return cached
         }
-        return calculatePositionFromTimelineData(d, timelineData, props.currentTimeScale)
+        return calculatePositionFromTimelineData(d, timelineData, scale)
       }
       left = cellOf(startDateOnly) + startMinutesIntoDay * pixelPerMinute
       const endPos = cellOf(endDateOnly) + endMinutesIntoDay * pixelPerMinute
@@ -1194,12 +1195,13 @@ const overflowBarStyle = computed(() => {
     overflowWidth = Math.max((endMinutesTotal - startMinutesTotal) * pixelPerMinute, 4)
   } else if (props.timelineData) {
     const timelineData = props.timelineData
+    const scale = props.currentTimeScale ?? TimelineScale.DAY
     const cellOf = (d: Date): number => {
       if (positionCache) {
-        const cached = positionCache.getPosition(d, props.currentTimeScale)
+        const cached = positionCache.getPosition(d, scale)
         if (cached !== null) return cached
       }
-      return calculatePositionFromTimelineData(d, timelineData, props.currentTimeScale)
+      return calculatePositionFromTimelineData(d, timelineData, scale)
     }
     overflowLeft = cellOf(startDateOnly) + startMinutesIntoDay * pixelPerMinute
     const endPos = cellOf(endDateOnly) + endMinutesIntoDay * pixelPerMinute

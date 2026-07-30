@@ -14,6 +14,7 @@ import type { StyleValue } from 'vue'
 import TaskList from './TaskList/TaskList.vue'
 import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
+import type { GanttViewMode } from './GanttToolbar.vue'
 import TaskDrawer from './TaskDrawer.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
 import CalendarView from './Calendar/CalendarView.vue'
@@ -189,9 +190,7 @@ const slots = useSlots()
 
 // v1.9.0 视图模式状态管理
 // v1.12.5 扩展：新增 'calendar'/'resource-usage' 两态，默认值与赋值逻辑不变
-const currentViewMode = ref<'task' | 'resource' | 'calendar' | 'resource-usage'>(
-  props.viewMode || 'task'
-)
+const currentViewMode = ref<GanttViewMode>(props.viewMode || 'task')
 
 // 根据视图模式计算当前使用的数据源
 const currentDataSource = computed(() => {
@@ -1166,7 +1165,7 @@ const mergedScaleConfigs = computed((): Record<TimelineScale, TimelineScaleConfi
 })
 
 // v1.9.0 视图模式切换处理函数
-const handleViewModeChange = (newMode: 'task' | 'resource') => {
+const handleViewModeChange = (newMode: GanttViewMode) => {
   if (currentViewMode.value !== newMode) {
     currentViewMode.value = newMode
     // v1.9.7 emit视图模式变化事件，让应用层能够同步状态
