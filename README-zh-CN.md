@@ -127,7 +127,8 @@ pnpm add jordium-gantt-vue3
 ```vue
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css' // 即将废弃
+import 'jordium-gantt-vue3/index.css' // 推荐使用，更规范
 </script>
 ```
 
@@ -147,7 +148,7 @@ import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   {
@@ -501,7 +502,7 @@ npm run dev
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   {
@@ -533,7 +534,7 @@ const assigneeOptions = ref([
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   {
@@ -591,7 +592,7 @@ const assigneeOptions = ref([
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([])
 const milestones = ref([])
@@ -671,7 +672,7 @@ const handleMilestoneSaved = milestone => {
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   { id: 1, name: '任务1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
@@ -718,7 +719,7 @@ const propsExpandAll = ref(false)
 import { ref } from 'vue'
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import type { Task, Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const ganttRef = ref<InstanceType<typeof GanttChart>>()
 const viewMode = ref<'task' | 'resource' | 'calendar' | 'resource-usage'>('task')
@@ -861,7 +862,7 @@ const handleResourceUsageCellClick = (payload: any) => {
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref<Task[]>([
   {
@@ -952,7 +953,7 @@ const handleTaskDragEnd = (task: Task) => {
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref<Task[]>([
   {
@@ -1075,7 +1076,7 @@ const handleSuccessorAdded = (event: { targetTask: Task; newTask: Task }) => {
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([])
 const milestones = ref([])
@@ -1139,7 +1140,7 @@ const handleTaskAdded = e => {
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref<Task[]>([
   {
@@ -1410,7 +1411,7 @@ const resource = {
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const resources = ref<Resource[]>([
   {
@@ -1524,7 +1525,7 @@ const handleTaskbarResourceChange = (payload: any) => {
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const milestones = ref<Task[]>([
   {
@@ -1613,7 +1614,7 @@ const handleMilestoneDrag = (milestone: Task) => {
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import CustomMilestoneDialog from './CustomMilestoneDialog.vue'
 import type { Task } from 'jordium-gantt-vue3'
 
@@ -1920,7 +1921,7 @@ const handleDelete = () => {
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task, Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const resources: Resource[] = [{ id: 'dev-001', name: '张三' }]
 const tasks: Task[] = [
@@ -1971,7 +1972,7 @@ const handleTaskMove = (payload: any) => {
 import { ref } from 'vue'
 import { CalendarView } from 'jordium-gantt-vue3'
 import type { Task, Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const calendarRef = ref<InstanceType<typeof CalendarView>>()
 const selectedResourceId = ref<string | number | null>('dev-001')
@@ -2066,7 +2067,7 @@ const formatTime = (date: string | Date) => new Date(date).toLocaleTimeString('z
 <script setup lang="ts">
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import type { Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const resources: Resource[] = [
   {
@@ -2118,7 +2119,7 @@ const handleOverloadDetected = (payload: any) => {
 import { ref } from 'vue'
 import { ResourceUsageView } from 'jordium-gantt-vue3'
 import type { Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const resourceUsageRef = ref<InstanceType<typeof ResourceUsageView>>()
 const resources: Resource[] = [
@@ -2240,7 +2241,7 @@ TimelineScale.YEAR // 'year' - 年视图
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
@@ -2381,7 +2382,7 @@ const toolbarConfig: ToolbarConfig = {
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
@@ -2401,7 +2402,7 @@ const taskListConfig: TaskListConfig = {
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
@@ -2423,7 +2424,7 @@ const taskListConfig: TaskListConfig = {
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
 // 定义要显示的列配置
@@ -2509,7 +2510,7 @@ const taskListConfig: TaskListConfig = {
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
 // 定义可动态配置的列
@@ -2583,7 +2584,7 @@ const taskListConfig = computed<TaskListConfig>(() => ({
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskBarConfig } from 'jordium-gantt-vue3'
 
 const taskBarConfig: TaskBarConfig = {
@@ -2792,7 +2793,7 @@ function switchToOrthogonal() {
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const scaleConfigs = {
   day: { cellWidth: 60 },   // 日视图单元格加宽至60px（默认30px）
@@ -3019,7 +3020,7 @@ GanttChart 组件通过 `defineExpose` 暴露了一系列方法，允许父组�
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { TimelineScale } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 // 组件引用
 const ganttRef = ref<InstanceType<typeof GanttChart>>()
@@ -3574,7 +3575,7 @@ const month = formatMonth(3)  // '3月' (zh-CN) 或 '03' (en-US)
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 import CustomTaskContent from './CustomTaskContent.vue'
 
@@ -3721,7 +3722,7 @@ const props = defineProps<Props>()
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart, TaskListContextMenu } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([])
@@ -3813,7 +3814,7 @@ const handleDuplicate = (task: Task) => {
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart, TaskBarContextMenu } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([])
@@ -3975,7 +3976,7 @@ const handleSetDependency = (task: Task) => {
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([
@@ -4113,7 +4114,7 @@ const tasks = ref<Task[]>([
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task, TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([

@@ -127,7 +127,8 @@ Import the `GanttChart` component and styles:
 ```vue
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css' // Scheduled for deprecation
+import 'jordium-gantt-vue3/index.css' // Recommended
 </script>
 ```
 
@@ -147,7 +148,7 @@ Create your first Gantt chart:
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   {
@@ -503,7 +504,7 @@ For complete event documentation, see:
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   {
@@ -535,7 +536,7 @@ const assigneeOptions = ref([
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   {
@@ -593,7 +594,7 @@ const assigneeOptions = ref([
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([])
 const milestones = ref([])
@@ -673,7 +674,7 @@ Control component state through reactive Props binding. Component state will aut
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([
   { id: 1, name: 'Task 1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
@@ -807,7 +808,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref<Task[]>([
   {
@@ -898,7 +899,7 @@ Tasks can configure predecessors via the `predecessor` field, and the component 
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref<Task[]>([
   {
@@ -1021,7 +1022,7 @@ Suitable for scenarios requiring complete custom control bar:
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref([])
 const milestones = ref([])
@@ -1085,7 +1086,7 @@ Allow users to adjust task hierarchy and order by dragging TaskRow:
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const tasks = ref<Task[]>([
   {
@@ -1356,7 +1357,7 @@ const resource = {
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const resources = ref<Resource[]>([
   {
@@ -1470,7 +1471,7 @@ Using the new event API, component auto-manages data, more concise:
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { Task } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const milestones = ref<Task[]>([
   {
@@ -1559,7 +1560,7 @@ If you need to fully customize the milestone editing interface, you can disable 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import CustomMilestoneDialog from './CustomMilestoneDialog.vue'
 import type { Task } from 'jordium-gantt-vue3'
 
@@ -1961,7 +1962,7 @@ Since v1.13.0, the left resource-list panel **directly embeds the same `TaskList
 <script setup lang="ts">
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import type { Resource } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const resources: Resource[] = [
   {
@@ -2095,7 +2096,7 @@ TimelineScale.YEAR // 'year' - Year view
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { ToolbarConfig } from 'jordium-gantt-vue3'
 
 const toolbarConfig: ToolbarConfig = {
@@ -2236,7 +2237,7 @@ Customize task list display columns, width limits, etc. Task list is located on 
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
@@ -2256,7 +2257,7 @@ const taskListConfig: TaskListConfig = {
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig } from 'jordium-gantt-vue3'
 
 const taskListConfig: TaskListConfig = {
@@ -2278,7 +2279,7 @@ Based on business requirements, you can customize columns to display, column wid
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
 // Define column configuration to display
@@ -2364,7 +2365,7 @@ Combine `ref` and `computed` to achieve dynamic show/hide and width adjustment o
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
 // Define dynamically configurable columns
@@ -2438,7 +2439,7 @@ Controls task bar display content and interaction behavior。
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { TaskBarConfig } from 'jordium-gantt-vue3'
 
 const taskBarConfig: TaskBarConfig = {
@@ -2645,7 +2646,7 @@ Customize the cell width, header formatter strings, and buffer sizes for each ti
 
 <script setup lang="ts">
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 const scaleConfigs = {
   day: { cellWidth: 60 },   // Widen day view cells to 60px (default 30px)
@@ -2872,7 +2873,7 @@ The GanttChart component exposes a series of methods through `defineExpose`, all
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import type { TimelineScale } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 
 // Component reference
 const ganttRef = ref<InstanceType<typeof GanttChart>>()
@@ -3427,7 +3428,7 @@ Used to customize task display content in task list (TaskRow) and timeline (Task
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 import CustomTaskContent from './CustomTaskContent.vue'
 
@@ -3574,7 +3575,7 @@ Used to customize the context menu content for TaskRow (task list row).
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart, TaskListContextMenu } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([])
@@ -3666,7 +3667,7 @@ Used to customize the context menu content for TaskBar (timeline task bar).
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart, TaskBarContextMenu } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([])
@@ -3828,7 +3829,7 @@ The `TaskListColumn` component provides two slots for customizing task list colu
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([
@@ -3966,7 +3967,7 @@ In default mode (`taskListColumnRenderMode="default"`), you can customize column
 <script setup lang="ts">
 import { ref } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
-import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import 'jordium-gantt-vue3/index.css'
 import type { Task, TaskListConfig, TaskListColumnConfig } from 'jordium-gantt-vue3'
 
 const tasks = ref<Task[]>([
