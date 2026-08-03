@@ -17,6 +17,11 @@ export interface TaskListEventHandlersOptions {
   updateContainerWidth: () => void
   onTaskUpdate?: (task: Task) => void
   enableParentTaskAutoSchedule?: Ref<boolean> | ComputedRef<boolean>
+  // v2.0 资源视图下 `tasks` 实际绑定的是 Resource[]（见 TaskList.vue 的 localTasks），
+  // 而非任务树。若不区分视图模式，下面按 id 匹配 + Object.assign 的任务树更新逻辑
+  // 可能会把 Resource 当作 Task 命中（当 resource.id 与某个 task.id 数值相同时），
+  // 把任务的字段（包括 name）整体覆盖到该资源对象上。
+  viewMode?: Ref<'task' | 'resource'>
 }
 
 export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) {
@@ -29,6 +34,7 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
     updateContainerWidth,
     onTaskUpdate,
     enableParentTaskAutoSchedule,
+    viewMode,
   } = options
 
   // ==================== 悬停事件处理 ====================
@@ -68,6 +74,9 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
 
   const updateTaskData = (updatedTask: Task) => {
     if (!tasks.value) return
+    // 资源视图下 tasks.value 是 Resource[]，任务树匹配/合并逻辑在此不适用
+    // （资源侧的任务数据同步已经由 GanttChart 的 updateTaskAndSyncToResources 负责）
+    if (viewMode?.value === 'resource') return
 
     const updateTaskInTree = (taskList: Task[]): boolean => {
       for (const task of taskList) {
@@ -101,6 +110,10 @@ export function useTaskListEventHandlers(options: TaskListEventHandlersOptions) 
   }
 
   const handleTaskAdded = (event: CustomEvent) => {
+    // 资源视图下 tasks.value 是 Resource[]，新增任务不应被当作资源 push 进去
+    // （资源侧的新增任务同步已经由 GanttChart 的 addTaskToResource 负责）
+    if (viewMode?.value === 'resource') return
+
     const newTask = event.detail
     if (tasks.value) {
       // eslint-disable-next-line vue/no-mutating-props

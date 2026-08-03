@@ -296,6 +296,7 @@ const {
   taskListBodyRef,
   updateContainerWidth,
   enableParentTaskAutoSchedule: computed(() => props.enableParentTaskAutoSchedule ?? true),
+  viewMode,
 })
 
 function toggleCollapse(task: Task) {
