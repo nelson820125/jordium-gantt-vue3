@@ -2078,7 +2078,7 @@ const visibleTaskRange = computed(() => {
 
     // 找到第一个可见的资源行
     for (let i = 0; i < resources.length; i++) {
-      const resourceId = resources[i].id
+      const resourceId = String(resources[i].id)
       const rowTop = resourceRowPositions.value?.get(resourceId) || 0
       // v1.9.9 从 resourceTaskLayouts 直接获取布局
       const layout = resourceTaskLayouts.value.get(resourceId)
@@ -2094,7 +2094,7 @@ const visibleTaskRange = computed(() => {
     // 找到最后一个可见的资源行
     const scrollBottom = scrollTop + containerHeight
     for (let i = startIndex; i < resources.length; i++) {
-      const resourceId = resources[i].id
+      const resourceId = String(resources[i].id)
       const rowTop = resourceRowPositions.value?.get(resourceId) || 0
 
       if (rowTop > scrollBottom + ganttRowHeight.value * VERTICAL_BUFFER) {
@@ -2294,7 +2294,7 @@ const conflictCanvasTopOffset = computed(
 const conflictCanvasHeight = (totalHeight: number) =>
   totalHeight - conflictCanvasTopOffset.value - CONFLICT_ROW_BOTTOM_MARGIN
 const getConflictRowHeights = (resourceId: string | number) => {
-  return resourceTaskLayouts.value.get(resourceId)?.rowHeights
+  return resourceTaskLayouts.value.get(String(resourceId))?.rowHeights
 }
 
 const stopResourceBatchRender = () => {
@@ -3019,7 +3019,7 @@ const contentHeight = computed(() => {
 
     resources.forEach(resource => {
       // v1.9.9 从 resourceTaskLayouts 直接获取布局
-      const layout = resourceTaskLayouts.value.get(resource.id)
+      const layout = resourceTaskLayouts.value.get(String(resource.id))
       totalHeight += layout?.totalHeight || ganttRowHeight.value
     })
 
@@ -6779,8 +6779,8 @@ onUnmounted(() => {
               class="task-row resource-row"
               :class="{ 'task-row-hovered': hoveredTaskId === resource.id }"
               :style="{
-                top: `${resourceRowPositions?.get(resource.id) || 0}px`,
-                height: `${resourceTaskLayouts?.get(resource.id)?.totalHeight || ganttRowHeight}px`,
+                top: `${resourceRowPositions?.get(String(resource.id)) || 0}px`,
+                height: `${resourceTaskLayouts?.get(String(resource.id))?.totalHeight || ganttRowHeight}px`,
               }"
               @mouseenter="handleTaskRowHover(resource.id)"
               @mouseleave="handleTaskRowHover(null)"
@@ -6794,10 +6794,10 @@ onUnmounted(() => {
                   :row-index="originalIndex"
                   :row-height="resourceViewTaskBarRowHeight"
                   :task-sub-row="
-                    resourceTaskLayouts?.get(resource.id)?.taskRowMap.get(task.id) || 0
+                    resourceTaskLayouts?.get(String(resource.id))?.taskRowMap.get(task.id) || 0
                   "
                   :row-heights="
-                    resourceTaskLayouts?.get(resource.id)?.rowHeights || [
+                    resourceTaskLayouts?.get(String(resource.id))?.rowHeights || [
                       resourceViewTaskBarRowHeight,
                     ]
                   "
@@ -6896,14 +6896,14 @@ onUnmounted(() => {
                   :top-offset="conflictCanvasTopOffset"
                   :height="
                     conflictCanvasHeight(
-                      resourceTaskLayouts.get(resource.id)?.totalHeight || ganttRowHeight
+                      resourceTaskLayouts.get(String(resource.id))?.totalHeight || ganttRowHeight
                     )
                   "
                   :bar-top-pad="conflictTitleAbovePad"
                   :width="totalTimelineWidth"
                   :timeline-data="timelineData as any"
                   :current-time-scale="currentTimeScale"
-                  :task-row-map="resourceTaskLayouts.get(resource.id)?.taskRowMap"
+                  :task-row-map="resourceTaskLayouts.get(String(resource.id))?.taskRowMap"
                   :row-heights="getConflictRowHeights(resource.id)"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"

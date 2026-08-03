@@ -101,7 +101,7 @@ export function useTaskListLayout(tasks: Ref<Task[]>) {
     const heights: number[] = [0]
     let cumulative = 0
     resources.forEach(resource => {
-      const layout = resourceTaskLayouts.value.get(resource.id)
+      const layout = resourceTaskLayouts.value.get(String(resource.id))
       const height = layout?.totalHeight || ganttRowHeight.value
       cumulative += height
       heights.push(cumulative)
