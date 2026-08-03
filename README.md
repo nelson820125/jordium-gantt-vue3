@@ -253,6 +253,7 @@ npm run dev
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to enable auto-scheduling for parent tasks. `true`: parent task's TaskBar time window automatically stretches to span the earliest start and latest end of its children. `false`: parent task displays its own configured date range; a red indicator line appears above its TaskBar when children overflow the configured bounds |
 | `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Resource view lane stacking mode. `true`: greedy lane packing — non-overlapping tasks share the same row, maximizing space efficiency. `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters |
 | `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | Link line style configuration. Supports switching line type (bezier/straight/orthogonal), customizing colors, line width, and dotted/solid style. See [LinkConfig Configuration](#linkconfig-configuration) |
+| `taskbarDescFixed` ![v1.13.4](https://img.shields.io/badge/v1.13.4-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `false` | Whether the Taskbar content follows the horizontal scrolling of the Timeline. `false`: The Taskbar content, including the title, progress, and avatar information, moves horizontally with the Timeline. When approaching the left or right boundary of the Timeline, the content will be automatically pinned with a snapping effect. `true`: The Taskbar content, including the title, progress, and avatar information, remains fixed at the center of the Taskbar. When approaching the left or right boundary of the Timeline, no snapping effect will be applied. |
 
 #### TaskListColumn Component Props
 
@@ -4242,6 +4243,17 @@ Buy the author a coffee ☕ — it keeps the motivation going and the project mo
 </p>
 <p align="center"><sub>WeChat Pay &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Alipay</sub></p>
 </details>
+
+### 🌟 Our Sponsors
+
+<p align="center">
+  <a href="https://github.com/zhanmqGithub" target="_blank">
+    <img src="https://avatars.githubusercontent.com/u/129715913?v=4" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="zhanmqGithub" />
+  </a>
+  &nbsp;<strong>zhanmqGithub</strong> — GitHub Sponsor since 2026-07
+</p>
+
+See the full list of sponsors and how to be listed in [SPONSORS-EN.md](./SPONSORS-EN.md).
 
 > 🙏 A **⭐ Star** on GitHub is also a wonderful way to show support — it helps others discover this project!
 

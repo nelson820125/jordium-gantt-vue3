@@ -96,6 +96,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableMilestoneTooltip: true,
   showConflicts: true,
   showTaskbarTab: true,
+  taskbarDescFixed: false,
   fullscreen: false,
   expandAll: true,
   locale: 'zh-CN',
@@ -216,6 +217,12 @@ provide(
 provide(
   'gantt-show-taskbar-tab',
   computed(() => props.showTaskbarTab)
+)
+
+// 提供taskbarDescFixed配置给TaskBar组件：控制内部内容是否固定在初始化位置，不随滚动贴边
+provide(
+  'gantt-taskbar-desc-fixed',
+  computed(() => props.taskbarDescFixed)
 )
 
 // 提供行高配置给所有子组件（Timeline、TaskList、TaskRow 等均通过 inject 消费）
@@ -679,6 +686,11 @@ interface Props {
   // v1.9.5 是否显示TaskBar上的资源Tab标签（默认为 true）
   // 当设置为 false 时，资源视图下TaskBar不显示资源分配Tab标签
   showTaskbarTab?: boolean
+  // TaskBar 内部内容（头像/标题/进度）是否固定在初始化位置（默认为 false）
+  // false：保留当前的贴边磁吸逻辑（TaskBar 被滚动裁剪时，内容会贴到可视区边缘）
+  // true：内容固定渲染在初始化位置（inside 模式居中于条内，above 模式居中于条上方），
+  //       不再随 Timeline 横向滚动进行贴边吸附
+  taskbarDescFixed?: boolean
   // 自定义任务状态背景色（优先级高于默认配色，低于Task.barColor）
   // 待处理任务背景色：任务未开始且未逾期时使用
   pendingTaskBackgroundColor?: string

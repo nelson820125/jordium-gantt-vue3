@@ -38,6 +38,22 @@
 - **主要贡献**: TaskList可配置；TaskContent插槽；全部收起/展开；按照时间排序；优化组件
 - **参与时间**: 2025-09
 
+## 💖 支持者与赞助者
+
+感谢以下朋友和组织对 jordium-gantt-vue3 的支持！
+您的支持帮助项目持续维护、功能开发和社区建设。
+
+### 🌟 GitHub Sponsors
+
+<img src="https://avatars.githubusercontent.com/u/129715913?v=4" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[zhanmqGithub](https://github.com/zhanmqGithub)
+
+- **支持类型**: GitHub Sponsor
+- **支持内容**: 项目持续维护与功能开发支持
+- **支持时间**: 2026-07
+
+### 💎 特别支持
+
+感谢所有通过赞助、推广和社区反馈支持项目发展的朋友。
 
 ## 📊 贡献统计
 

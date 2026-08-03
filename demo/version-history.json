@@ -863,5 +863,15 @@
       "🔧 Fixed: Today's positioning and Taskbar disappearance issue in the 'Day' view of the Resource view",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to zhanmqGithub@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.13.4",
+    "date": "2026-08-04",
+    "notes": [
+      "🎉 新增：`taskbarDescFixed`属性，支持是否固定Taskbar内部内容，不跟随timeline横向移动而产生左右边吸附效果",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢ranjizhou@gitee的使用与反馈</span>",
+      "🎉 Added: Introduced the `taskbarDescFixed` property to control whether the content inside the Taskbar remains fixed instead of moving horizontally with the timeline, avoiding the left/right edge snapping effect.",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to ranjizhou@gitee for their use and feedback</span>"
+    ]
   }
 ]

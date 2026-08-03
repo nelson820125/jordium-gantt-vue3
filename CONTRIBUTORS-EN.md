@@ -39,6 +39,25 @@ Example:
 - **Main Contributions**: Configurable TaskList; TaskContent slot; Collapse/expand all; Time-based sorting; Component optimizations
 - **Participation Period**: 2025-09
 
+## 💖 Sponsors & Supporters
+
+We sincerely appreciate all individuals and organizations who support the development of **jordium-gantt-vue3**.  
+Your support helps us continue maintaining the project, improving features, and building a better open-source community.
+
+### 🌟 GitHub Sponsors
+
+<img src="https://avatars.githubusercontent.com/u/129715913?v=4" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[zhanmqGithub](https://github.com/zhanmqGithub)
+
+- **Support Type**: GitHub Sponsor
+- **Contribution**: Supporting continuous development and maintenance of the project
+- **Support Period**: YYYY-MM
+
+### 💎 Special Thanks
+
+Thank you to everyone who supports this project through sponsorship, promotion, feedback, and community engagement.
+
+Every contribution, whether technical or financial, helps make **jordium-gantt-vue3** better.
+
 ## 📊 Contribution Statistics
 
 ### Code Contributions

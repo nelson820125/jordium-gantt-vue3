@@ -8,6 +8,7 @@ import mediumData from './data-100.json'
 import largeData from './data-large-1m.json'
 import resourcesData from './data-resources.json'
 import largeResourcesData from './data-resources-large.json'
+import sponsorInfos from './sponsors.json'
 import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
@@ -210,6 +211,10 @@ const isMilestoneEditMode = ref(false)
 // 版本历史Drawer状态
 const showVersionDrawer = ref(false)
 const showSponsorDialog = ref(false)
+
+// 赞助者名单（与 SPONSORS.md / SPONSORS-EN.md 保持一致）
+const showSponsorsListDialog = ref(false)
+const sponsorsList = sponsorInfos.sponsors
 
 // v1.9.7 资源编辑提示dialog状态
 const resourceEditHintVisible = ref(false)
@@ -1434,6 +1439,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </a>
       </div> -->
       <div class="title-right docs-links">
+        <button class="sponsors-count-badge" @click="showSponsorsListDialog = true" :title="demoMessages.sponsorsList?.badgeTitle || 'View Sponsors'">
+          <span class="badge-icon">💖</span>{{ sponsorsList.length }} {{ demoMessages.sponsorsList?.badgeLabel || 'Sponsors' }}
+        </button>
         <button class="sponsor-btn" @click="showSponsorDialog = true">{{ demoMessages.sponsor?.btnLabel || '&#9749; Sponsor' }}</button>
         <span class="docs-divider"></span>
         <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
@@ -1484,6 +1492,44 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               </div>
             </div>
             <div class="sponsor-star-hint">{{ demoMessages.sponsor?.orStar }}</div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Sponsors List Dialog -->
+    <Teleport to="body">
+      <Transition name="sponsor-fade">
+        <div v-if="showSponsorsListDialog" class="sponsor-overlay" @click.self="showSponsorsListDialog = false">
+          <div class="sponsor-dialog sponsors-list-dialog">
+            <button class="sponsor-dialog-close" @click="showSponsorsListDialog = false">&times;</button>
+            <div class="sponsor-dialog-title">{{ demoMessages.sponsorsList?.dialogTitle || 'Our Sponsors' }}</div>
+            <div class="sponsor-dialog-subtitle">{{ demoMessages.sponsorsList?.dialogSubtitle }}</div>
+            <table class="sponsors-table">
+              <thead>
+                <tr>
+                  <th>{{ demoMessages.sponsorsList?.columns?.avatar || 'Avatar' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.name || 'Sponsor' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.type || 'Type' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.amount || 'Amount' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.since || 'Since' }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sponsor in sponsorsList" :key="sponsor.name">
+                  <td><img class="sponsor-avatar" :src="sponsor.avatar" :alt="sponsor.name" /></td>
+                  <td><a :href="sponsor.url" target="_blank" rel="noopener noreferrer">{{ sponsor.name }}</a></td>
+                  <td>{{ demoMessages.sponsorsList?.types?.[sponsor.typeKey] || sponsor.typeKey }}</td>
+                  <td>{{ sponsor.amount }}</td>
+                  <td>{{ sponsor.since }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="sponsor-star-hint">
+              <a href="https://github.com/nelson820125/jordium-gantt-vue3/blob/main/SPONSORS.md" target="_blank" rel="noopener noreferrer">
+                {{ demoMessages.sponsorsList?.viewFullList || 'View full sponsor list' }}
+              </a>
+            </div>
           </div>
         </div>
       </Transition>
@@ -4424,6 +4470,70 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 .sponsor-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(255, 107, 107, 0.45);
+}
+
+.sponsors-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #ff9ec4 0%, #ff6b9d 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3);
+  line-height: 1.4;
+}
+
+.sponsors-count-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 107, 157, 0.45);
+}
+
+.sponsors-list-dialog {
+  width: 480px;
+}
+
+.sponsors-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.sponsors-table th,
+.sponsors-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+}
+
+.sponsors-table th {
+  color: #888;
+  font-weight: 600;
+}
+
+.sponsors-table td a {
+  color: #333;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sponsors-table td a:hover {
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.sponsor-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .sponsor-overlay {

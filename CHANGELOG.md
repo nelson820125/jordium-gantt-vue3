@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.4] - 2026-08-03
+
+### Added
+- 🎉 新增：`taskbarDescFixed`属性，支持是否固定Taskbar内部内容，不跟随timeline横向移动而产生左右边吸附效果
+- 🎉 Added: Introduced the `taskbarDescFixed` property to control whether the content inside the Taskbar remains fixed instead of moving horizontally with the timeline, avoiding the left/right edge snapping effect.
+
 ## [1.13.3] - 2026-07-31
 
 ### Fixed

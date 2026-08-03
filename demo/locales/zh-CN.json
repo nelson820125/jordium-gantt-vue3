@@ -161,5 +161,22 @@
     "kofi": "Ko-fi",
     "orStar": "或者，一个 ⭐ Star 同样是对开源作者的极大鼓励！",
     "close": "关闭"
+  },
+  "sponsorsList": {
+    "badgeLabel": "位赞助人",
+    "badgeTitle": "查看赞助者名单",
+    "dialogTitle": "🌟 赞助者名单",
+    "dialogSubtitle": "感谢以下个人与组织对本项目的慷慨支持！",
+    "columns": {
+      "avatar": "头像",
+      "name": "赞助者",
+      "type": "类型",
+      "since": "赞助起始"
+    },
+    "types": {
+      "individual": "个人",
+      "organization": "组织"
+    },
+    "viewFullList": "查看完整赞助者名单 →"
   }
 }

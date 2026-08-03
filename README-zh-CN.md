@@ -251,6 +251,7 @@ npm run dev
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 是否开启父任务自动调度。`true`：父任务的 TaskBar 时间窗口自动跟随子任务的最早开始／最晚结束日期同步拉伸。`false`：父任务显示自身配置的固定日期范围，子任务超出时其 TaskBar 上方显示红色指示线 |
 | `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 资源视图车道堆叠模式。`true`：启用贪心车道堆叠——时间不重叠的任务共享同一行，最大化空间利用率。`false`：禁用堆叠——每个任务独占一行，适合任务密集、需要清晰辨识的场景 |
 | `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | 连线样式配置。支持切换连线类型（贝塞尔/直线/折线）、自定义颜色、线宽及实线/虚线样式。详见 [LinkConfig 配置](#linkconfig-配置) |
+| `taskbarDescFixed` ![v1.13.4](https://img.shields.io/badge/v1.13.4-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `false` | Taskbar的内容是否跟随Timeline进行横向滑动。`false`: 表示Taskbar的内容'标题'、'进度'、'头像'信息将跟随timeline横向滑动，在左右边界区域实现吸附的效果。`true`: 表示Taskbar的内容'标题'、'进度'、'头像'信息始终固定在taskbar的中心位置，接近timtline左右边界时，不出现吸附的效果 |
 
 #### TaskListColumn 属性
 
@@ -4387,6 +4388,17 @@ TaskList 组件经过深度重构，采用模块化设计，提升了代码可�
 <p align="center"><sub>微信 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;支付宝</sub></p>
 
 > 🙏 也可以直接给项目点个 **⭐ Star**，对开源作者来说同样是很大的鼓励！
+
+### 🌟 赞助者名单
+
+<p align="center">
+  <a href="https://github.com/zhanmqGithub" target="_blank">
+    <img src="https://avatars.githubusercontent.com/u/129715913?v=4" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="zhanmqGithub" />
+  </a>
+  &nbsp;<strong>zhanmqGithub</strong> — GitHub 赞助者，自 2026-07 起
+</p>
+
+完整的赞助者名单及如何被收录请参阅 [SPONSORS.md](./SPONSORS.md)。
 
 ---
 

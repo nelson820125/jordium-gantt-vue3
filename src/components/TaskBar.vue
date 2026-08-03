@@ -212,6 +212,12 @@ const showTaskbarTab = inject<ComputedRef<boolean>>(
   computed(() => true)
 )
 
+// 注入taskbarDescFixed配置：true时TaskBar内部内容（头像/标题/进度）固定在初始化位置，不随滚动贴边
+const taskbarDescFixed = inject<ComputedRef<boolean>>(
+  'gantt-taskbar-desc-fixed',
+  computed(() => false)
+)
+
 // 注入资源布局信息（用于判断跨行拖拽边界）
 const resourceRowPositions = inject<ComputedRef<Map<string, number>>>(
   'resourceRowPositions',
@@ -2522,6 +2528,20 @@ const stickyStyles = computed(() => {
   const scrollLeft = props.scrollLeft || 0
   const containerWidth = props.containerWidth || 0
 
+  // taskbarDescFixed为true时，内容固定在初始化位置，不执行贴边磁吸计算
+  if (taskbarDescFixed.value) {
+    return {
+      nameLeft: '',
+      namePosition: '',
+      nameTop: '',
+      progressLeft: '',
+      progressPosition: '',
+      progressTop: '',
+      avatarLeft: '',
+      avatarPosition: '',
+    }
+  }
+
   if (!scrollLeft && !containerWidth) {
     return {
       nameLeft: '',
@@ -2695,6 +2715,9 @@ const stickyStyles = computed(() => {
 // 將上方標題吸附到可視區邊緣。不影響 inside 模式（barConfig.titlePosition !== 'above' 時返回空）。
 const aboveTitleStyle = computed(() => {
   if (barConfig.value.titlePosition !== 'above') return {}
+
+  // taskbarDescFixed为true时，标题固定在初始化位置（CSS默认居中），不执行贴边磁吸
+  if (taskbarDescFixed.value) return {}
 
   const scrollLeft = props.scrollLeft || 0
   const containerWidth = props.containerWidth || 0

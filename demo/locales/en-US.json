@@ -161,5 +161,22 @@
     "kofi": "Ko-fi",
     "orStar": "Or simply give a ⭐ Star \u2014 it means a lot to open-source authors!",
     "close": "Close"
+  },
+  "sponsorsList": {
+    "badgeLabel": "Sponsors",
+    "badgeTitle": "View Sponsors",
+    "dialogTitle": "🌟 Our Sponsors",
+    "dialogSubtitle": "Thanks to the following individuals and organizations for their support!",
+    "columns": {
+      "avatar": "Avatar",
+      "name": "Sponsor",
+      "type": "Type",
+      "since": "Since"
+    },
+    "types": {
+      "individual": "Individual",
+      "organization": "Organization"
+    },
+    "viewFullList": "View full sponsor list →"
   }
 }
