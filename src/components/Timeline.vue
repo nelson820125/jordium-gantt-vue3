@@ -3315,9 +3315,22 @@ const getGlobalWeekPosition = (monthIndex: number, weekIndex: number) => {
   return position
 }
 
+// bugfix: 切换时间刻度不应移动视口——记录切换前"左边缘"对应的日期/时间（在修改
+// currentTimeScale/timelineConfig 之前，用旧刻度的像素换算），刻度切换完成后再将该
+// 日期重新对齐回左边缘，而不是像之前那样无条件调用 scrollToTodayCenter() 跳回今日。
+// 首次应用刻度（挂载时由 GanttChart 调用一次）时尚无有意义的滚动位置，此时保留旧的
+// "定位到今日/initialScrollDate锚点" 行为。
+let hasAppliedTimeScaleOnce = false
+
 // 更新时间刻度方法 - 供外部调用
 const updateTimeScale = (scale: TimelineScale) => {
   perfMonitor2.start(`updateTimeScale-${scale}`)
+
+  const isFirstTimeScaleApplication = !hasAppliedTimeScaleOnce
+  hasAppliedTimeScaleOnce = true
+  const preservedLeftEdgeDate = isFirstTimeScaleApplication
+    ? null
+    : getDateByScrollPosition(timelineScrollLeft.value)
 
   currentTimeScale.value = scale
 
@@ -3417,9 +3430,24 @@ const updateTimeScale = (scale: TimelineScale) => {
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('timeline-force-recalculate'))
 
-      // 4. 视图切换完成后，定位到今日
+      // 4. 视图切换完成后：首次应用刻度时定位到今日/initialScrollDate锚点；
+      //    真正的刻度切换（preservedLeftEdgeDate 有值）则将切换前的左边缘日期
+      //    重新对齐回左边缘，使视口保持不变（bugfix：不再无条件跳回今日）。
       setTimeout(() => {
-        scrollToTodayCenter()
+        if (preservedLeftEdgeDate) {
+          const scrollContainer = timelineContainerElement.value
+          if (scrollContainer) {
+            const position = computeDatePosition(preservedLeftEdgeDate)
+            const targetScrollPosition = Math.max(0, position)
+            if (typeof scrollContainer.scrollTo === 'function') {
+              scrollContainer.scrollTo({ left: targetScrollPosition, behavior: 'auto' })
+            } else {
+              scrollContainer.scrollLeft = targetScrollPosition
+            }
+          }
+        } else {
+          scrollToTodayCenter()
+        }
 
         perfMonitor2.end(`updateTimeScale-${scale}`)
         perfMonitor2.report()
@@ -3934,19 +3962,14 @@ const scrollToToday = () => {
 }
 
 /**
- * 滚动到指定日期（居中显示）
- * @param date 日期（Date对象或日期字符串）
+ * 计算指定日期在当前时间线（当前 currentTimeScale/timelineConfig 下）中的像素位置。
+ * 从 scrollToDate 中提取，供其自身以及 updateTimeScale 的滚动保持逻辑共用。
  */
-const scrollToDate = (date: Date | string) => {
-  const targetDate = typeof date === 'string' ? new Date(date) : date
+const computeDatePosition = (date: Date): number => {
   const timelineStart = timelineConfig.value.startDate
 
   // 确保日期计算的精确性 - 使用年月日，忽略时分秒
-  const targetNormalized = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate()
-  )
+  const targetNormalized = new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
   // 根据不同的时间刻度使用不同的起始日期
   let startNormalized: Date
@@ -3984,8 +4007,8 @@ const scrollToDate = (date: Date | string) => {
 
   if (currentTimeScale.value === TimelineScale.HOUR) {
     // 小时视图：精确到小时的定位
-    const targetHour = targetDate.getHours()
-    const targetMinute = targetDate.getMinutes()
+    const targetHour = date.getHours()
+    const targetMinute = date.getMinutes()
 
     // 基础天数偏移（到目标日0点的位置）
     const baseDayPosition = daysDiff * dayWidth.value
@@ -4064,6 +4087,17 @@ const scrollToDate = (date: Date | string) => {
     // 日视图：每天30px
     datePosition = daysDiff * dayWidth.value
   }
+
+  return datePosition
+}
+
+/**
+ * 滚动到指定日期（居中显示）
+ * @param date 日期（Date对象或日期字符串）
+ */
+const scrollToDate = (date: Date | string) => {
+  const targetDate = typeof date === 'string' ? new Date(date) : date
+  const datePosition = computeDatePosition(targetDate)
 
   // 使用缓存的容器元素
   const timeline = timelineContainerElement.value
