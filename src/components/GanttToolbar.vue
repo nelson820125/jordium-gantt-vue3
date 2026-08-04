@@ -506,6 +506,14 @@ let hasAppliedConfigScale = false
 watch(
   () => resolvedDefaultScaleKey.value,
   newKey => {
+    // An explicit `timeScale` prop always wins over the config-derived
+    // default. Without this guard, this watcher's immediate run races the
+    // prop-sync watcher above and clobbers it back to defaultTimeScale
+    // (or 'day') on every mount, no matter what the caller passed in.
+    if (props.timeScale) {
+      hasAppliedConfigScale = true
+      return
+    }
     const targetScale = timeScaleMap[newKey].value
     if (currentTimeScale.value !== targetScale || !hasAppliedConfigScale) {
       hasAppliedConfigScale = true
