@@ -50,7 +50,13 @@ Your support helps us continue maintaining the project, improving features, and 
 
 - **Support Type**: GitHub Sponsor
 - **Contribution**: Supporting continuous development and maintenance of the project
-- **Support Period**: YYYY-MM
+- **Support Period**: 2026-07
+
+<img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[henryli1024](https://gitee.com/henryli1024)
+
+- **Support Type**: GitHub Sponsor
+- **Contribution**: Supporting continuous development and maintenance of the project
+- **Support Period**: 2026-08
 
 ### 💎 Special Thanks
 

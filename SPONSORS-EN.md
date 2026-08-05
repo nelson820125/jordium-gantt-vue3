@@ -11,6 +11,7 @@ Thank you to the following individuals and organizations for generously supporti
 | Avatar | Sponsor | Type | Profile | Amount | Sponsoring Since |
 | :--: | ------- | ---- | ------- | ------- | ----------------- |
 | <img src="https://avatars.githubusercontent.com/u/129715913?v=4" alt="zhanmqGithub" width="40" height="40" style="border-radius:50%;" /> | **zhanmqGithub** | Individual | [github.com/zhanmqGithub](https://github.com/zhanmqGithub) | ￥50 | 2026-07 |
+| <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="henryli1024" width="40" height="40" style="border-radius:50%;" /> | **henryli1024** | Individual | [gitee.com/henryli1024](https://gitee.com/henryli1024) | ￥50 | 2026-08 |
 
 <!--
 To add a new sponsor, append a row using this format:

@@ -4253,6 +4253,13 @@ Buy the author a coffee ☕ — it keeps the motivation going and the project mo
   &nbsp;<strong>zhanmqGithub</strong> — GitHub Sponsor since 2026-07
 </p>
 
+<p align="center">
+  <a href="https://gitee.com/henryli1024" target="_blank">
+    <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="henryli1024" />
+  </a>
+  &nbsp;<strong>henryli1024</strong> — GitHub Sponsor since 2026-08
+</p>
+
 See the full list of sponsors and how to be listed in [SPONSORS-EN.md](./SPONSORS-EN.md).
 
 > 🙏 A **⭐ Star** on GitHub is also a wonderful way to show support — it helps others discover this project!

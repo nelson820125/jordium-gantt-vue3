@@ -51,6 +51,12 @@
 - **支持内容**: 项目持续维护与功能开发支持
 - **支持时间**: 2026-07
 
+<img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[henryli1024](https://gitee.com/henryli1024)
+
+- **支持类型**: GitHub Sponsor
+- **支持内容**: 项目持续维护与功能开发支持
+- **支持时间**: 2026-08
+
 ### 💎 特别支持
 
 感谢所有通过赞助、推广和社区反馈支持项目发展的朋友。
