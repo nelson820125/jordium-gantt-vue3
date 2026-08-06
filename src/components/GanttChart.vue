@@ -3223,8 +3223,10 @@ const todayLocateHandler = () => {
     return
   }
   // 使用Timeline组件的scrollToTodayCenter方法，确保今日居中
+  // ignoreAnchor=true: 显式点击"定位到今日"时，必须跳到真实的今天，
+  // 而不是 initialScrollDate 锚点（该锚点只用于首次加载时的定位）。
   if (timelineRef.value && typeof timelineRef.value.scrollToTodayCenter === 'function') {
-    timelineRef.value.scrollToTodayCenter()
+    timelineRef.value.scrollToTodayCenter(0, true)
     return
   }
   // 兜底方案

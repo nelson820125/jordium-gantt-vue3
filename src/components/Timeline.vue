@@ -3533,7 +3533,7 @@ watch(
 )
 
 // 将今日定位到时间线中间位置
-const scrollToTodayCenter = (retry = 0) => {
+const scrollToTodayCenter = (retry = 0, ignoreAnchor = false) => {
   // 开始滚动时隐藏半圆
   hideBubbles.value = true
   isInitialScrolling.value = true
@@ -3541,9 +3541,11 @@ const scrollToTodayCenter = (retry = 0) => {
   // PATCH (viur): Scroll-Anker — wenn `initialScrollDate` gesetzt & gültig, dieses Datum (auf lokale
   // Mitternacht normalisiert) als Anker nehmen und unten LINKSBÜNDIG ansteuern; sonst „heute" (wie
   // gehabt zentriert). Der Variablenname `today` bleibt, damit die Pixel-Mathematik unten unverändert.
+  // `ignoreAnchor` lets an explicit "find today" action bypass the anchor and always
+  // center on the real current date, even while initialScrollDate is set.
   let today: Date
   let useScrollAnchor = false
-  if (props.initialScrollDate) {
+  if (props.initialScrollDate && !ignoreAnchor) {
     const anchor = new Date(props.initialScrollDate)
     if (!isNaN(anchor.getTime())) {
       today = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())
@@ -3743,7 +3745,7 @@ const scrollToTodayCenter = (retry = 0) => {
   if (!scrollContainer) {
     // 如果容器还未初始化，递归重试
     if (retry < 10) {
-      setTimeout(() => scrollToTodayCenter(retry + 1), 60)
+      setTimeout(() => scrollToTodayCenter(retry + 1, ignoreAnchor), 60)
     }
     return
   }
@@ -3751,7 +3753,7 @@ const scrollToTodayCenter = (retry = 0) => {
   const containerWidth = scrollContainer.clientWidth
   // 若宽度为0，递归重试，最多10次
   if (containerWidth === 0 && retry < 10) {
-    setTimeout(() => scrollToTodayCenter(retry + 1), 60)
+    setTimeout(() => scrollToTodayCenter(retry + 1, ignoreAnchor), 60)
     return
   }
 
