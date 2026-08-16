@@ -235,6 +235,8 @@ npm run dev
 | `enableTaskListContextMenu` | `boolean`                                                                                 | `true`  | 是否启用 TaskList（TaskRow）右键菜单功能。为 `true` 时：未声明 `task-list-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                     |
 | `enableTaskBarContextMenu`  | `boolean`                                                                                 | `true`  | 是否启用 TaskBar 右键菜单功能。为 `true` 时：未声明 `task-bar-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                               |
 | `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string; avatar?: string; type?: string ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表。`type` 为可选的资源类别（Human/Device/Others），选中资源时会级联预填到资源绑定行的类别字段          |
+| `resourceTypeOptions` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceTypeOption[]`（`{ value: string; label: string }`） | `[]`    | 自定义 TaskDrawer 资源分配行"类别"下拉的可选项集合，不设置或传空数组时使用内置的 人力(Human)/设备(Device)/其他(Others)。`label` 完全由外部提供，可实现自定义类别集合或多语言。详见下方「自定义资源类别」示例 |
+| `showResourceTypeOption` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`             | `true`  | 是否展示 TaskDrawer 资源分配行的"类别"下拉选项。设为 `false` 可完全隐藏该列（仍会按 `'Human'` 默认写入 `resource.type`，不影响数据本身） |
 | `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | 语言设置（响应式）。设置后组件内部语言将跟随变化                |
 | `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | 主题模式（响应式）。设置后组件主题将跟随变化                    |
 | `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
@@ -1419,8 +1421,8 @@ const resource = {
 | `resources`           | `Resource[]`          | `[]`         | 资源数据数组                                                                |
 | `viewMode`            | `'task' \| 'resource'` | `'task'`     | 视图模式：'task' 任务计划视图，'resource' 资源计划视图                      |
 | `resourceListConfig`  | `ResourceListConfig`  | `undefined`  | 资源列表配置，类似 TaskListConfig，用于配置资源列表的列定义、宽度等         |
-| `resourceTypeOptions` ▸阶v1.13.5 | `ResourceTypeOption[]`（`{ value: string; label: string }`） | `[]`         | 自定义 TaskDrawer 资源分配行“类别”下拉的可选项集合，不设置或传空数组时使用内置的 人力(Human)/设备(Device)/其他(Others)。`label` 完全由外部提供，可实现自定义类别集合或多语言。详见下方「自定义资源类别」示例 |
-| `showResourceTypeOption` ▸阶v1.13.5 | `boolean`             | `true`       | 是否展示 TaskDrawer 资源分配行的“类别”下拉选项。设为 `false` 可完全隐藏该列（仍会按 `'Human'` 默认写入 `resource.type`，不影响数据本身） |
+| `resourceTypeOptions` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `ResourceTypeOption[]`（`{ value: string; label: string }`） | `[]`         | 自定义 TaskDrawer 资源分配行“类别”下拉的可选项集合，不设置或传空数组时使用内置的 人力(Human)/设备(Device)/其他(Others)。`label` 完全由外部提供，可实现自定义类别集合或多语言。详见下方「自定义资源类别」示例 |
+| `showResourceTypeOption` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`             | `true`       | 是否展示 TaskDrawer 资源分配行的“类别”下拉选项。设为 `false` 可完全隐藏该列（仍会按 `'Human'` 默认写入 `resource.type`，不影响数据本身） |
 | `showConflicts`       | `boolean`             | `true`       | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域）              |
 | `showTaskbarTab`      | `boolean`             | `true`       | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar上的资源占用比例标签）     |
 
