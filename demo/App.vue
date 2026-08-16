@@ -18,6 +18,7 @@ import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
 import { useDemoLocale } from './useDemoLocale'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
+import { getEffectiveEndDateOnly } from '../src/utils/dateBoundaryUtils'
 import type { Task } from '../src/models/Task'
 import type { Resource } from '../src/models/classes/Resource'
 import { createResource, addTaskToResource, updateResourceUtilization } from '../src/utils/resourceUtils'
@@ -105,6 +106,7 @@ const applyDataSource = (source: RawDataSource) => {
       return createResource({
         id: resData.id,
         name: resData.name,
+        title: resData.title,
         type: resData.type,
         avatar: resData.avatar,
         description: resData.description,
@@ -120,7 +122,8 @@ const applyDataSource = (source: RawDataSource) => {
     const resourceAssigneeOptions = resources.value.map(res => ({
       value: res.id as string,
       label: res.name,
-      avatar: res.avatar
+      avatar: res.avatar,
+      type: res.type
     }))
     assigneeOptions.value = [...resourceAssigneeOptions]
   } else {
@@ -345,8 +348,15 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
       },
     },
     {
+      key: 'title',
+      label: '职务',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => resource.title || '-',
+    },
+    {
       key: 'type',
-      label: '类型',
+      label: '类别',
       visible: true,
       width: 100,
       formatter: (resource: Resource) => resource.type || '-',
@@ -445,6 +455,9 @@ const taskBarOptions = ref({
 const showActualTaskBar = ref(true)
 // Tooltip 自定义 Slot 演示
 const useCustomTooltip = ref(true)
+// Milestone 自定义内容 Slot 演示（v1.13.5）
+const useCustomMilestoneContent = ref(false)
+const milestoneLabelPosition = ref<'left' | 'top' | 'right' | 'bottom'>('right')
 const pendingTaskBackgroundColor = ref('#409eff')
 const delayTaskBackgroundColor = ref('#f56c6c')
 const completeTaskBackgroundColor = ref('#909399')
@@ -793,6 +806,24 @@ const formatPropertyValue = (value: unknown): string => {
     return JSON.stringify(value, null, 2)
   }
   return String(value)
+}
+
+/**
+ * 格式化结束日期显示（endDate / actualEndDate 通用）
+ * v1.13.5：若原始值显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+ * '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+ * 修正（-15分钟再截断）再展示为 YYYY-MM-DD，避免自定义 slot 里显示的结束
+ * 日期比实际渲染的 taskbar 多算一天
+ */
+const formatEndDateOnly = (raw: string | undefined | null): string => {
+  if (!raw) return '-'
+  const parsed = new Date(raw)
+  if (isNaN(parsed.getTime())) return raw
+  const effective = getEffectiveEndDateOnly(raw, parsed)
+  const y = effective.getFullYear()
+  const m = String(effective.getMonth() + 1).padStart(2, '0')
+  const d = String(effective.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 // 切换列显示状态
@@ -1910,6 +1941,19 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                       <input v-model="useCustomTooltip" type="checkbox" />
                       <span class="taskbar-label">🎨 自定义 Tooltip（Slot 演示）</span>
                     </label>
+                    <label class="taskbar-control">
+                      <input v-model="useCustomMilestoneContent" type="checkbox" />
+                      <span class="taskbar-label">🏳️ 自定义里程碑内容（custom-milestone-content Slot 演示）</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <span class="taskbar-label">里程碑标签位置：</span>
+                      <select v-model="milestoneLabelPosition">
+                        <option value="right">right</option>
+                        <option value="left">left</option>
+                        <option value="top">top</option>
+                        <option value="bottom">bottom</option>
+                      </select>
+                    </label>
                   </div>
 
                   <!-- 自定义任务状态背景色 -->
@@ -2696,6 +2740,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :task-list-column-render-mode="taskListColumnRenderMode"
         :show-actual-taskbar="showActualTaskBar"
         :enable-task-bar-tooltip="true"
+        :milestone-label-position="milestoneLabelPosition"
         :pending-task-background-color="pendingTaskBackgroundColor"
         :delay-task-background-color="delayTaskBackgroundColor"
         :complete-task-background-color="completeTaskBackgroundColor"
@@ -2906,7 +2951,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               </div>
               <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
                 <span style="opacity: 0.9;">🏁 结束：</span>
-                <span style="font-weight: 500;">{{ task.endDate?.slice(0, 10) ?? '-' }}</span>
+                <span style="font-weight: 500;">{{ formatEndDateOnly(task.endDate) }}</span>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
                 <span style="opacity: 0.9;">📊 进度：</span>
@@ -3035,7 +3080,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                   </div>
                   <div style="display: flex; justify-content: space-between; color: #666;">
                     <span>🏁 计划结束</span>
-                    <span style="color: #333; font-weight: 500;">{{ task.endDate?.slice(0, 10) ?? '-' }}</span>
+                    <span style="color: #333; font-weight: 500;">{{ formatEndDateOnly(task.endDate) }}</span>
                   </div>
                   <template v-if="task.actualStartDate || task.actualEndDate">
                     <div style="border-top: 1px solid #f0f0f0; margin: 2px 0;"/>
@@ -3045,7 +3090,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                     </div>
                     <div v-if="task.actualEndDate" style="display: flex; justify-content: space-between; color: #888;">
                       <span>✅ 实际结束</span>
-                      <span style="color: #555; font-weight: 500;">{{ task.actualEndDate?.slice(0, 10) }}</span>
+                      <span style="color: #555; font-weight: 500;">{{ formatEndDateOnly(task.actualEndDate) }}</span>
                     </div>
                   </template>
                 </div>
@@ -3131,6 +3176,42 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                 "
               >✨ 自定义 Milestone Tooltip</div>
             </div>
+          </div>
+        </template>
+
+        <!-- ── Milestone 自定义内容 Slot（custom-milestone-content，v1.13.5）────────── -->
+        <!-- 示例演示如何利用 slot 暴露的 labelPosition 自行调整布局：与内置图标+标签的实现
+             方式保持一致——"图标"（🏳️）始终固定在锚点位置（relative 容器的左上角，不受
+             labelPosition 影响，磁吸/定位逻辑均以此为准），文本标签改为绝对定位相对该锚点
+             向外叠加展示，不参与布局计算，不会反过来推挤/偏移图标本身的位置。 -->
+        <template
+          v-if="useCustomMilestoneContent"
+          #custom-milestone-content="{ milestone, task, labelPosition }"
+        >
+          <div style="position: relative; display: inline-block; cursor: pointer;">
+            <!-- <span style="font-size: 16px; display: block;">🏳️</span> -->
+             <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M868.032 160h-92.032v-40A8 8 0 0 0 768 112H256a8 8 0 0 0-8 8V160H155.968a44.032 44.032 0 0 0-43.968 44.032V352c0 81.728 60.032 149.632 138.24 161.984a256.32 256.32 0 0 0 225.728 220.544v105.152H280.064a32 32 0 0 0-32 32v32.32c0 4.416 3.584 8 8 8h512a8 8 0 0 0 8-8v-32.32a32 32 0 0 0-32-32H547.968v-105.152a256.32 256.32 0 0 0 225.856-220.544A164.288 164.288 0 0 0 912 352V203.968a44.032 44.032 0 0 0-44.032-43.968z m-684.032 192V232h64v207.616c-37.12-11.84-64-46.592-64-87.616zM704 480c0 49.088-19.072 95.36-53.888 130.112a182.784 182.784 0 0 1-130.112 53.888h-16c-49.088 0-95.36-19.072-130.112-53.888A182.784 182.784 0 0 1 320 480V184h384V480z m136-128c0 40.96-26.88 75.776-64 87.616V232h64V352z" fill="#d81e06"></path></svg>
+             <!-- <span style="position: absolute; white-space: nowrap; font-size: 10px; font-weight: bold; color: #f56c6c; top: 100%; left: 50%; transform: translateX(-50%);">
+              {{ milestone.name }}{{ task?.assigneeName ? `（${task.assigneeName}）` : '' }}
+            </span> -->
+            <span
+              :style="{
+                position: 'absolute',
+                whiteSpace: 'nowrap',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: '#f56c6c',
+                ...(labelPosition === 'top'
+                  ? { bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '2px' }
+                  : labelPosition === 'bottom'
+                    ? { top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '2px' }
+                    : labelPosition === 'left'
+                      ? { right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: '4px' }
+                      : { left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: '4px' }),
+              }"
+            >
+              {{ milestone.name }}{{ task?.assigneeName ? `（${task.assigneeName}）` : '' }}
+            </span>
           </div>
         </template>
 

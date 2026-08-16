@@ -69,6 +69,12 @@
   </p>
 </div>
 
+<div style="background-color: #fff0f0; padding: 10px 10px 2px 10px; border: 1px solid #ffccc7">
+  <p>
+    <b style="color:red">⚠️ Important Notice (Read Before Upgrading): </b>If you are upgrading to <b>v1.13.5</b> or later, the semantics of the <code>type</code> field on the <code>Resource</code> interface have changed (free text → resource category Human/Device/Others). Any job-title/role text previously stored in <code>type</code> will NOT be migrated automatically — please migrate it to the new <code>title</code> field before upgrading, otherwise the "title" column will be empty and the "category" column will show unexpected text. See the Breaking Change note in the <a href="#resource-data-structure">Resource Data Structure</a> section for details.
+  </p>
+</div>
+
 ---
 
 ## ✨ Introduction
@@ -230,7 +236,7 @@ npm run dev
 | `enableTaskRowMove`         | `boolean`                                                                             | `false` | Whether to allow dragging and dropping TaskRow                            |
 | `enableTaskListContextMenu` | `boolean`                                                                             | `true`  | Whether to enable TaskList (TaskRow) context menu. When `true`: uses built-in menu if `task-list-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled           |
 | `enableTaskBarContextMenu`  | `boolean`                                                                             | `true`  | Whether to enable TaskBar context menu. When `true`: uses built-in menu if `task-bar-context-menu` slot is not declared, uses custom menu if slot is declared; when `false`: context menu is completely disabled                      |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string; avatar?: string; type?: string ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) }>`          | `[]`    | Assignee dropdown options in task edit drawer. `type` is an optional resource category (Human/Device/Others); selecting a resource auto-fills the category field on the bound resource row          |
 | `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | Language setting (reactive). Component's internal language will follow changes                |
 | `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | Theme mode (reactive). Component's theme will follow changes                    |
 | `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | Time scale (reactive). Timeline scale will follow changes                  |
@@ -244,6 +250,7 @@ npm run dev
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | Whether to display actual TaskBar (shows actual execution progress below planned TaskBar)  |
 | `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable TaskBar hover tooltip (shows task details on mouse hover)  |
 | `enableMilestoneTooltip` ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to enable milestone hover tooltip (shows milestone name and date on mouse hover)  |
+| `milestoneLabelPosition` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'top' \| 'right' \| 'bottom'` | `'right'` | Milestone label position relative to the icon (or custom `custom-milestone-content` slot content). Default matches the previous hardcoded behavior |
 | `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource conflict visualization layer (shows diagonal stripe background for overload zones in resource view) |
 | `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to display resource tab on TaskBar (shows resource allocation label on TaskBar in resource view) |
 | `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow collapsing/expanding the TaskList panel. When `false`: forcibly hides TaskList, SplitterBar and collapse button; Timeline takes full width |
@@ -750,7 +757,7 @@ Tasks are the core elements of the Gantt chart. The component provides complete 
 | `taskListConfig`      | `TaskListConfig` | `undefined` | Task list configuration, see [TaskListConfig Configuration](#tasklistconfig-configuration)    |
 | `autoSortByStartDate` | `boolean`        | `false`     | Whether to automatically sort tasks by start date                                             |
 | `enableTaskRowMove`        | `boolean` | `false`  | Whether to alloww dragging and dropping TaskRow  |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`          | `[]`    | Assignee dropdown options in task edit drawer          |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string; avatar?: string; type?: string ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) }>`          | `[]`    | Assignee dropdown options in task edit drawer. `type` is an optional resource category (Human/Device/Others); selecting a resource auto-fills the category field on the bound resource row          |
 | `taskListColumnRenderMode` | `'default' \| 'declarative'` | `'default'` | Task list column render mode. `'default'`: Use TaskListColumnConfig configuration (compatibility mode, will be gradually deprecated); `'declarative'`: Use TaskListColumn component for declarative column definition (recommended). See [TaskListColumn Declarative Column Definition](#tasklistcolumn-declarative-column-definition) |
 | `taskListRowClassName` | `string \| ((task: Task) => string)` | `undefined` | Custom CSS class name for task rows. Can be a string or a function that returns a string. **Note**: Row height is managed internally by the component, custom height styles will not take effect |
 | `taskListRowStyle` | `CSSProperties \| ((task: Task) => CSSProperties)` | `undefined` | Custom inline styles for task rows. Can be a style object or a function that returns a style object. **Note**: Row height and width are managed internally by the component, custom width/height styles will not take effect |
@@ -1206,7 +1213,8 @@ Resource management is used to manage human resources or equipment in a project,
 | --------------- | ------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
 | `id`            | `string \| number`  | ✅       | -       | Unique resource identifier                                                                                  |
 | `name`          | `string`            | ✅       | -       | Resource name (e.g., person name, device name)                                                              |
-| `type`          | `string`            | -        | -       | Resource type (e.g., 'developer', 'designer', 'device')                                                     |
+| `title` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `string` | -        | -       | Resource job title/role (e.g. 'Frontend Engineer', 'Project Manager'), free text |
+| `type` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `string` | -        | `'Human'` | Resource category, used to distinguish human/device/other resources. Preset values: `'Human'` / `'Device'` / `'Others'` (plain string, no strict enum validation, custom values allowed) |
 | `avatar`        | `string`            | -        | -       | Resource avatar URL                                                                                         |
 | `description`   | `string`            | -        | -       | Resource description                                                                                        |
 | `department`    | `string`            | -        | -       | Department                                                                                                  |
@@ -1216,6 +1224,8 @@ Resource management is used to manage human resources or equipment in a project,
 | `tasks`         | `Task[]`            | -        | `[]`    | Array of tasks assigned to this resource, **each task needs `resources` field to mark resource utilization** |
 | `[key: string]` | `unknown`           | -        | -       | Support custom property extension, can add any additional fields                                            |
 
+> **⚠️ Breaking Change (v1.13.5)**: The semantics of the `type` field changed from "free-text description" to "resource category". Please migrate any job-title/role text previously stored in `type` to the new `title` field (before: `{ type: 'Frontend Engineer' }` → after: `{ title: 'Frontend Engineer', type: 'Human' }`). **No automatic runtime fallback is provided** — please migrate your resource data before upgrading. If `type` is not set, it defaults to `'Human'` internally. See [CHANGELOG.md](./CHANGELOG.md) for details.
+>
 > **Custom Property Extension**: Resource interface supports adding any custom fields, e.g., `email`, `phone`, `location`, `workHours`, etc.
 >
 > **Task-Resource Association**:
@@ -1226,6 +1236,36 @@ Resource management is used to manage human resources or equipment in a project,
 > - `capacity` range: 20-100, representing the percentage of resource used by that task
 > - Conflict detection: When multiple tasks' `capacity` sum > 100% for the same resource in the same time period, a conflict warning is displayed
 
+#### Custom Resource Categories ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF)
+
+The "category" dropdown in the TaskDrawer resource allocation row shows the built-in Human/Device/Others options by default (labels auto-switch between Chinese/English based on `locale`). If your business has its own category taxonomy, or needs custom i18n, you can pass `resourceTypeOptions` to fully replace the default options, or use `showResourceTypeOption` to hide the dropdown entirely (when hidden, `resource.type` still defaults to `'Human'` internally, with no impact on the underlying data structure).
+
+```vue
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :resources="resources"
+    :resource-type-options="resourceTypeOptions"
+    :show-resource-type-option="true"
+  />
+</template>
+
+<script setup>
+import type { ResourceTypeOption } from 'jordium-gantt-vue3'
+
+// Fully custom category set (value is written to resource.type / task.resources[].type;
+// label is fully controlled externally, so you can implement your own i18n)
+const resourceTypeOptions: ResourceTypeOption[] = [
+  { value: 'Employee', label: 'Full-time Employee' },
+  { value: 'Contractor', label: 'Contractor' },
+  { value: 'Equipment', label: 'Equipment' },
+]
+</script>
+```
+
+- When `resourceTypeOptions` is not set (or an empty array is passed), the built-in Human/Device/Others options are used, matching pre-upgrade behavior exactly.
+- To only hide the dropdown without providing a custom category set, simply set `:show-resource-type-option="false"` — `resource.type` still defaults to `'Human'` per the built-in logic.
+
 **Resource Data Example**:
 
 ```typescript
@@ -1235,7 +1275,8 @@ const resources: Resource[] = [
   {
     id: 'dev-001',
     name: 'Zhang San',
-    type: 'developer',
+    title: 'developer', // Migrated from the old `type` field
+    type: 'Human',       // New: resource category
     avatar: '/avatars/zhangsan.jpg',
     department: 'R&D',
     skills: ['Vue', 'TypeScript', 'Node.js'],
@@ -1269,7 +1310,8 @@ const resources: Resource[] = [
   {
     id: 'dev-002',
     name: 'Li Si',
-    type: 'developer',
+    title: 'developer', // Migrated from the old `type` field
+    type: 'Human',       // New: resource category
     avatar: '/avatars/lisi.jpg',
     department: 'R&D',
     skills: ['React', 'TypeScript'],
@@ -1324,6 +1366,8 @@ const resource = {
 | `resources`           | `Resource[]`           | `[]`         | Array of resource data                                                                                   |
 | `viewMode`            | `'task' \| 'resource'` | `'task'`     | View mode: 'task' for task planning view, 'resource' for resource planning view                         |
 | `resourceListConfig`  | `ResourceListConfig`   | `undefined`  | Resource list configuration, similar to TaskListConfig, for configuring resource list columns, width etc |
+| `resourceTypeOptions` ▸v1.13.5 | `ResourceTypeOption[]` (`{ value: string; label: string }`) | `[]` | Custom option set for the "category" dropdown in the TaskDrawer resource allocation row. When not set or an empty array is passed, falls back to the built-in Human/Device/Others options. `label` is fully controlled externally, enabling custom categories or i18n. See the "Custom Resource Categories" example below |
+| `showResourceTypeOption` ▸v1.13.5 | `boolean` | `true` | Whether to show the "category" dropdown in the TaskDrawer resource allocation row. Set to `false` to fully hide this column (still defaults to `'Human'` internally for `resource.type`, no impact on the underlying data) |
 | `showConflicts`       | `boolean`              | `true`       | Whether to display resource conflict visualization layer (diagonal stripe background in resource view)   |
 | `showTaskbarTab`      | `boolean`              | `true`       | Whether to display resource tab on TaskBar (resource utilization label on TaskBar in resource view)     |
 
@@ -1364,7 +1408,8 @@ const resources = ref<Resource[]>([
   {
     id: 'dev-001',
     name: 'Zhang San',
-    type: 'developer',
+    title: 'developer', // v1.13.5: migrated from the old `type` field
+    type: 'Human',       // v1.13.5: new resource category
     department: 'R&D',
     tasks: [
       {
@@ -1411,9 +1456,23 @@ Milestones are used to mark important time points in a project, such as project 
 #### Milestone-Related Props
 
 | Prop                        | Type      | Default | Description                                                       |
-| --------------------------- | --------- | ------- | ----------------------------------------------------------------- |
+| --------------------------- | --------- | ------- | ------------------------------------------------------------------ |
 | `milestones`                | `Task[]`  | `[]`    | Array of milestone data (type is Task[], ensure type='milestone') |
 | `useDefaultMilestoneDialog` | `boolean` | `true`  | Whether to use built-in milestone edit dialog (MilestoneDialog)   |
+| `milestoneLabelPosition` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'top' \| 'right' \| 'bottom'` | `'right'` | Milestone label position relative to the icon (or custom `custom-milestone-content` slot content). Default matches the previous hardcoded behavior |
+
+**Milestone Label Position Example** ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF):
+
+```vue
+<GanttChart :tasks="tasks" :milestones="milestones" milestone-label-position="top" />
+```
+
+| Value      | Description                          |
+| ---------- | ------------------------------------ |
+| `'right'`  | Label to the right of icon (default) |
+| `'left'`   | Label to the left of icon            |
+| `'top'`    | Label above the icon                 |
+| `'bottom'` | Label below the icon                 |
 
 **Configuration Notes**:
 
@@ -1969,7 +2028,8 @@ const resources: Resource[] = [
   {
     id: 'dev-001',
     name: 'Zhang San',
-    type: 'developer',
+    title: 'developer', // v1.13.5: migrated from the old `type` field
+    type: 'Human',       // v1.13.5: new resource category
     department: 'R&D',
     tasks: [
       {
@@ -3530,6 +3590,52 @@ const props = defineProps<Props>()
 > - Need to distinguish rendering position based on `type` parameter
 > - TaskRow and TaskBar have different available space, need to adapt layout
 > - Avoid using overly complex components in slot content, may affect performance
+
+---
+
+##### `custom-milestone-content` Slot ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF)
+
+Fully replaces the default milestone icon (diamond/rocket) **and** its label. When this slot is not provided, the built-in rendering is unchanged (non-breaking).
+
+**Slot Parameters (`MilestoneSlotProps`):**
+
+| Parameter          | Type                    | Description                          |
+| ------------------ | ----------------------- | ------------------------------------ |
+| `milestone`        | `Milestone`             | The current milestone object         |
+| `task`             | `Task`                  | The original task object behind the milestone |
+| `rowHeight`        | `number`                | Row height (pixels)                  |
+| `dayWidth`         | `number`                | Width per day (pixels)               |
+| `currentTimeScale` | `TimelineScale \| null` | Current time scale                   |
+| `labelPosition`    | `'right' \| 'left' \| 'top' \| 'bottom'` | Effective label position (from `milestoneLabelPosition`), so custom content can adapt its own layout accordingly |
+
+**Usage Example：**
+
+```vue
+<template>
+  <GanttChart :tasks="tasks">
+    <template #custom-milestone-content="{ milestone, task }">
+      <div class="my-milestone">
+        <span class="my-milestone-icon">🏁</span>
+        <span class="my-milestone-label">{{ milestone.name }}（{{ task.assigneeName }}）</span>
+      </div>
+    </template>
+  </GanttChart>
+</template>
+
+<style scoped>
+.my-milestone {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.my-milestone-icon {
+  font-size: 16px;
+}
+</style>
+```
+
+> **💡 Behavior change**：Interaction handlers (click / double-click / drag / hover tooltip) are bound on the outer milestone wrapper, so the hoverable/clickable area now covers the whole custom content (icon + label), not just the original 24×24 icon. This applies whether or not the slot is used.
 
 ##### TaskListContextMenu Slots
 

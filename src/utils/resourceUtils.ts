@@ -77,7 +77,7 @@ export function detectResourceConflicts(resource: Resource): Set<number> {
  * @returns Map<resourceId, Set<conflictTaskIds>>
  */
 export function detectAllResourceConflicts(
-  resources: Resource[],
+  resources: Resource[]
 ): Map<string | number, Set<number>> {
   const conflictsMap = new Map<string | number, Set<number>>()
 
@@ -108,10 +108,7 @@ function calculateSimpleResourceUtilization(resource: Resource): number {
  * @param timeWindowDays 时间窗口（天数），默认30天
  * @returns 利用率百分比（0-100+）
  */
-export function calculateResourceUtilization(
-  resource: Resource,
-  timeWindowDays?: number,
-): number {
+export function calculateResourceUtilization(resource: Resource, timeWindowDays?: number): number {
   // 如果没有指定时间窗口，使用简化计算
   if (timeWindowDays === undefined) {
     return calculateSimpleResourceUtilization(resource)
@@ -146,6 +143,7 @@ export function calculateResourceUtilization(
 export function createResource(data: {
   id: string | number
   name: string
+  title?: string
   type?: string
   avatar?: string
   description?: string
@@ -159,7 +157,9 @@ export function createResource(data: {
   const resource: Resource = {
     id: data.id,
     name: data.name,
-    type: data.type,
+    title: data.title,
+    // 缺省值兜底：数据源未提供 type（如宿主应用尚未迁移的历史数据）时默认 'Human'
+    type: data.type ?? 'Human',
     avatar: data.avatar,
     description: data.description,
     department: data.department,

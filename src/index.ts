@@ -14,7 +14,7 @@ export { default as CalendarView } from './components/Calendar/CalendarView.vue'
 export { default as ResourceFilterSelect } from './components/Calendar/ResourceFilterSelect.vue' // v1.13.0 导出资源筛选下拉组件（P1 待办 T7.1）
 export { default as ResourceUsageView } from './components/ResourceUsage/ResourceUsageView.vue' // v1.12.5 导出资源工时视图（独立可用组件）
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
-export type { Resource } from './models/classes/Resource.ts' // v1.9.0 导出Resource类型
+export type { Resource, ResourceType, ResourceTypeOption } from './models/classes/Resource.ts' // v1.9.0 导出Resource类型，v1.13.5 新增导出 ResourceType/ResourceTypeOption
 export { createResource } from './utils/resourceUtils.ts' // v2.0.0 导出资源创建工厂函数
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 

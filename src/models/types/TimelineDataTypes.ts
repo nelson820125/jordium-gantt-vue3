@@ -4,6 +4,7 @@
  */
 import type { Task } from '../classes/Task'
 import type { Milestone } from '../classes/Milestone'
+import type { TimelineScale } from './TimelineScale'
 
 // 基础时间单位接口
 export interface TimelineHour {
@@ -149,7 +150,7 @@ export interface TooltipShowPayload {
   /** 父级任务自动调度信息（仅 isParent=true 时携带） */
   parentAutoSchedule?: {
     enabled: boolean
-    childrenRange: { minStart: Date; maxEnd: Date } | null
+    childrenRange: { minStart: Date; maxEnd: Date; maxEndRaw?: Task['endDate'] } | null
     hasOverflow: boolean
   }
 }
@@ -180,4 +181,18 @@ export interface MilestoneTooltipShowPayload {
  */
 export interface MilestoneTooltipSlotScope {
   milestone: Milestone
+}
+
+/**
+ * #custom-milestone-content scoped slot 向消费方暴露的数据
+ * 字段裁剪依据见 .ai/.claude/requirments/v1.13.5.md 8.2.2
+ */
+export interface MilestoneSlotProps {
+  milestone: Milestone
+  task: Task
+  rowHeight: number
+  dayWidth: number
+  currentTimeScale?: TimelineScale | null
+  /** 当前生效的标签展示位置，供自定义内容按需调整自身布局（如 top/bottom 时纵向堆叠） */
+  labelPosition: 'right' | 'left' | 'top' | 'bottom'
 }

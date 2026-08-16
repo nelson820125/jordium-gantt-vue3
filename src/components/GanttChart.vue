@@ -35,7 +35,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
-import type { Resource } from '../models/classes/Resource'
+import type { Resource, ResourceTypeOption } from '../models/classes/Resource'
 import { useTaskListContextMenu } from './TaskList/composables/taskList/useTaskListContextMenu'
 import { useTaskBarContextMenu } from './Timeline/composables/useTaskBarContextMenu'
 import { parseDeclarativeColumns } from './TaskList/composables/taskList/useTaskListColumns'
@@ -86,6 +86,8 @@ const props = withDefaults(defineProps<Props>(), {
   allowDragAndResize: true,
   enableTaskRowMove: false,
   assigneeOptions: () => [],
+  resourceTypeOptions: () => [],
+  showResourceTypeOption: true,
   taskListRowClassName: undefined,
   taskListRowStyle: undefined,
   enableTaskListContextMenu: true,
@@ -94,6 +96,7 @@ const props = withDefaults(defineProps<Props>(), {
   showActualTaskbar: false,
   enableTaskBarTooltip: true,
   enableMilestoneTooltip: true,
+  milestoneLabelPosition: 'right',
   showConflicts: true,
   showTaskbarTab: true,
   taskbarDescFixed: false,
@@ -652,6 +655,11 @@ interface Props {
   // 格式：{ key?: string | number, value: string | number, label: string }
   // key 为可选项，若不存在则使用 value 作为选项的唯一标识
   assigneeOptions?: Array<{ key?: string | number; value: string | number; label: string }>
+  // v1.13.5 自定义资源类别下拉选项（TaskDrawer 资源分配行的"类别"下拉），
+  // 不设置或传空数组时使用内置的 人力(Human)/设备(Device)/其他(Others) 三项（label 随 locale 切换）
+  resourceTypeOptions?: ResourceTypeOption[]
+  // v1.13.5 是否展示资源分配行的"类别"下拉，默认 true。设为 false 可完全隐藏该列（仍会按 'Human' 默认写入 resource.type）
+  showResourceTypeOption?: boolean
   // 任务行自定义样式类名，支持字符串或函数
   // 函数形式：(row: Task, rowIndex: number) => string
   taskListRowClassName?: string | ((row: Task, rowIndex: number) => string)
@@ -677,6 +685,8 @@ interface Props {
   // 是否启用里程碑气泡提示框（默认为 true）
   // 当设置为 false 时，里程碑悬停不显示 Tooltip
   enableMilestoneTooltip?: boolean
+  // 里程碑标签展示位置（默认 'right'，与现状保持一致）
+  milestoneLabelPosition?: 'left' | 'top' | 'right' | 'bottom'
   // 是否显示实际任务条（默认为 false）
   // 当设置为 true 且任务存在 actualStartDate 时，会在计划任务条下方显示实际任务条
   showActualTaskbar?: boolean
@@ -4266,6 +4276,7 @@ defineExpose({
             :show-actual-taskbar="props.showActualTaskbar"
             :enable-task-bar-tooltip="props.enableTaskBarTooltip"
             :enable-milestone-tooltip="props.enableMilestoneTooltip"
+            :milestone-label-position="props.milestoneLabelPosition"
             :enable-parent-task-auto-schedule="props.enableParentTaskAutoSchedule"
             :link-config="resolvedLinkConfig"
             :pending-task-background-color="props.pendingTaskBackgroundColor"
@@ -4300,6 +4311,13 @@ defineExpose({
             <template v-if="$slots['milestone-tooltip']" #milestone-tooltip="milestoneScope">
               <slot name="milestone-tooltip" v-bind="milestoneScope" />
             </template>
+            <!-- 向 Timeline 转发 #custom-milestone-content scoped slot -->
+            <template
+              v-if="$slots['custom-milestone-content']"
+              #custom-milestone-content="milestoneContentScope"
+            >
+              <slot name="custom-milestone-content" v-bind="milestoneContentScope" />
+            </template>
           </Timeline>
 
           <!-- 关闭聚焦按钮 - 固定在gantt-panel-right底部居中 -->
@@ -4331,6 +4349,8 @@ defineExpose({
       :task="taskDrawerTask"
       :is-edit="taskDrawerEditMode"
       :assignee-options="props.assigneeOptions"
+      :resource-type-options="props.resourceTypeOptions"
+      :show-resource-type-option="props.showResourceTypeOption"
       :pending-task-background-color="props.pendingTaskBackgroundColor"
       :delay-task-background-color="props.delayTaskBackgroundColor"
       :complete-task-background-color="props.completeTaskBackgroundColor"

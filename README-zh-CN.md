@@ -69,6 +69,12 @@
   </p>
 </div>
 
+<div style="background-color: #fff0f0; padding: 10px 10px 2px 10px; border: 1px solid #ffccc7">
+  <p>
+    <b style="color:red">⚠️ 重要提示（升级前必读）: </b>若要版本升级到 <b>v1.13.5</b> 及以上，<code>Resource</code> 接口的 <code>type</code> 字段语义发生了变更（自由文本 → 资源类别 Human/Device/Others），原来存放在 <code>type</code> 里的职务/头衔信息不会自动迁移，请务必在升级前将其迁移到新增的 <code>title</code> 字段，否则会导致「职务」列显示为空、「类别」列显示异常文本。详见 <a href="#resource-数据结构">Resource 数据结构</a> 章节的 Breaking Change 说明。
+  </p>
+</div>
+
 ---
 
 ## ✨ 简介
@@ -228,7 +234,7 @@ npm run dev
 | `enableTaskRowMove`         | `boolean`                                                                                 | `false` | 是否允许拖拽和摆放TaskRow                                      |
 | `enableTaskListContextMenu` | `boolean`                                                                                 | `true`  | 是否启用 TaskList（TaskRow）右键菜单功能。为 `true` 时：未声明 `task-list-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                     |
 | `enableTaskBarContextMenu`  | `boolean`                                                                                 | `true`  | 是否启用 TaskBar 右键菜单功能。为 `true` 时：未声明 `task-bar-context-menu` 插槽则使用内置菜单，声明了插槽则使用自定义菜单；为 `false` 时右键菜单完全禁用                               |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string; avatar?: string; type?: string ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表。`type` 为可选的资源类别（Human/Device/Others），选中资源时会级联预填到资源绑定行的类别字段          |
 | `locale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'zh-CN' \| 'en-US'`                                                                      | `'zh-CN'` | 语言设置（响应式）。设置后组件内部语言将跟随变化                |
 | `theme` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'light' \| 'dark'`                                                                       | `'light'` | 主题模式（响应式）。设置后组件主题将跟随变化                    |
 | `timeScale` ![v1.7.1](https://img.shields.io/badge/v1.7.1-409EFF?style=flat-square&labelColor=ECF5FF) | `'hour' \| 'day' \| 'week' \| 'month' \| 'quarter' \| 'year'`                             | `'week'` | 时间刻度（响应式）。设置后时间线刻度将跟随变化                  |
@@ -242,6 +248,7 @@ npm run dev
 | `showActualTaskbar` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `false` | 是否显示实际TaskBar（在计划TaskBar下方显示实际执行进度）  |
 | `enableTaskbarTooltip` ![v1.8.0](https://img.shields.io/badge/v1.8.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用TaskBar悬停提示框（鼠标悬停显示任务详情）  |
 | `enableMilestoneTooltip` ![v1.10.2](https://img.shields.io/badge/v1.10.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否启用里程碑悬停提示框（鼠标悬停显示里程碑名称和日期）  |
+| `milestoneLabelPosition` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'top' \| 'right' \| 'bottom'` | `'right'` | 里程碑标签相对于图标（或自定义 `custom-milestone-content` 插槽内容）的展示位置，默认值与改造前的硬编码行为一致 |
 | `showConflicts` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域） |
 | `showTaskbarTab` ![v1.9.0](https://img.shields.io/badge/v1.9.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar的资源分配标签） |
 | `enableTaskListCollapsible` ![v1.9.2](https://img.shields.io/badge/v1.9.2-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许折叠/展开 TaskList 面板。`false` 时强制隐藏 TaskList、SplitterBar 及折叠按钮，Timeline 独占全宽 |
@@ -729,7 +736,7 @@ const tasks = ref<Task[]>([
   { id: 1, name: '任务1', startDate: '2025-01-01', endDate: '2025-01-10', progress: 50 },
 ])
 const resources = ref<Resource[]>([
-  { id: 'dev-001', name: '张三', type: 'developer', department: '研发部', tasks: [] },
+  { id: 'dev-001', name: '张三', title: 'developer', type: 'Human', department: '研发部', tasks: [] },
 ])
 
 const handleViewModeChanged = (mode: typeof viewMode.value) => {
@@ -804,7 +811,7 @@ const handleResourceUsageCellClick = (payload: any) => {
 | `taskListConfig`      | `TaskListConfig` | `undefined` | 任务列表配置，详见 [TaskListConfig 配置](#tasklistconfig-配置) |
 | `autoSortByStartDate` | `boolean`        | `false`     | 是否根据开始时间自动排序任务                                   |
 | `enableTaskRowMove`        | `boolean` | `false`  | 是否允许拖拽和摆放TaskRow   |
-| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表          |
+| `assigneeOptions`           | `Array<{ key?: string \| number; value: string \| number; label: string; avatar?: string; type?: string ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) }>`               | `[]`    | 任务编辑抽屉中负责人下拉菜单的选项列表。`type` 为可选的资源类别（Human/Device/Others），选中资源时会级联预填到资源绑定行的类别字段          |
 | `taskListColumnRenderMode` | `'default' \| 'declarative'` | `'default'` | 任务列表列渲染模式。`'default'`：使用 TaskListColumnConfig 配置（兼容模式，将逐渐废弃）；`'declarative'`：使用 TaskListColumn 组件声明式定义列（推荐）。详见 [TaskListColumn 声明式列定义](#tasklistcolumn-声明式列定义) |
 | `taskListRowClassName` | `string \| ((task: Task) => string)` | `undefined` | 自定义任务行的 CSS 类名。可以是字符串或返回字符串的函数。**注意**：行的高度由组件内部统一管理，自定义高度样式不会生效 |
 | `taskListRowStyle` | `CSSProperties \| ((task: Task) => CSSProperties)` | `undefined` | 自定义任务行的内联样式。可以是样式对象或返回样式对象的函数。**注意**：行的高度和宽度由组件内部统一管理，自定义宽高样式不会生效 | 
@@ -1260,7 +1267,8 @@ const handleTaskRowMoved = async (payload: {
 | --------------- | ------------------- | ---- | ------ | ----------------------------------------------------------------------------------------------- |
 | `id`            | `string \| number`  | ✅   | -      | 资源唯一标识符                                                                                  |
 | `name`          | `string`            | ✅   | -      | 资源名称（如人名、设备名）                                                                      |
-| `type`          | `string`            | -    | -      | 资源类型（如 'developer', 'designer', 'device' 等）                                              |
+| `title` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `string` | -    | -      | 资源职务/头衔（如 '前端工程师'、'项目经理'），自由文本                                          |
+| `type` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `string` | -    | `'Human'` | 资源类别，用于区分人力/设备/其他资源，预设 `'Human'` / `'Device'` / `'Others'`（字符串类型，不做强枚举校验，允许自定义扩展） |
 | `avatar`        | `string`            | -    | -      | 资源头像 URL                                                                                    |
 | `description`   | `string`            | -    | -      | 资源描述                                                                                        |
 | `department`    | `string`            | -    | -      | 所属部门                                                                                        |
@@ -1270,6 +1278,8 @@ const handleTaskRowMoved = async (payload: {
 | `tasks`         | `Task[]`            | -    | `[]`   | 分配给该资源的任务数组，**每个任务需包含 `resources` 字段标注资源占用比例**                      |
 | `[key: string]` | `unknown`           | -    | -      | 支持自定义属性扩展，可添加任意额外字段                                                           |
 
+> **⚠️ Breaking Change（v1.13.5）**：`type` 字段语义从"自由文本描述"调整为"资源类别"，原本存放在 `type` 里的职位/头衔信息请迁移到新增的 `title` 字段（升级前：`{ type: '前端工程师' }` → 升级后：`{ title: '前端工程师', type: 'Human' }`）。**本次不提供运行时自动兼容**，请在升级前手动迁移你自己的资源数据源；若未设置 `type`，组件内部默认按 `'Human'` 处理。详见 [CHANGELOG.md](./CHANGELOG.md)。
+>
 > **自定义属性扩展**：Resource 接口支持添加任意自定义字段，例如：`email`、`phone`、`location`、`workHours` 等业务相关字段。
 >
 > **任务资源关联说明**：
@@ -1280,6 +1290,35 @@ const handleTaskRowMoved = async (payload: {
 > - `capacity` 范围：20-100，表示该任务占用该资源的百分比
 > - 冲突检测：当同一资源在同一时间段的多个任务 `capacity` 总和 > 100% 时，会显示冲突警告
 
+#### 自定义资源类别 ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF)
+
+TaskDrawer 资源分配行的"类别"下拉默认展示内置的 人力(Human)/设备(Device)/其他(Others) 三项（文案随 `locale` 自动切换中英文）。如果业务方有自己的类别体系，或需要接入自定义多语言，可以通过 `resourceTypeOptions` 属性传入自定义选项集合完全替换默认项；也可以通过 `showResourceTypeOption` 属性整体隐藏该下拉列（隐藏后 `resource.type` 仍会按 `'Human'` 默认写入，不影响数据结构）。
+
+```vue
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :resources="resources"
+    :resource-type-options="resourceTypeOptions"
+    :show-resource-type-option="true"
+  />
+</template>
+
+<script setup>
+import type { ResourceTypeOption } from 'jordium-gantt-vue3'
+
+// 完全自定义的类别集合（value 会写入 resource.type / task.resources[].type，label 由外部完全控制，可自行实现多语言）
+const resourceTypeOptions: ResourceTypeOption[] = [
+  { value: 'Employee', label: '正式员工' },
+  { value: 'Contractor', label: '外包人员' },
+  { value: 'Equipment', label: '设备' },
+]
+</script>
+```
+
+- 不设置 `resourceTypeOptions`（或传入空数组）时，使用内置的 Human/Device/Others 三项，行为与升级前完全一致。
+- 若只想隐藏该下拉列（不需要自定义类别集合），单独设置 `:show-resource-type-option="false"` 即可，`resource.type` 仍会按内置逻辑默认写入 `'Human'`。
+
 **Resource 数据示例**：
 
 ```typescript
@@ -1289,7 +1328,8 @@ const resources: Resource[] = [
   {
     id: 'dev-001',
     name: '张三',
-    type: 'developer',
+    title: 'developer', // 原 type 字段迁移至此
+    type: 'Human',      // 新增：资源类别
     avatar: '/avatars/zhangsan.jpg',
     department: '研发部',
     skills: ['Vue', 'TypeScript', 'Node.js'],
@@ -1303,8 +1343,8 @@ const resources: Resource[] = [
         endDate: '2026-02-10',
         progress: 50,
         resources: [
-          { id: 'dev-001', capacity: 60 }, // 该任务占用张三60%的时间
-          { id: 'dev-002', capacity: 40 }  // 同时占用李四40%的时间
+          { id: 'dev-001', type: 'Human', capacity: 60 }, // 该任务占用张三60%的时间
+          { id: 'dev-002', type: 'Human', capacity: 40 }  // 同时占用李四40%的时间
         ]
       },
       {
@@ -1314,7 +1354,7 @@ const resources: Resource[] = [
         endDate: '2026-02-08',
         progress: 0,
         resources: [
-          { id: 'dev-001', capacity: 40 } // 该任务占用张三40%的时间
+          { id: 'dev-001', type: 'Human', capacity: 40 } // 该任务占用张三40%的时间
         ]
       }
       // 注意：如果两个任务时间重叠，张三在2月5-8日的总占用率为100%（60%+40%），临界值
@@ -1323,7 +1363,8 @@ const resources: Resource[] = [
   {
     id: 'dev-002',
     name: '李四',
-    type: 'developer',
+    title: 'developer', // 原 type 字段迁移至此
+    type: 'Human',      // 新增：资源类别
     avatar: '/avatars/lisi.jpg',
     department: '研发部',
     skills: ['React', 'TypeScript'],
@@ -1378,6 +1419,8 @@ const resource = {
 | `resources`           | `Resource[]`          | `[]`         | 资源数据数组                                                                |
 | `viewMode`            | `'task' \| 'resource'` | `'task'`     | 视图模式：'task' 任务计划视图，'resource' 资源计划视图                      |
 | `resourceListConfig`  | `ResourceListConfig`  | `undefined`  | 资源列表配置，类似 TaskListConfig，用于配置资源列表的列定义、宽度等         |
+| `resourceTypeOptions` ▸阶v1.13.5 | `ResourceTypeOption[]`（`{ value: string; label: string }`） | `[]`         | 自定义 TaskDrawer 资源分配行“类别”下拉的可选项集合，不设置或传空数组时使用内置的 人力(Human)/设备(Device)/其他(Others)。`label` 完全由外部提供，可实现自定义类别集合或多语言。详见下方「自定义资源类别」示例 |
+| `showResourceTypeOption` ▸阶v1.13.5 | `boolean`             | `true`       | 是否展示 TaskDrawer 资源分配行的“类别”下拉选项。设为 `false` 可完全隐藏该列（仍会按 `'Human'` 默认写入 `resource.type`，不影响数据本身） |
 | `showConflicts`       | `boolean`             | `true`       | 是否显示资源冲突可视化层（资源视图下显示斜纹背景标识超载区域）              |
 | `showTaskbarTab`      | `boolean`             | `true`       | 是否显示TaskBar上的资源Tab标签（资源视图下TaskBar上的资源占用比例标签）     |
 
@@ -1418,7 +1461,8 @@ const resources = ref<Resource[]>([
   {
     id: 'dev-001',
     name: '张三',
-    type: 'developer',
+    title: 'developer', // v1.13.5：原 type 字段迁移至此
+    type: 'Human',      // v1.13.5：新增资源类别
     department: '研发部',
     tasks: [
       {
@@ -1468,6 +1512,20 @@ const handleTaskbarResourceChange = (payload: any) => {
 | --------------------------- | --------- | ------ | -------------------------------------------------------- |
 | `milestones`                | `Task[]`  | `[]`   | 里程碑数据数组（类型为 Task[]，需确保 type='milestone'） |
 | `useDefaultMilestoneDialog` | `boolean` | `true` | 是否使用内置的里程碑编辑对话框（MilestoneDialog）        |
+| `milestoneLabelPosition` ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF) | `'left' \| 'top' \| 'right' \| 'bottom'` | `'right'` | 里程碑标签相对于图标（或自定义 `custom-milestone-content` 插槽内容）的展示位置，默认值与改造前的硬编码行为一致 |
+
+**里程碑标签位置示例** ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF)：
+
+```vue
+<GanttChart :tasks="tasks" :milestones="milestones" milestone-label-position="top" />
+```
+
+| 取值       | 说明                     |
+| ---------- | ------------------------ |
+| `'right'`  | 标签在图标右侧（默认）    |
+| `'left'`   | 标签在图标左侧            |
+| `'top'`    | 标签在图标上方            |
+| `'bottom'` | 标签在图标下方            |
 
 **配置说明**：
 
@@ -2074,7 +2132,8 @@ const resources: Resource[] = [
   {
     id: 'dev-001',
     name: '张三',
-    type: 'developer',
+    title: 'developer', // v1.13.5：原 type 字段迁移至此
+    type: 'Human',      // v1.13.5：新增资源类别
     department: '研发部',
     tasks: [
       {
@@ -3678,6 +3737,52 @@ const props = defineProps<Props>()
 > - TaskRow 和 TaskBar 的可用空间不同，需要适配布局
 > - 避免在插槽内容中使用过于复杂的组件，可能影响性能
 
+---
+
+##### `custom-milestone-content` 插槽 ![v1.13.5](https://img.shields.io/badge/v1.13.5-409EFF?style=flat-square&labelColor=ECF5FF)
+
+完整替换默认的里程碑图标（菱形/火箭）**以及**标签文字。不使用该插槽时，默认渲染行为不变（非破坏性变更）。
+
+**插槽参数（`MilestoneSlotProps`）：**
+
+| 参数                | 类型                    | 说明                       |
+| ------------------- | ----------------------- | -------------------------- |
+| `milestone`         | `Milestone`             | 当前里程碑对象              |
+| `task`              | `Task`                  | 里程碑背后的原始任务对象     |
+| `rowHeight`         | `number`                | 行高（像素）                |
+| `dayWidth`          | `number`                | 每日宽度（像素）            |
+| `currentTimeScale`  | `TimelineScale \| null` | 当前时间刻度                |
+| `labelPosition`     | `'right' \| 'left' \| 'top' \| 'bottom'` | 当前生效的标签位置（来自 `milestoneLabelPosition`），便于自定义内容按需自行调整布局 |
+
+**使用示例：**
+
+```vue
+<template>
+  <GanttChart :tasks="tasks">
+    <template #custom-milestone-content="{ milestone, task }">
+      <div class="my-milestone">
+        <span class="my-milestone-icon">🏁</span>
+        <span class="my-milestone-label">{{ milestone.name }}（{{ task.assigneeName }}）</span>
+      </div>
+    </template>
+  </GanttChart>
+</template>
+
+<style scoped>
+.my-milestone {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.my-milestone-icon {
+  font-size: 16px;
+}
+</style>
+```
+
+> **💡 行为变化**：点击 / 双击 / 拖拽 / 悬浮 Tooltip 等交互事件监听器统一绑定在最外层里程碑容器上，因此可交互的响应区域从原来的 24×24 图标扩大为整个自定义内容（图标+标签）区域，无论是否使用该插槽都是如此。
+
 ##### TaskListContextMenu 插槽
 
 用于自定义 TaskRow（任务列表行）的右键菜单内容。
@@ -4354,13 +4459,13 @@ TaskList 组件经过深度重构，采用模块化设计，提升了代码可�
 
 ---
 
-## � Troubleshooting
+## Troubleshooting
 
 常见问题与解决方案请参阅 [Troubleshooting.md](./Troubleshooting.md)。
 
 ---
 
-## �📄 开源协议
+## 📄 开源协议
 
 [MIT License](./LICENSE) © 2025 JORDIUM.COM
 

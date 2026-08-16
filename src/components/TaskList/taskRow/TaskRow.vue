@@ -5,6 +5,7 @@ import { DynamicRenderer } from '../composables/taskRow/dynamicRenderer'
 import { useI18n } from '../../../composables/useI18n'
 import { useViewMode } from '../../../composables/useViewMode'
 import { formatPredecessorDisplay } from '../../../utils/predecessorUtils'
+import { getEffectiveEndDateOnly } from '../../../utils/dateBoundaryUtils'
 import type { Task } from '../../../models/classes/Task'
 import type { Resource } from '../../../models/classes/Resource'
 import { isResourceOverloaded } from '../../../utils/resourceUtils'
@@ -399,6 +400,25 @@ const assigneeDisplayData = computed(() => {
     hasMultiple: displayAvatars.length > 1,
   }
 })
+
+/**
+ * 结束日期列展示值
+ * v1.13.5：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+ * '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+ * 修正（-15分钟再截断）再展示为 YYYY-MM-DD，避免列表显示的结束日期比实际
+ * 渲染的 taskbar 多算一天（详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+ */
+const displayEndDate = computed(() => {
+  const raw = props.task.endDate
+  if (!raw) return '-'
+  const parsed = new Date(raw)
+  if (isNaN(parsed.getTime())) return raw
+  const effective = getEffectiveEndDateOnly(raw, parsed)
+  const y = effective.getFullYear()
+  const m = String(effective.getMonth() + 1).padStart(2, '0')
+  const d = String(effective.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+})
 </script>
 
 <template>
@@ -643,7 +663,7 @@ const assigneeDisplayData = computed(() => {
 
             <!-- 结束日期列 -->
             <template v-else-if="column.key === 'endDate'">
-              {{ props.task.endDate || '-' }}
+              {{ displayEndDate }}
             </template>
 
             <!-- 预估工时列 -->

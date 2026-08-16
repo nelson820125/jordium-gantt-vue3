@@ -218,6 +218,11 @@ const messages = {
     resourceAllocation: '资源分配',
     selectResource: '选择资源',
     addResource: '添加资源',
+    // v1.13.5 资源类别（人力/设备/其他）
+    resourceCategory: '类别',
+    resourceCategoryHuman: '人力',
+    resourceCategoryDevice: '设备',
+    resourceCategoryOthers: '其他',
     percentMinError: '最小占比为20%',
     percentMaxWarning: '占比超过100%将标记为超负荷',
     // 通用消息
@@ -543,6 +548,11 @@ const messages = {
     resourceAllocation: 'Resource Allocation',
     selectResource: 'Select resource',
     addResource: 'Add Resource',
+    // v1.13.5 Resource category (Human/Device/Others)
+    resourceCategory: 'Category',
+    resourceCategoryHuman: 'Human',
+    resourceCategoryDevice: 'Device',
+    resourceCategoryOthers: 'Others',
     percentMinError: 'Minimum percentage is 20%',
     percentMaxWarning: 'Percentage over 100% will be marked as overloaded',
     // Common messages

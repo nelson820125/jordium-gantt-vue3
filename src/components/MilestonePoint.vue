@@ -1,16 +1,22 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted, onUpdated, useSlots } from 'vue'
 import type { Milestone } from '../models/classes/Milestone'
+import type { Task } from '../models/classes/Task'
 import { TimelineScale } from '../models/types/TimelineScale'
 import type {
   TimelineMonth,
   TimelineYear,
   TimelineDay,
   MilestoneTooltipShowPayload,
+  MilestoneSlotProps,
 } from '../models/types/TimelineDataTypes'
 import { createLocalDate } from '../utils/predecessorUtils'
 const props = defineProps<Props>()
+
+defineSlots<{
+  'custom-milestone-content'(props: MilestoneSlotProps): unknown
+}>()
 
 // 添加事件定义
 const emit = defineEmits<{
@@ -25,12 +31,15 @@ const emit = defineEmits<{
 interface Props {
   date: string
   milestone: Milestone
+  task?: Task
   name?: string
   rowHeight: number
   dayWidth: number
   startDate: Date
   timelineStart: Date
   timelineEnd: Date
+  /** 标签展示位置，默认 'right'（与现状保持一致） */
+  labelPosition?: 'left' | 'top' | 'right' | 'bottom'
   scrollLeft?: number
   containerWidth?: number
   milestoneId?: number
@@ -54,6 +63,13 @@ const isDragging = ref(false)
 const dragStartX = ref(0)
 const dragStartLeft = ref(0)
 const tempMilestoneData = ref<{ startDate?: string } | null>(null)
+// 默认图标（菱形/火箭等）的 <svg> 引用，用于 tooltip 定位取图标自身的包围盒，
+// 避免因外层容器包含标签（labelPosition 不同时标签宽高各异）导致 tooltip 锚点偏离图标本身
+const iconRef = ref<SVGElement | null>(null)
+// custom-milestone-content 插槽内容的外层 wrapper 引用，用于 tooltip 定位——
+// 该 wrapper 才是磁吸停靠时实际应用 position:relative + left 偏移/clipPath 裁剪的元素，
+// 外层 .milestone 容器的包围盒不会随停靠偏移变化（偏移只加在 wrapper 上）。
+const customContentRef = ref<HTMLElement | null>(null)
 
 // 双击事件处理
 const handleDoubleClick = (e: MouseEvent) => {
@@ -423,40 +439,18 @@ const isDimmed = computed(() => {
   return props.isInHighlightMode === true
 })
 
-// 计算菱形位置 - 考虑拖拽临时数据
-const milestoneStyle = computed(() => {
+// 图标水平锚点位置（left，数值 px）：只由时间轴数据/日期决定，与 labelPosition、是否
+// 显示标签完全无关。单独抽出为独立 computed，供 milestoneVisibility（磁吸边界判定）读取
+// ——若改为让 milestoneVisibility 直接依赖 milestoneStyle.value.left，而 milestoneStyle
+// 的 top 计算又需要读取 milestoneVisibility.value.showLabel（见下方），会形成循环依赖。
+// 日期无效时返回 null，milestoneStyle 据此走 0,0 兜底分支。
+const milestoneAnchorLeft = computed<number | null>(() => {
   const currentMilestoneDate = tempMilestoneData.value?.startDate || props.date
   const milestoneDate = createLocalDate(currentMilestoneDate)
 
   // 修正：防御性处理日期和startDate
   if (!props.startDate || !milestoneDate || isNaN(milestoneDate.getTime())) {
-    return {
-      left: '0px',
-      top: '0px',
-      width: 'auto',
-      height: 'auto',
-    }
-  }
-
-  let left = 0
-  // 修复：根据不同时间刻度使用合适的图标大小
-  let size = 24 // 默认图标大小
-
-  if (
-    props.currentTimeScale === TimelineScale.YEAR ||
-    props.currentTimeScale === TimelineScale.QUARTER
-  ) {
-    // 年度视图：使用固定大小，不依赖dayWidth
-    size = Math.min(props.rowHeight, 24)
-  } else if (props.currentTimeScale === TimelineScale.MONTH) {
-    // 月度视图：使用固定大小，不依赖dayWidth（因为dayWidth太小）
-    size = Math.min(props.rowHeight, 20)
-  } else if (props.currentTimeScale === TimelineScale.WEEK) {
-    // 周视图：可以稍微依赖dayWidth，但有合理范围
-    size = Math.min(props.rowHeight, Math.max(props.dayWidth * 0.8, 16), 24)
-  } else {
-    // 日视图：保持原有逻辑
-    size = Math.min(props.rowHeight, props.dayWidth * 1.2, 24)
+    return null
   }
 
   // 小时视图：使用专门的小时位置计算
@@ -466,8 +460,10 @@ const milestoneStyle = computed(() => {
   if (props.currentTimeScale === TimelineScale.HOUR) {
     // 小时视图：精确到小时和分钟的定位
     const centerPosition = calculateHourViewMilestonePosition(milestoneDate, props.startDate)
-    left = centerPosition - ICON_CENTER_OFFSET
-  } else if (
+    return centerPosition - ICON_CENTER_OFFSET
+  }
+
+  if (
     props.timelineData &&
     props.currentTimeScale &&
     (props.currentTimeScale === TimelineScale.WEEK ||
@@ -483,18 +479,82 @@ const milestoneStyle = computed(() => {
       props.currentTimeScale
     )
 
-    left = centerPosition - ICON_CENTER_OFFSET
+    return centerPosition - ICON_CENTER_OFFSET
+  }
+
+  // 其他情况（没有 timelineData）：保持原有逻辑
+  const startDiff = Math.floor(
+    (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
+  )
+  return startDiff * props.dayWidth + props.dayWidth / 2 - ICON_CENTER_OFFSET
+})
+
+// 图标纯居中尺寸：labelPosition='right'/'left'，或 top/bottom 磁吸停靠隐藏标签时，
+// 回退为纯图标居中所使用的尺寸假设（不同时间刻度下的图标视觉大小近似值）。
+const milestoneIconSize = computed<number>(() => {
+  if (
+    props.currentTimeScale === TimelineScale.YEAR ||
+    props.currentTimeScale === TimelineScale.QUARTER
+  ) {
+    // 年度视图：使用固定大小，不依赖dayWidth
+    return Math.min(props.rowHeight, 24)
+  } else if (props.currentTimeScale === TimelineScale.MONTH) {
+    // 月度视图：使用固定大小，不依赖dayWidth（因为dayWidth太小）
+    return Math.min(props.rowHeight, 20)
+  } else if (props.currentTimeScale === TimelineScale.WEEK) {
+    // 周视图：可以稍微依赖dayWidth，但有合理范围
+    return Math.min(props.rowHeight, Math.max(props.dayWidth * 0.8, 16), 24)
+  }
+  // 日视图：保持原有逻辑
+  return Math.min(props.rowHeight, props.dayWidth * 1.2, 24)
+})
+
+// 计算菱形位置 - 考虑拖拽临时数据
+const milestoneStyle = computed(() => {
+  if (milestoneAnchorLeft.value === null) {
+    return {
+      left: '0px',
+      top: '0px',
+      width: 'auto',
+      height: 'auto',
+    }
+  }
+
+  // labelPosition 为 top/bottom 且存在需要展示的标签内容（内置文字标签非空，或使用了
+  // custom-milestone-content 插槽——插槽与非插槽共用完全相同的判定条件与计算公式）时，
+  // 把"图标+标签"视为一个纵向堆叠整体，让整个堆叠块在行内垂直居中，而不是只让图标本身
+  // 按纯图标尺寸居中——否则行高不足以容纳堆叠块时，标签会朝行外单向溢出。
+  // 磁吸停靠时标签被隐藏（milestoneVisibility.showLabel === false），此时不需要再为标签
+  // 预留空间，图标回退为与 labelPosition='right'/'left' 完全相同的纯图标居中——这是磁吸
+  // 交互本身带来的合理位置调整（不再需要显示标签，图标自然回到"无标签"时的居中位置），
+  // 不是位置跳变 bug。
+  const hasStackableLabel =
+    (effectiveLabelPosition.value === 'top' || effectiveLabelPosition.value === 'bottom') &&
+    (hasContentSlot.value || Boolean(props.name)) &&
+    milestoneVisibility.value.showLabel
+
+  // 图标固定渲染尺寸：与 <svg :width="24" :height="24"> 及 custom-milestone-content
+  // 插槽磁吸时钳制的 24px 宽度保持一致。
+  const RENDERED_ICON_SIZE = 24
+  // 标签纵向堆叠额外占用高度的估算值：内置文字标签约为 12px 字号 × ~1.2 行高 + 2px
+  // 外边距 ≈ 16px。custom-milestone-content 插槽内容实际渲染高度不可预知，为保证
+  // "插槽和非插槽使用同一套算法"，采用与非插槽完全相同的估算值/公式（若插槽内容实际
+  // 渲染高度显著更高，仍可能溢出，属于消费方自定义内容尺寸的固有限制，非本次修复范围）。
+  const LABEL_STACK_EXTRA = 16
+
+  let top: number
+  if (hasStackableLabel) {
+    const stackTop = (props.rowHeight - (RENDERED_ICON_SIZE + LABEL_STACK_EXTRA)) / 2
+    // labelPosition==='top'：标签在上、图标在下，图标位置 = 堆叠块顶部 + 标签占用高度；
+    // labelPosition==='bottom'：图标在上、标签在下，图标就位于堆叠块顶部，无需额外偏移。
+    top = effectiveLabelPosition.value === 'top' ? stackTop + LABEL_STACK_EXTRA : stackTop
   } else {
-    // 其他情况（没有 timelineData）：保持原有逻辑
-    const startDiff = Math.floor(
-      (milestoneDate.getTime() - props.startDate.getTime()) / (1000 * 60 * 60 * 24)
-    )
-    left = startDiff * props.dayWidth + props.dayWidth / 2 - ICON_CENTER_OFFSET
+    top = (props.rowHeight - milestoneIconSize.value) / 2
   }
 
   return {
-    left: `${left}px`,
-    top: `${(props.rowHeight - size) / 2}px`,
+    left: `${milestoneAnchorLeft.value}px`,
+    top: `${top}px`,
     width: 'auto',
     height: 'auto',
   }
@@ -515,6 +575,38 @@ const milestoneIcon = computed(() => {
   return props.milestone?.icon || 'diamond' // 默认为菱形
 })
 
+// 标签展示位置，默认 'right'（与改造前唯一实现保持一致，向后兼容）
+const effectiveLabelPosition = computed(() => props.labelPosition || 'right')
+
+// custom-milestone-content 自定义内容 slot
+// 注意：useSlots() 返回的 slots 对象不是响应式代理，`computed(() => Boolean(slots['x']))`
+// 不会被 Vue 的依赖追踪系统识别，父组件切换该具名插槽是否传入时（如 demo 中勾选/取消勾选
+// "自定义里程碑内容" 复选框）不会触发本组件重新求值，导致图标/标签渲染分支停留在旧状态，
+// 必须切换数据源触发组件重新挂载才能生效（用户反馈的 UX 问题）。
+// 修复：改为普通 ref，并在 onUpdated（每次本组件重渲染后都会执行，父级具名插槽是动态的
+// v-if 场景不会被 stable slots 优化跳过）里同步刷新，确保是真正被追踪的响应式数据源。
+const slots = useSlots()
+const hasContentSlot = ref(Boolean(slots['custom-milestone-content']))
+onUpdated(() => {
+  const current = Boolean(slots['custom-milestone-content'])
+  if (hasContentSlot.value !== current) {
+    hasContentSlot.value = current
+  }
+})
+
+// slot payload：字段裁剪结论见 .ai/.claude/requirments/v1.13.5.md 8.2.2
+// labelPosition：透出当前生效的标签展示位置，便于自定义内容按需调整自身布局
+// （例如 top/bottom 时改为纵向堆叠），否则消费方无法感知该配置，自定义内容会始终
+// 保持固定布局，看起来像是 labelPosition 对插槽完全不生效。
+const slotPayload = computed<MilestoneSlotProps>(() => ({
+  milestone: props.milestone,
+  task: props.task ?? (props.milestone as unknown as Task),
+  rowHeight: props.rowHeight,
+  dayWidth: props.dayWidth,
+  currentTimeScale: props.currentTimeScale,
+  labelPosition: effectiveLabelPosition.value,
+}))
+
 // 计算里程碑的边界粘性显示状态（包含推挤效果）
 const milestoneVisibility = computed(() => {
   const scrollLeft = props.scrollLeft || 0
@@ -534,8 +626,10 @@ const milestoneVisibility = computed(() => {
     }
   }
 
-  // 获取当前里程碑的位置
-  const milestoneLeft = parseInt(milestoneStyle.value.left) + 12 // 图标中心位置
+  // 获取当前里程碑的位置（读取 milestoneAnchorLeft 而非 milestoneStyle.value.left，
+  // 避免与 milestoneStyle 之间出现循环依赖——milestoneStyle 的 top 计算需要读取
+  // milestoneVisibility.value.showLabel）
+  const milestoneLeft = (milestoneAnchorLeft.value ?? 0) + 12 // 图标中心位置
   const leftBoundary = scrollLeft
   const rightBoundary = scrollLeft + containerWidth
   const iconSize = 24 // 图标大小
@@ -559,7 +653,7 @@ const milestoneVisibility = computed(() => {
     // 如果有其他里程碑已经停靠在左侧，比较优先级决定推挤顺序
     if (leftStickyMilestones.length > 0) {
       // 获取当前里程碑的原始位置（不考虑停靠）
-      const currentOriginalLeft = parseInt(milestoneStyle.value.left) + 12
+      const currentOriginalLeft = (milestoneAnchorLeft.value ?? 0) + 12
 
       // 检查是否有里程碑的原始位置比当前里程碑更靠右（即后来者推挤先来者）
       const hasLaterMilestone = leftStickyMilestones.some(m => {
@@ -588,7 +682,7 @@ const milestoneVisibility = computed(() => {
       showLabel: false,
       isSticky: true,
       stickyPosition: 'left',
-      iconLeft: `${leftBoundary - parseInt(milestoneStyle.value.left) - iconSize / 2}px`,
+      iconLeft: `${leftBoundary - (milestoneAnchorLeft.value ?? 0) - iconSize / 2}px`,
       isPushedOut: false,
       clipPath: 'polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%)', // 只显示右半部分
       isFullyVisible: false,
@@ -605,7 +699,7 @@ const milestoneVisibility = computed(() => {
     // 如果有其他里程碑已经停靠在右侧，比较优先级决定推挤顺序
     if (rightStickyMilestones.length > 0) {
       // 获取当前里程碑的原始位置（不考虑停靠）
-      const currentOriginalLeft = parseInt(milestoneStyle.value.left) + 12
+      const currentOriginalLeft = (milestoneAnchorLeft.value ?? 0) + 12
 
       // 检查是否有里程碑的原始位置比当前里程碑更靠左（即后来者推挤先来者）
       const hasLaterMilestone = rightStickyMilestones.some(m => {
@@ -634,7 +728,7 @@ const milestoneVisibility = computed(() => {
       showLabel: false,
       isSticky: true,
       stickyPosition: 'right',
-      iconLeft: `${rightBoundary - parseInt(milestoneStyle.value.left) - iconSize / 2}px`,
+      iconLeft: `${rightBoundary - (milestoneAnchorLeft.value ?? 0) - iconSize / 2}px`,
       isPushedOut: false,
       clipPath: 'polygon(0% 0%, 50% 0%, 50% 100%, 0% 100%)', // 只显示左半部分
       isFullyVisible: false,
@@ -660,7 +754,31 @@ const handleMilestoneMouseEnter = (event: MouseEvent) => {
   if (!milestoneVisibility.value.showIcon || milestoneVisibility.value.isPushedOut) return
 
   const el = event.currentTarget as HTMLElement
-  const targetRect = el.getBoundingClientRect()
+  // 悬停响应区域为"图标+标签"整个外层容器，但 tooltip 应始终锚定在图标本身，
+  // 而不是（可能因 labelPosition 不同、标签文本长短不一而宽高各异的）整个容器，
+  // 否则 labelPosition='right' 且标签较长时，tooltip 会明显偏离图标（远离 SVG）。
+  // 使用默认图标时优先取 <svg> 自身包围盒定位。
+  let targetRect = iconRef.value?.getBoundingClientRect()
+  if (!targetRect) {
+    // custom-milestone-content 插槽场景：内容由消费方自行渲染，宽高不固定
+    // （例如图标+较长自定义标签文本），若直接用整个外层容器包围盒定位，容器右边缘会随
+    // 标签文本长度变化，导致 Tooltip 明显偏离视觉上的「图标」部分（用户反馈的偏远问题）。
+    // 约定：与内置图标+标签的渲染顺序一致，自定义内容里的图标类元素默认放在最前面
+    // （flex-direction: row 起始处），因此按内置图标同款尺寸（24px）从容器左边缘
+    // 构造一个近似「图标」的虚拟矩形用于定位，不受标签文本实际宽度影响。
+    // 注意：磁吸停靠时 position:relative + left 偏移是加在 customContentRef（内层 wrapper）
+    // 上的，外层 .milestone 容器 el 的包围盒不会随之偏移；必须优先使用 wrapper 的包围盒，
+    // 否则右侧停靠时 tooltip 会明显偏离实际显示出来的半个图标（用户反馈的定位错误问题）。
+    const anchorEl = customContentRef.value ?? el
+    const containerRect = anchorEl.getBoundingClientRect()
+    const approxIconWidth = Math.min(24, containerRect.width)
+    targetRect = new DOMRect(
+      containerRect.left,
+      containerRect.top,
+      approxIconWidth,
+      containerRect.height
+    )
+  }
 
   // 停靠状态：使用已计算的停靠方向
   // 正常可见：根据元素在视窗中的位置判断——偏右则 tooltip 在左侧，偏左则在右侧
@@ -900,73 +1018,102 @@ const calculateMilestonePositionFromTimelineData = (
       'milestone-sticky-right': milestoneVisibility.stickyPosition === 'right',
       'milestone-pushed-out': milestoneVisibility.isPushedOut,
       dimmed: isDimmed,
+      [`milestone-label-position-${effectiveLabelPosition}`]: true,
     }"
     @click.stop="handleMilestoneClick"
+    @dblclick.stop="handleDoubleClick"
+    @mousedown.stop="handleMouseDown"
+    @mouseenter="handleMilestoneMouseEnter"
+    @mouseleave="handleMilestoneMouseLeave"
   >
-    <svg
-      v-if="milestoneVisibility.showIcon"
-      :width="24"
-      :height="24"
-      :viewBox="`0 0 24 24`"
+    <!-- 自定义内容 slot：完整替换默认图标+标签，交互事件统一在外层 div 上处理。
+         套一层 wrapper div 应用与内置图标一致的磁吸停靠定位（position/left/clipPath/zIndex），
+         使自定义内容在滚动到 timeline 两侧边缘时同样具备磁吸半显+跟随停靠效果，
+         不会因为使用了插槽而丢失该交互能力。
+         停靠时额外将 wrapper 宽度钳制为与内置图标一致的 24px 并裁掉溢出部分——自定义内容
+         通常比 24px 宽得多（图标+文字），若不钳制宽度，clipPath 的 50% 分割线是相对于
+         整个（远宽于图标的）内容盒计算的，会导致「半显图标」实际显示出来的是文字中段，
+         图标本身完全被裁掉（用户反馈的图标消失问题），钳制后 50% 分割线才与内置图标一致，
+         正确显示半个图标而不是半个内容块。 -->
+    <div
+      v-if="hasContentSlot && milestoneVisibility.showIcon"
+      ref="customContentRef"
+      class="milestone-custom-content-wrapper"
       :style="{
         position: milestoneVisibility.isSticky ? 'relative' : 'static',
         left: milestoneVisibility.isSticky ? milestoneVisibility.iconLeft : '0px',
+        width: milestoneVisibility.isSticky ? '24px' : 'auto',
+        overflow: milestoneVisibility.isSticky ? 'hidden' : 'visible',
         clipPath: milestoneVisibility.clipPath,
         zIndex: milestoneVisibility.isSticky
           ? 'var(--gantt-z-milestone-sticky)'
           : 'var(--gantt-z-milestone)',
       }"
-      style="cursor: pointer"
-      @mouseenter="handleMilestoneMouseEnter"
-      @mouseleave="handleMilestoneMouseLeave"
-      @click.stop="handleMilestoneClick"
-      @dblclick.stop="handleDoubleClick"
-      @mousedown.stop="handleMouseDown"
     >
-      <!-- 菱形图标 -->
-      <g v-if="milestoneIcon === 'diamond'" transform="rotate(45 12 12)">
-        <rect
-          x="5"
-          y="5"
-          width="14"
-          height="14"
-          rx="3"
-          ry="3"
-          :fill="milestoneColor"
-          :stroke="milestoneBorder"
-          stroke-width="2"
-        />
-      </g>
+      <slot name="custom-milestone-content" v-bind="slotPayload" />
+    </div>
+    <template v-else>
+      <svg
+        v-if="milestoneVisibility.showIcon"
+        ref="iconRef"
+        :width="24"
+        :height="24"
+        :viewBox="`0 0 24 24`"
+        :style="{
+          position: milestoneVisibility.isSticky ? 'relative' : 'static',
+          left: milestoneVisibility.isSticky ? milestoneVisibility.iconLeft : '0px',
+          clipPath: milestoneVisibility.clipPath,
+          zIndex: milestoneVisibility.isSticky
+            ? 'var(--gantt-z-milestone-sticky)'
+            : 'var(--gantt-z-milestone)',
+        }"
+        style="cursor: pointer"
+      >
+        <!-- 菱形图标 -->
+        <g v-if="milestoneIcon === 'diamond'" transform="rotate(45 12 12)">
+          <rect
+            x="5"
+            y="5"
+            width="14"
+            height="14"
+            rx="3"
+            ry="3"
+            :fill="milestoneColor"
+            :stroke="milestoneBorder"
+            stroke-width="2"
+          />
+        </g>
 
-      <!-- 火箭图标 -->
-      <g v-else-if="milestoneIcon === 'rocket'">
-        <foreignObject x="0" y="0" width="24" height="24">
-          <div class="rocket-emoji">🚀</div>
-        </foreignObject>
-      </g>
+        <!-- 火箭图标 -->
+        <g v-else-if="milestoneIcon === 'rocket'">
+          <foreignObject x="0" y="0" width="24" height="24">
+            <div class="rocket-emoji">🚀</div>
+          </foreignObject>
+        </g>
 
-      <!-- 默认菱形图标 -->
-      <g v-else transform="rotate(45 12 12)">
-        <rect
-          x="5"
-          y="5"
-          width="14"
-          height="14"
-          rx="3"
-          ry="3"
-          :fill="milestoneColor"
-          :stroke="milestoneBorder"
-          stroke-width="2"
-        />
-      </g>
-    </svg>
-    <!-- 里程碑标签 - 只在非停靠状态显示 -->
-    <span
-      v-if="props.name && milestoneVisibility.showLabel"
-      class="milestone-label milestone-label-right"
-    >
-      {{ props.name }}
-    </span>
+        <!-- 默认菱形图标 -->
+        <g v-else transform="rotate(45 12 12)">
+          <rect
+            x="5"
+            y="5"
+            width="14"
+            height="14"
+            rx="3"
+            ry="3"
+            :fill="milestoneColor"
+            :stroke="milestoneBorder"
+            stroke-width="2"
+          />
+        </g>
+      </svg>
+      <!-- 里程碑标签 - 只在非停靠状态显示 -->
+      <span
+        v-if="props.name && milestoneVisibility.showLabel"
+        :class="['milestone-label', `milestone-label-${effectiveLabelPosition}`]"
+      >
+        {{ props.name }}
+      </span>
+    </template>
   </div>
 </template>
 
@@ -976,10 +1123,10 @@ const calculateMilestonePositionFromTimelineData = (
 .milestone {
   position: absolute;
   z-index: var(--gantt-z-milestone);
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
+  /* 不再使用 flex 布局排列图标与标签：图标（或 custom-milestone-content 插槽内容）始终是
+     容器内唯一参与正常文档流布局的元素，标签通过绝对定位相对图标锚点向外叠加展示（见
+     .milestone-label-* 样式），二者互不影响，图标位置始终只由 left/top 决定，保持稳定。 */
+  display: block;
   cursor: pointer;
   user-select: none;
 }
@@ -993,6 +1140,8 @@ const calculateMilestonePositionFromTimelineData = (
 
 /* 里程碑SVG发光效果 */
 .milestone svg {
+  /* 显式声明为块级，避免 SVG 默认的 inline 基线对齐带来的几像素纵向偏差 */
+  display: block;
   filter: drop-shadow(0 0 8px var(--gantt-danger, #f56c6c));
 }
 
@@ -1002,7 +1151,11 @@ const calculateMilestonePositionFromTimelineData = (
     drop-shadow(0 0 24px rgba(245, 108, 108, 0.4));
 }
 
+/* 标签始终使用绝对定位，相对 .milestone（position:absolute，天然构成定位上下文）向外
+   叠加展示，不参与图标的布局计算——图标位置永远只由 .milestone 自身的 left/top 决定，
+   不受标签是否显示、标签所在方向、标签实际宽高影响。 */
 .milestone-label {
+  position: absolute;
   font-size: 12px;
   font-weight: bold;
   color: var(--gantt-text-primary, #222);
@@ -1011,8 +1164,31 @@ const calculateMilestonePositionFromTimelineData = (
 }
 
 .milestone-label-right {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
   margin-left: 5px;
-  align-self: center;
+}
+
+.milestone-label-left {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 5px;
+}
+
+.milestone-label-top {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+}
+
+.milestone-label-bottom {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
 }
 
 /* 粘性标签的特殊样式 */

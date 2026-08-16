@@ -16,7 +16,9 @@ import DatePicker from './DatePicker.vue'
 import GanttConfirmDialog from './GanttConfirmDialog.vue'
 import MultiSelectPredecessor from './MultiSelectPredecessor.vue'
 import ConfirmTimerDialog from './ConfirmTimerDialog.vue'
+import ResourceAssigneeSelect from './ResourceAssigneeSelect.vue'
 import type { Task } from '../models/classes/Task'
+import type { ResourceTypeOption } from '../models/classes/Resource'
 import { createResource } from '../utils/resourceUtils'
 import '../styles/app.css'
 
@@ -25,6 +27,7 @@ interface AssigneeOption {
   value: string | number
   label: string
   avatar?: string // v1.9.0 资源头像
+  type?: string // v1.13.5 资源类别（Human/Device/Others），选中资源时自动带出到绑定行
 }
 
 interface Props {
@@ -33,6 +36,10 @@ interface Props {
   isEdit?: boolean
   onDelete?: (task: Task) => void
   assigneeOptions?: AssigneeOption[]
+  /** v1.13.5 自定义资源类别下拉选项，替换内置的 Human/Device/Others。不设置或传空数组时使用内置选项 */
+  resourceTypeOptions?: ResourceTypeOption[]
+  /** v1.13.5 是否展示资源分配行的"类别"下拉，默认 true */
+  showResourceTypeOption?: boolean
   pendingTaskBackgroundColor?: string
   delayTaskBackgroundColor?: string
   completeTaskBackgroundColor?: string
@@ -53,6 +60,8 @@ const props = withDefaults(defineProps<Props>(), {
     { value: 'zhaoliu', label: '赵六' },
     { value: 'qianqi', label: '钱七' },
   ],
+  resourceTypeOptions: () => [],
+  showResourceTypeOption: true,
   pendingTaskBackgroundColor: '#c0c4cc',
   delayTaskBackgroundColor: '#f56c6c',
   completeTaskBackgroundColor: '#67c23a',
@@ -344,12 +353,15 @@ const processDateForHourView = (dateStr: string | undefined, type: 'start' | 'en
     }
     // 如果是结束日期，设置为次日00:00
     if (type === 'end') {
-      const date = new Date(dateStr)
+      // v1.13.5：拆分 y/m/d 后用多参数构造，避免 new Date(dateStr) 对纯日期字符串按
+      // UTC 解析导致负时区下 +1天 计算错误（详见 .ai/.claude/requirments/v1.13.5.md 第9.6节）
+      const [year, month, day] = dateStr.split('-').map(Number)
+      const date = new Date(year, month - 1, day)
       date.setDate(date.getDate() + 1)
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day} 00:00`
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      return `${y}-${m}-${d} 00:00`
     }
   }
 
@@ -388,6 +400,8 @@ watch(
 
           // v1.9.0 从 assignee/avatar 映射到 resources
           mapAssigneeToResources()
+          // v1.13.5 task.resources 中缺失 type 字段时默认回填 'Human'
+          normalizeResourceTypes()
         })
       } else if (props.task && !props.isEdit) {
         // 新建模式，重置表单
@@ -406,6 +420,8 @@ watch(
         // v1.12.5 日历视图选中资源时，将对应资源预填到 resources（占用比例由调用方决定，默认100%）
         if (props.task.resources && props.task.resources.length > 0) {
           formData.resources = props.task.resources.map(r => ({ ...r }))
+          // v1.13.5 task.resources 中缺失 type 字段时默认回填 'Human'
+          normalizeResourceTypes()
         }
       } else {
         // 没有 task，也重置表单
@@ -719,6 +735,7 @@ const addResource = () => {
     createResource({
       id: '',
       name: '',
+      type: 'Human', // v1.13.5 默认类别
       capacity: 100,
       tasks: [],
     })
@@ -731,7 +748,41 @@ const removeResource = (index: number) => {
   }
 }
 
-const handleResourceChange = (index: number, field: 'id' | 'capacity', value: string | number) => {
+// v1.13.5 task.resources 中缺失 type 字段的历史数据，统一默认回填 'Human'
+const normalizeResourceTypes = () => {
+  if (!formData.resources || formData.resources.length === 0) return
+  formData.resources.forEach(resource => {
+    if (!resource.type) {
+      resource.type = 'Human'
+    }
+  })
+}
+
+// v1.13.5 根据当前行已选类别过滤资源名称下拉候选项，未选择类别时展示全部
+const getFilteredAssigneeOptions = (resource: { type?: string }) => {
+  const options = props.assigneeOptions || []
+  if (!resource.type) return options
+  return options.filter(option => (option.type || 'Human') === resource.type)
+}
+
+// v1.13.5 资源类别下拉的实际可选项：外部通过 resourceTypeOptions 传入则使用外部集合
+// （label 完全由外部控制，可实现多语言/自定义类别），否则回退内置的 人力/设备/其他 三项
+const effectiveResourceTypeOptions = computed(() => {
+  if (props.resourceTypeOptions && props.resourceTypeOptions.length > 0) {
+    return props.resourceTypeOptions
+  }
+  return [
+    { value: 'Human', label: t.value.resourceCategoryHuman || '人力' },
+    { value: 'Device', label: t.value.resourceCategoryDevice || '设备' },
+    { value: 'Others', label: t.value.resourceCategoryOthers || '其他' },
+  ]
+})
+
+const handleResourceChange = (
+  index: number,
+  field: 'id' | 'capacity' | 'type',
+  value: string | number
+) => {
   if (!formData.resources || !formData.resources[index]) return
 
   if (field === 'id') {
@@ -739,6 +790,12 @@ const handleResourceChange = (index: number, field: 'id' | 'capacity', value: st
     if (selected) {
       formData.resources[index].id = selected.value
       formData.resources[index].name = selected.label
+      // v1.13.5 选中资源时级联预填类别，候选项未设置则默认 'Human'，用户仍可在绑定行手动改类别
+      formData.resources[index].type = selected.type || 'Human'
+    } else {
+      // 清空选择
+      formData.resources[index].id = ''
+      formData.resources[index].name = ''
     }
   } else if (field === 'capacity') {
     let capacity = typeof value === 'string' ? parseInt(value) : value
@@ -746,6 +803,11 @@ const handleResourceChange = (index: number, field: 'id' | 'capacity', value: st
     if (capacity < 20) capacity = 20
     if (capacity > 100) capacity = 100
     formData.resources[index].capacity = capacity
+  } else if (field === 'type') {
+    formData.resources[index].type = String(value) || 'Human'
+    // v1.13.5 切换类别后清空已选资源名称，联动过滤后的下拉候选项需要用户重新选择
+    formData.resources[index].id = ''
+    formData.resources[index].name = ''
   }
 }
 
@@ -768,11 +830,12 @@ const mapAssigneeToResources = () => {
       : []
 
   formData.resources = assignees.map(assigneeId => {
-    // 查找对应的assigneeOption获取名称
+    // 查找对应的assigneeOption获取名称与类别
     const option = props.assigneeOptions?.find(opt => opt.value === assigneeId)
     return createResource({
       id: assigneeId,
       name: option?.label || String(assigneeId),
+      type: option?.type || 'Human', // v1.13.5 旧数据迁移时默认 'Human'
       capacity: 100, // 默认100%
       tasks: [],
     })
@@ -1048,8 +1111,13 @@ const taskStatus = computed(() => {
               <div class="resource-list">
                 <!-- 资源分配标题行 -->
                 <div class="resource-header">
-                  <span class="resource-header-label">资源名称</span>
-                  <span class="resource-header-label">占用比例</span>
+                  <span class="resource-header-label resource-header-label-name">资源名称</span>
+                  <span
+                    v-if="props.showResourceTypeOption"
+                    class="resource-header-label resource-header-label-type"
+                    >{{ t.resourceCategory || '类别' }}</span
+                  >
+                  <span class="resource-header-label resource-header-label-capacity">占用比例</span>
                   <span class="resource-header-action"></span>
                 </div>
 
@@ -1058,21 +1126,31 @@ const taskStatus = computed(() => {
                   :key="index"
                   class="resource-item"
                 >
+                  <ResourceAssigneeSelect
+                    :model-value="resource.id"
+                    :options="getFilteredAssigneeOptions(resource)"
+                    :placeholder="t.selectResource || '选择资源'"
+                    @update:model-value="value => handleResourceChange(index, 'id', value)"
+                  />
+
                   <select
-                    v-model="resource.id"
-                    class="form-select resource-select"
+                    v-if="props.showResourceTypeOption"
+                    v-model="resource.type"
+                    class="form-select type-select"
                     @change="
-                      handleResourceChange(index, 'id', ($event.target as HTMLSelectElement).value)
+                      handleResourceChange(
+                        index,
+                        'type',
+                        ($event.target as HTMLSelectElement).value
+                      )
                     "
                   >
-                    <option value="">{{ t.selectResource || '选择资源' }}</option>
                     <option
-                      v-for="assignee in props.assigneeOptions"
-                      :key="assignee.key ?? assignee.value"
-                      :value="assignee.value"
-                      :data-avatar="assignee.avatar"
+                      v-for="opt in effectiveResourceTypeOptions"
+                      :key="opt.value"
+                      :value="opt.value"
                     >
-                      {{ assignee.label }}
+                      {{ opt.label }}
                     </option>
                   </select>
 
@@ -1807,8 +1885,15 @@ const taskStatus = computed(() => {
   text-align: center;
 }
 
-.resource-header-label:nth-child(2) {
-  width: 100px;
+/* v1.13.5：改用显式 class 而非 nth-child，避免 showResourceTypeOption=false 隐藏类别列后，
+   占用比例列因 DOM 顺序变化被错误应用 90px（类别列）宽度 */
+.resource-header-label-type {
+  width: 90px;
+  text-align: center;
+}
+
+.resource-header-label-capacity {
+  width: 80px;
   text-align: center;
 }
 
@@ -1827,19 +1912,14 @@ const taskStatus = computed(() => {
   min-height: 48px;
 }
 
-.resource-select {
-  flex: 1;
-  min-width: 180px;
-  max-width: 280px;
+.type-select {
+  width: 90px;
   height: 36px;
-}
-
-.resource-select option {
-  padding: 8px 12px;
+  flex-shrink: 0;
 }
 
 .capacity-select {
-  width: 110px;
+  width: 80px;
   height: 36px;
   flex-shrink: 0;
 }

@@ -2,8 +2,15 @@ import type { Resource } from '../classes/Resource'
 
 /**
  * 资源列表列类型枚举
+ * @version 1.13.5 新增 'title'（职务列）
  */
-export type ResourceListColumnType = 'name' | 'type' | 'department' | 'capacity' | 'taskCount'
+export type ResourceListColumnType =
+  | 'name'
+  | 'title'
+  | 'type'
+  | 'department'
+  | 'capacity'
+  | 'taskCount'
 
 /**
  * 资源列格式化函数类型
@@ -56,9 +63,16 @@ export const DEFAULT_RESOURCE_LIST_MAX_WIDTH = 1160 // 最大宽度
  */
 export const DEFAULT_RESOURCE_LIST_COLUMNS: ResourceListColumnConfig[] = [
   {
+    type: 'title',
+    key: 'title',
+    label: '职务',
+    cssClass: 'col-title',
+    visible: true,
+  },
+  {
     type: 'type',
     key: 'type',
-    label: '资源类型',
+    label: '类别',
     cssClass: 'col-type',
     visible: true,
   },

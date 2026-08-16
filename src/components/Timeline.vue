@@ -22,6 +22,7 @@ import { useI18n } from '../composables/useI18n'
 import { useViewMode } from '../composables/useViewMode' // v1.9.9 视图模式状态管理
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
+import { getEffectiveEndDateOnly } from '../utils/dateBoundaryUtils'
 import { perfMonitor } from '../utils/perfMonitor'
 import { perfMonitor2 } from '../utils/perfMonitor2' // v1.9.6 性能诊断工具
 import type { Task } from '../models/classes/Task'
@@ -67,6 +68,8 @@ interface Props {
   enableTaskBarTooltip?: boolean
   // 是否启用里程碑气泡提示框（默认为 true）
   enableMilestoneTooltip?: boolean
+  // 里程碑标签展示位置（默认 'right'，与现状保持一致）
+  milestoneLabelPosition?: 'left' | 'top' | 'right' | 'bottom'
   // 自定义任务状态背景色
   pendingTaskBackgroundColor?: string
   delayTaskBackgroundColor?: string
@@ -99,6 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
   showActualTaskbar: false,
   enableTaskBarTooltip: true,
   enableMilestoneTooltip: true,
+  milestoneLabelPosition: 'right',
   pendingTaskBackgroundColor: undefined,
   delayTaskBackgroundColor: undefined,
   completeTaskBackgroundColor: undefined,
@@ -168,13 +172,18 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
   if (!currentTask || !currentTask.startDate || !currentTask.endDate) return []
 
   const currentStart = new Date(currentTask.startDate).getTime()
-  const currentEnd = new Date(currentTask.endDate).getTime()
+  const currentEndDate = new Date(currentTask.endDate)
 
   // v1.9.7 修复：返回所有与当前任务时间重叠的冲突任务
   // 不需要再次验证占比相加是否超过100%，因为resourceConflicts已经包含了所有冲突的任务ID
   // 当多个任务同时重叠时（如3个任务各75%），应该全部返回，而不是只返回第一个两两超载的任务
   // v1.9.9 修复：endDate 包含当天，需要 +1 天来判断交集（与 conflictUtils 保持一致）
-  const currentEndPlus = currentEnd + 24 * 60 * 60 * 1000
+  // v1.13.5 修复：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+  // '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+  // 修正（-15分钟再截断）再 +1天，避免把次日0点误当成占满当天，导致本不冲突的
+  // 任务被错误列入冲突列表（详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+  const currentEndPlus =
+    getEffectiveEndDateOnly(currentTask.endDate, currentEndDate).getTime() + 24 * 60 * 60 * 1000
 
   const conflictTasks = resource.tasks.filter(task => {
     if (task.id === taskId) return false
@@ -183,8 +192,9 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
     if (!conflictTaskIds.has(task.id)) return false
 
     const taskStart = new Date(task.startDate).getTime()
-    const taskEnd = new Date(task.endDate).getTime()
-    const taskEndPlus = taskEnd + 24 * 60 * 60 * 1000
+    const taskEndDate = new Date(task.endDate)
+    const taskEndPlus =
+      getEffectiveEndDateOnly(task.endDate, taskEndDate).getTime() + 24 * 60 * 60 * 1000
 
     // 检查时间重叠：endDate 包含当天，所以需要 +1 天来判断
     // 例如：任务A endDate=12-24, 任务B startDate=12-24，应判断为重叠（都占用12-24这一天）
@@ -280,7 +290,7 @@ const tooltipState = reactive({
   parentAutoSchedule: undefined as
     | {
         enabled: boolean
-        childrenRange: { minStart: Date; maxEnd: Date } | null
+        childrenRange: { minStart: Date; maxEnd: Date; maxEndRaw?: Task['endDate'] } | null
         hasOverflow: boolean
       }
     | undefined,
@@ -300,6 +310,20 @@ const tooltipState = reactive({
 const formatTooltipDate = (dateStr: string | undefined): string => {
   if (!dateStr) return t('dateNotSet')
   return String(dateStr).substring(0, 10)
+}
+
+/**
+ * 格式化 endDate 显示 (YYYY-MM-DD)
+ * v1.13.5：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+ * '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+ * 修正（-15分钟再截断）再展示，避免 tooltip 显示的结束日期比实际渲染多算一天
+ * （详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+ */
+const formatTooltipEndDate = (dateStr: string | undefined): string => {
+  if (!dateStr) return t('dateNotSet')
+  const parsed = new Date(dateStr)
+  if (isNaN(parsed.getTime())) return t('dateNotSet')
+  return formatDateObj(getEffectiveEndDateOnly(dateStr, parsed))
 }
 
 /** 格式化 Date 对象为 YYYY-MM-DD 字符串（用于父级自动调度日期展示） */
@@ -6365,6 +6389,8 @@ const handleAddSuccessor = (task: Task) => {
                   :period-width="dayWidth"
                   :name="milestone.name"
                   :milestone="convertTaskToMilestone(milestone)"
+                  :task="milestone"
+                  :label-position="props.milestoneLabelPosition"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
                   :milestone-id="milestone.id"
@@ -6378,7 +6404,14 @@ const handleAddSuccessor = (task: Task) => {
                   @drag-end="handleMilestoneDragEnd"
                   @milestone-tooltip-show="handleMilestoneTooltipShow"
                   @milestone-tooltip-hide="handleMilestoneTooltipHide"
-                />
+                >
+                  <template
+                    v-if="$slots['custom-milestone-content']"
+                    #custom-milestone-content="milestoneScope"
+                  >
+                    <slot name="custom-milestone-content" v-bind="milestoneScope" />
+                  </template>
+                </MilestonePoint>
               </template>
               <!-- 独立里程碑 -->
               <template v-else-if="task.type === 'milestone'">
@@ -6401,6 +6434,8 @@ const handleAddSuccessor = (task: Task) => {
                   :period-width="dayWidth"
                   :name="task.name"
                   :milestone="convertTaskToMilestone(task)"
+                  :task="task"
+                  :label-position="props.milestoneLabelPosition"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
                   :milestone-id="task.id"
@@ -6414,7 +6449,14 @@ const handleAddSuccessor = (task: Task) => {
                   @drag-end="handleMilestoneDragEnd"
                   @milestone-tooltip-show="handleMilestoneTooltipShow"
                   @milestone-tooltip-hide="handleMilestoneTooltipHide"
-                />
+                >
+                  <template
+                    v-if="$slots['custom-milestone-content']"
+                    #custom-milestone-content="milestoneScope"
+                  >
+                    <slot name="custom-milestone-content" v-bind="milestoneScope" />
+                  </template>
+                </MilestonePoint>
               </template>
               <!-- 普通任务条 - 排除里程碑分组和普通里程碑 -->
               <TaskBar
@@ -6684,7 +6726,12 @@ const handleAddSuccessor = (task: Task) => {
             <div class="hover-tooltip-row">
               <span class="hover-tooltip-label">{{ t('childrenLatestEnd') }}:</span>
               <span class="hover-tooltip-value">{{
-                formatDateObj(tooltipState.parentAutoSchedule.childrenRange.maxEnd)
+                formatDateObj(
+                  getEffectiveEndDateOnly(
+                    tooltipState.parentAutoSchedule.childrenRange.maxEndRaw,
+                    tooltipState.parentAutoSchedule.childrenRange.maxEnd
+                  )
+                )
               }}</span>
             </div>
           </template>
@@ -6699,7 +6746,7 @@ const handleAddSuccessor = (task: Task) => {
             <div class="hover-tooltip-row">
               <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
               <span class="hover-tooltip-value">{{
-                formatTooltipDate(tooltipState.task?.endDate)
+                formatTooltipEndDate(tooltipState.task?.endDate)
               }}</span>
             </div>
             <!-- 手动模式父级且子任务溢出：额外显示子任务实际范围 -->
@@ -6722,7 +6769,12 @@ const handleAddSuccessor = (task: Task) => {
               <div class="hover-tooltip-row">
                 <span class="hover-tooltip-label">{{ t('childrenLatestEnd') }}:</span>
                 <span class="hover-tooltip-value">{{
-                  formatDateObj(tooltipState.parentAutoSchedule.childrenRange.maxEnd)
+                  formatDateObj(
+                    getEffectiveEndDateOnly(
+                      tooltipState.parentAutoSchedule.childrenRange.maxEndRaw,
+                      tooltipState.parentAutoSchedule.childrenRange.maxEnd
+                    )
+                  )
                 }}</span>
               </div>
             </template>
@@ -6741,7 +6793,7 @@ const handleAddSuccessor = (task: Task) => {
               <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
               <span class="hover-tooltip-value">{{
                 tooltipState.task?.actualEndDate
-                  ? formatTooltipDate(tooltipState.task.actualEndDate)
+                  ? formatTooltipEndDate(tooltipState.task.actualEndDate)
                   : '-'
               }}</span>
             </div>

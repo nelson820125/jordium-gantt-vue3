@@ -8,6 +8,7 @@
  */
 
 import type { Task } from '../models/classes/Task'
+import { getEffectiveEndDateOnly } from './dateBoundaryUtils'
 
 /**
  * 冲突区域数据结构
@@ -161,8 +162,6 @@ function detectConflictsBruteForce(
       // 小时视图用分钟精度，其他视图用天精度
       const DAY_MS = 24 * 60 * 60 * 1000
       const isHourView = timeScale === 'hour'
-      // 日期边界偏移：日视图 endDate 包含当天所以 +1天；小时视图直接用精确时间
-      const endBoundaryOffset = isHourView ? 0 : DAY_MS
 
       const timePoints = new Set<number>()
       for (const task of tasksWithResource) {
@@ -173,7 +172,8 @@ function detectConflictsBruteForce(
           const overlapStart = Math.max(taskStart.getTime(), intersection.start.getTime())
           const overlapEnd = Math.min(taskEnd.getTime(), intersection.end.getTime())
           timePoints.add(overlapStart)
-          timePoints.add(overlapEnd + endBoundaryOffset)
+          // 以当前任务自身的 endDate 原始取值判断是否带 time 部分（见 dateBoundaryUtils）
+          timePoints.add(getInclusiveEndBoundary(task.endDate, new Date(overlapEnd), isHourView))
         }
       }
 
@@ -195,7 +195,7 @@ function detectConflictsBruteForce(
 
           // 检查任务是否在这个时间段内活跃
           // 日视图：endDate包含当天，+1天作为不含边界；小时视图：直接用精确时间
-          const taskEndInclusive = taskEnd.getTime() + endBoundaryOffset
+          const taskEndInclusive = getInclusiveEndBoundary(task.endDate, taskEnd, isHourView)
           if (taskStart.getTime() <= segmentStart && taskEndInclusive > segmentStart) {
             const resource = task.resources?.find(r => String(r.id) === String(resourceId))
             const capacity =
@@ -353,11 +353,15 @@ export function getTimeIntersection(
   }
 
   // 日/周/月等视图：endDate包含当天，需要+1天来判断交集
-  const end1Plus = new Date(end1.getTime() + 24 * 60 * 60 * 1000)
-  const end2Plus = new Date(end2.getTime() + 24 * 60 * 60 * 1000)
+  // 使用 getInclusiveEndBoundary（内部依赖 getEffectiveEndDateOnly）统一计算边界：
+  // - endDate 为纯日期（无 time 部分）→ 按原语义 +1 天，视为占满当天
+  // - endDate 显式带 time 部分（如 '2025-07-02 00:00'）→ 先 -15分钟 再截断，
+  //   正确识别出该任务实际并未占用这一整天，避免与相邻任务误判为冲突
+  const end1Plus = getInclusiveEndBoundary(task1.endDate, end1, false)
+  const end2Plus = getInclusiveEndBoundary(task2.endDate, end2, false)
 
   // 判断是否有交集：task1.start < task2.end+1 && task2.start < task1.end+1
-  if (start1 >= end2Plus || start2 >= end1Plus) {
+  if (start1.getTime() >= end2Plus || start2.getTime() >= end1Plus) {
     return null
   }
 
@@ -418,6 +422,32 @@ function parseDate(dateString: string | undefined): Date | null {
   // 尝试直接解析
   const date = new Date(dateString)
   return isNaN(date.getTime()) ? null : date
+}
+
+/**
+ * 计算“含边界结束时刻”（非hour视图下 endDate 包含当天语义的边界判断）
+ *
+ * 小时视图直接返回精确时间戳；其他视图（日/周/月/季度/年）先计算出
+ * “有效结束日期”（见 getEffectiveEndDateOnly，会按需处理带 time 部分的
+ * endDate），再 +1 天得到“次日0点”作为不含边界的比较基准。
+ *
+ * v1.13.5 修复：此前直接对原始时间戳截断到当天0点再 +24h，若该时间戳本身
+ * 带有显式 time 部分（如 TaskDrawer 编辑保存后写入的 '2026-01-16 00:00'，
+ * 语义上是“1月15日结束”），会把边界继续往后多推一天，导致渲染/冲突检测
+ * 多算一天（详见 .ai/.claude/requirments/v1.13.5.md 第9节）。
+ *
+ * @param rawEndDate 原始 endDate 取值（用于判断是否显式带 time 部分）
+ * @param parsedEndDate 已解析好的 Date 对象（保留原始时分）
+ * @param isHourView 是否为小时视图
+ */
+function getInclusiveEndBoundary(
+  rawEndDate: string | Date | undefined | null,
+  parsedEndDate: Date,
+  isHourView: boolean
+): number {
+  if (isHourView) return parsedEndDate.getTime()
+  const dayStart = getEffectiveEndDateOnly(rawEndDate, parsedEndDate)
+  return dayStart.getTime() + 24 * 60 * 60 * 1000
 }
 
 /**
@@ -604,19 +634,18 @@ function detectConflictsWithIntervalTree(
     // 小时视图用分钟精度，其他视图用天精度
     const DAY_MS_IT = 24 * 60 * 60 * 1000
     const isHourViewIT = timeScale === 'hour'
-    const endBoundaryOffsetIT = isHourViewIT ? 0 : DAY_MS_IT
 
     // 收集所有任务的时间边界点
     const timePoints = new Set<number>()
     timePoints.add(start.getTime()) // 当前任务的开始
-    timePoints.add(end.getTime() + endBoundaryOffsetIT) // 当前任务的结束边界
+    timePoints.add(getInclusiveEndBoundary(task.endDate, end, isHourViewIT)) // 当前任务的结束边界
 
     for (const t of tasksWithResource) {
       const tStart = parseDate(t.startDate)
       const tEnd = parseDate(t.endDate)
       if (tStart && tEnd) {
         timePoints.add(tStart.getTime())
-        timePoints.add(tEnd.getTime() + endBoundaryOffsetIT)
+        timePoints.add(getInclusiveEndBoundary(t.endDate, tEnd, isHourViewIT))
       }
     }
 
@@ -637,7 +666,7 @@ function detectConflictsWithIntervalTree(
         if (!tStart || !tEnd) continue
 
         // 检查任务是否在这个时间段内活跃
-        const tEndInclusive = tEnd.getTime() + endBoundaryOffsetIT
+        const tEndInclusive = getInclusiveEndBoundary(t.endDate, tEnd, isHourViewIT)
         if (tStart.getTime() <= segmentStart && tEndInclusive > segmentStart) {
           const resource = t.resources?.find(r => String(r.id) === String(resourceId))
           const capacity = !t.resources || t.resources.length === 0 ? 100 : resource?.capacity || 0

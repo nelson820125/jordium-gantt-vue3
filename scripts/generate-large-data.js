@@ -84,7 +84,8 @@ function generateLargeResourceData() {
     resources.push({
       id: resourceId,
       name: `资源${i} - ${types[i % types.length]}`,
-      type: types[i % types.length],
+      title: types[i % types.length], // v1.13.5：原 type 字段迁移至 title（职务/头衔）
+      type: 'Human', // v1.13.5：新增资源类别字段，该脚本当前只生成人力资源样本
       avatar: `https://i.pravatar.cc/150?img=${i}`,
       department: departments[i % departments.length],
       skills: ['技能A', '技能B', '技能C'],

@@ -22,6 +22,7 @@ import { useI18n } from '../composables/useI18n'
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { DEFAULT_TASK_BAR_CONFIG } from '../models/configs/TaskBarConfig'
 import type { PositionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
+import { getEffectiveEndDateOnly } from '../utils/dateBoundaryUtils' // v1.13.5 endDate带time部分时的有效日期边界计算
 
 // 禁用自动继承attributes，手动应用到wrapper
 defineOptions({
@@ -563,7 +564,7 @@ const taskBarStyle = computed(() => {
         startDate.getMonth(),
         startDate.getDate()
       )
-      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+      const endDateOnly = getEffectiveEndDateOnly(currentEndDate, endDate)
       const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
       const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
       const duration = daysDiff === 0 ? 1 : daysDiff + 1
@@ -595,7 +596,7 @@ const taskBarStyle = computed(() => {
           startDate.getMonth(),
           startDate.getDate()
         )
-        const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+        const endDateOnly = getEffectiveEndDateOnly(currentEndDate, endDate)
         const timeDiffMs = endDateOnly.getTime() - startDateOnly.getTime()
         const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
         const duration = daysDiff === 0 ? 1 : daysDiff + 1
@@ -653,11 +654,14 @@ const taskBarStyle = computed(() => {
       renderStartDate.getMonth(),
       renderStartDate.getDate()
     )
-    const endDateOnly = new Date(
-      renderEndDate.getFullYear(),
-      renderEndDate.getMonth(),
-      renderEndDate.getDate()
-    )
+    // v1.13.5：若 endDate 带 time 部分（如父级自动调度聚合出的子任务endDate，或
+    // TaskDrawer 转换出的"次日00:00"），需先 -15分钟 再截断，避免与下方 +1天 逻辑
+    // 产生二次偏移（详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+    const rawEndDateForEffective =
+      autoScheduleEnabled && childrenDateRange.value
+        ? childrenDateRange.value.maxEndRaw
+        : currentEndDate
+    const endDateOnly = getEffectiveEndDateOnly(rawEndDateForEffective, renderEndDate)
     const baseStartOnly = new Date(
       renderBaseStart.getFullYear(),
       renderBaseStart.getMonth(),
@@ -900,25 +904,35 @@ const parsedBaseStartDate = computed(() => createLocalDate(props.startDate))
 const childrenDateRange = computed(() => {
   if (!props.isParent || !props.task.children?.length) return null
 
-  const collect = (children: Task[]): { min: Date | null; max: Date | null } => {
+  const collect = (
+    children: Task[]
+  ): { min: Date | null; max: Date | null; maxRaw: Task['endDate'] | undefined } => {
     let min: Date | null = null
     let max: Date | null = null
+    let maxRaw: Task['endDate'] | undefined
     for (const child of children) {
       const s = createLocalDate(child.startDate)
       const e = createLocalDate(child.endDate)
       if (s && (!min || s < min)) min = s
-      if (e && (!max || e > max)) max = e
+      if (e && (!max || e > max)) {
+        max = e
+        maxRaw = child.endDate
+      }
       if (child.children?.length) {
         const nested = collect(child.children)
         if (nested.min && (!min || nested.min < min)) min = nested.min
-        if (nested.max && (!max || nested.max > max)) max = nested.max
+        if (nested.max && (!max || nested.max > max)) {
+          max = nested.max
+          maxRaw = nested.maxRaw
+        }
       }
     }
-    return { min, max }
+    return { min, max, maxRaw }
   }
 
-  const { min, max } = collect(props.task.children)
-  return min && max ? { minStart: min, maxEnd: max } : null
+  const { min, max, maxRaw } = collect(props.task.children)
+  // maxEndRaw：达到 maxEnd 的子任务原始 endDate 取值，供 getEffectiveEndDateOnly 判断是否带 time 部分
+  return min && max ? { minStart: min, maxEnd: max, maxEndRaw: maxRaw } : null
 })
 
 // 判断是否应该渲染TaskBar：只考虑startDate和endDate，都不存在时不渲染
@@ -1171,6 +1185,11 @@ const actualBarStyle = computed(() => {
     return null
   }
 
+  // v1.13.5：若 actualEndDate 带 time 部分，需先 -15分钟 再截断为日期部分，
+  // 避免与下方 +1天 逻辑产生二次偏移（回退到今天的情况不带 time 部分，无需调整）
+  const rawActualEnd = actualEnd ? props.task.actualEndDate : undefined
+  const effectiveEndOnly = getEffectiveEndDateOnly(rawActualEnd, effectiveEnd)
+
   // 计算实际进度条的绝对位置（与计划条使用相同逻辑）
   let actualLeft = 0
   let actualWidth = 100
@@ -1189,7 +1208,7 @@ const actualBarStyle = computed(() => {
       props.timelineData,
       props.currentTimeScale
     )
-    const nextDay = new Date(effectiveEnd)
+    const nextDay = new Date(effectiveEndOnly)
     nextDay.setDate(nextDay.getDate() + 1)
     let endPosition = calculatePositionFromTimelineData(
       nextDay,
@@ -1200,7 +1219,7 @@ const actualBarStyle = computed(() => {
     if (endPosition === startPosition) {
       endPosition =
         calculatePositionFromTimelineData(
-          effectiveEnd,
+          effectiveEndOnly,
           props.timelineData,
           props.currentTimeScale
         ) + props.dayWidth
@@ -1214,7 +1233,7 @@ const actualBarStyle = computed(() => {
       props.timelineData,
       props.currentTimeScale
     )
-    const nextDay = new Date(effectiveEnd)
+    const nextDay = new Date(effectiveEndOnly)
     nextDay.setDate(nextDay.getDate() + 1)
     let endPosition = calculatePositionFromTimelineData(
       nextDay,
@@ -1225,7 +1244,7 @@ const actualBarStyle = computed(() => {
     if (endPosition === startPosition) {
       endPosition =
         calculatePositionFromTimelineData(
-          effectiveEnd,
+          effectiveEndOnly,
           props.timelineData,
           props.currentTimeScale
         ) + SCALE_CONFIGS['day'].cellWidth
@@ -1237,7 +1256,7 @@ const actualBarStyle = computed(() => {
     const startDiff = Math.floor(
       (effectiveStart.getTime() - baseStartOnly.getTime()) / (1000 * 60 * 60 * 24)
     )
-    const timeDiffMs = effectiveEnd.getTime() - effectiveStart.getTime()
+    const timeDiffMs = effectiveEndOnly.getTime() - effectiveStart.getTime()
     const daysDiff = Math.round(timeDiffMs / (1000 * 60 * 60 * 24))
     const duration = daysDiff === 0 ? 1 : daysDiff + 1
 
@@ -1266,7 +1285,7 @@ const overflowBarStyle = computed(() => {
   if (props.enableParentTaskAutoSchedule !== false) return null
   if (!childrenDateRange.value) return null
 
-  const { minStart, maxEnd } = childrenDateRange.value
+  const { minStart, maxEnd, maxEndRaw } = childrenDateRange.value
   const configuredStart = createLocalDate(props.task.startDate)
   const configuredEnd = createLocalDate(props.task.endDate)
 
@@ -1279,7 +1298,8 @@ const overflowBarStyle = computed(() => {
   if (!baseStartOnly) return null
 
   const startDateOnly = new Date(minStart.getFullYear(), minStart.getMonth(), minStart.getDate())
-  const endDateOnly = new Date(maxEnd.getFullYear(), maxEnd.getMonth(), maxEnd.getDate())
+  // v1.13.5：若子任务 endDate 带 time 部分，需先 -15分钟 再截断，避免二次偏移
+  const endDateOnly = getEffectiveEndDateOnly(maxEndRaw, maxEnd)
   const baseOnly = new Date(
     baseStartOnly.getFullYear(),
     baseStartOnly.getMonth(),

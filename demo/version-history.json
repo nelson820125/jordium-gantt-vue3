@@ -873,5 +873,31 @@
       "🎉 Added: Introduced the `taskbarDescFixed` property to control whether the content inside the Taskbar remains fixed instead of moving horizontally with the timeline, avoiding the left/right edge snapping effect.",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to ranjizhou@gitee for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.13.5",
+    "date": "2026-08-16",
+    "notes": [
+      "🎉 新增：`MilestonePoint` 新增 `custom-milestone-content` 插槽，可完整自定义里程碑图标+标签的渲染内容（非破坏性变更，不使用该插槽时行为不变）",
+      "🎉 新增：`milestoneLabelPosition` 属性（`GanttChart`/`Timeline`），支持配置里程碑标签展示位置 `'left' | 'top' | 'right' | 'bottom'`，默认 `'right'`（与改造前行为一致）",
+      "🎉 新增：`Resource` 接口新增 `title` 字段（资源职务/头衔，自由文本）",
+      "🎉 新增：`AssigneeOption`（`assigneeOptions`）新增可选 `type` 字段，选中资源时自动带出类别到资源绑定行",
+      "🎉 新增：`TaskDrawer` 资源分配表单新增`类别`下拉（人力/设备/其他）",
+      "🎉 新增：`GanttChart` 新增 `resourceTypeOptions` 属性，支持外部自定义 TaskDrawer 资源分配行“类别”下拉的选项集合（替换内置 Human/Device/Others，`label` 完全由外部提供，可实现多语言）",
+      "🎉 新增：`GanttChart` 新增 `showResourceTypeOption` 属性（默认 `true`），可完全隐藏该类别下拉列",
+      "⚠️ 变更：`Resource.type` 字段语义调整，从'自由文本描述'调整为'资源类别'，<b style=\"color:red\">本次不提供运行时自动兼容</b>，请在升级后自行调整数据结构",
+      "🔧 修复：同一资源的任务冲突检测误判问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢hankzhang1688@gitee / tombstonedguy@github的使用与反馈</span>",
+      "🎉 Added: `MilestonePoint` now supports a `custom-milestone-content` slot to fully customize the milestone icon and label rendering (non-breaking; existing behavior is unchanged when the slot is not used)",
+      "🎉 Added: New `milestoneLabelPosition` property (on `GanttChart`/`Timeline`) to configure the milestone label position `'left' | 'top' | 'right' | 'bottom'`, defaulting to `'right'` (matches the previous hardcoded behavior)",
+      "🎉 Added: `Resource` interface now includes a `title` field (for resource position/title, free text)",
+      "🎉 Added: `AssigneeOption` (in `assigneeOptions`) now includes an optional `type` field, automatically populating the category in the resource binding row when a resource is selected",
+      "🎉 Added: `TaskDrawer` resource assignment form now includes a 'Category' dropdown (Human/Device/Other)",
+      "🎉 Added: `GanttChart` now includes a `resourceTypeOptions` property to allow external customization of the TaskDrawer resource assignment row 'Category' dropdown options (replacing the built-in Human/Device/Others, with `label` fully provided externally for multi-language support)",
+      "🎉 Added: `GanttChart` now includes a `showResourceTypeOption` property (default `true`) to completely hide the 'Category' dropdown column",
+      "⚠️ Changed: The semantics of the `Resource.type` field have been adjusted from 'free text description' to 'resource category'. <b style=\"color:red\">No runtime automatic compatibility is provided in this release</b>; please adjust your data structure accordingly after upgrading.",
+      "🔧 Fixed: Incorrect same-resource task conflict detection",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to hankzhang1688@gitee / tombstonedguy@github for their use and feedback</span>"
+    ]
   }
 ]

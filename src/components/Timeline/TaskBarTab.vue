@@ -2,6 +2,7 @@
 import { ref, computed, onUnmounted } from 'vue'
 import type { Task } from '../../models/classes/Task'
 import { useI18n } from '../../composables/useI18n'
+import { getEffectiveEndDateOnly } from '../../utils/dateBoundaryUtils'
 
 interface Props {
   task: Task
@@ -15,7 +16,7 @@ interface Props {
   containerWidth?: number
   // 冲突相关 - v1.9.2 传递冲突任务列表以显示详细信息
   hasConflict?: boolean
-  conflictTasks?: Task[]  // 与当前任务存在资源超载的任务列表
+  conflictTasks?: Task[] // 与当前任务存在资源超载的任务列表
   // 资源列表（用于获取avatar等信息）
   resources?: Array<{ id: string | number; name: string; avatar?: string; color?: string }>
 }
@@ -169,11 +170,14 @@ const expandedStyle = computed(() => {
 })
 
 // 格式化日期范围
+// v1.13.5：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+// '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+// 修正（-15分钟再截断）再展示，避免显示的结束日期比实际渲染多算一天
 const formattedDateRange = computed(() => {
   if (!props.task.startDate || !props.task.endDate) return '-'
 
   const start = new Date(props.task.startDate)
-  const end = new Date(props.task.endDate)
+  const end = getEffectiveEndDateOnly(props.task.endDate, new Date(props.task.endDate))
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear()
@@ -198,42 +202,54 @@ const conflictInfoList = computed(() => {
   const currentEnd = new Date(currentTask.endDate).getTime()
 
   // v1.9.8 修改：只显示冲突任务自己的利用率
-  return props.conflictTasks.map(conflictTask => {
-    if (!conflictTask.startDate || !conflictTask.endDate) return null
+  return props.conflictTasks
+    .map(conflictTask => {
+      if (!conflictTask.startDate || !conflictTask.endDate) return null
 
-    const conflictStart = new Date(conflictTask.startDate).getTime()
-    const conflictEnd = new Date(conflictTask.endDate).getTime()
+      const conflictStart = new Date(conflictTask.startDate).getTime()
+      const conflictEnd = new Date(conflictTask.endDate).getTime()
 
-    // 计算冲突任务的资源占比
-    // v1.9.10 注释：如果冲突任务没有 resources 字段，默认使用 100%
-    // 这是因为在资源视图中，任务隶属于该资源但未明确指定占比时，视为全职投入
-    let conflictPercent = 100
-    if (conflictTask.resources && Array.isArray(conflictTask.resources)) {
-      const allocation = conflictTask.resources.find(
-        (r: any) => String(r.id) === String(props.currentResourceId),
-      )
-      if (allocation && allocation.capacity !== undefined) {
-        conflictPercent = Math.max(20, Math.min(100, allocation.capacity))
+      // 计算冲突任务的资源占比
+      // v1.9.10 注释：如果冲突任务没有 resources 字段，默认使用 100%
+      // 这是因为在资源视图中，任务隶属于该资源但未明确指定占比时，视为全职投入
+      let conflictPercent = 100
+      if (conflictTask.resources && Array.isArray(conflictTask.resources)) {
+        const allocation = conflictTask.resources.find(
+          (r: any) => String(r.id) === String(props.currentResourceId)
+        )
+        if (allocation && allocation.capacity !== undefined) {
+          conflictPercent = Math.max(20, Math.min(100, allocation.capacity))
+        }
       }
-    }
-    // else: 保持默认 100%（资源视图中任务隶属于当前资源）
+      // else: 保持默认 100%（资源视图中任务隶属于当前资源）
 
-    // 计算当前任务与该冲突任务的重叠时间段
-    const overlapStart = Math.max(currentStart, conflictStart)
-    const overlapEnd = Math.min(currentEnd, conflictEnd)
+      // 计算当前任务与该冲突任务的重叠时间段
+      // v1.13.5：重叠结束点取两者中较早的有效结束日期（经 getEffectiveEndDateOnly 修正），
+      // 避免带显式 time 部分的 endDate 被直接当作正常日期展示导致多算一天
+      const currentEffectiveEnd = getEffectiveEndDateOnly(
+        currentTask.endDate,
+        new Date(currentEnd)
+      ).getTime()
+      const conflictEffectiveEnd = getEffectiveEndDateOnly(
+        conflictTask.endDate,
+        new Date(conflictEnd)
+      ).getTime()
+      const overlapStart = Math.max(currentStart, conflictStart)
+      const overlapEnd = Math.min(currentEffectiveEnd, conflictEffectiveEnd)
 
-    const formatDate = (timestamp: number) => {
-      const date = new Date(timestamp)
-      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-    }
+      const formatDate = (timestamp: number) => {
+        const date = new Date(timestamp)
+        return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
+      }
 
-    return {
-      taskName: conflictTask.name,
-      overlapStart: formatDate(overlapStart),
-      overlapEnd: formatDate(overlapEnd),
-      conflictPercent, // 该冲突任务自己的利用率
-    }
-  }).filter(Boolean)
+      return {
+        taskName: conflictTask.name,
+        overlapStart: formatDate(overlapStart),
+        overlapEnd: formatDate(overlapEnd),
+        conflictPercent, // 该冲突任务自己的利用率
+      }
+    })
+    .filter(Boolean)
 })
 
 // v1.9.8 新增：计算总超载量（所有任务的总和 - 100%）
@@ -247,7 +263,12 @@ const totalOverloadPercent = computed(() => {
   const currentPercent = props.resourceCapacity || 100
 
   // v1.9.9 修复：endDate 包含当天，需要 +1 天来判断交集
+  // v1.13.5 修复：若 endDate 显式带 time 部分，需先经 getEffectiveEndDateOnly
+  // 修正（-15分钟再截断）再 +1天，避免把次日0点误当成占满当天
+  // （详见 .ai/.claude/requirments/v1.13.5.md 第9节）
   const DAY_MS = 24 * 60 * 60 * 1000
+  const inclusiveEnd = (task: Task): number =>
+    getEffectiveEndDateOnly(task.endDate, new Date(task.endDate as string)).getTime() + DAY_MS
 
   // 计算所有冲突任务在重叠时间段内的最大总占比
   let maxTotalPercent = currentPercent
@@ -259,29 +280,25 @@ const totalOverloadPercent = computed(() => {
   allTasks.forEach((task1, i) => {
     if (!task1.startDate || !task1.endDate) return
     const start1 = new Date(task1.startDate).getTime()
-    const end1 = new Date(task1.endDate).getTime()
-    const end1Plus = end1 + DAY_MS // endDate 包含当天，需要 +1 天
+    const end1Plus = inclusiveEnd(task1) // endDate 包含当天，需要 +1 天（已按 v1.13.5 规则修正）
 
     allTasks.forEach((task2, j) => {
       if (i >= j || !task2.startDate || !task2.endDate) return
       const start2 = new Date(task2.startDate).getTime()
-      const end2 = new Date(task2.endDate).getTime()
-      const end2Plus = end2 + DAY_MS // endDate 包含当天，需要 +1 天
+      const end2Plus = inclusiveEnd(task2) // endDate 包含当天，需要 +1 天（已按 v1.13.5 规则修正）
 
       // 检查是否有时间重叠（使用 +1 天后的 endDate）
       // 例如：任务A endDate=12-24, 任务B startDate=12-24，应判断为重叠
       if (start1 < end2Plus && start2 < end1Plus) {
         // 计算该重叠区间的所有任务总占比
         const overlapStart = Math.max(start1, start2)
-        const overlapEnd = Math.min(end1, end2)
-        const overlapEndPlus = overlapEnd + DAY_MS
+        const overlapEndPlus = Math.min(end1Plus, end2Plus)
 
         let intervalTotal = 0
         allTasks.forEach(task => {
           if (!task.startDate || !task.endDate) return
           const tStart = new Date(task.startDate).getTime()
-          const tEnd = new Date(task.endDate).getTime()
-          const tEndPlus = tEnd + DAY_MS
+          const tEndPlus = inclusiveEnd(task)
 
           // 检查任务是否在该重叠区间内（使用 +1 天后的 endDate）
           if (tStart < overlapEndPlus && tEndPlus > overlapStart) {
@@ -290,7 +307,7 @@ const totalOverloadPercent = computed(() => {
             let taskPercent = 100
             if (task.resources && Array.isArray(task.resources)) {
               const allocation = task.resources.find(
-                (r: any) => String(r.id) === String(props.currentResourceId),
+                (r: any) => String(r.id) === String(props.currentResourceId)
               )
               if (allocation && allocation.capacity !== undefined) {
                 taskPercent = allocation.capacity
@@ -448,7 +465,10 @@ onUnmounted(() => {
               <!-- 固定标题 -->
               <div class="conflict-header">
                 <svg class="warning-icon" viewBox="0 0 24 24" width="14" height="14">
-                  <path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                  <path
+                    fill="currentColor"
+                    d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+                  />
                 </svg>
                 <span class="conflict-title">{{ t.resourceView.overloadWarning }}</span>
                 <span class="total-overload">▲ {{ totalOverloadPercent }}%</span>
@@ -456,10 +476,16 @@ onUnmounted(() => {
               <!-- 可滚动的冲突列表 -->
               <div class="conflict-list-container">
                 <div v-for="(info, index) in conflictInfoList" :key="index" class="conflict-item">
-                  <div class="conflict-task-name">{{ t.resourceView.conflictWith }}《{{ info ? info.taskName : '' }}》{{ t.resourceView.conflictSuffix }}</div>
+                  <div class="conflict-task-name">
+                    {{ t.resourceView.conflictWith }}《{{ info ? info.taskName : '' }}》{{
+                      t.resourceView.conflictSuffix
+                    }}
+                  </div>
                   <div class="conflict-detail">
                     <span class="conflict-label">{{ t.resourceView.conflictDuration }}：</span>
-                    <span class="conflict-value">{{ info ? info.overlapStart : '' }} ~ {{ info ? info.overlapEnd : '' }}</span>
+                    <span class="conflict-value"
+                      >{{ info ? info.overlapStart : '' }} ~ {{ info ? info.overlapEnd : '' }}</span
+                    >
                   </div>
                   <div class="conflict-detail">
                     <span class="conflict-label">{{ t.resourceView.capacity }}: </span>
@@ -490,10 +516,10 @@ onUnmounted(() => {
   pointer-events: auto;
   /* 使用 clip-path 创建梯形：上窄下宽 */
   clip-path: polygon(
-    10% 0%,     /* 左上角，向内收窄 */
-    90% 0%,     /* 右上角，向内收窄 */
-    100% 100%,  /* 右下角 */
-    0% 100%     /* 左下角 */
+    10% 0%,
+    /* 左上角，向内收窄 */ 90% 0%,
+    /* 右上角，向内收窄 */ 100% 100%,
+    /* 右下角 */ 0% 100% /* 左下角 */
   );
   /* 下方圆角通过与taskbar融合实现 */
   border-bottom-left-radius: 4px;
@@ -597,7 +623,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #FFC107;
+  color: #ffc107;
   font-weight: 600;
   font-size: 12px;
   margin-bottom: 8px;
@@ -613,14 +639,14 @@ onUnmounted(() => {
   font-weight: 700;
   color: #ff5252;
   margin-left: auto;
-  background: #FFC107;
+  background: #ffc107;
   padding: 2px 4px;
   border-radius: 4px;
 }
 
 .conflict-item {
   background: rgba(255, 193, 7, 0.1);
-  border-left: 3px solid #FFC107;
+  border-left: 3px solid #ffc107;
   padding: 8px;
   margin-bottom: 8px;
   border-radius: 4px;
@@ -633,7 +659,7 @@ onUnmounted(() => {
 .conflict-task-name {
   font-weight: 600;
   font-size: 11px;
-  color: #FFC107;
+  color: #ffc107;
   margin-bottom: 4px;
 }
 
@@ -668,7 +694,7 @@ onUnmounted(() => {
 
 .warning-icon {
   flex-shrink: 0;
-  color: #FFC107;
+  color: #ffc107;
 }
 
 /* 资源头像 */
@@ -724,7 +750,7 @@ onUnmounted(() => {
   margin-top: 4px;
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  color: #FFC107;
+  color: #ffc107;
   font-size: 11px;
   gap: 6px;
   align-items: flex-start;
@@ -732,7 +758,7 @@ onUnmounted(() => {
 
 .warning-icon {
   flex-shrink: 0;
-  color: #FFC107;
+  color: #ffc107;
   margin-top: 1px;
 }
 
