@@ -54,7 +54,13 @@ Your support helps us continue maintaining the project, improving features, and 
 
 <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[henryli1024](https://gitee.com/henryli1024)
 
-- **Support Type**: GitHub Sponsor
+- **Support Type**: Gitee Sponsor
+- **Contribution**: Supporting continuous development and maintenance of the project
+- **Support Period**: 2026-08
+
+<img src="https://gitee.com/hankzhang1688" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[hankzhang1688](https://gitee.com/hankzhang1688)
+
+- **Support Type**: Gitee Sponsor
 - **Contribution**: Supporting continuous development and maintenance of the project
 - **Support Period**: 2026-08
 

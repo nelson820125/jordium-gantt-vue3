@@ -53,7 +53,13 @@
 
 <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[henryli1024](https://gitee.com/henryli1024)
 
-- **支持类型**: GitHub Sponsor
+- **支持类型**: Gitee Sponsor
+- **支持内容**: 项目持续维护与功能开发支持
+- **支持时间**: 2026-08
+
+<img src="https://gitee.com/hankzhang1688" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[hankzhang1688](https://gitee.com/hankzhang1688)
+
+- **支持类型**: Gitee Sponsor
 - **支持内容**: 项目持续维护与功能开发支持
 - **支持时间**: 2026-08
 

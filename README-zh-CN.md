@@ -4509,7 +4509,14 @@ TaskList 组件经过深度重构，采用模块化设计，提升了代码可�
   <a href="https://gitee.com/henryli1024" target="_blank">
     <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="henryli1024" />
   </a>
-  &nbsp;<strong>henryli1024</strong> — GitHub 赞助者，自 2026-08 起
+  &nbsp;<strong>henryli1024</strong> — Gitee 赞助者，自 2026-08 起
+</p>
+
+<p align="center">
+  <a href="https://gitee.com/hankzhang1688" target="_blank">
+    <img src="https://gitee.com/hankzhang1688" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="hankzhang1688" />
+  </a>
+  &nbsp;<strong>hankzhang1688</strong> — Gitee 赞助者，自 2026-08 起
 </p>
 
 完整的赞助者名单及如何被收录请参阅 [SPONSORS.md](./SPONSORS.md)。

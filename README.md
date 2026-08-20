@@ -4365,7 +4365,14 @@ Buy the author a coffee ☕ — it keeps the motivation going and the project mo
   <a href="https://gitee.com/henryli1024" target="_blank">
     <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="henryli1024" />
   </a>
-  &nbsp;<strong>henryli1024</strong> — GitHub Sponsor since 2026-08
+  &nbsp;<strong>henryli1024</strong> — Gitee Sponsor since 2026-08
+</p>
+
+<p align="center">
+  <a href="https://gitee.com/hankzhang1688" target="_blank">
+    <img src="https://gitee.com/hankzhang1688" width="40" height="40" style="border-radius:50%;vertical-align:middle;" alt="hankzhang1688" />
+  </a>
+  &nbsp;<strong>hankzhang1688</strong> — Gitee Sponsor since 2026-08
 </p>
 
 See the full list of sponsors and how to be listed in [SPONSORS-EN.md](./SPONSORS-EN.md).

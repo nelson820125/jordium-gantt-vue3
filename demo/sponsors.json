@@ -15,6 +15,14 @@
       "typeKey": "individual",
       "amount": "￥50",
       "since": "2026-08"
+    },
+    {
+      "avatar": "/public/avatar.svg",
+      "name": "hankzhang1688",
+      "url": "https://gitee.com/hankzhang1688",
+      "typeKey": "individual",
+      "amount": "￥100",
+      "since": "2026-08"
     }
   ]
 }

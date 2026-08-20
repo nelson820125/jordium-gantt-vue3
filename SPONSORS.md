@@ -12,6 +12,7 @@
 | :--: | ------ | ---- | ---- | ---- | ------------ |
 | <img src="https://avatars.githubusercontent.com/u/129715913?v=4" alt="zhanmqGithub" width="40" height="40" style="border-radius:50%;" /> | **zhanmqGithub** | 个人 | [github.com/zhanmqGithub](https://github.com/zhanmqGithub) | ￥50 | 2026-07 |
 | <img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="henryli1024" width="40" height="40" style="border-radius:50%;" /> | **henryli1024** | 个人 | [gitee.com/henryli1024](https://gitee.com/henryli1024) | ￥50 | 2026-08 |
+| <img src="https://gitee.com/hankzhang1688" alt="hankzhang1688" width="40" height="40" style="border-radius:50%;" /> | **hankzhang1688** | 个人 | [gitee.com/hankzhang1688](https://gitee.com/hankzhang1688) | ￥100 | 2026-08 |
 
 <!--
 新增赞助者请按以下格式追加表格行：
