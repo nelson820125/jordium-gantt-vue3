@@ -114,11 +114,17 @@ import { computed, nextTick, onMounted, onUnmounted, provide, ref, useSlots, wat
 import TaskList from '../TaskList/TaskList.vue'
 import ResourceUsageCell from './ResourceUsageCell.vue'
 import { useResourceUsageAggregation } from '../../composables/useResourceUsageAggregation'
+import {
+  createWorkCalendarResolver,
+  resolveWorkCalendarDisplayOverride,
+} from '../../utils/workCalendarUtils'
 import type {
   ResourceUsageScale,
   ResourceUsageCellPayload,
   ResourceUsageCellData,
   ResourceUsageTaskDetailClickPayload,
+  ResolveWorkingMinutes,
+  WorkCalendarException,
 } from '../../models/types/ResourceUsageTypes'
 import type { Resource } from '../../models/classes/Resource'
 import type {
@@ -165,6 +171,32 @@ interface Props {
   /** 单元格列宽（px），未提供时按 scale 使用默认值（day: 56 / week: 80 / month: 100） */
   columnWidth?: number
   disabled?: boolean
+  /**
+   * 工作日/工时可配置化（v1.14.0，见 .ai/.claude/requirements/v1.13.6.md）。
+   * 核心扩展点：查询某资源在指定时间区间内的有效工作分钟数，未提供时按现状默认行为
+   * （周六日不计、其余整天计入）计算，保证向后兼容。与 `workCalendarExceptions` 二选一，
+   * 同时传入时本属性优先。
+   */
+  resolveWorkingMinutes?: ResolveWorkingMinutes
+  /**
+   * 工作日历例外表（法定节假日/调休补班/个人请假等），未提供 `resolveWorkingMinutes` 时，
+   * 内部通过 `createWorkCalendarResolver` 转换为等效回调。
+   */
+  workCalendarExceptions?: WorkCalendarException[]
+  /**
+   * 换算 `workCalendarExceptions` 半天/跨天例外时使用的钟点工作时段基准，未提供时使用与
+   * GanttChart `workingHours` 属性相同的默认值（上午 8-11 + 下午 13-17）。仅在提供
+   * `workCalendarExceptions` 且未显式提供 `resolveWorkingMinutes` 时生效。
+   */
+  workingHours?: {
+    morning?: { start: number; end: number }
+    afternoon?: { start: number; end: number }
+  }
+  /**
+   * 每日基准工时（小时），支持按资源差异化（如人工 8 小时 / 设备 24 小时）。未提供时默认 8，
+   * 与升级前 `DAILY_CAPACITY_HOURS` 硬编码常量一致。
+   */
+  dailyCapacityHours?: number | ((resource: Resource) => number)
   onBeforeScaleChange?: (
     next: ResourceUsageScale,
     prev: ResourceUsageScale
@@ -252,11 +284,31 @@ const dateRangeInternal = computed(() => props.dateRange ?? defaultDateRange())
 const overloadThresholdRef = computed(() => props.overloadThreshold)
 const scaleRef = computed(() => scaleInternal.value)
 
+// 工作日历例外表未显式提供 resolveWorkingMinutes 时，转换为等效回调；两者均未提供时为
+// undefined，交由 composable 内部回退默认行为（100% 向后兼容）
+const effectiveResolveWorkingMinutes = computed<ResolveWorkingMinutes | undefined>(() => {
+  if (props.resolveWorkingMinutes) return props.resolveWorkingMinutes
+  if (props.workCalendarExceptions?.length) {
+    return createWorkCalendarResolver(props.workCalendarExceptions, props.workingHours)
+  }
+  return undefined
+})
+const dailyCapacityHoursRef = computed(() => props.dailyCapacityHours)
+
+// v1.14.1: 表头/单元格周末灰色展示的独立覆盖层。仅全天 + 公司层面例外影响展示，
+// 与上述 effectiveResolveWorkingMinutes（仍使用完整未过滤的例外列表，包含资源专属/半天）的数值计算管线完全解耦
+const resolveWeekendDisplayRef = computed(
+  () => (date: Date) => resolveWorkCalendarDisplayOverride(date, props.workCalendarExceptions)
+)
+
 const { cellsByResource } = useResourceUsageAggregation({
   resources: computed(() => props.resources),
   scale: scaleRef,
   dateRange: dateRangeInternal,
   overloadThreshold: overloadThresholdRef,
+  resolveWorkingMinutes: effectiveResolveWorkingMinutes,
+  dailyCapacityHours: dailyCapacityHoursRef,
+  resolveWeekendDisplay: resolveWeekendDisplayRef,
 })
 
 // 全量周期列表（用于表头与横向虚拟滚动索引），取任意资源的桶结果即可（各资源桶数量一致）

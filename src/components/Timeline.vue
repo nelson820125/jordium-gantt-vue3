@@ -38,6 +38,8 @@ import type {
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
 import { applyTimelineFormat } from '../utils/timelineFormat' // v1.13.0 抽取为共享工具，供 ResourceUsageView 复用同一套格式化逻辑
 import { computeTaskViewLogicalPosition } from '../utils/taskPositionUtils' // 逻辑坐标种子填充
+import { resolveWorkCalendarDisplayOverride } from '../utils/workCalendarUtils' // v1.14.1 工作日历例外 → 表头周末灰色展示覆盖
+import type { WorkCalendarException } from '../models/types/ResourceUsageTypes'
 
 // 定义Props接口
 interface Props {
@@ -58,6 +60,9 @@ interface Props {
     morning?: { start: number; end: number }
     afternoon?: { start: number; end: number }
   }
+  // v1.14.1 工作日历例外（节假日/调休），仅取其中"整天 + 未指定 resourceIds"的记录，
+  // 用于覆盖表头/背景列默认的周末灰色判断；与资源利用率视图数值计算是独立链路，语义详见 workCalendarUtils.ts
+  workCalendarExceptions?: WorkCalendarException[]
   // TaskBar 配置
   taskBarConfig?: TaskBarConfig
   // 是否允许拖拽和拉伸（默认为 true）
@@ -97,6 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  workCalendarExceptions: undefined,
   taskBarConfig: undefined,
   allowDragAndResize: true,
   showActualTaskbar: false,
@@ -1825,6 +1831,13 @@ const timelineDataCache = new Map<string, TimelineCacheEntry>()
 const CACHE_TTL = 60000 // 缓存有效期：1分钟
 const MAX_CACHE_SIZE = 4 // 最多缓存4个刻度（日/周/月/年）
 
+// v1.14.1 workCalendarExceptions 变化时的版本号。必须在 getCachedTimelineData 顶部无条件读取，
+// 确保每次都被 optimizedTimelineData/totalTimelineWidth 等 computed 追踪为响应式依赖——
+// 否则若上一次求值走的是"缓存命中"分支（未调用 generateXxxTimelineData，不会读取
+// props.workCalendarExceptions），computed 就不会在例外变化时失效，需等 scale/日期范围真正变化
+// 才会重新生成，用户会看到"确认更改工作时间后 Timeline 没有立即刷新"。
+const workCalendarVersion = ref(0)
+
 // 初始化状态
 const isInitialLoad = ref(true)
 
@@ -2613,10 +2626,12 @@ const debouncedUpdateCanvasPosition = debounce(() => {
 
 // v1.9.5 P2-3优化 - 智能缓存时间轴数据的函数
 const getCachedTimelineData = (): unknown => {
+  // 必须在最前面无条件读取，保证每次求值都建立响应式依赖（见上方 workCalendarVersion 定义处说明）
+  const calendarVersion = workCalendarVersion.value
   const scale = currentTimeScale.value
   const startTime = timelineConfig.value.startDate.getTime()
   const endTime = timelineConfig.value.endDate.getTime()
-  const key = `${scale}-${startTime}-${endTime}`
+  const key = `${scale}-${startTime}-${endTime}-${calendarVersion}`
 
   // 检查缓存是否存在且未过期
   const cached = timelineDataCache.get(key)
@@ -3088,6 +3103,26 @@ const clearTimelineCache = () => {
   timelineDataCache.clear()
 }
 
+// v1.14.1 工作日历例外变化时，让已缓存的表头/背景列数据重新生成：递增版本号使缓存 key 变化，
+// 从而让 optimizedTimelineData 等 computed 无条件感知到变化并重新调用 generateXxxTimelineData
+// （若仅清空 Map 而不改变 computed 的响应式依赖，可能要等 CACHE_TTL 到期或 scale/日期变化才会生效）
+watch(
+  () => props.workCalendarExceptions,
+  () => {
+    workCalendarVersion.value++
+    clearTimelineCache()
+  }
+)
+
+/**
+ * 判断某天在表头/背景列上是否按"非工作日(周末灰)"展示：优先采纳 workCalendarExceptions 里
+ * 命中的"整天 + 公司级"例外覆盖，未命中时回退到调用方传入的自然日历周末判断（周六/周日）
+ */
+const resolveDisplayWeekend = (date: Date, calendarWeekend: boolean): boolean => {
+  const override = resolveWorkCalendarDisplayOverride(date, props.workCalendarExceptions)
+  return override !== undefined ? override : calendarWeekend
+}
+
 // 生成日视图时间轴数据 (原有逻辑)
 const generateDayTimelineData = () => {
   const months: unknown[] = []
@@ -3104,7 +3139,7 @@ const generateDayTimelineData = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day)
       const dayOfWeek = date.getDay() // 0=周日, 6=周六
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const isWeekend = resolveDisplayWeekend(date, dayOfWeek === 0 || dayOfWeek === 6)
 
       days.push({
         day,
@@ -3130,9 +3165,11 @@ const generateDayTimelineData = () => {
 }
 
 // 判断是否为工作时间
-const isWorkingHour = (hour: number, dayOfWeek: number) => {
-  // 周末（周六=6，周日=0）直接返回false，保持周末样式
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
+// v1.14.1 新增 isWeekendDisplay 参数：由调用方传入"已结合工作日历例外覆盖后"的周末判断结果，
+// 避免这里重复一份纯 dayOfWeek 判断导致与表头/背景列的灰色状态不一致
+const isWorkingHour = (hour: number, dayOfWeek: number, isWeekendDisplay: boolean) => {
+  // 非工作日（自然周末，或被工作日历例外覆盖为假日）直接返回false，保持周末样式
+  if (isWeekendDisplay) {
     return false
   }
 
@@ -3171,6 +3208,7 @@ const generateHourTimelineData = () => {
     // 生成该天的24小时数据
     const hours = []
     const dayOfWeek = currentDate.getDay() // 获取星期几
+    const isWeekendDisplay = resolveDisplayWeekend(currentDate, dayOfWeek === 0 || dayOfWeek === 6)
     for (let hour = 0; hour < 24; hour++) {
       const hourDate = new Date(year, month - 1, day, hour)
       hours.push({
@@ -3179,8 +3217,8 @@ const generateHourTimelineData = () => {
         shortLabel: String(hour).padStart(2, '0'), // 简化显示格式，只显示小时数
         date: hourDate,
         isToday: isToday(hourDate) && hour === new Date().getHours(),
-        isWorkingHour: isWorkingHour(hour, dayOfWeek), // 判断是否为工作时间
-        isWeekend: dayOfWeek === 0 || dayOfWeek === 6, // 是否为周末
+        isWorkingHour: isWorkingHour(hour, dayOfWeek, isWeekendDisplay), // 判断是否为工作时间
+        isWeekend: isWeekendDisplay, // 是否按非工作日(灰)展示
       })
     }
 
@@ -3273,9 +3311,11 @@ const generateSubDaysForWeek = (weekStart: Date) => {
   for (let i = 0; i < 7; i++) {
     const date = new Date(weekStart)
     date.setDate(date.getDate() + i)
+    const dayOfWeek = date.getDay()
     subDays.push({
       date: new Date(date),
-      dayOfWeek: date.getDay(),
+      dayOfWeek,
+      isWeekend: resolveDisplayWeekend(date, dayOfWeek === 0 || dayOfWeek === 6),
     })
   }
   return subDays
@@ -5657,12 +5697,13 @@ const generateMonthTimelineData = () => {
       const subDays = []
       for (let day = 1; day <= monthData.dayCount; day++) {
         const date = new Date(monthData.year, monthData.month - 1, day)
+        const dayOfWeek = date.getDay()
         subDays.push({
           day,
           date: new Date(date),
-          dayOfWeek: date.getDay(),
+          dayOfWeek,
           isToday: isToday(date),
-          isWeekend: date.getDay() === 0 || date.getDay() === 6,
+          isWeekend: resolveDisplayWeekend(date, dayOfWeek === 0 || dayOfWeek === 6),
         })
       }
 
@@ -6295,7 +6336,7 @@ const handleAddSuccessor = (task: Task) => {
                     :key="`subday-col-${dayIndex}`"
                     class="sub-day-column"
                     :class="{
-                      weekend: subDay.dayOfWeek === 0 || subDay.dayOfWeek === 6,
+                      weekend: subDay.isWeekend,
                       today: isToday(subDay.date),
                     }"
                     :style="{ height: `${contentHeight}px`, width: `${dayWidth}px` }"

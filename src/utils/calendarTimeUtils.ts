@@ -12,6 +12,8 @@
  */
 
 import type { WorkingHoursConfig } from '../models/types/CalendarTypes'
+import type { WorkCalendarException } from '../models/types/ResourceUsageTypes'
+import { resolveWorkCalendarDisplayOverride } from './workCalendarUtils'
 
 /** 一天的毫秒数 */
 export const DAY_MS = 24 * 60 * 60 * 1000
@@ -85,13 +87,16 @@ export function isTaskOnDate(start: Date, end: Date, date: Date): boolean {
  * @param hour 0-23 小时数
  * @param dayOfWeek 0-6，0=周日
  * @param workingHours 工作时间配置，不传则视为全部非工作时间
+ * @param isWeekendOverride v1.14.1 已结合工作日历例外计算好的周末展示结果；未传时回退为纯日历判断
  */
 export function isWorkingHour(
   hour: number,
   dayOfWeek: number,
-  workingHours?: WorkingHoursConfig
+  workingHours?: WorkingHoursConfig,
+  isWeekendOverride?: boolean
 ): boolean {
-  if (isWeekendDay(dayOfWeek)) {
+  const isWeekend = isWeekendOverride ?? isWeekendDay(dayOfWeek)
+  if (isWeekend) {
     return false
   }
 
@@ -128,9 +133,12 @@ export interface CalendarHourCell {
  */
 export function generateDayHours(
   date: Date,
-  workingHours?: WorkingHoursConfig
+  workingHours?: WorkingHoursConfig,
+  workCalendarExceptions?: WorkCalendarException[]
 ): CalendarHourCell[] {
   const dayOfWeek = date.getDay()
+  const isWeekendDisplay =
+    resolveWorkCalendarDisplayOverride(date, workCalendarExceptions) ?? isWeekendDay(dayOfWeek)
   const now = new Date()
   const hours: CalendarHourCell[] = []
 
@@ -140,7 +148,7 @@ export function generateDayHours(
       hour,
       label: `${String(hour).padStart(2, '0')}:00`,
       date: hourDate,
-      isWorkingHour: isWorkingHour(hour, dayOfWeek, workingHours),
+      isWorkingHour: isWorkingHour(hour, dayOfWeek, workingHours, isWeekendDisplay),
       isCurrentHour: isSameDay(date, now) && hour === now.getHours(),
     })
   }
@@ -172,7 +180,8 @@ export interface CalendarWeekDayCell {
  */
 export function generateWeekDays(
   anchorDate: Date,
-  workingHours?: WorkingHoursConfig
+  workingHours?: WorkingHoursConfig,
+  workCalendarExceptions?: WorkCalendarException[]
 ): CalendarWeekDayCell[] {
   const weekStart = getWeekStart(anchorDate)
   const days: CalendarWeekDayCell[] = []
@@ -184,9 +193,10 @@ export function generateWeekDays(
     days.push({
       date,
       dayOfWeek,
-      isWeekend: isWeekendDay(dayOfWeek),
+      isWeekend:
+        resolveWorkCalendarDisplayOverride(date, workCalendarExceptions) ?? isWeekendDay(dayOfWeek),
       isToday: isToday(date),
-      hours: generateDayHours(date, workingHours),
+      hours: generateDayHours(date, workingHours, workCalendarExceptions),
     })
   }
 
@@ -206,7 +216,10 @@ export interface CalendarMonthDayCell {
  * 生成传统日历方格所需的月视图网格（含首尾补齐的相邻月日期）
  * 固定周一为一周首日，网格行数随自然月天数浮动（5~6 行）
  */
-export function generateMonthGrid(anchorDate: Date): CalendarMonthDayCell[][] {
+export function generateMonthGrid(
+  anchorDate: Date,
+  workCalendarExceptions?: WorkCalendarException[]
+): CalendarMonthDayCell[][] {
   const year = anchorDate.getFullYear()
   const month = anchorDate.getMonth()
   const firstDayOfMonth = new Date(year, month, 1)
@@ -223,7 +236,9 @@ export function generateMonthGrid(anchorDate: Date): CalendarMonthDayCell[][] {
       week.push({
         date,
         isCurrentMonth: date.getMonth() === month,
-        isWeekend: isWeekendDay(date.getDay()),
+        isWeekend:
+          resolveWorkCalendarDisplayOverride(date, workCalendarExceptions) ??
+          isWeekendDay(date.getDay()),
         isToday: isToday(date),
       })
       cursor.setDate(cursor.getDate() + 1)

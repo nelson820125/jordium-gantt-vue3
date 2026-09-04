@@ -26,13 +26,14 @@ import ResourceUsageView from './ResourceUsage/ResourceUsageView.vue'
 import type {
   ResourceUsageScale,
   ResourceUsageTaskDetailClickPayload,
+  WorkCalendarException,
 } from '../models/types/ResourceUsageTypes'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
 import { assignTaskRows } from '../utils/taskLayoutUtils'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import { toCanvas } from 'html-to-image'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { Resource, ResourceTypeOption } from '../models/classes/Resource'
@@ -78,6 +79,7 @@ const props = withDefaults(defineProps<Props>(), {
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  workCalendarExceptions: undefined,
   taskListConfig: undefined,
   resourceListConfig: undefined,
   taskListColumnRenderMode: 'default',
@@ -632,6 +634,11 @@ interface Props {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
     afternoon?: { start: number; end: number } // 下午工作时间，如 { start: 13, end: 17 }
   }
+  // v1.14.1 工作日历例外（节假日/调休/请假），Timeline/CalendarView/ResourceUsageView 共享同一份配置：
+  // 仅其中"整天 + 未指定 resourceIds"的记录会驱动三个视图共享表头的周末灰色展示；
+  // 资源利用率视图的工时数值计算仍采纳全部例外（含半天/资源级），语义详见 workCalendarUtils.ts。
+  // 若 resourceUsageProps.workCalendarExceptions 单独指定，则该视图数值计算以其为准（此项仍会驱动表头展示）
+  workCalendarExceptions?: WorkCalendarException[]
   // 任务列表配置
   taskListConfig?: TaskListConfig
   // v1.9.0 资源列表配置（资源计划视图使用）
@@ -1199,6 +1206,38 @@ watch(currentViewMode, () => {
   refreshWidthLimits()
 })
 
+// v1.14.1 bugfix: 日历视图/资源工时视图仅支持 day/week/month 三种粒度（见 calendarScaleFromToolbar/
+// resourceUsageScaleFromToolbar，两者对 hour/quarter/year 均静默回退为 'day'）。此前 currentTimeScale
+// 本身在切视图时不会被改写，导致：① 任务/资源视图下选中 hour/quarter/year 后切入这两个视图，
+// 工具栏刻度按钮的高亮状态由 GanttToolbar 内部 currentTimeScaleKey 的回退逻辑决定，与
+// calendarScaleFromToolbar 各自独立回退，两者判断不一致时会出现"工具栏高亮 month，但视图实际
+// 渲染的是 day 样式"这类不对应；② 切回任务/资源视图时也无法恢复之前选中的 hour/quarter/year。
+// 修复：切入日历/工时视图时若当前刻度不在 day/week/month 范围内，主动 clamp 为 day 并记录切换前的
+// 刻度；切回任务/资源视图时若刻度发生过 clamp，则恢复为记录的原刻度。
+const CALENDAR_FAMILY_COMPATIBLE_SCALES: TimelineScale[] = [
+  TimelineScale.DAY,
+  TimelineScale.WEEK,
+  TimelineScale.MONTH,
+]
+const lastTaskResourceTimeScale = ref<TimelineScale>(currentTimeScale.value)
+const isCalendarFamilyMode = (mode: typeof currentViewMode.value) =>
+  mode === 'calendar' || mode === 'resource-usage'
+const isTaskResourceMode = (mode: typeof currentViewMode.value) =>
+  mode === 'task' || mode === 'resource'
+
+watch(currentViewMode, (newMode, oldMode) => {
+  if (isTaskResourceMode(oldMode) && isCalendarFamilyMode(newMode)) {
+    lastTaskResourceTimeScale.value = currentTimeScale.value
+    if (!CALENDAR_FAMILY_COMPATIBLE_SCALES.includes(currentTimeScale.value)) {
+      handleTimeScaleChange(TimelineScale.DAY)
+    }
+  } else if (isCalendarFamilyMode(oldMode) && isTaskResourceMode(newMode)) {
+    if (lastTaskResourceTimeScale.value !== currentTimeScale.value) {
+      handleTimeScaleChange(lastTaskResourceTimeScale.value)
+    }
+  }
+})
+
 // 计算是否显示关闭按钮
 const showCloseButton = computed(() => {
   const taskId = timelineRef.value?.highlightedTaskId
@@ -1206,15 +1245,18 @@ const showCloseButton = computed(() => {
 })
 
 // v1.9.7 bugfix: 修复拖拽TaskBar后不必要地触发updateTimeScale的问题
-// 只在Timeline首次挂载时初始化timeScale，避免在updateTaskTrigger变化时重复调用
+// v1.14.1 bugfix: Timeline 在 calendar/resource-usage 视图下会被 v-else 整体卸载，
+// 从这两个视图切回 task/resource 视图时 Timeline 会重新挂载成新实例；原先的 { once: true }
+// 只允许整个 GanttChart 生命周期内同步一次，导致重新挂载的新 Timeline 实例读不到
+// currentTimeScale 的最新值（表现为 Timeline 显示成自身默认刻度，但工具栏仍显示切换前的刻度）。
+// 改为只在“从空到有”（真正的挂载时机）才同步一次，拖拽等场景下 timelineRef 引用不会变化，不受影响
 watch(
   () => timelineRef.value,
-  newTimeline => {
-    if (newTimeline) {
+  (newTimeline, oldTimeline) => {
+    if (newTimeline && !oldTimeline) {
       newTimeline.updateTimeScale(currentTimeScale.value)
     }
-  },
-  { once: true } // 只执行一次，避免不必要的重复调用
+  }
 )
 
 const dragging = ref(false)
@@ -2936,16 +2978,14 @@ const pdfExportHandler = async () => {
 
     // 同时捕获标题头部和甘特图（浏览器渲染保证中文字符正确）
     const [headerCanvas, mainCanvas] = await Promise.all([
-      html2canvas(headerEl, {
-        allowTaint: true,
-        useCORS: true,
-        scale: 2,
+      toCanvas(headerEl, {
+        cacheBust: true,
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
       }),
-      html2canvas(ganttElement, {
-        allowTaint: true,
-        useCORS: true,
-        scale: 2,
+      toCanvas(ganttElement, {
+        cacheBust: true,
+        pixelRatio: 2,
         width: ganttElement.scrollWidth,
         height: ganttElement.scrollHeight,
         backgroundColor: '#ffffff',
@@ -4169,6 +4209,7 @@ defineExpose({
         :tasks="tasksForCalendarView"
         :resources="props.resources"
         :working-hours="props.workingHours"
+        :work-calendar-exceptions="props.workCalendarExceptions"
         :scale="calendarScaleFromToolbar"
         v-bind="props.calendarProps"
         @selection-complete="handleCalendarSelectionComplete"
@@ -4189,6 +4230,7 @@ defineExpose({
         :scale="resourceUsageScaleFromToolbar"
         :date-range="resourceUsageDateRangeFromTimeline"
         :scale-configs="mergedScaleConfigs"
+        :work-calendar-exceptions="props.workCalendarExceptions"
         v-bind="props.resourceUsageProps"
         @scale-change="payload => emit('resource-usage-scale-change', payload)"
         @cell-click="payload => emit('resource-usage-cell-click', payload)"
@@ -4271,6 +4313,7 @@ defineExpose({
             :end-date="timelineDateRange.max"
             :scale-configs="mergedScaleConfigs"
             :working-hours="props.workingHours"
+            :work-calendar-exceptions="props.workCalendarExceptions"
             :task-bar-config="props.taskBarConfig"
             :allow-drag-and-resize="props.allowDragAndResize"
             :show-actual-taskbar="props.showActualTaskbar"

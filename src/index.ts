@@ -16,6 +16,8 @@ export { default as ResourceUsageView } from './components/ResourceUsage/Resourc
 export type { Task } from './models/classes/Task.ts' // 导出Task类型
 export type { Resource, ResourceType, ResourceTypeOption } from './models/classes/Resource.ts' // v1.9.0 导出Resource类型，v1.13.5 新增导出 ResourceType/ResourceTypeOption
 export { createResource } from './utils/resourceUtils.ts' // v2.0.0 导出资源创建工厂函数
+export { createWorkCalendarResolver } from './utils/workCalendarUtils.ts' // v1.14.0 导出工作日历例外→回调转换工具函数
+export { resolveWorkCalendarDisplayOverride } from './utils/workCalendarUtils.ts' // v1.14.1 导出工作日历例外→表头周末展示覆盖判定函数
 export { useMessage } from './composables/useMessage.ts' // 导出useMessage组合式函数
 
 // 导出 composables 供外部使用
@@ -48,7 +50,9 @@ export type {
   ResourceUsageCellPayload,
   ResourceUsageTaskBreakdown,
   ResourceUsageTaskDetailClickPayload,
-} from './models/types/ResourceUsageTypes' // v1.12.5 导出资源工时视图相关类型
+  WorkCalendarException,
+  ResolveWorkingMinutes,
+} from './models/types/ResourceUsageTypes' // v1.12.5 导出资源工时视图相关类型，v1.14.0 新增工作日历例外类型
 export type { GanttViewMode } from './components/GanttToolbar.vue' // v1.12.5 导出视图模式类型（task/resource/calendar/resource-usage）
 
 // 导出样式文件

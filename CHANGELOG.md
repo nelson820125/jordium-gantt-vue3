@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-09-04
+
+### Added
+- 🎉 新增：`ResourceUsageView` 支持自定义工作日历（节假日/调休/请假），新增 `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` 属性及 `createWorkCalendarResolver` 工具函数，未配置时行为与升级前完全一致
+- 🎉 Added: `ResourceUsageView` supports custom work calendars (holidays/makeup workdays/leave) via new `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` properties and a `createWorkCalendarResolver` utility; default behavior is unchanged when not configured
+
+### Changed
+- ⚠️ 依赖变更：PDF 导出功能的截图依赖由 `html2canvas` 替换为 `html-to-image`，导出效果与调用方式保持一致
+- ⚠️ Changed: Replaced the `html2canvas` dependency with `html-to-image` for PDF export screenshots; export behavior and usage remain the same
+
 ## [1.13.5] - 2026-08-16
 
 ### Added

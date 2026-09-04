@@ -41,6 +41,7 @@
         :date="currentDateInternal"
         :tasks="filteredTasks"
         :working-hours="workingHours"
+        :work-calendar-exceptions="workCalendarExceptions"
         :resource-id="selectedResourceIdInternal ?? undefined"
         :selection-minute-step="selectionMinuteStep"
         :disabled="disabled"
@@ -63,6 +64,7 @@
         :anchor-date="currentDateInternal"
         :tasks="filteredTasks"
         :working-hours="workingHours"
+        :work-calendar-exceptions="workCalendarExceptions"
         :resource-id="selectedResourceIdInternal ?? undefined"
         :selection-minute-step="selectionMinuteStep"
         :disabled="disabled"
@@ -83,6 +85,7 @@
         ref="subViewRef"
         :anchor-date="currentDateInternal"
         :tasks="filteredTasks"
+        :work-calendar-exceptions="workCalendarExceptions"
         :resource-id="selectedResourceIdInternal ?? undefined"
         :disabled="disabled"
         @selection-complete="handleSelectionComplete"
@@ -115,6 +118,7 @@ import type {
 } from '../../models/types/CalendarTypes'
 import type { Task } from '../../models/classes/Task'
 import type { Resource } from '../../models/classes/Resource'
+import type { WorkCalendarException } from '../../models/types/ResourceUsageTypes'
 
 interface Props {
   tasks: Task[]
@@ -124,6 +128,8 @@ interface Props {
   currentDate?: Date | string
   selectedResourceId?: string | number | null
   workingHours?: WorkingHoursConfig
+  /** v1.14.1 工作日历例外，与 Timeline/ResourceUsageView 共享同一份配置，驱动日/周/月视图表头的周末灰色展示 */
+  workCalendarExceptions?: WorkCalendarException[]
   selectionMinuteStep?: number
   disabled?: boolean
   locale?: 'zh-CN' | 'en-US'

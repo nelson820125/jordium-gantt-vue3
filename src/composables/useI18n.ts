@@ -119,6 +119,8 @@ const messages = {
     timeScaleQuarter: '季',
     timeScaleYear: '年',
     timeScaleTooltip: '切换时间刻度',
+    scrollLeftTooltip: '向左滚动',
+    scrollRightTooltip: '向右滚动',
     halfYearFirst: '上半年',
     halfYearSecond: '下半年',
     // 确认对话框
@@ -295,6 +297,33 @@ const messages = {
         allowDragOnClickHint: '控制是否允许拖拽 TaskBar 和 Milestone，以及拉伸 TaskBar 的长度',
       },
     },
+    // 工作日历配置（v1.14.0，节假日/调休/请假等自定义工作日，仅作用于工时视图 ResourceUsageView）
+    workCalendarConfig: {
+      title: '工作日历配置',
+      enableDemo: '启用自定义工作日历（演示）',
+      enableDemoHint:
+        '未启用时工时视图按内置默认规则计算（周六日不计工作日，每日基准 8 小时）；' +
+        '启用后通过 workCalendarExceptions 传入节假日/调休/请假等例外，覆盖默认规则',
+      relationHint:
+        '与下方"工作时间配置"（服务于日历视图小时格渲染）是两个独立维度：工作时间回答' +
+        '"一天里哪几个钟点算上班"，工作日历回答"某天算不算工作日、按多大比例折算工时"',
+      capacityMode: {
+        title: '每日基准工时',
+        human: '人力资源 (8 小时/天)',
+        device: '设备资源 (24 小时/天)',
+      },
+      exceptions: {
+        title: '例外列表（演示数据，相对今天生成）',
+        holidayLabel: '法定节假日（全天）',
+        halfDayLabel: '请假（半天）',
+        crossDayLabel: '连续假期（跨天）',
+        weekendMakeupLabel: '调休补班（周六）',
+        customHint:
+          '若上方勾选框不够灵活，可点击下方按钮打开“更改工作时间”弹窗自定义增/改/删例外，弹窗确认后将优先于上方勾选框',
+        openDialogButton: '更改工作时间...',
+        resetToPresetButton: '重置为勾选框预设',
+      },
+    },
     disableTaskbarFocusMode: '关闭聚焦功能',
     dataSourceAlreadyLoaded: '{name} 已是当前数据源',
     dataSourceLoadSuccess: '已加载 {name}',
@@ -448,6 +477,8 @@ const messages = {
     timeScaleQuarter: 'Quarter',
     timeScaleYear: 'Year',
     timeScaleTooltip: 'Switch Time Scale',
+    scrollLeftTooltip: 'Scroll left',
+    scrollRightTooltip: 'Scroll right',
     halfYearFirst: 'First Half',
     halfYearSecond: 'Second Half',
     // Confirm dialog
@@ -625,6 +656,35 @@ const messages = {
         allowDragOnClick: 'Allow dragging and resizing of TaskBars and Milestones',
         allowDragOnClickHint:
           'Controls whether to allow dragging of TaskBars and Milestones, as well as resizing the length of TaskBars',
+      },
+    },
+    // Work calendar configuration (v1.14.0, holidays/makeup workdays/leave, only affects ResourceUsageView)
+    workCalendarConfig: {
+      title: 'Work Calendar Configuration',
+      enableDemo: 'Enable custom work calendar (demo)',
+      enableDemoHint:
+        'When disabled, the usage view follows the built-in default rule (weekends excluded, 8 hours/day base); ' +
+        'when enabled, pass holidays/makeup workdays/leave via workCalendarExceptions to override the default rule',
+      relationHint:
+        'This is independent from "Working Hours" below (which drives hour-cell rendering in the calendar view): ' +
+        'Working Hours answers "which clock hours count as work", Work Calendar answers "does this day count as a workday and at what ratio"',
+      capacityMode: {
+        title: 'Daily Base Capacity',
+        human: 'Human Resource (8h/day)',
+        device: 'Device Resource (24h/day)',
+      },
+      exceptions: {
+        title: 'Exception List (demo data, generated relative to today)',
+        holidayLabel: 'Public Holiday (full day)',
+        halfDayLabel: 'Leave (half day)',
+        crossDayLabel: 'Consecutive Holiday (multi-day)',
+        weekendMakeupLabel: 'Makeup Workday (Saturday)',
+        customHint:
+          'If the checkboxes above are not flexible enough, click the button below to open the ' +
+          '"Change Working Time" dialog to add/edit/delete exceptions; once confirmed there, it ' +
+          'takes priority over the checkboxes above',
+        openDialogButton: 'Change Working Time...',
+        resetToPresetButton: 'Reset to Checkbox Presets',
       },
     },
     disableTaskbarFocusMode: 'Disable Focus Mode',

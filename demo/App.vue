@@ -14,6 +14,7 @@ import packageInfo from '../package.json'
 import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
 import HtmlContent from './HtmlContent.vue'
+import WorkCalendarDialog from './WorkCalendarDialog.vue'
 import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
 import { useDemoLocale } from './useDemoLocale'
@@ -25,6 +26,7 @@ import { createResource, addTaskToResource, updateResourceUtilization } from '..
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
 import type { TaskBarConfig, LinkConfig } from '../src/models/configs/TaskBarConfig'
+import type { WorkCalendarException } from '../src/models/types/ResourceUsageTypes'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
@@ -399,7 +401,83 @@ const resourceUsageProps = computed(() => ({
         underloadColor: '#fdf6ec',
         weekendColor: '#f0f0f0',
       }),
+  // v1.14.0 工作日历配置演示：仅在启用开关时传入，未启用时组件使用内置默认行为
+  ...(enableWorkCalendarDemo.value
+    ? {
+        workCalendarExceptions: effectiveWorkCalendarExceptions.value,
+        dailyCapacityHours: workCalendarCapacityMode.value === 'device' ? 24 : 8,
+      }
+    : {}),
 }))
+
+// v1.14.0 工作日历（节假日/调休/请假）配置演示，参考现有 workingHoursConfig（上/下午具体钟点，
+// 服务于日历视图小时格渲染），两者是相互独立的维度：workingHours 回答"一天里哪几个钟点算上班"，
+// 这里的工作日历回答"某天算不算工作日、按多大比例折算工时"，仅作用于工时视图（ResourceUsageView）
+const enableWorkCalendarDemo = ref(false)
+const workCalendarCapacityMode = ref<'human' | 'device'>('human')
+const workCalendarExceptionToggles = reactive({
+  holiday: true,
+  halfDayLeave: true,
+  crossDayHoliday: true,
+  weekendMakeup: true,
+})
+
+// 演示例外表：基于"今天"生成相对日期，确保无论示例数据的任务时间范围如何都落在可见区间内
+const demoWorkCalendarExceptions = computed<WorkCalendarException[]>(() => {
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const addDays = (d: Date, n: number) => {
+    const r = new Date(d)
+    r.setDate(r.getDate() + n)
+    return r
+  }
+  const today = new Date()
+  const labels = t.value.workCalendarConfig.exceptions
+  const exceptions: WorkCalendarException[] = []
+
+  if (workCalendarExceptionToggles.holiday) {
+    const day = fmt(addDays(today, 3))
+    exceptions.push({ id: 'demo-holiday', name: labels?.holidayLabel, start: day, end: day, working: false })
+  }
+  if (workCalendarExceptionToggles.halfDayLeave) {
+    const day = fmt(addDays(today, 5))
+    exceptions.push({
+      id: 'demo-half-day',
+      name: labels?.halfDayLabel,
+      start: `${day} 08:00`,
+      end: `${day} 12:00`,
+      working: false,
+    })
+  }
+  if (workCalendarExceptionToggles.crossDayHoliday) {
+    exceptions.push({
+      id: 'demo-cross-day',
+      name: labels?.crossDayLabel,
+      start: fmt(addDays(today, 8)),
+      end: fmt(addDays(today, 10)),
+      working: false,
+    })
+  }
+  if (workCalendarExceptionToggles.weekendMakeup) {
+    let makeupDay = addDays(today, 12)
+    while (makeupDay.getDay() !== 6) makeupDay = addDays(makeupDay, 1) // 找最近的周六作为调休补班演示日
+    const day = fmt(makeupDay)
+    exceptions.push({ id: 'demo-weekend-makeup', name: labels?.weekendMakeupLabel, start: day, end: day, working: true })
+  }
+  return exceptions
+})
+
+// v1.14.1：MS Project 风格「更改工作时间」弹窗（Demo 专用，非组件库导出 API）。
+// 用户通过弹窗确认后的例外表优先于上方勾选框生成的演示例外；未打开过弹窗前维持原勾选框行为，
+// 保证两套配置方式互不冲突（弹窗 = 手动全量接管，勾选框 = 快速预设）。
+const showWorkCalendarDialog = ref(false)
+const customWorkCalendarExceptions = ref<WorkCalendarException[] | null>(null)
+const effectiveWorkCalendarExceptions = computed<WorkCalendarException[]>(
+  () => customWorkCalendarExceptions.value ?? demoWorkCalendarExceptions.value
+)
+const handleWorkCalendarDialogConfirm = (exceptions: WorkCalendarException[]) => {
+  customWorkCalendarExceptions.value = exceptions
+}
 
 // 控制是否允许拖拽和拉伸
 const allowDragAndResize = ref(true)
@@ -497,6 +575,9 @@ const isDataSourcePanelCollapsed = ref(true)
 
 // TaskList 配置区域折叠状态（默认收起）
 const isTaskListConfigCollapsed = ref(true)
+
+// 工作日历配置区域折叠状态（默认收起）
+const isWorkCalendarConfigCollapsed = ref(true)
 
 // TaskBar 配置区域折叠状态（默认收起）
 const isTaskBarConfigCollapsed = ref(true)
@@ -600,6 +681,11 @@ const toggleDataSourcePanel = () => {
 // 切换 TaskList 配置区域
 const toggleTaskListConfig = () => {
   isTaskListConfigCollapsed.value = !isTaskListConfigCollapsed.value
+}
+
+// 切换工作日历配置区域
+const toggleWorkCalendarConfig = () => {
+  isWorkCalendarConfigCollapsed.value = !isWorkCalendarConfigCollapsed.value
 }
 
 // 切换 TaskBar 配置区域
@@ -1568,6 +1654,14 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
 
+    <WorkCalendarDialog
+      v-model="showWorkCalendarDialog"
+      :exceptions="effectiveWorkCalendarExceptions"
+      :resources="resources"
+      :locale="demoLocale"
+      @confirm="handleWorkCalendarDialogConfirm"
+    />
+
     <div class="data-source-panel" :class="{ collapsed: isDataSourcePanelCollapsed }">
       <div class="data-source-header" @click="toggleDataSourcePanel">
         <h3 class="config-title">
@@ -1873,6 +1967,125 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                 </div>
               </transition>
             </div>
+              </div>
+            </transition>
+          </div>
+
+          <!-- 工作日历配置区域（v1.14.0，演示工时视图 ResourceUsageView 的节假日/调休/请假配置） -->
+          <div class="config-section">
+            <div class="section-header" @click="toggleWorkCalendarConfig">
+              <div class="section-header-title">
+                <svg
+                  class="section-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {{ t.workCalendarConfig.title }}
+              </div>
+              <button
+                class="section-collapse-button"
+                :class="{ collapsed: isWorkCalendarConfigCollapsed }"
+              >
+                <svg
+                  class="collapse-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <transition name="section-content">
+              <div v-show="!isWorkCalendarConfigCollapsed" class="section-content">
+                <div class="subsection">
+                  <label class="taskbar-control">
+                    <input v-model="enableWorkCalendarDemo" type="checkbox" />
+                    <span class="taskbar-label">{{ t.workCalendarConfig.enableDemo }}</span>
+                  </label>
+                  <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                    {{ t.workCalendarConfig.enableDemoHint }}
+                  </div>
+                  <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                    {{ t.workCalendarConfig.relationHint }}
+                  </div>
+                </div>
+
+                <transition name="section-content">
+                  <div v-show="enableWorkCalendarDemo">
+                    <!-- 每日基准工时 -->
+                    <div class="subsection">
+                      <h5 class="subsection-title">{{ t.workCalendarConfig.capacityMode.title }}</h5>
+                      <div
+                        class="width-unit-toggle"
+                        style="margin-bottom: 12px; display: flex; align-items: center; gap: 16px"
+                      >
+                        <label class="taskbar-control">
+                          <input v-model="workCalendarCapacityMode" type="radio" value="human" />
+                          <span class="taskbar-label">{{ t.workCalendarConfig.capacityMode.human }}</span>
+                        </label>
+                        <label class="taskbar-control">
+                          <input v-model="workCalendarCapacityMode" type="radio" value="device" />
+                          <span class="taskbar-label">{{ t.workCalendarConfig.capacityMode.device }}</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- 例外列表 -->
+                    <div class="subsection">
+                      <h5 class="subsection-title">{{ t.workCalendarConfig.exceptions.title }}</h5>
+                      <div class="column-controls">
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.holiday" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.holidayLabel }}</span>
+                        </label>
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.halfDayLeave" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.halfDayLabel }}</span>
+                        </label>
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.crossDayHoliday" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.crossDayLabel }}</span>
+                        </label>
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.weekendMakeup" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.weekendMakeupLabel }}</span>
+                        </label>
+                      </div>
+                      <div class="config-hint" style="margin-top: 4px">
+                        {{ t.workCalendarConfig.exceptions.customHint }}
+                      </div>
+                      <button
+                        type="button"
+                        class="wc-open-dialog-btn"
+                        @click="showWorkCalendarDialog = true"
+                      >
+                        {{ t.workCalendarConfig.exceptions.openDialogButton }}
+                      </button>
+                      <button
+                        v-if="customWorkCalendarExceptions"
+                        type="button"
+                        class="wc-open-dialog-btn"
+                        @click="customWorkCalendarExceptions = null"
+                      >
+                        {{ t.workCalendarConfig.exceptions.resetToPresetButton }}
+                      </button>
+                    </div>
+                  </div>
+                </transition>
               </div>
             </transition>
           </div>
@@ -2729,6 +2942,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :task-bar-config="taskBarConfig"
         :scale-configs="scaleConfigs"
         :working-hours="workingHoursConfig"
+        :work-calendar-exceptions="enableWorkCalendarDemo ? effectiveWorkCalendarExceptions : undefined"
         :use-default-milestone-dialog="true"
         :allow-drag-and-resize="allowDragAndResize"
         :enable-task-row-move="enableTaskRowMove"
@@ -3772,6 +3986,22 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   margin-bottom: 12px;
   padding-left: 12px;
   border-left: 2px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.wc-open-dialog-btn {
+  margin-top: 8px;
+  margin-right: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--gantt-primary-color, #409eff);
+  background: transparent;
+  color: var(--gantt-primary-color, #409eff);
+  cursor: pointer;
+}
+
+.wc-open-dialog-btn:hover {
+  background: var(--gantt-primary-light, #ecf5ff);
 }
 
 .subsection-title {

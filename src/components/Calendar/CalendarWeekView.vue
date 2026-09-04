@@ -114,6 +114,7 @@ import type {
   CalendarTaskMovePayload,
 } from '../../models/types/CalendarTypes'
 import type { Task } from '../../models/classes/Task'
+import type { WorkCalendarException } from '../../models/types/ResourceUsageTypes'
 
 const HOUR_HEIGHT = 48 // 与日视图行高保持一致
 const HOUR_LABEL_WIDTH = 60
@@ -122,6 +123,8 @@ interface Props {
   anchorDate: Date
   tasks?: Task[]
   workingHours?: WorkingHoursConfig
+  /** v1.14.1 工作日历例外，影响周视图表头/小时格的 isWeekend 展示（与 Timeline/ResourceUsageView 共享同一份配置） */
+  workCalendarExceptions?: WorkCalendarException[]
   resourceId?: string | number
   selectionMinuteStep?: number
   disabled?: boolean
@@ -150,7 +153,9 @@ const emit = defineEmits<{
 
 const gridRef = ref<HTMLElement>()
 
-const weekDays = computed(() => generateWeekDays(props.anchorDate, props.workingHours))
+const weekDays = computed(() =>
+  generateWeekDays(props.anchorDate, props.workingHours, props.workCalendarExceptions)
+)
 
 const formatDayHeader = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`
 
