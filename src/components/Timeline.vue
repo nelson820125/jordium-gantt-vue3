@@ -3952,7 +3952,10 @@ const scrollToToday = () => {
  * 滚动到指定日期（居中显示）
  * @param date 日期（Date对象或日期字符串）
  */
-const scrollToDate = (date: Date | string) => {
+// 计算指定日期相对于当前 Timeline 内容起始位置（scrollLeft=0 处）的像素偏移，
+// 与 scrollToDate 内部滚动定位使用同一套换算逻辑（各时间刻度换算方式一致），
+// 供 PDF 导出裁剪等需要"日期 -> 像素"的外部场景复用，避免另写一份重复且可能不一致的换算代码
+const getDatePixelOffset = (date: Date | string): number => {
   const targetDate = typeof date === 'string' ? new Date(date) : date
   const timelineStart = timelineConfig.value.startDate
 
@@ -4079,6 +4082,15 @@ const scrollToDate = (date: Date | string) => {
     // 日视图：每天30px
     datePosition = daysDiff * dayWidth.value
   }
+
+  return datePosition
+}
+
+const scrollToDate = (date: Date | string) => {
+  const targetDate = typeof date === 'string' ? new Date(date) : date
+
+  // 目标日期在时间线中的像素位置（与 getDatePixelOffset 共用同一套换算逻辑）
+  const datePosition = getDatePixelOffset(targetDate)
 
   // 使用缓存的容器元素
   const timeline = timelineContainerElement.value
@@ -5391,6 +5403,8 @@ defineExpose({
   scrollToToday,
   scrollToTodayCenter,
   scrollToDate,
+  // 日期 -> 像素偏移换算（供 PDF 导出裁剪等外部场景复用）
+  getDatePixelOffset,
   // 时间线配置
   timelineConfig,
   // 时间刻度更新

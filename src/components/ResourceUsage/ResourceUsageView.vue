@@ -81,6 +81,8 @@
                 :normal-color="normalColor"
                 :underload-color="underloadColor"
                 :weekend-color="weekendColor"
+                :resource-off-or-leave-color="resourceOffOrLeaveColor"
+                :show-resource-off-or-leave-style="showResourceOffOrLeaveStyle"
                 :height="rowHeight"
                 @click="handleCellClick"
                 @hover="handleCellHover"
@@ -166,6 +168,17 @@ interface Props {
   underloadColor?: string
   /** 周末列背景色，未提供时使用主题默认色（仅 scale === 'day' 生效） */
   weekendColor?: string
+  /**
+   * 资源专属请假/停机背景色（v1.14.0，仅 scale === 'day' 且 showResourceOffOrLeaveStyle 为 true 时生效），
+   * 未提供时使用内置淡紫色默认值（参考 Microsoft Teams「休假中」状态配色）。
+   */
+  resourceOffOrLeaveColor?: string
+  /**
+   * 是否展示资源专属请假/停机单元格样式（v1.14.0，默认 true）。仅 scale === 'day' 生效；
+   * 与公司级共享的 `isWeekend` 无关（周末样式不受此开关影响）。关闭后单元格仅根据
+   * 超载/正常/欠载阈值继续根据百分比配色，不受影响。
+   */
+  showResourceOffOrLeaveStyle?: boolean
   /** 行高（px），左右两侧面板共用，默认 40 */
   rowHeight?: number
   /** 单元格列宽（px），未提供时按 scale 使用默认值（day: 56 / week: 80 / month: 100） */
@@ -213,6 +226,7 @@ const props = withDefaults(defineProps<Props>(), {
   underloadThreshold: 60,
   rowHeight: 51, // 对齐资源计划视图 TaskRow 行高（ROW_HEIGHT）
   disabled: false,
+  showResourceOffOrLeaveStyle: true,
 })
 
 const slots = useSlots()
@@ -792,6 +806,7 @@ defineExpose({ refreshAggregation, setScale })
 .gantt-resource-usage-grid-header {
   flex-shrink: 0;
   height: 80px;
+  box-sizing: border-box; /* border-bottom 计入 80px 内，避免比 .task-list-header 多出 1px */
   overflow: hidden;
   position: relative;
   background-color: var(--gantt-bg-secondary);

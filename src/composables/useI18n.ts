@@ -163,6 +163,14 @@ const messages = {
     pdfExportLoading: '正在生成PDF，请稍候...',
     pdfExportTitle: '甘特图导出',
     pdfExportDate: '导出日期',
+    // PDF导出日期范围弹窗
+    pdfExportRangeTitle: '选择导出日期范围',
+    pdfExportRangeMessage:
+      '当前时间跨度较大，导出全部内容可能生成体积很大的 PDF。请选择要导出的日期范围（跨越该范围的任务会完整保留，不会被截断）。',
+    pdfExportRangeMaxSpanHint: '导出跨度建议不超过 {days} 天',
+    pdfExportRangeInvalid: '结束日期不能早于开始日期',
+    pdfExportRangeConfirm: '导出',
+    pdfExportRangeExportAll: '导出全部',
 
     milestoneGroup: '里程碑',
     collapseTaskList: '收起任务列表',
@@ -322,6 +330,27 @@ const messages = {
           '若上方勾选框不够灵活，可点击下方按钮打开“更改工作时间”弹窗自定义增/改/删例外，弹窗确认后将优先于上方勾选框',
         openDialogButton: '更改工作时间...',
         resetToPresetButton: '重置为勾选框预设',
+      },
+      personalExceptions: {
+        title: '资源专属例外（resolveWorkingMinutes 自定义回调演示）',
+        enableLabel: '启用资源专属例外',
+        enableHint:
+          '演示将例外数组挂在 resource 的自定义字段上（本例用 resource.workExceptions），' +
+          '再通过自定义 resolveWorkingMinutes 回调合并"公司级例外 + 该资源专属例外"，' +
+          '与上方公司级 workCalendarExceptions 互不冲突：启用后以此回调为准',
+        resourceLabel: '选择资源',
+        jsonLabel: 'resource.workExceptions（JSON 数组，可直接编辑后点击应用）',
+        applyButton: '应用',
+        fillSampleButton: '填充示例',
+        clearButton: '清空',
+        invalidJsonError: 'JSON 解析失败：{message}',
+        invalidArrayError: 'workExceptions 必须是数组',
+        appliedHint:
+          '已应用到该资源，工时视图数值已按此重新计算。若当前刻度为"日"且该资源当天被标记为全天不可用，' +
+          '工时视图对应单元格会显示为淡紫色（resourceOffOrLeaveColor），与公司级共享的周末灰色区分开',
+        permanentHint:
+          '仅适合偶发的个别调整；若某类资源需要长期固定不同于他人的排班（如设备 7×24），' +
+          '更推荐直接编写自定义 resolveWorkingMinutes 按 resource.type 分支处理，避免在例外表中堆砌大量重复日期',
       },
     },
     disableTaskbarFocusMode: '关闭聚焦功能',
@@ -519,6 +548,14 @@ const messages = {
     pdfExportLoading: 'Generating PDF, please wait...',
     pdfExportTitle: 'Gantt Chart Export',
     pdfExportDate: 'Export Date',
+    // PDF export date-range dialog
+    pdfExportRangeTitle: 'Select Export Date Range',
+    pdfExportRangeMessage:
+      'The current time span is large and exporting everything may produce a very large PDF. Please choose the date range to export (tasks overlapping this range will be kept in full, not truncated).',
+    pdfExportRangeMaxSpanHint: 'Recommended span: no more than {days} days',
+    pdfExportRangeInvalid: 'End date cannot be earlier than start date',
+    pdfExportRangeConfirm: 'Export',
+    pdfExportRangeExportAll: 'Export All',
 
     milestoneGroup: 'Milestone',
     collapseTaskList: 'Collapse Task List',
@@ -685,6 +722,33 @@ const messages = {
           'takes priority over the checkboxes above',
         openDialogButton: 'Change Working Time...',
         resetToPresetButton: 'Reset to Checkbox Presets',
+      },
+      personalExceptions: {
+        title: 'Per-Resource Exceptions (resolveWorkingMinutes custom callback demo)',
+        enableLabel: 'Enable per-resource exceptions',
+        enableHint:
+          'Demonstrates attaching an exceptions array to a custom field on the resource ' +
+          '(here, resource.workExceptions), then merging "company-wide exceptions + this ' +
+          'resource\'s own exceptions" via a custom resolveWorkingMinutes callback; does not ' +
+          'conflict with the company-wide workCalendarExceptions above — once enabled, this ' +
+          'callback takes priority',
+        resourceLabel: 'Select resource',
+        jsonLabel: 'resource.workExceptions (JSON array, editable — click Apply to take effect)',
+        applyButton: 'Apply',
+        fillSampleButton: 'Fill Sample',
+        clearButton: 'Clear',
+        invalidJsonError: 'Failed to parse JSON: {message}',
+        invalidArrayError: 'workExceptions must be an array',
+        appliedHint:
+          'Applied to this resource; usage view figures have been recalculated. If the current ' +
+          'scale is Day and this resource is marked fully unavailable on a given day, that cell ' +
+          'shows a light-purple background (resourceOffOrLeaveColor), distinct from the shared ' +
+          'gray weekend color',
+        permanentHint:
+          'Best suited for occasional per-resource tweaks; if a resource type needs a permanently ' +
+          'different schedule (e.g. a device running 7x24), it is better to write a custom ' +
+          'resolveWorkingMinutes that branches on resource.type, instead of piling up repeated ' +
+          'dates in this exception list',
       },
     },
     disableTaskbarFocusMode: 'Disable Focus Mode',

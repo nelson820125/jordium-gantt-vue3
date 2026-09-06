@@ -438,6 +438,7 @@ npm run dev
 | `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | 任务条样式配置   |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | 自定义多语言配置 |
 | `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | 工作时间配置     |
+| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]` | `undefined` | 工作日历例外表（节假日/调休补班/请假），驱动 Timeline / CalendarView / ResourceUsageView 共享表头的周末灰色展示（仅“整天 + 未指定 resourceIds”的记录生效）；同时也是 ResourceUsageView 工时数值计算的默认例外表来源，可通过 `resourceUsageProps.workCalendarExceptions` 单独覆盖（仅影响该视图数值计算，不影响共享表头），字段说明与数据样例详见 [workCalendarExceptions（工作日历例外配置）](#workcalendarexceptions工作日历例外配置)，属性透传范围详见 [ResourceUsageView 属性](#resourceusageview-属性) |
 | `scaleConfigs` ![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ [scale: TimelineScale]?: ScaleConfigOption }` | `undefined` | 自定义各时间刻度的显示配置（单元格宽度、格式化字符串、缓冲区等），详见 [scaleConfigs（时间刻度配置）](#scaleconfigs时间刻度配置) |
 
 #### 回调函数属性
@@ -1928,6 +1929,7 @@ const handleDelete = () => {
 | `currentDate`           | `Date \| string`                                        | 今天                                        | 当前锚点日期                                                            |
 | `selectedResourceId`    | `string \| number \| null`                              | -                                           | 当前选中的资源 ID，未选中时不展示任务                                    |
 | `workingHours`          | `WorkingHoursConfig`                                    | 上午 8-11 点 / 下午 13-17 点                | 工作时间段配置，用于高亮工作时段 / 拖拽吸附                              |
+| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]` | `undefined` | 工作日历例外表，驱动日/周/月视图表头的周末灰色展示（仅“整天 + 未指定 resourceIds”的记录生效）；通常直接透传自 GanttChart 顶层同名属性 |
 | `selectionMinuteStep`   | `number`                                                | `15`                                        | 拖拽选区吸附的分钟粒度                                                  |
 | `disabled`              | `boolean`                                               | `false`                                     | 是否禁用拖拽创建任务                                                    |
 | `allDayLabel`           | `string`                                                | `'全天'`                                    | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) 日/周视图中全天任务行的标签文字 |
@@ -2078,12 +2080,14 @@ const formatTime = (date: string | Date) => new Date(date).toLocaleTimeString('z
 | `normalColor`          | `string`                                                     | 主题默认色  | 正常单元格背景色                                                                            |
 | `underloadColor`       | `string`                                                     | 主题默认色  | 欠载单元格背景色                                                                            |
 | `weekendColor`         | `string`                                                     | 主题默认色  | 周末列背景色（仅 `scale === 'day'` 生效）                                                    |
+| `resourceOffOrLeaveColor` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string` | 内置淡紫色 | 资源专属请假/停机单元格背景色（仅 `scale === 'day'` 且 `showResourceOffOrLeaveStyle` 为 `true` 时生效），与共享的 `weekendColor` 区分开，用法详见 [resourceOffOrLeaveLevel（资源专属请假/停机单元格样式）](#resourceofforleavelevel资源专属请假停机单元格样式) |
+| `showResourceOffOrLeaveStyle` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 是否展示资源专属请假/停机单元格样式，仅 `scale === 'day'` 生效，关闭后单元格仅根据超载/正常/欠载阈值继续配色 |
 | `rowHeight`            | `number`                                                     | `51`        | 行高（px），左右两侧面板共用                                                                 |
 | `columnWidth`          | `number`                                                     | 按刻度自动  | 单元格列宽（px），未提供时按 `scale` 使用默认值（day: 56 / week: 80 / month: 100）             |
 | `disabled`             | `boolean`                                                    | `false`     | 是否禁用组件（置灰且不可交互）                                                               |
-| `resolveWorkingMinutes` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(rangeStart: Date, rangeEnd: Date, resource: Resource) => number` | -           | 自定义回调，返回某资源在指定时间区间内的有效工作分钟数（以 1440/天归一化）；未提供时按内置默认规则（周六日不计）计算 |
-| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]`                       | -           | 工作日历例外表（节假日/调休补班/请假），未提供 `resolveWorkingMinutes` 时通过 `createWorkCalendarResolver` 内部转换 |
-| `workingHours` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ morning?, afternoon? }`                                | 8-11/13-17  | 换算 `workCalendarExceptions` 半天/跨天例外时使用的钟点基准，与 `dailyCapacityHours` 相互独立      |
+| `resolveWorkingMinutes` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(rangeStart: Date, rangeEnd: Date, resource: Resource) => number` | -           | 自定义回调，返回某资源在指定时间区间内的有效工作分钟数（以 1440/天归一化）；未提供时按内置默认规则（周六日不计）计算。优先级高于 `workCalendarExceptions`，用法与示例详见 [resolveWorkingMinutes（自定义工时回调）](#resolveworkingminutes自定义工时回调) |
+| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]`                       | -           | 工作日历例外表（节假日/调休补班/请假），默认透传自 GanttChart 顶层同名属性；未提供 `resolveWorkingMinutes` 时通过 `createWorkCalendarResolver` 内部转换为工时数值。若在此单独指定，仅覆盖本视图的工时数值计算，不影响 Timeline/CalendarView 共享表头的周末展示（该展示效果始终以 GanttChart 顶层 `workCalendarExceptions` 为准）。字段说明与数据样例详见 [workCalendarExceptions（工作日历例外配置）](#workcalendarexceptions工作日历例外配置) |
+| `workingHours`         | `{ morning?, afternoon? }`                                | 8-11/13-17  | 换算 `workCalendarExceptions` 半天/跨天例外时使用的钟点基准，与 `dailyCapacityHours` 相互独立；语义与 GanttChart 顶层 `workingHours`（v1.3.0）一致，但**不会**自动透传自顶层——若顶层 `workingHours` 被自定义修改，需通过 `resourceUsageProps.workingHours` 显式同步，否则本视图仍使用自己的默认钟点，详见 [workCalendarExceptions（工作日历例外配置）](#workcalendarexceptions工作日历例外配置) 底部关系说明 |
 | `dailyCapacityHours` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `number \| ((resource: Resource) => number)`        | `8`         | 每日基准工时（小时），支持按资源差异化（如人工 8 小时 / 设备 24 小时）                              |
 | `onBeforeScaleChange`  | `(next, prev) => boolean \| Promise<boolean>`                 | -           | 刻度切换前的拦截钩子，返回 `false` 可取消                                                    |
 | `onCellClick`          | `(payload: ResourceUsageCellPayload) => void`                 | -           | 点击工时单元格时触发                                                                        |
@@ -2900,6 +2904,209 @@ const scaleConfigs = {
 > - **cellWidth 截断**：超出各刻度内置最小/最大范围的 `cellWidth` 会被自动截断至边界值
 > - **formatter 替换**：传入 `formatter` 时会完整替换该刻度的格式配置（不做字段级合并）
 > - **单位说明**：`preBuffer` / `sufBuffer` 的单位与当前刻度对应（`day` 刻度单位为天，`week` 单位为周，`month` 单位为月，以此类推）
+
+#### workCalendarExceptions（工作日历例外配置）![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+工作日历例外表用于描述"法定节假日、调休补班、个人/资源级请假或停机"等特殊工作时间规则。它是 `GanttChart` 顶层属性，同时也是 `CalendarView`、`ResourceUsageView` 各自的独立属性——三处同名属性传入的是**同一份数据**，但驱动的效果并不完全相同，容易造成困惑，因此单独说明。
+
+**`WorkCalendarException` 字段说明：**
+
+| 字段          | 类型                              | 必填 | 说明                                                                                     |
+| ------------- | --------------------------------- | ---- | ---------------------------------------------------------------------------------------- |
+| `id`          | `string`                          | 否   | 例外记录唯一标识，便于宿主应用管理列表（增删改）                                        |
+| `name`        | `string`                          | 否   | 描述文字，如"元旦""国庆调休补班"，仅用于展示，不参与计算                                |
+| `start`       | `string`                          | 是   | 起始时刻：`'YYYY-MM-DD'`（含当天0点，视为"整天"）或 `'YYYY-MM-DD HH:mm'`（半天/精确到分钟） |
+| `end`         | `string`                          | 是   | 结束时刻，格式同 `start`；不带时间部分表示"含全天"（次日0点为排他边界）                 |
+| `working`     | `boolean`                         | 是   | `true` = 这段时间照常/额外计工时（调休补班、加班）；`false` = 不计工时（放假、请假、停机） |
+| `timeRanges`  | `Array<{ start: string; end: string }>` | 否   | 仅 `working=true` 时生效，按需覆盖当天具体计时段（`HH:mm`）；不提供则套用 `workingHours` 的钟点区间 |
+| `resourceIds` | `Array<string \| number>`         | 否   | 仅对指定资源生效（资源级例外）；不提供则视为"公司级"，对所有资源统一生效               |
+
+**两条独立的作用链路：**
+
+| 链路                                       | 生效范围                                            | 采纳哪些记录                                                    | 说明                                                                 |
+| ------------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| ① 表头周末灰色展示                         | `Timeline` / `CalendarView` / `ResourceUsageView` 共享 | 仅"整天（`start`/`end` 均不带时间部分）+ 未指定 `resourceIds`（公司级）"的记录 | 由 GanttChart 顶层 `workCalendarExceptions` 统一驱动，三个视图表现一致，且**始终以顶层值为准**，无法在子视图单独覆盖 |
+| ② ResourceUsageView 工时数值计算           | 仅 `ResourceUsageView`                                | 全部记录（含半天、跨天、资源级）                                 | 默认沿用顶层 `workCalendarExceptions`；也可通过 `resourceUsageProps.workCalendarExceptions` **单独覆盖**（只影响数值计算，不影响①的表头展示） |
+
+**示例：**
+
+```typescript
+import type { WorkCalendarException } from 'jordium-gantt-vue3'
+
+const workCalendarExceptions: WorkCalendarException[] = [
+  // 1. 元旦法定节假日（公司级、整天、不计工时）
+  //    → 同时驱动①表头灰色展示 和 ②工时数值计算
+  { id: 'holiday-20260101', name: '元旦', start: '2026-01-01', end: '2026-01-01', working: false },
+
+  // 2. 国庆调休补班（公司级、整天、照常计工时）
+  //    → working=true，不会触发①的表头灰色展示；②会把这天计入正常工时
+  { id: 'makeup-20260927', name: '国庆调休补班', start: '2026-09-27', end: '2026-09-27', working: true },
+
+  // 3. 补班当天工作时段与平时不同（09:00-12:00, 13:30-17:30）
+  {
+    id: 'makeup-20260928',
+    name: '国庆调休补班（半天）',
+    start: '2026-09-28',
+    end: '2026-09-28',
+    working: true,
+    timeRanges: [
+      { start: '09:00', end: '12:00' },
+      { start: '13:30', end: '17:30' },
+    ],
+  },
+
+  // 4. 指定资源请假半天（资源级、精确到分钟）
+  //    → 未指定"整天"，也指定了 resourceIds，不影响①共享表头，仅影响②该资源的工时数值
+  {
+    id: 'leave-zhangsan-001',
+    name: '张三请假半天',
+    start: '2026-09-10 08:00',
+    end: '2026-09-10 12:00',
+    working: false,
+    resourceIds: ['res-zhangsan'],
+  },
+
+  // 5. 指定设备资源停机维护 3 天（资源级、整天、跨天）
+  //    → 指定了 resourceIds，同样不影响①共享表头，仅影响②该资源的工时数值
+  {
+    id: 'maintenance-eq01',
+    name: '设备维护停机',
+    start: '2026-09-15',
+    end: '2026-09-18', // 不带时间部分 = 含 9-15、16、17 三天全天（9-18 为排他边界）
+    working: false,
+    resourceIds: ['eq-01'],
+  },
+]
+```
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :resources="resources" :work-calendar-exceptions="workCalendarExceptions" />
+</template>
+```
+
+> **💡 特定资源的个性化排班（呼应上方示例3/4）**：
+>
+> - **偶发性差异**（某资源临时请假、某设备临时停机维护）：用 `workCalendarExceptions` + `resourceIds` 即可，如上方示例3/4。`resourceIds` 按 `String(id)` 与资源的 `id` 精确匹配，未命中的资源不受影响，可以对不同资源分别追加互不干扰的多条记录。
+> - **常态性差异**（如某类设备资源本来就是 7×24 无休、某岗位固定单休而非双休）：不建议为每一个周末逐日追加例外记录，更推荐直接实现自定义 `resolveWorkingMinutes(rangeStart, rangeEnd, resource)` 回调——该回调接收 `resource` 参数，可以按 `resource.type`/`resource.id` 分支返回不同的基准工作分钟数（如设备类型永远返回 1440），且 `resolveWorkingMinutes` 优先级高于 `workCalendarExceptions`（同时提供时以前者为准），一次性描述整套规则，无需逐日维护数据。
+
+**与 `workingHours` / `dailyCapacityHours` 的关系（三者相互独立，不要混淆）：**
+
+| 属性                  | 归属层级                                                       | 回答的问题                                     | 是否随 GanttChart 顶层同名属性自动透传？                                            |
+| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `workCalendarExceptions` | GanttChart 顶层 + CalendarView 自身 + ResourceUsageView 自身   | 哪些日期是节假日/调休/请假                        | ✅ 会自动透传给 CalendarView、Timeline、ResourceUsageView 三者（详见上表两条链路）      |
+| `workingHours`        | GanttChart 顶层（v1.3.0） + ResourceUsageView 自身局部属性（v1.14.0） | 一天里哪些钟点算工作时间（如 8-11/13-17）        | ⚠️ **仅自动透传给 CalendarView 和 Timeline**（用于渲染/高亮工作时段），**不会自动透传给 ResourceUsageView**；ResourceUsageView 有自己独立的 `workingHours`，默认钟点与顶层一致（8-11/13-17），但若顶层被自定义修改，需要另外通过 `resourceUsageProps.workingHours` 显式同步，否则 ResourceUsageView 换算半天例外时仍使用自己的默认值 |
+| `dailyCapacityHours`  | 仅 ResourceUsageView 自身（无顶层等价属性）                       | 多少小时算"一个满工作日"（用于超载/欠载百分比计算） | 不适用——与顶层 `workingHours` 完全独立，不受其影响，也不受 `workingHours` 是否透传影响 |
+
+> **💡 一句话总结**：`workCalendarExceptions`（日历例外表）三视图自动同步；`workingHours`（钟点区间）只同步给 CalendarView/Timeline，ResourceUsageView 要单独设置才能保持一致；`dailyCapacityHours`（满工作日时长）是 ResourceUsageView 独有的另一个维度，跟前两者都无关。
+
+#### resolveWorkingMinutes（自定义工时回调） ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`resolveWorkingMinutes` 是 ResourceUsageView 计算工时数值时最底层、优先级最高的自定义入口：一旦提供该回调，`workCalendarExceptions` 就不再参与工时数值计算（但仍会继续驱动 Timeline/CalendarView/ResourceUsageView 三处共享表头的周末灰色展示——这是两条独立链路，详见上方"两条独立链路"对照表）。
+
+**回调签名：**
+
+```ts
+type ResolveWorkingMinutes = (rangeStart: Date, rangeEnd: Date, resource: Resource) => number
+```
+
+- `rangeStart` / `rangeEnd`：ResourceUsageView 内部按天切分后，某一天的起止时刻。
+- `resource`：正在计算的资源对象——**每个资源、每一天都会单独调用一次该回调**（参见 `useResourceUsageAggregation.ts` 中 `resolveDayWorkRatio(day, resource, resolver)` 的调用位置），因此可以在回调内部按 `resource.id`/`resource.type`/任意自定义字段返回完全不同的结果。
+- 返回值：该资源在 `[rangeStart, rangeEnd)` 区间内的有效工作分钟数，需按 1440 分钟/天（24 小时）归一化（如返回 480 表示按 8 小时折算；返回 1440 表示该资源当天视为全天可用，如设备 7×24）。
+
+**用法① 不同资源类型走不同规则（无需依赖例外表）：**
+
+```ts
+import type { ResolveWorkingMinutes } from 'jordium-gantt-vue3'
+
+const resolveWorkingMinutes: ResolveWorkingMinutes = (rangeStart, rangeEnd, resource) => {
+  // 设备资源恒定 7x24，不受周末影响
+  if (resource.type === 'Device') return 1440
+  // 人力资源保持默认周末不计工时（周六日返回 0，工作日返回 480 = 8 小时）
+  const day = rangeStart.getDay()
+  return day === 0 || day === 6 ? 0 : 480
+}
+```
+
+**用法② 为 `Resource` 扩展自定义字段 `workExceptions`，实现"资源专属、彼此独立"的例外表：**
+
+`Resource` 接口本身带有 `[key: string]: unknown` 索引签名（见 `src/models/classes/Resource.ts`），无需修改组件库即可给任意资源对象附加自定义字段。下面示例把"公司级共享例外"与"该资源专属例外"分开维护，再通过内置的 `createWorkCalendarResolver()` 工具函数合并转换为 `resolveWorkingMinutes` 回调（demo 中 `demo/App.vue` 的"资源专属例外"演示区块即采用此模式，可直接参考其源码）：
+
+```ts
+import type { Resource, WorkCalendarException, ResolveWorkingMinutes } from 'jordium-gantt-vue3'
+import { createWorkCalendarResolver } from 'jordium-gantt-vue3'
+
+// 1. 扩展 Resource 类型，附加专属例外字段（纯类型标注，运行时仍是普通对象属性）
+interface ResourceWithExceptions extends Resource {
+  workExceptions?: WorkCalendarException[]
+}
+
+// 2. 公司级共享例外（法定节假日等，来源与 workCalendarExceptions 用法一致）
+const companyExceptions: WorkCalendarException[] = [
+  { id: 'holiday-2026-10-01', name: '国庆节', start: '2026-10-01', end: '2026-10-07', working: false },
+]
+
+// 3. 按 resource.id 缓存 resolver，避免 resolveDayWorkRatio 每天每资源都重新构建一次
+//    （构建成本正比于例外条数，量大时建议缓存；量小可忽略此优化，直接每次构建）
+const resolverCache = new Map<string | number, ResolveWorkingMinutes>()
+
+const resolveWorkingMinutes: ResolveWorkingMinutes = (rangeStart, rangeEnd, resource) => {
+  let resolver = resolverCache.get(resource.id)
+  if (!resolver) {
+    const personal = (resource as ResourceWithExceptions).workExceptions ?? []
+    resolver = createWorkCalendarResolver([...companyExceptions, ...personal])
+    resolverCache.set(resource.id, resolver)
+  }
+  return resolver(rangeStart, rangeEnd, resource)
+}
+
+// 4. 给某个资源单独追加专属例外（如：该资源本月请假一天，不影响其他资源）
+const zhangsan: ResourceWithExceptions = {
+  id: 'res-zhangsan',
+  name: '张三',
+  tasks: [],
+  workExceptions: [
+    { id: 'zs-leave', name: '张三个人请假', start: '2026-09-10', end: '2026-09-10', working: false },
+  ],
+}
+```
+
+> ⚠️ 若之后修改了某资源的 `workExceptions`，需要同步清除 `resolverCache` 中该资源的缓存项（如 `resolverCache.delete(resource.id)`），否则缓存的 resolver 仍会按旧例外表计算。
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :resources="resources" :resource-usage-props="{ resolveWorkingMinutes }" />
+</template>
+```
+
+> **💡 与 `workCalendarExceptions` 该如何选择？** 两者最终都能驱动工时数值计算，选择依据是数据形态而非能力差异：
+>
+> - 数据是"一张扁平的日期表"（不区分资源归属，仅可选打上 `resourceIds` 过滤标签）→ 直接用 `workCalendarExceptions`，无需写代码，还能同时驱动共享表头展示。
+> - 数据天然挂在"每个资源自己身上"（如从后端按资源分别拉取各自的请假记录）→ 用本节的 `resolveWorkingMinutes` + 自定义字段模式，语义上更贴近"资源自带例外表"，避免手工拼接 `resourceIds`。
+> - 二者也可以同时使用：`resolveWorkingMinutes` 内部完全可以调用 `createWorkCalendarResolver()` 合并两种数据来源（如上方示例②），二者并不互斥。
+
+#### resourceOffOrLeaveLevel（资源专属请假/停机单元格样式） ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`ResourceUsageView` 的共享 `isWeekend`（周末灰色）样式是**按列/按日期共享的**，无法体现"某个资源单独在这一天请假/停机"这类专属信息。v1.14.0 新增了与之独立的资源专属样式通道：
+
+- **数据来源**：内部聚合逻辑复用 `resolveWorkingMinutes`/`workCalendarExceptions`（含 `resourceIds` 过滤）已经计算出的"该资源当天有效工作占比"，无需额外配置或重复声明例外表。
+- **触发条件**：仅 `scale === 'day'` 时生效；当某资源当天的有效工作占比恰好为 `0`，且当天并非公司级共享周末/假期（即 `cell.isWeekend` 为 `false`）时，`ResourceUsageCellData.resourceOffOrLeaveLevel` 会被标记为 `'full'`（当前仅支持全天颗粒度，半天/部分时段的欠载已由已有的超载/欠载百分比配色覆盖，不重复标记）。
+- **与 `isWeekend` 互斥**：同一天不会被两套样式同时命中——公司级周末优先展示为 `is-weekend`，资源专属请假只会出现在"非公司级周末"的日期上，视觉上不会冲突。
+- **样式开关与配色**：通过 `showResourceOffOrLeaveStyle`（默认 `true`）可整体关闭该样式（关闭后单元格退回按超载/欠载/正常阈值配色）；通过 `resourceOffOrLeaveColor` 可自定义背景色，未提供时使用内置淡紫色默认值（参考 Microsoft Teams「休假中」状态配色，与红/黄/绿等负载配色区分明显）。
+
+```vue
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :resources="resources"
+    :resource-usage-props="{
+      resolveWorkingMinutes,
+      resourceOffOrLeaveColor: '#8764B8',
+      showResourceOffOrLeaveStyle: true,
+    }"
+  />
+</template>
+```
 
 #### Timeline 容器自动填充配置
 

@@ -61,6 +61,16 @@ export interface ResourceUsageTaskBreakdown {
   percent: number
 }
 
+/**
+ * 资源专属"全天不可用"等级（v1.14.0）。当前仅有 'full' 一种取值：该资源在这一天的
+ * resolveWorkingMinutes/workCalendarExceptions 折算比例恰好为 0（如个人请假一整天、设备全天停机），
+ * 且当天并非公司级共享的周末/假期（那种情况已由 `isWeekend` 表达，不重复标记，避免同一天被两套
+ * 样式同时命中）。预留字符串字面量联合类型（而非 boolean）是为未来可能新增的 'partial'（半天/部分
+ * 时段例外）留出扩展空间；命名不用 personalOffLevel 是因为该场景不止个人（人力资源）请假，
+ * 也包括设备资源停机等非人力场景。
+ */
+export type ResourceOffOrLeaveLevel = 'full'
+
 /** 单个资源在某个时间刻度桶内的工时聚合结果 */
 export interface ResourceUsageCellData {
   resourceId: string | number
@@ -74,6 +84,12 @@ export interface ResourceUsageCellData {
   isOverloaded: boolean
   /** 仅 scale === 'day' 时有效：该桶（即当天）是否为周六/周日 */
   isWeekend?: boolean
+  /**
+   * 仅 scale === 'day' 时有效（v1.14.0）：该资源在这一天是否因专属例外（workCalendarExceptions
+   * 的 resourceIds 命中，或自定义 resolveWorkingMinutes）而全天不可用。与 `isWeekend`（公司级共享）
+   * 互斥——若当天已经是公司级周末/假期，本字段不会重复置位。
+   */
+  resourceOffOrLeaveLevel?: ResourceOffOrLeaveLevel
   taskBreakdown: ResourceUsageTaskBreakdown[]
 }
 
@@ -103,4 +119,9 @@ export interface ResourceUsageColorConfig {
   underloadColor?: string
   /** 周末列背景色（仅 scale === 'day' 生效） */
   weekendColor?: string
+  /**
+   * 资源专属请假/停机背景色（v1.14.0，仅 scale === 'day' 且 showResourceOffOrLeaveStyle 未关闭时生效）。
+   * 未提供时使用内置淡紫色默认值（参考 Microsoft Teams「休假中」状态配色）。
+   */
+  resourceOffOrLeaveColor?: string
 }

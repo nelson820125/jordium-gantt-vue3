@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - 🎉 新增：`ResourceUsageView` 支持自定义工作日历（节假日/调休/请假），新增 `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` 属性及 `createWorkCalendarResolver` 工具函数，未配置时行为与升级前完全一致
+- 🎉 新增：`GanttChart` 新增顶层 `workCalendarExceptions` 属性，与 `ResourceUsageView` 共用同一份工作日历例外表；仅其中"整天 + 未指定 `resourceIds`"的记录会驱动 `Timeline`/`CalendarView`/`ResourceUsageView` 共享表头的周末灰色展示，`resourceUsageProps.workCalendarExceptions` 可单独覆盖以仅影响该视图的工时数值计算
+- 🎉 新增：`ResourceUsageView` 支持资源专属请假/停机单元格样式（`resourceOffOrLeaveLevel`），复用已有的 `resolveWorkingMinutes`/`workCalendarExceptions` 计算结果，仅 `scale === 'day'` 时对"某资源当天有效工作占比为 0 且非公司级共享周末"的单元格标记为 `'full'`；新增 `resourceOffOrLeaveColor`（默认内置淡紫色，参考 Microsoft Teams「休假中」状态配色）与 `showResourceOffOrLeaveStyle`（默认 `true`）两个 `ResourceUsageView` 属性
 - 🎉 Added: `ResourceUsageView` supports custom work calendars (holidays/makeup workdays/leave) via new `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` properties and a `createWorkCalendarResolver` utility; default behavior is unchanged when not configured
+- 🎉 Added: `GanttChart` gained a new top-level `workCalendarExceptions` property, sharing the same exception table with `ResourceUsageView`; only "full-day + no `resourceIds`" entries drive the shared weekend gray-out header across `Timeline`/`CalendarView`/`ResourceUsageView`, and `resourceUsageProps.workCalendarExceptions` can be set separately to affect only that view's numeric calculation
+- 🎉 Added: `ResourceUsageView` supports a resource-specific leave/downtime cell style (`resourceOffOrLeaveLevel`), reusing the existing `resolveWorkingMinutes`/`workCalendarExceptions` calculation result; when `scale === 'day'`, cells where a resource's effective working ratio for the day is `0` and the day is not a company-wide shared weekend are marked `'full'`. Added two new `ResourceUsageView` properties: `resourceOffOrLeaveColor` (built-in light purple default, inspired by Microsoft Teams' "on leave" presence color) and `showResourceOffOrLeaveStyle` (default `true`)
 
 ### Changed
 - ⚠️ 依赖变更：PDF 导出功能的截图依赖由 `html2canvas` 替换为 `html-to-image`，导出效果与调用方式保持一致

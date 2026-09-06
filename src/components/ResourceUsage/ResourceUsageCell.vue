@@ -72,6 +72,13 @@ interface Props {
   underloadColor?: string
   /** 周末背景色，未提供时使用主题默认色（仅 cell.isWeekend 为 true 时生效） */
   weekendColor?: string
+  /**
+   * 资源专属请假/停机背景色（v1.14.0，仅 cell.resourceOffOrLeaveLevel === 'full' 且
+   * showResourceOffOrLeaveStyle 为 true 时生效），未提供时使用内置淡紫色默认值
+   */
+  resourceOffOrLeaveColor?: string
+  /** 是否展示资源专属请假/停机单元格样式（v1.14.0，默认 true） */
+  showResourceOffOrLeaveStyle?: boolean
   /** 单元格固定高度（px），用于与左侧资源列表行高保持一致 */
   height?: number
 }
@@ -79,6 +86,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   overloadThreshold: 100,
   underloadThreshold: 60,
+  showResourceOffOrLeaveStyle: true,
 })
 
 const emit = defineEmits<{
@@ -151,9 +159,13 @@ const formattedHours = computed(() =>
   props.cell ? Math.round(props.cell.totalHours * 10) / 10 : 0
 )
 
-/** 颜色分级：周末优先于负载状态；<underloadThreshold 黄色（欠载），>overloadThreshold 红色（超载），其余绿色（正常） */
+/** 颜色分级：周末优先于资源专属请假/停机，二者都优先于负载状态；
+ * <underloadThreshold 黄色（欠载），>overloadThreshold 红色（超载），其余绿色（正常） */
 const levelClass = computed(() => {
   if (props.cell?.isWeekend) return 'is-weekend'
+  if (props.showResourceOffOrLeaveStyle && props.cell?.resourceOffOrLeaveLevel === 'full') {
+    return 'is-resource-off-or-leave'
+  }
   if (!props.cell) return 'is-empty'
   const percent = props.cell.totalPercent
   if (percent > props.overloadThreshold) return 'is-overloaded'
@@ -170,6 +182,8 @@ const cellStyle = computed(() => {
     switch (levelClass.value) {
       case 'is-weekend':
         return props.weekendColor
+      case 'is-resource-off-or-leave':
+        return props.resourceOffOrLeaveColor
       case 'is-overloaded':
         return props.overloadColor
       case 'is-underloaded':
@@ -265,6 +279,16 @@ const handleTaskDetailClick = (item: ResourceUsageTaskBreakdown) => {
 .gantt-resource-usage-cell.is-weekend .gantt-resource-usage-hours,
 .gantt-resource-usage-cell.is-weekend .gantt-resource-usage-percent {
   color: var(--gantt-text-muted);
+}
+
+/* 资源专属请假/停机（v1.14.0）：淡紫色背景，与共享的周末灰色区分开，优先级高于负载配色 */
+.gantt-resource-usage-cell.is-resource-off-or-leave {
+  background-color: var(--gantt-off-leave-light);
+  cursor: default;
+}
+.gantt-resource-usage-cell.is-resource-off-or-leave .gantt-resource-usage-hours,
+.gantt-resource-usage-cell.is-resource-off-or-leave .gantt-resource-usage-percent {
+  color: var(--gantt-off-leave);
 }
 
 /* 工时明细 Tooltip（v1.13.0，P1 待办 T7.4）：悬停单元格时展示任务明细，点击某项可跳转对应任务

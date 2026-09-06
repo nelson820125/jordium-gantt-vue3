@@ -24,6 +24,7 @@ import type {
   ResourceUsageCellData,
   ResourceUsageTaskBreakdown,
   ResolveWorkingMinutes,
+  ResourceOffOrLeaveLevel,
 } from '../models/types/ResourceUsageTypes'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -219,9 +220,14 @@ export function useResourceUsageAggregation(options: UseResourceUsageAggregation
         const taskTotals = new Map<number | string, { name: string; hours: number }>()
         let totalHours = 0
         let denominator = 0
+        // 仅 scale === 'day' 时有意义：daysInPeriod 长度恒为 1，记录当天的资源专属工作比例，
+        // 用于判断"该资源当天是否因专属例外/自定义回调而全天不可用"（见 resourceOffOrLeaveLevel）
+        let singleDayRatio: number | null = null
 
         for (const day of daysInPeriod) {
-          denominator += resolveDayWorkRatio(day, resource, resolver) * capacityHours
+          const dayRatio = resolveDayWorkRatio(day, resource, resolver)
+          if (scale === 'day') singleDayRatio = dayRatio
+          denominator += dayRatio * capacityHours
 
           const taskMap = dailyByTask.get(day.getTime())
           if (!taskMap) continue
@@ -244,6 +250,16 @@ export function useResourceUsageAggregation(options: UseResourceUsageAggregation
           })
         )
 
+        const isWeekendValue =
+          scale === 'day'
+            ? (options.resolveWeekendDisplay?.value?.(period.start) ?? isWeekend(period.start))
+            : false
+
+        // 与 isWeekend 互斥：仅当"资源当天比例为 0"且"当天并非公司级共享周末/假期"时才标记，
+        // 避免默认规则下每个普通周末都被重复标记为"资源专属请假/停机"
+        const resourceOffOrLeaveLevel: ResourceOffOrLeaveLevel | undefined =
+          scale === 'day' && singleDayRatio === 0 && !isWeekendValue ? 'full' : undefined
+
         return {
           resourceId: resource.id,
           periodStart: period.start,
@@ -251,10 +267,8 @@ export function useResourceUsageAggregation(options: UseResourceUsageAggregation
           totalHours,
           totalPercent,
           isOverloaded: totalPercent > overloadThreshold,
-          isWeekend:
-            scale === 'day'
-              ? (options.resolveWeekendDisplay?.value?.(period.start) ?? isWeekend(period.start))
-              : false,
+          isWeekend: isWeekendValue,
+          resourceOffOrLeaveLevel,
           taskBreakdown,
         }
       })

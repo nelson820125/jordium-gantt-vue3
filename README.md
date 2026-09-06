@@ -440,6 +440,7 @@ For complete configuration object documentation, see [⚙️ Configuration & Cus
 | `taskBarConfig`  | `TaskBarConfig`              | `undefined`                                                             | Task bar style configuration |
 | `localeMessages` | `Partial<Messages['zh-CN']>` | `undefined`                                                             | Custom localization messages |
 | `workingHours`   | `WorkingHours`               | `{ morning: { start: 8, end: 11 }, afternoon: { start: 13, end: 17 } }` | Working hours configuration  |
+| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]` | `undefined` | Work calendar exceptions (holidays/makeup workdays/leave), driving the **shared weekend gray-out header** across Timeline / CalendarView / ResourceUsageView (only "full-day + no resourceIds" entries take effect); also the default exception source for ResourceUsageView's numeric work-hour calculation, which can be overridden separately via `resourceUsageProps.workCalendarExceptions` (affects only that view's numbers, not the shared header). Field reference and data sample: see [workCalendarExceptions (Work Calendar Exception Configuration)](#workcalendarexceptions-work-calendar-exception-configuration), propagation scope: see [ResourceUsageView Props](#resourceusageview-props) |
 | `scaleConfigs` ![v1.11.0](https://img.shields.io/badge/v1.11.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ [scale: TimelineScale]?: ScaleConfigOption }` | `undefined` | Custom display configuration per time scale (cell width, header formatters, buffers, etc.), see [scaleConfigs (Timeline Scale Configuration)](#scaleconfigs-timeline-scale-configuration) |
 
 #### Callback Props
@@ -1880,6 +1881,7 @@ This means the same `tasks` / `resources` datasets passed to GanttChart via `:ta
 | `currentDate`           | `Date \| string`                                            | today                                         | Anchor date                                                                      |
 | `selectedResourceId`    | `string \| number \| null`                                  | -                                             | Selected resource ID; no tasks are shown when unset                             |
 | `workingHours`          | `WorkingHoursConfig`                                        | 8-11am / 1-5pm                                | Working hours config, used for highlighting/snapping                            |
+| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]` | `undefined` | Work calendar exceptions, driving the weekend gray-out header in Day/Week/Month views (only "full-day + no resourceIds" entries take effect); usually passed through from GanttChart's top-level prop of the same name |
 | `selectionMinuteStep`   | `number`                                                    | `15`                                          | Minute-snap granularity for drag selection                                       |
 | `disabled`              | `boolean`                                                   | `false`                                       | Disable drag-to-create                                                          |
 | `allDayLabel`           | `string`                                                    | `'全天'`                                      | ![v1.13.0](https://img.shields.io/badge/v1.13.0-409EFF?style=flat-square&labelColor=ECF5FF) Label text for the all-day task row in Day/Week views |
@@ -1974,12 +1976,14 @@ Since v1.13.0, the left resource-list panel **directly embeds the same `TaskList
 | `normalColor`           | `string`                                                        | theme default | Normal cell background color                                                                    |
 | `underloadColor`        | `string`                                                        | theme default | Underloaded cell background color                                                               |
 | `weekendColor`          | `string`                                                        | theme default | Weekend column background color (only effective at `scale === 'day'`)                            |
+| `resourceOffOrLeaveColor` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `string` | built-in light purple | Resource-specific leave/downtime cell background color (effective only when `scale === 'day'` and `showResourceOffOrLeaveStyle` is `true`), distinct from the shared `weekendColor`; see [resourceOffOrLeaveLevel (Resource-Specific Leave/Downtime Cell Style)](#resourceofforleavelevel-resource-specific-leavedowntime-cell-style) |
+| `showResourceOffOrLeaveStyle` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to show the resource-specific leave/downtime cell style; only effective at `scale === 'day'`; when disabled, cells fall back to overload/normal/underload threshold coloring only |
 | `rowHeight`             | `number`                                                        | `51`        | Row height (px), shared by both panels                                                            |
 | `columnWidth`           | `number`                                                        | scale-based | Cell column width (px); defaults by `scale` when unset (day: 56 / week: 80 / month: 100)          |
 | `disabled`              | `boolean`                                                       | `false`     | Disable the component (dimmed and non-interactive)                                                |
-| `resolveWorkingMinutes` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(rangeStart: Date, rangeEnd: Date, resource: Resource) => number` | -           | Custom callback returning effective working minutes (normalized to 1440/day) for a resource in a date range; unset falls back to the default weekend-excluded rule |
-| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]`                       | -           | Work calendar exceptions (holidays/makeup workdays/leave); converted internally via `createWorkCalendarResolver` when `resolveWorkingMinutes` is not provided |
-| `workingHours` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `{ morning?, afternoon? }`                                | 8-11/13-17  | Clock-hour basis used to ratio partial-day `workCalendarExceptions`; independent from `dailyCapacityHours` |
+| `resolveWorkingMinutes` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `(rangeStart: Date, rangeEnd: Date, resource: Resource) => number` | -           | Custom callback returning effective working minutes (normalized to 1440/day) for a resource in a date range; unset falls back to the default weekend-excluded rule. Takes priority over `workCalendarExceptions`; usage and examples: see [resolveWorkingMinutes (Custom Work-Minutes Callback)](#resolveworkingminutes-custom-work-minutes-callback) |
+| `workCalendarExceptions` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `WorkCalendarException[]`                       | -           | Work calendar exceptions (holidays/makeup workdays/leave), passed through from GanttChart's top-level prop of the same name by default; converted internally via `createWorkCalendarResolver` into work-hour numbers when `resolveWorkingMinutes` is not provided. Overriding it here only affects this view's numeric calculation, not the shared weekend header in Timeline/CalendarView (which always follows GanttChart's top-level `workCalendarExceptions`). Field reference and data sample: see [workCalendarExceptions (Work Calendar Exception Configuration)](#workcalendarexceptions-work-calendar-exception-configuration) |
+| `workingHours`         | `{ morning?, afternoon? }`                                | 8-11/13-17  | Clock-hour basis used to ratio partial-day `workCalendarExceptions`; independent from `dailyCapacityHours`; semantically identical to GanttChart's top-level `workingHours` (v1.3.0), but **not** auto-propagated from it — if the top-level `workingHours` is customized, sync it explicitly via `resourceUsageProps.workingHours`, otherwise this view keeps using its own default clock hours; see the relationship table in [workCalendarExceptions (Work Calendar Exception Configuration)](#workcalendarexceptions-work-calendar-exception-configuration) |
 | `dailyCapacityHours` ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF) | `number \| ((resource: Resource) => number)`        | `8`         | Base hours per full workday; can vary by resource (e.g. 8 for humans, 24 for devices)              |
 | `onBeforeScaleChange`   | `(next, prev) => boolean \| Promise<boolean>`                    | -           | Hook before the scale changes; return `false` to cancel                                            |
 | `onCellClick`           | `(payload: ResourceUsageCellPayload) => void`                    | -           | Fired when a work-hour cell is clicked                                                            |
@@ -2754,6 +2758,209 @@ const scaleConfigs = {
 > - **cellWidth clamping**: Values outside each scale's min/max are automatically clamped
 > - **formatter replacement**: Passing `formatter` replaces the entire formatter object for that scale (no field-level merge)
 > - **Buffer units**: `preBuffer` / `sufBuffer` use the scale's natural unit (`day` → days, `week` → weeks, `month` → months, etc.)
+
+#### workCalendarExceptions (Work Calendar Exception Configuration) ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+The work calendar exception table describes special working-time rules such as public holidays, makeup workdays, and personal/resource-level leave or downtime. It's a top-level `GanttChart` prop, and also an independent prop on `CalendarView` and `ResourceUsageView`—all three receive **the same data**, but the effect it drives isn't identical across them. This section clarifies that.
+
+**`WorkCalendarException` fields:**
+
+| Field         | Type                               | Required | Description                                                                                          |
+| ------------- | ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `id`          | `string`                            | No       | Unique identifier for the exception entry, for host app list management                                |
+| `name`        | `string`                            | No       | Display label, e.g. "New Year's Day" / "National Day makeup workday"; display only, not used in calc  |
+| `start`       | `string`                            | Yes      | Start time: `'YYYY-MM-DD'` (from midnight, treated as "full day") or `'YYYY-MM-DD HH:mm'` (partial day) |
+| `end`         | `string`                            | Yes      | End time, same format as `start`; no time part means "inclusive full day" (next day's midnight is the exclusive boundary) |
+| `working`     | `boolean`                           | Yes      | `true` = counts as normal/extra work time (makeup workday, overtime); `false` = doesn't count (holiday, leave, downtime) |
+| `timeRanges`  | `Array<{ start: string; end: string }>` | No   | Only used when `working=true`; overrides the day's specific work segments (`HH:mm`); falls back to `workingHours` if omitted |
+| `resourceIds` | `Array<string \| number>`           | No       | Applies only to specified resources (resource-level exception); omitted = company-wide (applies to all resources) |
+
+**Two independent pipelines:**
+
+| Pipeline                                    | Scope                                                | Which entries are used                                                | Notes                                                                 |
+| -------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| ① Weekend gray-out header display            | Shared across `Timeline` / `CalendarView` / `ResourceUsageView` | Only "full-day (`start`/`end` have no time part) + no `resourceIds` (company-wide)" entries | Driven uniformly by GanttChart's top-level `workCalendarExceptions`; all three views behave identically, and it **always** follows the top-level value—cannot be overridden per sub-view |
+| ② ResourceUsageView numeric work-hour calc    | `ResourceUsageView` only                                | All entries (including partial-day, cross-day, resource-level)           | Defaults to the top-level `workCalendarExceptions`; can be overridden separately via `resourceUsageProps.workCalendarExceptions` (affects only the numeric calc, not ①'s header display) |
+
+**Example:**
+
+```typescript
+import type { WorkCalendarException } from 'jordium-gantt-vue3'
+
+const workCalendarExceptions: WorkCalendarException[] = [
+  // 1. New Year's Day public holiday (company-wide, full day, no work time)
+  //    → Drives both ① header display and ② numeric calc
+  { id: 'holiday-20260101', name: "New Year's Day", start: '2026-01-01', end: '2026-01-01', working: false },
+
+  // 2. National Day makeup workday (company-wide, full day, counts as normal work time)
+  //    → working=true, so it does NOT trigger ①'s gray-out header; ② counts it as normal work time
+  { id: 'makeup-20260927', name: 'National Day makeup workday', start: '2026-09-27', end: '2026-09-27', working: true },
+
+  // 3. Makeup workday with custom hours (09:00-12:00, 13:30-17:30)
+  {
+    id: 'makeup-20260928',
+    name: 'National Day makeup workday (custom hours)',
+    start: '2026-09-28',
+    end: '2026-09-28',
+    working: true,
+    timeRanges: [
+      { start: '09:00', end: '12:00' },
+      { start: '13:30', end: '17:30' },
+    ],
+  },
+
+  // 4. A specific resource on half-day leave (resource-level, minute precision)
+  //    → Not a "full-day" entry and has resourceIds, so it doesn't affect ①'s shared header, only ②'s numbers for that resource
+  {
+    id: 'leave-johndoe-001',
+    name: 'John Doe half-day leave',
+    start: '2026-09-10 08:00',
+    end: '2026-09-10 12:00',
+    working: false,
+    resourceIds: ['res-johndoe'],
+  },
+
+  // 5. A specific equipment resource down for 3 days of maintenance (resource-level, full day, cross-day)
+  //    → Has resourceIds, so it also doesn't affect ①'s shared header, only ②'s numbers for that resource
+  {
+    id: 'maintenance-eq01',
+    name: 'Equipment maintenance downtime',
+    start: '2026-09-15',
+    end: '2026-09-18', // no time part = includes 9-15, 16, 17 as full days (9-18 is the exclusive boundary)
+    working: false,
+    resourceIds: ['eq-01'],
+  },
+]
+```
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :resources="resources" :work-calendar-exceptions="workCalendarExceptions" />
+</template>
+```
+
+> **💡 Per-resource personalized schedules (echoing examples 4/5 above)**:
+>
+> - **Occasional differences** (a specific resource on temporary leave, a specific piece of equipment temporarily down for maintenance): use `workCalendarExceptions` + `resourceIds` as shown in examples 4/5 above. `resourceIds` is matched against a resource's `id` via `String(id)`, so unmatched resources are unaffected—you can append independent entries for different resources without them interfering with each other.
+> - **Permanent/structural differences** (e.g. a class of equipment resources is inherently 24/7 with no days off, or a role has a fixed single day off instead of the standard weekend): rather than appending an exception entry for every single weekend date, it's recommended to implement a custom `resolveWorkingMinutes(rangeStart, rangeEnd, resource)` callback instead—it receives the `resource` parameter, so you can branch on `resource.type`/`resource.id` to return different baseline work-minute values (e.g. equipment types always return 1440), and `resolveWorkingMinutes` takes priority over `workCalendarExceptions` when both are provided (the former wins). This describes the whole rule set once, with no need to maintain per-date data.
+
+**Relationship with `workingHours` / `dailyCapacityHours` (all three are independent—don't conflate them):**
+
+| Prop                     | Owned by                                                              | Question it answers                                    | Auto-propagated from GanttChart's top-level prop of the same name?                            |
+| ------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `workCalendarExceptions` | GanttChart top-level + CalendarView's own + ResourceUsageView's own       | Which dates are holidays/makeup days/leave                 | ✅ Auto-propagated to CalendarView, Timeline, and ResourceUsageView (see the two pipelines above)   |
+| `workingHours`           | GanttChart top-level (v1.3.0) + ResourceUsageView's own local prop (v1.14.0) | Which clock hours count as work time (e.g. 8-11/13-17)     | ⚠️ **Auto-propagated only to CalendarView and Timeline** (used for rendering/highlighting work hours); **NOT auto-propagated to ResourceUsageView**. ResourceUsageView has its own separate `workingHours`, defaulting to the same clock hours as the top-level (8-11/13-17)—if the top-level value is customized, you must separately sync it via `resourceUsageProps.workingHours`, otherwise ResourceUsageView keeps using its own default when ratio-converting partial-day exceptions |
+| `dailyCapacityHours`     | ResourceUsageView only (no top-level equivalent)                         | How many hours count as "one full workday" (for overload/underload % calc) | Not applicable—entirely independent of the top-level `workingHours`, unaffected by whether `workingHours` is propagated or not |
+
+> **💡 Summary**: `workCalendarExceptions` (the exception table) auto-syncs across all three views; `workingHours` (clock-hour range) only auto-syncs to CalendarView/Timeline—ResourceUsageView needs it set separately to stay in sync; `dailyCapacityHours` (full-workday length) is a ResourceUsageView-only, unrelated dimension.
+
+#### resolveWorkingMinutes (Custom Work-Minutes Callback) ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`resolveWorkingMinutes` is the lowest-level, highest-priority customization point ResourceUsageView offers for computing work-hour numbers: once provided, `workCalendarExceptions` no longer participates in the numeric calculation (though it still drives the shared weekend header across Timeline/CalendarView/ResourceUsageView—these are two independent pipelines, see the comparison table above).
+
+**Callback signature:**
+
+```ts
+type ResolveWorkingMinutes = (rangeStart: Date, rangeEnd: Date, resource: Resource) => number
+```
+
+- `rangeStart` / `rangeEnd`: the start/end instants of a single day, as sliced internally by ResourceUsageView.
+- `resource`: the resource currently being calculated—**the callback is invoked once per resource per day** (see the call site of `resolveDayWorkRatio(day, resource, resolver)` in `useResourceUsageAggregation.ts`), so you can branch on `resource.id`/`resource.type`/any custom field to return entirely different results.
+- Return value: the resource's effective working minutes within `[rangeStart, rangeEnd)`, normalized to 1440 minutes/day (24 hours)—e.g. return 480 for an 8-hour day, or 1440 if the resource is considered fully available that day (such as a 24/7 device).
+
+**Usage 1: different resource types follow different rules (no exception table needed):**
+
+```ts
+import type { ResolveWorkingMinutes } from 'jordium-gantt-vue3'
+
+const resolveWorkingMinutes: ResolveWorkingMinutes = (rangeStart, rangeEnd, resource) => {
+  // Device resources are always 24/7, unaffected by weekends
+  if (resource.type === 'Device') return 1440
+  // Human resources keep the default weekend-excluded rule (0 on Sat/Sun, 480 = 8h on weekdays)
+  const day = rangeStart.getDay()
+  return day === 0 || day === 6 ? 0 : 480
+}
+```
+
+**Usage 2: extend `Resource` with a custom `workExceptions` field for a "per-resource, independent" exception table:**
+
+The `Resource` interface already carries a `[key: string]: unknown` index signature (see `src/models/classes/Resource.ts`), so you can attach custom fields to any resource object without modifying the library. The example below keeps "company-wide shared exceptions" and "this resource's own exceptions" separate, then merges and converts them into a `resolveWorkingMinutes` callback via the built-in `createWorkCalendarResolver()` utility (the "Per-Resource Exceptions" demo block in `demo/App.vue` follows this exact pattern—refer to its source for a live reference):
+
+```ts
+import type { Resource, WorkCalendarException, ResolveWorkingMinutes } from 'jordium-gantt-vue3'
+import { createWorkCalendarResolver } from 'jordium-gantt-vue3'
+
+// 1. Extend the Resource type with a dedicated exceptions field (type annotation only, still a plain object property at runtime)
+interface ResourceWithExceptions extends Resource {
+  workExceptions?: WorkCalendarException[]
+}
+
+// 2. Company-wide shared exceptions (public holidays etc., same source as workCalendarExceptions usage)
+const companyExceptions: WorkCalendarException[] = [
+  { id: 'holiday-2026-10-01', name: 'National Day', start: '2026-10-01', end: '2026-10-07', working: false },
+]
+
+// 3. Cache the resolver per resource.id to avoid rebuilding it on every resolveDayWorkRatio call
+//    (build cost scales with the number of exceptions—worth caching at scale; skip this optimization for small lists)
+const resolverCache = new Map<string | number, ResolveWorkingMinutes>()
+
+const resolveWorkingMinutes: ResolveWorkingMinutes = (rangeStart, rangeEnd, resource) => {
+  let resolver = resolverCache.get(resource.id)
+  if (!resolver) {
+    const personal = (resource as ResourceWithExceptions).workExceptions ?? []
+    resolver = createWorkCalendarResolver([...companyExceptions, ...personal])
+    resolverCache.set(resource.id, resolver)
+  }
+  return resolver(rangeStart, rangeEnd, resource)
+}
+
+// 4. Attach an exception specific to one resource (e.g. this resource takes one day of personal leave, unaffecting others)
+const zhangsan: ResourceWithExceptions = {
+  id: 'res-zhangsan',
+  name: 'Zhang San',
+  tasks: [],
+  workExceptions: [
+    { id: 'zs-leave', name: 'Personal leave', start: '2026-09-10', end: '2026-09-10', working: false },
+  ],
+}
+```
+
+> ⚠️ If a resource's `workExceptions` is modified afterwards, remember to also clear that resource's entry in `resolverCache` (e.g. `resolverCache.delete(resource.id)`), otherwise the cached resolver keeps using the stale exception list.
+
+```vue
+<template>
+  <GanttChart :tasks="tasks" :resources="resources" :resource-usage-props="{ resolveWorkingMinutes }" />
+</template>
+```
+
+> **💡 Which one should I use, this or `workCalendarExceptions`?** Both can ultimately drive the numeric calculation—the choice comes down to data shape, not capability:
+>
+> - Data is "a single flat date table" (not owned by any particular resource, optionally tagged with `resourceIds`) → use `workCalendarExceptions` directly, no code required, and it also drives the shared header display.
+> - Data is naturally "owned by each resource" (e.g. fetched per-resource leave records from a backend) → use this section's `resolveWorkingMinutes` + custom-field pattern, which semantically matches "the resource carries its own exception table" and avoids manually stitching together `resourceIds`.
+> - Both can be combined: `resolveWorkingMinutes` can internally call `createWorkCalendarResolver()` to merge both data sources (as in Usage 2 above)—they are not mutually exclusive.
+
+#### resourceOffOrLeaveLevel (Resource-Specific Leave/Downtime Cell Style) ![v1.14.0](https://img.shields.io/badge/v1.14.0-409EFF?style=flat-square&labelColor=ECF5FF)
+
+`ResourceUsageView`'s shared `isWeekend` (gray weekend) styling is **column/date-scoped**, shared across all resources, so it can never express "this specific resource is on leave/down today". v1.14.0 adds an independent, resource-scoped styling channel for that:
+
+- **Data source**: reuses the per-resource "effective working ratio for the day" already computed internally from `resolveWorkingMinutes`/`workCalendarExceptions` (including `resourceIds` filtering)—no extra configuration or duplicate exception declarations needed.
+- **Trigger condition**: only effective when `scale === 'day'`; when a resource's effective working ratio for the day is exactly `0`, and the day is not a company-wide shared weekend/holiday (i.e. `cell.isWeekend` is `false`), `ResourceUsageCellData.resourceOffOrLeaveLevel` is marked `'full'` (currently full-day granularity only—partial-day underload is already covered by the existing overload/underload percentage coloring, so it is not marked again).
+- **Mutually exclusive with `isWeekend`**: the same day is never marked by both styles at once—company-wide weekends always display as `is-weekend`, and resource-specific leave only ever appears on days that are NOT a company-wide weekend, avoiding any visual conflict.
+- **Style toggle & color**: `showResourceOffOrLeaveStyle` (default `true`) can fully disable this styling (cells then fall back to overload/underload/normal threshold coloring); `resourceOffOrLeaveColor` customizes the background color, defaulting to a built-in light purple when unset (inspired by Microsoft Teams' "on leave" presence color, visually distinct from the red/yellow/green load-based colors).
+
+```vue
+<template>
+  <GanttChart
+    :tasks="tasks"
+    :resources="resources"
+    :resource-usage-props="{
+      resolveWorkingMinutes,
+      resourceOffOrLeaveColor: '#8764B8',
+      showResourceOffOrLeaveStyle: true,
+    }"
+  />
+</template>
+```
 
 #### Timeline Container Auto-Fill Configuration
 
