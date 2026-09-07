@@ -151,6 +151,10 @@
   },
   "releaseNotes": "点击查看更新日志",
   "collapseExpandClickHint": "可点击展开/收起",
+  "officialSite": {
+    "btnLabel": "🌐 官方网站",
+    "title": "访问官方网站"
+  },
   "sponsor": {
     "btnLabel": "☕ 感谢赞助支持",
     "dialogTitle": "请作者喝杯咖啡 ☕",

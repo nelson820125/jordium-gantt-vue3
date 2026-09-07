@@ -17,8 +17,40 @@
  * 即可获得与资源计划视图一致的工时聚合结果，无需额外转换。
  */
 
+import type { Resource } from '../classes/Resource'
+
 /** 工时分配视图刻度 */
 export type ResourceUsageScale = 'day' | 'week' | 'month'
+
+/**
+ * 工作日历例外（单日或跨天区间），参考 MS Project Calendar Exceptions
+ * @version 1.14.0
+ * @description 用于表达"某天/某段时间是否算工作时间"的特例（法定节假日、调休补班、个人请假、
+ *   设备维护停机等），交给 `createWorkCalendarResolver` 转换为 `ResolveWorkingMinutes` 回调。
+ */
+export interface WorkCalendarException {
+  id?: string
+  /** 描述，便于宿主 UI 展示，如"元旦""国庆调休补班" */
+  name?: string
+  /** 起始时刻：'YYYY-MM-DD'（当天 0 点）或 'YYYY-MM-DD HH:mm' */
+  start: string
+  /** 结束时刻，格式同上；不带时间部分时含全天（次日 0 点为排他边界） */
+  end: string
+  /** true=这段区间照常/额外计工时（补班、加班）；false=不计工时（放假、请假） */
+  working: boolean
+  /** 仅 working=true 时按需覆盖当天的计时段；不提供则套用全局 workingHours 的钟点区间 */
+  timeRanges?: Array<{ start: string; end: string }>
+  /** 该例外仅对指定资源生效；不提供则对所有资源生效（企业统一节假日） */
+  resourceIds?: Array<string | number>
+}
+
+/**
+ * 查询某资源在 [rangeStart, rangeEnd) 内的有效工作分钟数
+ * @version 1.14.0
+ * @description 归一化基准为 1 个自然日 = 1440 分钟（100%）；未提供时资源利用率计算按
+ *   现状默认行为（周六日不计、其余整天计入）折算，保证向后兼容。
+ */
+export type ResolveWorkingMinutes = (rangeStart: Date, rangeEnd: Date, resource: Resource) => number
 
 /** 单个任务在某工时桶内的占比构成明细 */
 export interface ResourceUsageTaskBreakdown {
@@ -28,6 +60,16 @@ export interface ResourceUsageTaskBreakdown {
   /** 对应 task.resources[].capacity，占比累加语义与 conflictUtils.ts 保持一致 */
   percent: number
 }
+
+/**
+ * 资源专属"全天不可用"等级（v1.14.0）。当前仅有 'full' 一种取值：该资源在这一天的
+ * resolveWorkingMinutes/workCalendarExceptions 折算比例恰好为 0（如个人请假一整天、设备全天停机），
+ * 且当天并非公司级共享的周末/假期（那种情况已由 `isWeekend` 表达，不重复标记，避免同一天被两套
+ * 样式同时命中）。预留字符串字面量联合类型（而非 boolean）是为未来可能新增的 'partial'（半天/部分
+ * 时段例外）留出扩展空间；命名不用 personalOffLevel 是因为该场景不止个人（人力资源）请假，
+ * 也包括设备资源停机等非人力场景。
+ */
+export type ResourceOffOrLeaveLevel = 'full'
 
 /** 单个资源在某个时间刻度桶内的工时聚合结果 */
 export interface ResourceUsageCellData {
@@ -42,6 +84,12 @@ export interface ResourceUsageCellData {
   isOverloaded: boolean
   /** 仅 scale === 'day' 时有效：该桶（即当天）是否为周六/周日 */
   isWeekend?: boolean
+  /**
+   * 仅 scale === 'day' 时有效（v1.14.0）：该资源在这一天是否因专属例外（workCalendarExceptions
+   * 的 resourceIds 命中，或自定义 resolveWorkingMinutes）而全天不可用。与 `isWeekend`（公司级共享）
+   * 互斥——若当天已经是公司级周末/假期，本字段不会重复置位。
+   */
+  resourceOffOrLeaveLevel?: ResourceOffOrLeaveLevel
   taskBreakdown: ResourceUsageTaskBreakdown[]
 }
 
@@ -71,4 +119,9 @@ export interface ResourceUsageColorConfig {
   underloadColor?: string
   /** 周末列背景色（仅 scale === 'day' 生效） */
   weekendColor?: string
+  /**
+   * 资源专属请假/停机背景色（v1.14.0，仅 scale === 'day' 且 showResourceOffOrLeaveStyle 未关闭时生效）。
+   * 未提供时使用内置淡紫色默认值（参考 Microsoft Teams「休假中」状态配色）。
+   */
+  resourceOffOrLeaveColor?: string
 }

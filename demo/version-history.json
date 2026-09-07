@@ -899,5 +899,25 @@
       "🔧 Fixed: Incorrect same-resource task conflict detection",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to hankzhang1688@gitee / tombstonedguy@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.14.0",
+    "date": "2026-09-04",
+    "notes": [
+      "🎉 新增：`ResourceUsageView` 支持自定义工作日历（节假日/调休/请假），新增 `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` 属性及 `createWorkCalendarResolver` 工具函数，未配置时行为与升级前完全一致",
+      "🎉 新增：`GanttChart` 新增顶层 `workCalendarExceptions` 属性，与 `ResourceUsageView` 共用同一份工作日历例外表；仅其中\"整天 + 未指定 `resourceIds`\"的记录会驱动 `Timeline`/`CalendarView`/`ResourceUsageView` 共享表头的周末灰色展示，`resourceUsageProps.workCalendarExceptions` 可单独覆盖以仅影响该视图的工时数值计算",
+      "🎉 新增：`ResourceUsageView` 支持资源专属请假/停机单元格样式",
+      "🎉 新增：新增 `resourceOffOrLeaveColor`（默认内置淡紫色）与 `showResourceOffOrLeaveStyle`（默认 `true`）两个 `ResourceUsageView` 属性",
+      "⚠️ 依赖变更：PDF 导出功能的截图依赖由 `html2canvas` 替换为 `html-to-image`，导出效果与调用方式保持一致",
+      "🔧 修复：资源利用率视图`今日`样式与任务视图保持一致",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢hankzhang1688@gitee / GVLLIFESTYLE@github的使用与反馈</span>",
+      "🎉 Added: `ResourceUsageView` now supports custom work calendars (holidays/adjusted workdays/leaves), with new properties `resolveWorkingMinutes`, `workCalendarExceptions`, `dailyCapacityHours`, and the utility function `createWorkCalendarResolver`. When not configured, behavior remains identical to pre-upgrade.",
+      "🎉 Added: `GanttChart` now includes a top-level `workCalendarExceptions` property, sharing the same work calendar exceptions table with `ResourceUsageView`. Only records with \"whole day + unspecified `resourceIds`\" will drive the weekend gray display in `Timeline`/`CalendarView`/`ResourceUsageView`. `resourceUsageProps.workCalendarExceptions` can be used to override and only affect the working hours calculation in that view.",
+      "🎉 Added: `ResourceUsageView` now supports resource-specific leave/downtime cell styling",
+      "🎉 Added: New `resourceOffOrLeaveColor` (default light purple) and `showResourceOffOrLeaveStyle` (default `true`) properties for `ResourceUsageView`",
+      "⚠️ Dependency Change: The screenshot dependency for PDF export has been changed from `html2canvas` to `html-to-image`, with export effects and usage remaining consistent",
+      "🔧 Fixed: The 'Today' style in the Resource Usage view now matches the task view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to hankzhang1688@gitee / GVLLIFESTYLE@github for their use and feedback</span>"
+    ]
   }
 ]

@@ -92,6 +92,7 @@ import type {
   CalendarTaskMovePayload,
 } from '../../models/types/CalendarTypes'
 import type { Task } from '../../models/classes/Task'
+import type { WorkCalendarException } from '../../models/types/ResourceUsageTypes'
 
 const HOUR_HEIGHT = 48 // px，对应 UI 设计 1.2 节
 
@@ -99,6 +100,8 @@ interface Props {
   date: Date
   tasks?: Task[]
   workingHours?: WorkingHoursConfig
+  /** v1.14.1 工作日历例外，影响小时格的 isWorkingHour 判断（与 Timeline/ResourceUsageView 共享同一份配置） */
+  workCalendarExceptions?: WorkCalendarException[]
   resourceId?: string | number
   selectionMinuteStep?: number
   disabled?: boolean
@@ -128,7 +131,9 @@ const emit = defineEmits<{
 
 const gridRef = ref<HTMLElement>()
 
-const hourCells = computed(() => generateDayHours(props.date, props.workingHours))
+const hourCells = computed(() =>
+  generateDayHours(props.date, props.workingHours, props.workCalendarExceptions)
+)
 
 /** 当前时间指示线的纵向偏移（仅当展示日期为今天时渲染，否则为 null 表示不展示） */
 const nowIndicatorTop = computed(() => {

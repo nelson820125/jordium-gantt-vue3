@@ -151,6 +151,10 @@
   },
   "releaseNotes": "Click to view release notes",
   "collapseExpandClickHint": "Click to expand/collapse",
+  "officialSite": {
+    "btnLabel": "🌐 Official Site",
+    "title": "Visit official website"
+  },
   "sponsor": {
     "btnLabel": "☕ Sponsor",
     "dialogTitle": "Buy the Author a Coffee ☕",

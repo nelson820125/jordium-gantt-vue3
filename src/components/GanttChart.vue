@@ -26,13 +26,14 @@ import ResourceUsageView from './ResourceUsage/ResourceUsageView.vue'
 import type {
   ResourceUsageScale,
   ResourceUsageTaskDetailClickPayload,
+  WorkCalendarException,
 } from '../models/types/ResourceUsageTypes'
 import { useI18n, setCustomMessages } from '../composables/useI18n'
 import { formatPredecessorDisplay } from '../utils/predecessorUtils'
 import { moveTask } from '../utils/taskTreeUtils'
 import { assignTaskRows } from '../utils/taskLayoutUtils'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import { toCanvas } from 'html-to-image'
 import type { Task } from '../models/classes/Task'
 import type { Milestone } from '../models/classes/Milestone'
 import type { Resource, ResourceTypeOption } from '../models/classes/Resource'
@@ -78,6 +79,7 @@ const props = withDefaults(defineProps<Props>(), {
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  workCalendarExceptions: undefined,
   taskListConfig: undefined,
   resourceListConfig: undefined,
   taskListColumnRenderMode: 'default',
@@ -632,6 +634,11 @@ interface Props {
     morning?: { start: number; end: number } // 上午工作时间，如 { start: 8, end: 11 }
     afternoon?: { start: number; end: number } // 下午工作时间，如 { start: 13, end: 17 }
   }
+  // v1.14.1 工作日历例外（节假日/调休/请假），Timeline/CalendarView/ResourceUsageView 共享同一份配置：
+  // 仅其中"整天 + 未指定 resourceIds"的记录会驱动三个视图共享表头的周末灰色展示；
+  // 资源利用率视图的工时数值计算仍采纳全部例外（含半天/资源级），语义详见 workCalendarUtils.ts。
+  // 若 resourceUsageProps.workCalendarExceptions 单独指定，则该视图数值计算以其为准（此项仍会驱动表头展示）
+  workCalendarExceptions?: WorkCalendarException[]
   // 任务列表配置
   taskListConfig?: TaskListConfig
   // v1.9.0 资源列表配置（资源计划视图使用）
@@ -1199,6 +1206,38 @@ watch(currentViewMode, () => {
   refreshWidthLimits()
 })
 
+// v1.14.1 bugfix: 日历视图/资源工时视图仅支持 day/week/month 三种粒度（见 calendarScaleFromToolbar/
+// resourceUsageScaleFromToolbar，两者对 hour/quarter/year 均静默回退为 'day'）。此前 currentTimeScale
+// 本身在切视图时不会被改写，导致：① 任务/资源视图下选中 hour/quarter/year 后切入这两个视图，
+// 工具栏刻度按钮的高亮状态由 GanttToolbar 内部 currentTimeScaleKey 的回退逻辑决定，与
+// calendarScaleFromToolbar 各自独立回退，两者判断不一致时会出现"工具栏高亮 month，但视图实际
+// 渲染的是 day 样式"这类不对应；② 切回任务/资源视图时也无法恢复之前选中的 hour/quarter/year。
+// 修复：切入日历/工时视图时若当前刻度不在 day/week/month 范围内，主动 clamp 为 day 并记录切换前的
+// 刻度；切回任务/资源视图时若刻度发生过 clamp，则恢复为记录的原刻度。
+const CALENDAR_FAMILY_COMPATIBLE_SCALES: TimelineScale[] = [
+  TimelineScale.DAY,
+  TimelineScale.WEEK,
+  TimelineScale.MONTH,
+]
+const lastTaskResourceTimeScale = ref<TimelineScale>(currentTimeScale.value)
+const isCalendarFamilyMode = (mode: typeof currentViewMode.value) =>
+  mode === 'calendar' || mode === 'resource-usage'
+const isTaskResourceMode = (mode: typeof currentViewMode.value) =>
+  mode === 'task' || mode === 'resource'
+
+watch(currentViewMode, (newMode, oldMode) => {
+  if (isTaskResourceMode(oldMode) && isCalendarFamilyMode(newMode)) {
+    lastTaskResourceTimeScale.value = currentTimeScale.value
+    if (!CALENDAR_FAMILY_COMPATIBLE_SCALES.includes(currentTimeScale.value)) {
+      handleTimeScaleChange(TimelineScale.DAY)
+    }
+  } else if (isCalendarFamilyMode(oldMode) && isTaskResourceMode(newMode)) {
+    if (lastTaskResourceTimeScale.value !== currentTimeScale.value) {
+      handleTimeScaleChange(lastTaskResourceTimeScale.value)
+    }
+  }
+})
+
 // 计算是否显示关闭按钮
 const showCloseButton = computed(() => {
   const taskId = timelineRef.value?.highlightedTaskId
@@ -1206,15 +1245,18 @@ const showCloseButton = computed(() => {
 })
 
 // v1.9.7 bugfix: 修复拖拽TaskBar后不必要地触发updateTimeScale的问题
-// 只在Timeline首次挂载时初始化timeScale，避免在updateTaskTrigger变化时重复调用
+// v1.14.1 bugfix: Timeline 在 calendar/resource-usage 视图下会被 v-else 整体卸载，
+// 从这两个视图切回 task/resource 视图时 Timeline 会重新挂载成新实例；原先的 { once: true }
+// 只允许整个 GanttChart 生命周期内同步一次，导致重新挂载的新 Timeline 实例读不到
+// currentTimeScale 的最新值（表现为 Timeline 显示成自身默认刻度，但工具栏仍显示切换前的刻度）。
+// 改为只在“从空到有”（真正的挂载时机）才同步一次，拖拽等场景下 timelineRef 引用不会变化，不受影响
 watch(
   () => timelineRef.value,
-  newTimeline => {
-    if (newTimeline) {
+  (newTimeline, oldTimeline) => {
+    if (newTimeline && !oldTimeline) {
       newTimeline.updateTimeScale(currentTimeScale.value)
     }
-  },
-  { once: true } // 只执行一次，避免不必要的重复调用
+  }
 )
 
 const dragging = ref(false)
@@ -2871,8 +2913,86 @@ const generateCsvContent = (tasks: Task[]): string => {
   return csvRows.join('\n')
 }
 
-// PDF导出处理器
-const pdfExportHandler = async () => {
+// 通用识别容器内所有"真正产生滚动"的元素（含自身），不依赖具体类名，
+// 因此任务视图（TaskList/Timeline）、日历视图、资源工时视图都能自动适配
+function findScrollableElements(root: HTMLElement): HTMLElement[] {
+  const all = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))]
+  return all.filter(el => {
+    const cs = window.getComputedStyle(el)
+    const scrollableX =
+      (cs.overflowX === 'auto' || cs.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1
+    const scrollableY =
+      (cs.overflowY === 'auto' || cs.overflowY === 'scroll') &&
+      el.scrollHeight > el.clientHeight + 1
+    return scrollableX || scrollableY
+  })
+}
+
+// PDF导出：手动拷贝所有 <canvas>（关系线/背景网格等）的位图内容到克隆节点。
+// html-to-image 的 cloneNode 只会复制 width/height 属性，不会复制已绘制的像素内容，
+// 若不手动搬运，克隆节点截图后关系线/canvas背景会变成空白
+function copyCanvasBitmaps(source: HTMLElement, clone: HTMLElement) {
+  const sourceCanvases = source.querySelectorAll('canvas')
+  const cloneCanvases = clone.querySelectorAll('canvas')
+  sourceCanvases.forEach((sourceCanvas, index) => {
+    const cloneCanvas = cloneCanvases[index] as HTMLCanvasElement | undefined
+    if (!cloneCanvas) return
+    cloneCanvas.width = sourceCanvas.width
+    cloneCanvas.height = sourceCanvas.height
+    const ctx = cloneCanvas.getContext('2d')
+    if (ctx) ctx.drawImage(sourceCanvas, 0, 0)
+  })
+}
+
+// PDF导出策略（v1.14.2 起简化）：只导出当前视窗可见范围，与旧版 html2canvas 效果对齐，
+// 不再展开全部内容/弹窗选择日期范围（更完整的分页报表能力留给未来 Pro Edition）。
+// html-to-image 内部会对传入节点再次 cloneNode 序列化为 SVG（见
+// node_modules/html-to-image/src/index.ts 的 toSvg），运行时 scrollLeft/scrollTop 属性不属于
+// computed style/序列化内容的一部分，无论设置多少次都会在那次内部再克隆时丢失，必须在截图前把
+// "已经滚动到这个位置"转换成能被序列化保留的 CSS transform——直接作用在可滚动容器的直接子元素上
+// （不新增包裹层，避免破坏子元素依赖该容器作为 position:relative 定位上下文的现有布局）。
+// 注意：此函数必须在 clone 已经挂载到文档后再调用——findScrollableElements 依赖
+// scrollWidth/clientWidth/computed style，脱离文档的节点这些值恒为 0，会导致扫不到任何可滚动元素。
+function syncScrollableClonesForExport(source: HTMLElement, clone: HTMLElement) {
+  const sourceEls = findScrollableElements(source)
+  const cloneEls = findScrollableElements(clone)
+  sourceEls.forEach((el, index) => {
+    const cloneEl = cloneEls[index]
+    if (!cloneEl) return
+    cloneEl.style.overflow = 'hidden'
+    const { scrollLeft, scrollTop } = el
+    if (!scrollLeft && !scrollTop) return
+    Array.from(cloneEl.children).forEach(child => {
+      const childEl = child as HTMLElement
+      const prevTransform = childEl.style.transform
+      childEl.style.transform = prevTransform
+        ? `${prevTransform} translate(${-scrollLeft}px, ${-scrollTop}px)`
+        : `translate(${-scrollLeft}px, ${-scrollTop}px)`
+    })
+  })
+}
+
+// 对齐 TaskList 表头（.task-list-header）与 Timeline/资源工时网格表头
+// （.timeline-header / .gantt-resource-usage-grid-header）的高度：两者理论上都是固定 80px，
+// 但极端场景（自定义列内容换行等）可能导致其一实际渲染高度出现偏差，强制取两者较大值同步。
+// 同样必须在 clone 挂载后调用（需要真实布局后的 offsetHeight），无需还原（克隆体截图后即丢弃）
+function syncExportHeaderHeights(clone: HTMLElement): void {
+  const headers = Array.from(
+    clone.querySelectorAll<HTMLElement>(
+      '.task-list-header, .timeline-header, .gantt-resource-usage-grid-header'
+    )
+  )
+  if (headers.length < 2) return
+
+  const maxHeight = Math.max(...headers.map(el => el.offsetHeight))
+  headers.forEach(el => {
+    el.style.height = `${maxHeight}px`
+  })
+}
+
+// PDF导出核心处理器：只导出当前视窗可见范围
+const runPdfExport = async () => {
+  let loadingEl: HTMLElement | null = null
   try {
     // 获取当前语言的文本
     const loadingText = t.value.pdfExportLoading
@@ -2880,7 +3000,7 @@ const pdfExportHandler = async () => {
     const dateLabel = t.value.pdfExportDate
 
     // 创建加载提示
-    const loadingEl = document.createElement('div')
+    loadingEl = document.createElement('div')
     loadingEl.style.cssText = `
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.5); display: flex; align-items: center;
@@ -2895,24 +3015,33 @@ const pdfExportHandler = async () => {
       throw new Error('找不到甘特图元素')
     }
 
-    // 设置临时样式以确保完整截图
-    const originalStyle = {
-      overflow: ganttElement.style.overflow,
-      height: ganttElement.style.height,
-    }
-
-    ganttElement.style.overflow = 'visible'
-    ganttElement.style.height = 'auto'
+    // 只截取当前视窗可见尺寸（不展开、不改动真实页面任何样式）：取 gantt-body 直接子面板
+    // （左右面板并排，或日历/资源工时单独占满）的实际渲染尺寸求和/取最大值
+    const directChildren = Array.from(ganttElement.children) as HTMLElement[]
+    const mainWidth = directChildren.length
+      ? directChildren.reduce((sum, child) => sum + child.offsetWidth, 0)
+      : ganttElement.offsetWidth
+    const mainHeight = directChildren.length
+      ? Math.max(...directChildren.map(child => child.offsetHeight))
+      : ganttElement.offsetHeight
 
     const currentDate = new Date().toLocaleDateString(i18nLocale.value)
+
+    // 标题/日期头部：不再使用 position:fixed + 离屏负值隐藏。html-to-image 会把节点克隆后
+    // 装进一个全新的、独立坐标系的 SVG foreignObject 里渲染，fixed 定位在这个局部视口中重新计算
+    // 基准，left:-9999px 很可能被直接推出可视区域，导致捕获出一张空白图片（标题/日期随之消失）。
+    // 改为挂载到 position:absolute + width:0;height:0;overflow:hidden 的舞台容器里，内部标题元素
+    // 保持 position:static 正常文档流，既不产生页面闪烁，也规避了 foreignObject 局部坐标系问题。
+    const exportStage = document.createElement('div')
+    exportStage.style.cssText =
+      'position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: hidden;'
+    document.body.appendChild(exportStage)
 
     // 创建标题/日期头部元素（使用浏览器渲染，支持中文，避免 jsPDF 字体乱码）
     const headerEl = document.createElement('div')
     headerEl.style.cssText = [
-      'position: fixed',
-      'left: -9999px',
-      'top: 0',
-      `width: ${Math.max(ganttElement.scrollWidth, 800)}px`,
+      'position: static',
+      `width: ${Math.max(mainWidth, 800)}px`,
       'background: #ffffff',
       'padding: 10px 16px',
       'display: flex',
@@ -2932,31 +3061,47 @@ const pdfExportHandler = async () => {
 
     headerEl.appendChild(titleEl)
     headerEl.appendChild(dateEl)
-    document.body.appendChild(headerEl)
+    exportStage.appendChild(headerEl)
 
-    // 同时捕获标题头部和甘特图（浏览器渲染保证中文字符正确）
-    const [headerCanvas, mainCanvas] = await Promise.all([
-      html2canvas(headerEl, {
-        allowTaint: true,
-        useCORS: true,
-        scale: 2,
-        backgroundColor: '#ffffff',
-      }),
-      html2canvas(ganttElement, {
-        allowTaint: true,
-        useCORS: true,
-        scale: 2,
-        width: ganttElement.scrollWidth,
-        height: ganttElement.scrollHeight,
-        backgroundColor: '#ffffff',
-      }),
-    ])
+    // 克隆当前 DOM（保留虚拟滚动已挂载的可视窗口内容），先挂载到离屏舞台、手动搬运 canvas 位图内容，
+    // 再同步滚动位置、隐藏滚动条、对齐表头高度——后三项都需要真实布局信息（offsetHeight/
+    // scrollWidth 等），必须在挂载后再调用，否则这些值对脱离文档的节点恒为 0。
+    // 全部只作用于克隆体，真实页面全程不受任何影响，无需展开/还原
+    const ganttClone = ganttElement.cloneNode(true) as HTMLElement
+    copyCanvasBitmaps(ganttElement, ganttClone)
+    exportStage.appendChild(ganttClone)
+    // .gantt-body 自身没有固定宽高（display:flex;flex:1，靠父容器撑开），挂进 width:0;height:0 的
+    // exportStage 后会连带塌缩成 0——左侧任务列表面板宽度由 JS 内联样式固定不受影响，但右侧
+    // Timeline/资源工时面板是 flex:1 靠"剩余空间"撑开，容器塌缩后它分不到任何宽度，导致克隆体里
+    // 右侧面板（含表头）渲染为 0 宽、视觉上"没有内容"。这里显式把克隆体自身钳制为真实测量到的
+    // mainWidth/mainHeight，让 flex 子元素能按原比例重新分配空间，必须在下面两个同步函数之前设置，
+    // 否则它们读到的仍是塌缩后的错误布局。
+    ganttClone.style.width = `${mainWidth}px`
+    ganttClone.style.height = `${mainHeight}px`
+    syncScrollableClonesForExport(ganttElement, ganttClone)
+    syncExportHeaderHeights(ganttClone)
 
-    document.body.removeChild(headerEl)
-
-    // 恢复原始样式
-    ganttElement.style.overflow = originalStyle.overflow
-    ganttElement.style.height = originalStyle.height
+    let headerCanvas: HTMLCanvasElement
+    let mainCanvas: HTMLCanvasElement
+    try {
+      // 同时捕获标题头部和甘特图克隆（浏览器渲染保证中文字符正确）
+      ;[headerCanvas, mainCanvas] = await Promise.all([
+        toCanvas(headerEl, {
+          cacheBust: true,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+        }),
+        toCanvas(ganttClone, {
+          cacheBust: true,
+          pixelRatio: 2,
+          width: mainWidth,
+          height: mainHeight,
+          backgroundColor: '#ffffff',
+        }),
+      ])
+    } finally {
+      document.body.removeChild(exportStage)
+    }
 
     const headerImgData = headerCanvas.toDataURL('image/png')
     const mainImgData = mainCanvas.toDataURL('image/png')
@@ -3007,7 +3152,6 @@ const pdfExportHandler = async () => {
     }
   } catch (error) {
     // 移除加载提示
-    const loadingEl = document.querySelector('[style*="position: fixed"]')
     if (loadingEl && loadingEl.parentNode) {
       loadingEl.parentNode.removeChild(loadingEl)
     }
@@ -3015,6 +3159,13 @@ const pdfExportHandler = async () => {
     console.error('PDF导出失败:', error)
     alert('PDF导出失败')
   }
+}
+
+// PDF导出入口：直接导出当前视窗可见范围，不再弹窗选择日期范围（更完整的日期范围/分页报表方案
+// 见 .ai/.claude/reports/frontend-engineer/solutions/pdfexport-v1.14.0.md，作为未来
+// Pro Edition 高级PDF报告功能的设计参考保留，本次不采用）
+const pdfExportHandler = async () => {
+  await runPdfExport()
 }
 
 // 监听GanttToolbar的全屏切换事件
@@ -3214,6 +3365,8 @@ onMounted(() => {
     if (timelineRef.value && typeof timelineRef.value.scrollToTodayCenter === 'function') {
       timelineRef.value.scrollToTodayCenter()
     }
+    // 资源工时视图无 Timeline 实例，需单独触发它自己的今日定位
+    resourceUsageViewRef.value?.scrollToToday?.()
   })
 })
 
@@ -3222,6 +3375,11 @@ const todayLocateHandler = () => {
   // 如果有外部处理器，先调用它
   if (props.onTodayLocate && typeof props.onTodayLocate === 'function') {
     props.onTodayLocate()
+    return
+  }
+  // 资源工时视图（无 Timeline 实例）走自己的横向滚动定位
+  if (currentViewMode.value === 'resource-usage') {
+    resourceUsageViewRef.value?.scrollToToday?.()
     return
   }
   // 使用Timeline组件的scrollToTodayCenter方法，确保今日居中
@@ -3424,6 +3582,8 @@ const taskDrawerEditMode = ref(false)
 
 // v1.12.5 日历视图的组件引用：TaskDrawer 关闭后清空日历的拖拽选区高亮，避免高亮长期滞留
 const calendarViewRef = ref<InstanceType<typeof CalendarView> | null>(null)
+// 资源工时视图的组件引用：今日定位需要转发给它自己的横向滚动定位（与 Timeline 完全独立的滚动容器）
+const resourceUsageViewRef = ref<InstanceType<typeof ResourceUsageView> | null>(null)
 watch(taskDrawerVisible, visible => {
   if (!visible) {
     calendarViewRef.value?.clearSelection()
@@ -4169,6 +4329,7 @@ defineExpose({
         :tasks="tasksForCalendarView"
         :resources="props.resources"
         :working-hours="props.workingHours"
+        :work-calendar-exceptions="props.workCalendarExceptions"
         :scale="calendarScaleFromToolbar"
         v-bind="props.calendarProps"
         @selection-complete="handleCalendarSelectionComplete"
@@ -4182,6 +4343,7 @@ defineExpose({
       <!-- v1.12.5 资源工时视图：与任务/资源视图互斥渲染；左侧列表内嵌复用资源视图/任务视图共用的 TaskList 组件本体 -->
       <ResourceUsageView
         v-else-if="currentViewMode === 'resource-usage'"
+        ref="resourceUsageViewRef"
         class="gantt-panel-full-view"
         :resources="props.resources"
         :resource-list-config="props.resourceListConfig"
@@ -4189,6 +4351,7 @@ defineExpose({
         :scale="resourceUsageScaleFromToolbar"
         :date-range="resourceUsageDateRangeFromTimeline"
         :scale-configs="mergedScaleConfigs"
+        :work-calendar-exceptions="props.workCalendarExceptions"
         v-bind="props.resourceUsageProps"
         @scale-change="payload => emit('resource-usage-scale-change', payload)"
         @cell-click="payload => emit('resource-usage-cell-click', payload)"
@@ -4271,6 +4434,7 @@ defineExpose({
             :end-date="timelineDateRange.max"
             :scale-configs="mergedScaleConfigs"
             :working-hours="props.workingHours"
+            :work-calendar-exceptions="props.workCalendarExceptions"
             :task-bar-config="props.taskBarConfig"
             :allow-drag-and-resize="props.allowDragAndResize"
             :show-actual-taskbar="props.showActualTaskbar"

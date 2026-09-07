@@ -83,12 +83,15 @@ import type {
   CalendarTaskMovePayload,
 } from '../../models/types/CalendarTypes'
 import type { Task } from '../../models/classes/Task'
+import type { WorkCalendarException } from '../../models/types/ResourceUsageTypes'
 
 interface Props {
   anchorDate: Date
   tasks?: Task[]
   resourceId?: string | number
   disabled?: boolean
+  /** v1.14.1 工作日历例外，影响月视图日格的 isWeekend 展示（与 Timeline/ResourceUsageView 共享同一份配置） */
+  workCalendarExceptions?: WorkCalendarException[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -106,7 +109,7 @@ const emit = defineEmits<{
 const weekdayLabels = ['一', '二', '三', '四', '五', '六', '日']
 
 const gridRef = ref<HTMLElement>()
-const monthGrid = computed(() => generateMonthGrid(props.anchorDate))
+const monthGrid = computed(() => generateMonthGrid(props.anchorDate, props.workCalendarExceptions))
 
 const morePopover = ref<{ date: Date; anchor: HTMLElement } | null>(null)
 const openMorePopover = (date: Date, event: MouseEvent) => {

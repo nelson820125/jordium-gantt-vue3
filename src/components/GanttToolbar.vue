@@ -331,9 +331,45 @@ const handleViewModeChange = (mode: GanttViewMode) => {
   }
 }
 
+// v1.14.1 语言下拉菜单 Teleport 到 body 后需要的定位状态：菜单不再是 .language-dropdown 的
+// absolute 定位子元素，而是脱离文档流挂载到 body，因此改用 fixed 定位 + 按钮实际坐标计算
+// 注意：定位宽度优先使用菜单自身的实际渲染宽度（offsetWidth），而非假设固定值：
+// 英文等长文本下菜单实际宽度会超过中文，若仍按固定值计算 left 会导致菜单右侧超出可视区而被裁切/不可见
+const langDropdownRef = ref<HTMLElement | null>(null)
+const languageMenuRef = ref<HTMLElement | null>(null)
+const LANGUAGE_MENU_FALLBACK_WIDTH = 120 // 菜单尚未渲染完成时的兼底预估宽度
+const languageMenuPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 })
+const languageMenuReady = ref(false) // 定位计算完成前隐藏，避免闪现在错误位置
+
+const updateLanguageMenuPosition = () => {
+  const btn = langDropdownRef.value
+  if (!btn) return
+  const btnRect = btn.getBoundingClientRect()
+  const menuWidth = languageMenuRef.value?.offsetWidth || LANGUAGE_MENU_FALLBACK_WIDTH
+  const maxLeft = Math.max(8, window.innerWidth - menuWidth - 8)
+  languageMenuPosition.value = {
+    top: btnRect.bottom + 4,
+    left: Math.min(Math.max(8, btnRect.right - menuWidth), maxLeft),
+  }
+  languageMenuReady.value = true
+}
+
+const languageMenuStyle = computed(() => ({
+  position: 'fixed' as const,
+  top: `${languageMenuPosition.value.top}px`,
+  left: `${languageMenuPosition.value.left}px`,
+  visibility: languageMenuReady.value ? ('visible' as const) : ('hidden' as const),
+}))
+
 // 语言下拉菜单控制
 const toggleLanguageDropdown = () => {
   showLanguageDropdown.value = !showLanguageDropdown.value
+  if (showLanguageDropdown.value) {
+    languageMenuReady.value = false
+    // 先按按钮坐标预估一次（避免第一帧完全无位置），待菜单实际渲染后再按真实宽度修正一次
+    updateLanguageMenuPosition()
+    nextTick(() => updateLanguageMenuPosition())
+  }
 }
 
 const selectLanguage = (lang: Language) => {
@@ -584,14 +620,127 @@ const timeScaleThumbStyle = computed(() => {
   }
 })
 
-// 点击外部关闭下拉菜单
+// 点击外部关闭下拉菜单（语言下拉菜单 Teleport 到 body 后不再是 .language-dropdown 的子元素，
+// 需要额外判断点击是否落在 .language-menu 内，否则点击菜单本身空白处会被误判为"点击外部"而关闭）
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   const dropdown = target.closest('.language-dropdown')
-  if (!dropdown && showLanguageDropdown.value) {
+  const menu = target.closest('.language-menu')
+  if (!dropdown && !menu && showLanguageDropdown.value) {
     showLanguageDropdown.value = false
   }
 }
+
+// 横向滚动/窗口尺寸变化时，Teleport 出去的语言下拉菜单不会跟随按钮位置联动，直接关闭，
+// 避免出现菜单悬空在错误位置的情况
+const closeLanguageDropdownOnViewportChange = () => {
+  if (showLanguageDropdown.value) {
+    showLanguageDropdown.value = false
+  }
+}
+
+// v1.14.1 工具栏横向滚动（隐藏原生滚动条 + 支持滚轮/拖拽横向滚动 + 两侧阴影可点击区）
+// 背景：英文等长文案下按钮组总宽度容易超出容器，此前无溢出处理，会被外层裁切导致按钮样式堆叠。
+const toolbarScrollRef = ref<HTMLElement | null>(null)
+const toolbarContentRef = ref<HTMLElement | null>(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+const updateToolbarScrollState = () => {
+  const el = toolbarScrollRef.value
+  if (!el) return
+  const maxScroll = el.scrollWidth - el.clientWidth
+  canScrollLeft.value = el.scrollLeft > 1
+  canScrollRight.value = maxScroll > 1 && el.scrollLeft < maxScroll - 1
+}
+
+const scrollToolbarBy = (delta: number) => {
+  toolbarScrollRef.value?.scrollBy({ left: delta, behavior: 'smooth' })
+}
+
+// 触控板/鼠标滚轮：容器未溢出时不拦截；溢出时把纵向滚动量转换为横向滚动，
+// 避免用户必须按住 Shift 才能横向滚动工具栏
+const handleToolbarWheel = (e: WheelEvent) => {
+  const el = toolbarScrollRef.value
+  if (!el) return
+  const maxScroll = el.scrollWidth - el.clientWidth
+  if (maxScroll <= 0) return
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    el.scrollLeft += e.deltaY
+    e.preventDefault()
+  }
+}
+
+// 按住拖动横向滚动（隐藏原生滚动条后提供类触控的拖动手感）
+let isToolbarPointerDown = false
+let isToolbarDragging = false
+let toolbarDragMoved = false
+let toolbarDragPointerId = 0
+let toolbarDragStartX = 0
+let toolbarDragStartScrollLeft = 0
+const TOOLBAR_DRAG_THRESHOLD = 3
+
+// 注意：不要在 pointerdown 时就 setPointerCapture——一旦捕获指针，即使随后没有任何位移，
+// 紧随其后的 click 事件目标也会被重定向到本容器而不是实际点击的按钮，导致溢出滚动生效后
+// （典型场景：切换到英文等长文案触发横向滚动）工具栏所有按钮"看起来能点，但事件不触发"。
+// 因此改为惰性捕获：pointerdown 只记录起始状态，真正越过阈值确认是拖动时才在
+// handleToolbarPointerMove 里补上 setPointerCapture，纯点击场景完全不会触碰指针捕获。
+const handleToolbarPointerDown = (e: PointerEvent) => {
+  const el = toolbarScrollRef.value
+  if (!el || e.button !== 0 || el.scrollWidth <= el.clientWidth) return
+  isToolbarPointerDown = true
+  isToolbarDragging = false
+  toolbarDragMoved = false
+  toolbarDragPointerId = e.pointerId
+  toolbarDragStartX = e.clientX
+  toolbarDragStartScrollLeft = el.scrollLeft
+}
+
+const handleToolbarPointerMove = (e: PointerEvent) => {
+  if (!isToolbarPointerDown) return
+  const el = toolbarScrollRef.value
+  if (!el) return
+  const delta = e.clientX - toolbarDragStartX
+  if (!isToolbarDragging) {
+    if (Math.abs(delta) <= TOOLBAR_DRAG_THRESHOLD) return
+    // 首次越过阈值才真正进入拖动态：此时再捕获指针，之前的纯点击场景不受影响
+    isToolbarDragging = true
+    toolbarDragMoved = true
+    el.classList.add('is-dragging')
+    try {
+      el.setPointerCapture(toolbarDragPointerId)
+    } catch {
+      /* 部分浏览器指针已释放时调用会抛错，忽略即可 */
+    }
+  }
+  el.scrollLeft = toolbarDragStartScrollLeft - delta
+}
+
+const endToolbarDrag = (e: PointerEvent) => {
+  isToolbarPointerDown = false
+  if (!isToolbarDragging) return
+  isToolbarDragging = false
+  const el = toolbarScrollRef.value
+  el?.classList.remove('is-dragging')
+  if (el) {
+    try {
+      el.releasePointerCapture(e.pointerId)
+    } catch {
+      /* 部分浏览器在指针已释放时调用会抛错，忽略即可 */
+    }
+  }
+}
+
+// 拖拽产生过明显位移后，需要吞掉紧随其后的 click，避免误触发刻度切换等按钮
+const handleToolbarClickCapture = (e: MouseEvent) => {
+  if (toolbarDragMoved) {
+    e.stopPropagation()
+    e.preventDefault()
+    toolbarDragMoved = false
+  }
+}
+
+let _toolbarResizeObserver: ResizeObserver | null = null
 
 // 生命周期
 onMounted(() => {
@@ -607,16 +756,43 @@ onMounted(() => {
 
   // 监听时间刻度按钮的实际渲染宽度变化
   observeScaleButtons()
+
+  // v1.14.1 观察内容区实际宽度变化（语言切换导致文案变长/变短、按钮组增减、窗口或全屏尺寸变化等），
+  // 用于更新两侧滚动阴影/点击区的显隐状态。观察内容区（而非滚动容器本身）是因为容器自身的
+  // clientWidth 在纯内容溢出场景下不会变化，只有内容区的自然宽度会变化；同时也观察滚动容器
+  // 自身尺寸，用于捕捉窗口/全屏切换导致的容器可视宽度变化。
+  nextTick(() => {
+    updateToolbarScrollState()
+    const scrollEl = toolbarScrollRef.value
+    const contentEl = toolbarContentRef.value
+    if (scrollEl) {
+      scrollEl.addEventListener('scroll', updateToolbarScrollState, { passive: true })
+      scrollEl.addEventListener('scroll', closeLanguageDropdownOnViewportChange, { passive: true })
+    }
+    _toolbarResizeObserver = new ResizeObserver(() => updateToolbarScrollState())
+    if (contentEl) _toolbarResizeObserver.observe(contentEl)
+    if (scrollEl) _toolbarResizeObserver.observe(scrollEl)
+  })
+  window.addEventListener('resize', closeLanguageDropdownOnViewportChange)
 })
 
 // 时间刻度按钮列表变化时重建 ResizeObserver
 watch(availableTimeScales, () => {
   observeScaleButtons()
+  nextTick(() => updateToolbarScrollState())
+})
+
+// 语言切换后文案宽度会变化，需要在下一帧重新计算滚动状态
+watch(locale, () => {
+  nextTick(() => updateToolbarScrollState())
 })
 
 onUnmounted(() => {
   // 清理事件监听
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', closeLanguageDropdownOnViewportChange)
+  toolbarScrollRef.value?.removeEventListener('scroll', updateToolbarScrollState)
+  toolbarScrollRef.value?.removeEventListener('scroll', closeLanguageDropdownOnViewportChange)
   // 清理 ResizeObserver
   if (_viewModeResizeObserver) {
     _viewModeResizeObserver.disconnect()
@@ -626,388 +802,442 @@ onUnmounted(() => {
     _scaleResizeObserver.disconnect()
     _scaleResizeObserver = null
   }
+  if (_toolbarResizeObserver) {
+    _toolbarResizeObserver.disconnect()
+    _toolbarResizeObserver = null
+  }
 })
 </script>
 
 <template>
   <div class="gantt-toolbar">
-    <!-- 左侧操作区 -->
-    <div class="toolbar-left">
-      <!-- 新增按钮组 -->
-      <div
-        v-if="config.showAddTask !== false || config.showAddMilestone !== false"
-        class="gantt-btn-group gantt-add-btn-group"
-      >
-        <button
-          v-if="config.showAddTask !== false"
-          class="gantt-btn-group-item"
-          :title="t('addTask')"
-          @click="handleAddTask"
-        >
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+    <!-- v1.14.1 横向滚动容器：隐藏原生滚动条，支持滚轮/拖拽横向滚动 -->
+    <div
+      ref="toolbarScrollRef"
+      class="gantt-toolbar-scroll"
+      @wheel="handleToolbarWheel"
+      @pointerdown="handleToolbarPointerDown"
+      @pointermove="handleToolbarPointerMove"
+      @pointerup="endToolbarDrag"
+      @pointercancel="endToolbarDrag"
+      @pointerleave="endToolbarDrag"
+      @click.capture="handleToolbarClickCapture"
+    >
+      <div ref="toolbarContentRef" class="gantt-toolbar-content">
+        <!-- 左侧操作区 -->
+        <div class="toolbar-left">
+          <!-- 新增按钮组 -->
+          <div
+            v-if="config.showAddTask !== false || config.showAddMilestone !== false"
+            class="gantt-btn-group gantt-add-btn-group"
           >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          {{ t('addTask') }}
-        </button>
-        <button
-          v-if="config.showAddMilestone !== false"
-          class="gantt-btn-group-item"
-          :title="t('addMilestone')"
-          @click="handleAddMilestone"
-        >
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <g transform="rotate(45 12 12)">
-              <rect
-                x="4"
-                y="4"
-                width="16"
-                height="16"
-                rx="4"
-                ry="4"
+            <button
+              v-if="config.showAddTask !== false"
+              class="gantt-btn-group-item"
+              :title="t('addTask')"
+              @click="handleAddTask"
+            >
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-              />
-            </g>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-          </svg>
-          {{ t('addMilestone') }}
-        </button>
-      </div>
+                stroke-width="2"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              {{ t('addTask') }}
+            </button>
+            <button
+              v-if="config.showAddMilestone !== false"
+              class="gantt-btn-group-item"
+              :title="t('addMilestone')"
+              @click="handleAddMilestone"
+            >
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <g transform="rotate(45 12 12)">
+                  <rect
+                    x="4"
+                    y="4"
+                    width="16"
+                    height="16"
+                    rx="4"
+                    ry="4"
+                    fill="none"
+                    stroke="currentColor"
+                  />
+                </g>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              {{ t('addMilestone') }}
+            </button>
+          </div>
 
-      <!-- v1.9.0 视图模式切换按钮组 - 使用 Segmented Control 样式 -->
-      <!-- v1.12.5 通用化为 v-for 渲染，availableViewModes 默认 ['task','resource'] 时渲染结果与重构前完全一致 -->
-      <div v-if="config.showViewMode !== false" class="gantt-view-mode-control">
-        <div class="view-mode-track">
-          <div class="view-mode-thumb" :style="viewModeThumbStyle"></div>
-        </div>
-        <button
-          v-for="mode in props.availableViewModes ?? DEFAULT_AVAILABLE_VIEW_MODES"
-          :key="mode"
-          :ref="setViewModeBtnRef(mode)"
-          class="view-mode-item"
-          :class="{ active: currentViewMode === mode }"
-          :title="t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode]"
-          @click="handleViewModeChange(mode)"
-        >
-          <svg
-            v-if="mode === 'task'"
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-          </svg>
-          <svg
-            v-else-if="mode === 'resource'"
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <svg
-            v-else-if="mode === 'calendar'"
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-          <svg
-            v-else
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
-          </svg>
-          {{ t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode] }}
-        </button>
-      </div>
+          <!-- v1.9.0 视图模式切换按钮组 - 使用 Segmented Control 样式 -->
+          <!-- v1.12.5 通用化为 v-for 渲染，availableViewModes 默认 ['task','resource'] 时渲染结果与重构前完全一致 -->
+          <div v-if="config.showViewMode !== false" class="gantt-view-mode-control">
+            <div class="view-mode-track">
+              <div class="view-mode-thumb" :style="viewModeThumbStyle"></div>
+            </div>
+            <button
+              v-for="mode in props.availableViewModes ?? DEFAULT_AVAILABLE_VIEW_MODES"
+              :key="mode"
+              :ref="setViewModeBtnRef(mode)"
+              class="view-mode-item"
+              :class="{ active: currentViewMode === mode }"
+              :title="t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode]"
+              @click="handleViewModeChange(mode)"
+            >
+              <svg
+                v-if="mode === 'task'"
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+              </svg>
+              <svg
+                v-else-if="mode === 'resource'"
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <svg
+                v-else-if="mode === 'calendar'"
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <svg
+                v-else
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+              {{ t(VIEW_MODE_LABEL_KEYS[mode]) || VIEW_MODE_FALLBACK_LABELS[mode] }}
+            </button>
+          </div>
 
-      <!-- 展开/折叠按钮组 -->
-      <div
-        v-if="config.showExpandCollapse !== false"
-        class="gantt-btn-group gantt-expand-collapse-btn-group"
-      >
-        <button class="gantt-btn-group-item" :title="t('expandAll')" @click="handleExpandAll">
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-          {{ t('expandAll') }}
-        </button>
-        <button class="gantt-btn-group-item" :title="t('collapseAll')" @click="handleCollapseAll">
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="18 15 12 9 6 15"></polyline>
-          </svg>
-          {{ t('collapseAll') }}
-        </button>
-      </div>
-
-      <!-- 导出按钮组 -->
-      <div
-        v-if="config.showExportCsv !== false || config.showExportPdf !== false"
-        class="gantt-btn-group"
-      >
-        <button
-          v-if="config.showExportCsv !== false"
-          class="gantt-btn-group-item"
-          :title="t('exportCsv')"
-          @click="handleExportCsv"
-        >
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
-            <polyline points="14,2 14,8 20,8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10,9 9,9 8,9"></polyline>
-          </svg>
-          {{ t('exportCsv') }}
-        </button>
-
-        <button
-          v-if="config.showExportPdf !== false"
-          class="gantt-btn-group-item"
-          :title="t('exportPdf')"
-          @click="handleExportPdf"
-        >
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
-            <polyline points="14,2 14,8 20,8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <line x1="12" y1="13" x2="12" y2="17"></line>
-          </svg>
-          {{ t('exportPdf') }}
-        </button>
-      </div>
-    </div>
-
-    <!-- 右侧设置区 -->
-    <div class="toolbar-right">
-      <!-- 时间刻度分段控制器 (Segmented) -->
-      <div v-if="config.showTimeScale !== false" class="segmented-control time-scale-segmented">
-        <div class="segmented-track">
-          <div class="segmented-thumb" :style="timeScaleThumbStyle"></div>
-        </div>
-        <button
-          v-for="scale in availableTimeScales"
-          :key="scale"
-          :ref="(el: unknown) => setScaleBtnRef(scale, el)"
-          class="segmented-item"
-          :class="{ active: currentTimeScaleKey === scale }"
-          :title="t('timeScaleTooltip')"
-          @click="handleTimeScaleChange(timeScaleMap[scale].value)"
-        >
-          {{ timeScaleMap[scale].label() }}
-        </button>
-      </div>
-      <!-- 语言选择下拉菜单 -->
-      <div v-if="config.showLanguage !== false" class="language-dropdown">
-        <button
-          class="toolbar-lang-btn"
-          :title="t('languageTooltip')"
-          @click="toggleLanguageDropdown"
-        >
-          <svg
-            class="gantt-btn-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path
-              d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-            ></path>
-          </svg>
-          <span class="lang-text">{{ currentLanguageDisplay }}</span>
-          <svg
-            class="dropdown-arrow"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="6,9 12,15 18,9"></polyline>
-          </svg>
-        </button>
-
-        <!-- 下拉菜单 -->
-        <div v-if="showLanguageDropdown" class="language-menu">
+          <!-- 展开/折叠按钮组 -->
           <div
-            v-for="lang in ['zh', 'en']"
-            :key="lang"
-            class="language-option"
-            :class="{ active: currentLanguage === lang }"
-            @click="selectLanguage(lang as Language)"
+            v-if="config.showExpandCollapse !== false"
+            class="gantt-btn-group gantt-expand-collapse-btn-group"
           >
-            <span class="option-text">{{ lang === 'zh' ? '中文' : 'English' }}</span>
+            <button class="gantt-btn-group-item" :title="t('expandAll')" @click="handleExpandAll">
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              {{ t('expandAll') }}
+            </button>
+            <button
+              class="gantt-btn-group-item"
+              :title="t('collapseAll')"
+              @click="handleCollapseAll"
+            >
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+              {{ t('collapseAll') }}
+            </button>
+          </div>
+
+          <!-- 导出按钮组 -->
+          <div
+            v-if="config.showExportCsv !== false || config.showExportPdf !== false"
+            class="gantt-btn-group"
+          >
+            <button
+              v-if="config.showExportCsv !== false"
+              class="gantt-btn-group-item"
+              :title="t('exportCsv')"
+              @click="handleExportCsv"
+            >
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10,9 9,9 8,9"></polyline>
+              </svg>
+              {{ t('exportCsv') }}
+            </button>
+
+            <button
+              v-if="config.showExportPdf !== false"
+              class="gantt-btn-group-item"
+              :title="t('exportPdf')"
+              @click="handleExportPdf"
+            >
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <line x1="12" y1="13" x2="12" y2="17"></line>
+              </svg>
+              {{ t('exportPdf') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 右侧设置区 -->
+        <div class="toolbar-right">
+          <!-- 时间刻度分段控制器 (Segmented) -->
+          <div v-if="config.showTimeScale !== false" class="segmented-control time-scale-segmented">
+            <div class="segmented-track">
+              <div class="segmented-thumb" :style="timeScaleThumbStyle"></div>
+            </div>
+            <button
+              v-for="scale in availableTimeScales"
+              :key="scale"
+              :ref="(el: unknown) => setScaleBtnRef(scale, el)"
+              class="segmented-item"
+              :class="{ active: currentTimeScaleKey === scale }"
+              :title="t('timeScaleTooltip')"
+              @click="handleTimeScaleChange(timeScaleMap[scale].value)"
+            >
+              {{ timeScaleMap[scale].label() }}
+            </button>
+          </div>
+          <!-- 语言选择下拉菜单 -->
+          <div v-if="config.showLanguage !== false" ref="langDropdownRef" class="language-dropdown">
+            <button
+              class="toolbar-lang-btn"
+              :title="t('languageTooltip')"
+              @click="toggleLanguageDropdown"
+            >
+              <svg
+                class="gantt-btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path
+                  d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+                ></path>
+              </svg>
+              <span class="lang-text">{{ currentLanguageDisplay }}</span>
+              <svg
+                class="dropdown-arrow"
+                :class="{ 'is-open': showLanguageDropdown }"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- v1.14.1 下拉菜单 Teleport 到 body：避免被 .gantt-toolbar-scroll 的 overflow-y:hidden 裁切，
+               改用 fixed 定位 + 按钮实际坐标计算（见 languageMenuStyle/updateLanguageMenuPosition） -->
+          <Teleport to="body">
+            <div
+              v-if="showLanguageDropdown"
+              ref="languageMenuRef"
+              class="language-menu"
+              :style="languageMenuStyle"
+            >
+              <div
+                v-for="lang in ['zh', 'en']"
+                :key="lang"
+                class="language-option"
+                :class="{ active: currentLanguage === lang }"
+                @click="selectLanguage(lang as Language)"
+              >
+                <span class="option-text">{{ lang === 'zh' ? '中文' : 'English' }}</span>
+                <svg
+                  v-if="currentLanguage === lang"
+                  class="check-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <polyline points="20,6 9,17 4,12"></polyline>
+                </svg>
+              </div>
+            </div>
+          </Teleport>
+
+          <!-- 今日定位按钮 -->
+          <button
+            v-if="config.showTodayLocate !== false"
+            class="toolbar-icon-btn today-locate-btn"
+            :title="t('todayLocateTooltip')"
+            @click="handleTodayLocate"
+          >
             <svg
-              v-if="currentLanguage === lang"
-              class="check-icon"
+              class="gantt-btn-icon"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
             >
-              <polyline points="20,6 9,17 4,12"></polyline>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+              <circle cx="12" cy="16" r="1"></circle>
             </svg>
-          </div>
+          </button>
+
+          <button
+            v-if="config.showTheme !== false"
+            class="toolbar-icon-btn"
+            :title="t(isDarkMode ? 'lightMode' : 'darkMode')"
+            @click="handleThemeToggle"
+          >
+            <svg
+              v-if="isDarkMode"
+              class="gantt-btn-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg
+              v-else
+              class="gantt-btn-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <!-- 备用表情符号 -->
+            <span class="icon-fallback">{{ isDarkMode ? '☀️' : '🌙' }}</span>
+          </button>
+
+          <button
+            v-if="config.showFullscreen !== false"
+            class="toolbar-icon-btn"
+            :title="t(isFullscreen ? 'exitFullscreen' : 'fullscreen')"
+            @click="handleFullscreenToggle"
+          >
+            <svg
+              v-if="isFullscreen"
+              class="gantt-btn-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
+              ></path>
+            </svg>
+            <svg
+              v-else
+              class="gantt-btn-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"
+              ></path>
+            </svg>
+            <!-- 备用表情符号 -->
+            <span class="icon-fallback">{{ isFullscreen ? '⇲' : '⇱' }}</span>
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- 今日定位按钮 -->
-      <button
-        v-if="config.showTodayLocate !== false"
-        class="toolbar-icon-btn today-locate-btn"
-        :title="t('todayLocateTooltip')"
-        @click="handleTodayLocate"
-      >
-        <svg
-          class="gantt-btn-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-          <circle cx="12" cy="16" r="1"></circle>
-        </svg>
-      </button>
-
-      <button
-        v-if="config.showTheme !== false"
-        class="toolbar-icon-btn"
-        :title="t(isDarkMode ? 'lightMode' : 'darkMode')"
-        @click="handleThemeToggle"
-      >
-        <svg
-          v-if="isDarkMode"
-          class="gantt-btn-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-        <svg
-          v-else
-          class="gantt-btn-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <!-- 备用表情符号 -->
-        <span class="icon-fallback">{{ isDarkMode ? '☀️' : '🌙' }}</span>
-      </button>
-
-      <button
-        v-if="config.showFullscreen !== false"
-        class="toolbar-icon-btn"
-        :title="t(isFullscreen ? 'exitFullscreen' : 'fullscreen')"
-        @click="handleFullscreenToggle"
-      >
-        <svg
-          v-if="isFullscreen"
-          class="gantt-btn-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
-          ></path>
-        </svg>
-        <svg
-          v-else
-          class="gantt-btn-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"
-          ></path>
-        </svg>
-        <!-- 备用表情符号 -->
-        <span class="icon-fallback">{{ isFullscreen ? '⇲' : '⇱' }}</span>
-      </button>
+    <!-- v1.14.1 两侧滚动阴影 + 可点击滑动区：仅在实际发生溢出时显示 -->
+    <div
+      v-show="canScrollLeft"
+      class="toolbar-scroll-edge toolbar-scroll-edge-left"
+      :title="t('scrollLeftTooltip') || undefined"
+      @click="scrollToolbarBy(-240)"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </div>
+    <div
+      v-show="canScrollRight"
+      class="toolbar-scroll-edge toolbar-scroll-edge-right"
+      :title="t('scrollRightTooltip') || undefined"
+      @click="scrollToolbarBy(240)"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
     </div>
 
     <!-- 确认对话框 -->
@@ -1032,25 +1262,100 @@ onUnmounted(() => {
 <style scoped>
 @import '../styles/theme-variables.css';
 .gantt-toolbar {
+  position: relative; /* 供两侧滚动阴影/点击区绝对定位 */
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 12px 0;
   background: var(--gantt-bg-toolbar, #f8f9fa);
   border-bottom: 1px solid var(--gantt-border-color, #ebeef5);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* v1.14.1 横向滚动容器：隐藏原生滚动条，将超出宽度的按钮组通过滚轮/拖拽横向滚动展示，
+   而不是被外层裁切造成样式堆叠；不设置 flex-wrap，避免占用下方甘特图主体区域的垂直空间 */
+.gantt-toolbar-scroll {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  cursor: grab;
+  touch-action: pan-x;
+  padding: 0 16px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* 旧版 Edge/IE */
+}
+
+.gantt-toolbar-scroll::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/新版Edge：隐藏滚动条，不占用布局空间 */
+  height: 0;
+}
+
+.gantt-toolbar-scroll.is-dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+  user-select: none;
+}
+
+/* 内容区：min-width: 100% 保证未溢出时仍可撑满宽度维持左右两端对齐（space-between）；
+   一旦子项自然宽度超出容器，inline-flex 会让内容按自身宽度排列而不是被压缩，从而触发横向滚动 */
+.gantt-toolbar-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 100%;
+}
+
+/* 两侧滚动阴影 + 可点击滑动区：渐变背景与工具栏底色一致，制造"渐隐"视觉提示；
+   仅在 canScrollLeft/canScrollRight 为 true（确实存在溢出内容）时显示 */
+.toolbar-scroll-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  color: var(--gantt-text-secondary, #909399);
+  transition: color 0.15s ease;
+}
+
+.toolbar-scroll-edge:hover {
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.toolbar-scroll-edge svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.toolbar-scroll-edge-left {
+  left: 0;
+  background: linear-gradient(to right, var(--gantt-bg-toolbar, #f8f9fa) 40%, transparent);
+}
+
+.toolbar-scroll-edge-right {
+  right: 0;
+  background: linear-gradient(to left, var(--gantt-bg-toolbar, #f8f9fa) 40%, transparent);
 }
 
 .toolbar-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .toolbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 /* 图标按钮样式 */
@@ -1174,21 +1479,21 @@ onUnmounted(() => {
 }
 
 .language-dropdown[aria-expanded='true'] .dropdown-arrow,
-.language-dropdown:has(.language-menu) .dropdown-arrow {
+.dropdown-arrow.is-open {
   transform: rotate(180deg);
 }
 
 .language-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
+  /* position 由 languageMenuStyle 内联样式提供（fixed + top/left），
+     因为 Teleport 到 body 后不再相对于 .language-dropdown 定位 */
   min-width: 120px;
   background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #dcdfe6);
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  /* 与项目里其它 position:fixed 浮层（tooltip/右键菜单/全屏）保持同一套 z-index 变量，
+     否则全屏模式（.gantt-fullscreen 用的也是这个变量，z-index:9999）会把菜单压在下面 */
+  z-index: var(--gantt-z-overlay, 9999);
   overflow: hidden;
   animation: dropdown-appear 0.2s ease;
 }
@@ -1208,11 +1513,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 8px 12px;
   cursor: pointer;
   color: var(--gantt-text-primary, #606266);
   transition: all 0.2s ease;
   border-bottom: 1px solid var(--gantt-border-color, #f0f0f0);
+  white-space: nowrap; /* 避免英文等长文案换行导致宽度测量与实际展示不一致 */
 }
 
 .language-option:last-child {
@@ -1347,7 +1654,6 @@ onUnmounted(() => {
   }
 
   .language-menu {
-    right: 0;
     min-width: 100px;
   }
 

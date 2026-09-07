@@ -42,7 +42,7 @@
                 v-for="col in visiblePeriodCells"
                 :key="col.index"
                 class="gantt-resource-usage-grid-header-cell"
-                :class="{ 'is-weekend': col.isWeekend }"
+                :class="{ 'is-weekend': col.isWeekend && !col.isToday, 'is-today': col.isToday }"
                 :style="{ left: col.left + 'px', width: columnWidthPx + 'px' }"
               >
                 {{ formatPeriodLabel(col.period.periodStart) }}
@@ -81,6 +81,8 @@
                 :normal-color="normalColor"
                 :underload-color="underloadColor"
                 :weekend-color="weekendColor"
+                :resource-off-or-leave-color="resourceOffOrLeaveColor"
+                :show-resource-off-or-leave-style="showResourceOffOrLeaveStyle"
                 :height="rowHeight"
                 @click="handleCellClick"
                 @hover="handleCellHover"
@@ -114,11 +116,17 @@ import { computed, nextTick, onMounted, onUnmounted, provide, ref, useSlots, wat
 import TaskList from '../TaskList/TaskList.vue'
 import ResourceUsageCell from './ResourceUsageCell.vue'
 import { useResourceUsageAggregation } from '../../composables/useResourceUsageAggregation'
+import {
+  createWorkCalendarResolver,
+  resolveWorkCalendarDisplayOverride,
+} from '../../utils/workCalendarUtils'
 import type {
   ResourceUsageScale,
   ResourceUsageCellPayload,
   ResourceUsageCellData,
   ResourceUsageTaskDetailClickPayload,
+  ResolveWorkingMinutes,
+  WorkCalendarException,
 } from '../../models/types/ResourceUsageTypes'
 import type { Resource } from '../../models/classes/Resource'
 import type {
@@ -160,11 +168,48 @@ interface Props {
   underloadColor?: string
   /** 周末列背景色，未提供时使用主题默认色（仅 scale === 'day' 生效） */
   weekendColor?: string
+  /**
+   * 资源专属请假/停机背景色（v1.14.0，仅 scale === 'day' 且 showResourceOffOrLeaveStyle 为 true 时生效），
+   * 未提供时使用内置淡紫色默认值（参考 Microsoft Teams「休假中」状态配色）。
+   */
+  resourceOffOrLeaveColor?: string
+  /**
+   * 是否展示资源专属请假/停机单元格样式（v1.14.0，默认 true）。仅 scale === 'day' 生效；
+   * 与公司级共享的 `isWeekend` 无关（周末样式不受此开关影响）。关闭后单元格仅根据
+   * 超载/正常/欠载阈值继续根据百分比配色，不受影响。
+   */
+  showResourceOffOrLeaveStyle?: boolean
   /** 行高（px），左右两侧面板共用，默认 40 */
   rowHeight?: number
   /** 单元格列宽（px），未提供时按 scale 使用默认值（day: 56 / week: 80 / month: 100） */
   columnWidth?: number
   disabled?: boolean
+  /**
+   * 工作日/工时可配置化（v1.14.0，见 .ai/.claude/requirements/v1.13.6.md）。
+   * 核心扩展点：查询某资源在指定时间区间内的有效工作分钟数，未提供时按现状默认行为
+   * （周六日不计、其余整天计入）计算，保证向后兼容。与 `workCalendarExceptions` 二选一，
+   * 同时传入时本属性优先。
+   */
+  resolveWorkingMinutes?: ResolveWorkingMinutes
+  /**
+   * 工作日历例外表（法定节假日/调休补班/个人请假等），未提供 `resolveWorkingMinutes` 时，
+   * 内部通过 `createWorkCalendarResolver` 转换为等效回调。
+   */
+  workCalendarExceptions?: WorkCalendarException[]
+  /**
+   * 换算 `workCalendarExceptions` 半天/跨天例外时使用的钟点工作时段基准，未提供时使用与
+   * GanttChart `workingHours` 属性相同的默认值（上午 8-11 + 下午 13-17）。仅在提供
+   * `workCalendarExceptions` 且未显式提供 `resolveWorkingMinutes` 时生效。
+   */
+  workingHours?: {
+    morning?: { start: number; end: number }
+    afternoon?: { start: number; end: number }
+  }
+  /**
+   * 每日基准工时（小时），支持按资源差异化（如人工 8 小时 / 设备 24 小时）。未提供时默认 8，
+   * 与升级前 `DAILY_CAPACITY_HOURS` 硬编码常量一致。
+   */
+  dailyCapacityHours?: number | ((resource: Resource) => number)
   onBeforeScaleChange?: (
     next: ResourceUsageScale,
     prev: ResourceUsageScale
@@ -181,6 +226,7 @@ const props = withDefaults(defineProps<Props>(), {
   underloadThreshold: 60,
   rowHeight: 51, // 对齐资源计划视图 TaskRow 行高（ROW_HEIGHT）
   disabled: false,
+  showResourceOffOrLeaveStyle: true,
 })
 
 const slots = useSlots()
@@ -252,11 +298,31 @@ const dateRangeInternal = computed(() => props.dateRange ?? defaultDateRange())
 const overloadThresholdRef = computed(() => props.overloadThreshold)
 const scaleRef = computed(() => scaleInternal.value)
 
+// 工作日历例外表未显式提供 resolveWorkingMinutes 时，转换为等效回调；两者均未提供时为
+// undefined，交由 composable 内部回退默认行为（100% 向后兼容）
+const effectiveResolveWorkingMinutes = computed<ResolveWorkingMinutes | undefined>(() => {
+  if (props.resolveWorkingMinutes) return props.resolveWorkingMinutes
+  if (props.workCalendarExceptions?.length) {
+    return createWorkCalendarResolver(props.workCalendarExceptions, props.workingHours)
+  }
+  return undefined
+})
+const dailyCapacityHoursRef = computed(() => props.dailyCapacityHours)
+
+// v1.14.1: 表头/单元格周末灰色展示的独立覆盖层。仅全天 + 公司层面例外影响展示，
+// 与上述 effectiveResolveWorkingMinutes（仍使用完整未过滤的例外列表，包含资源专属/半天）的数值计算管线完全解耦
+const resolveWeekendDisplayRef = computed(
+  () => (date: Date) => resolveWorkCalendarDisplayOverride(date, props.workCalendarExceptions)
+)
+
 const { cellsByResource } = useResourceUsageAggregation({
   resources: computed(() => props.resources),
   scale: scaleRef,
   dateRange: dateRangeInternal,
   overloadThreshold: overloadThresholdRef,
+  resolveWorkingMinutes: effectiveResolveWorkingMinutes,
+  dailyCapacityHours: dailyCapacityHoursRef,
+  resolveWeekendDisplay: resolveWeekendDisplayRef,
 })
 
 // 全量周期列表（用于表头与横向虚拟滚动索引），取任意资源的桶结果即可（各资源桶数量一致）
@@ -560,6 +626,23 @@ const visibleRows = computed(() => {
   return rows
 })
 
+/**
+ * 判断某个周期（日/周/月）是否包含"今天"，仅比较日期部分（忽略时分秒）。
+ * periodEnd 对齐 useResourceUsageAggregation 里的语义：当天/当周/当月最后一天的 23:59:59.999，
+ * 因此只需判断"今天"是否落在 [periodStart 日期, periodEnd 日期] 闭区间内即可，三种刻度通用。
+ */
+const isPeriodToday = (periodStart: Date, periodEnd: Date): boolean => {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const start = new Date(
+    periodStart.getFullYear(),
+    periodStart.getMonth(),
+    periodStart.getDate()
+  ).getTime()
+  const end = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime()
+  return today >= start && today <= end
+}
+
 const visiblePeriodCells = computed(() => {
   const { start, end } = visibleColRange.value
   const cells: Array<{
@@ -567,6 +650,7 @@ const visiblePeriodCells = computed(() => {
     period: { periodStart: Date; periodEnd: Date }
     left: number
     isWeekend: boolean
+    isToday: boolean
   }> = []
   for (let i = start; i <= end; i++) {
     const period = periods.value[i]
@@ -576,6 +660,7 @@ const visiblePeriodCells = computed(() => {
       period,
       left: i * columnWidthPx.value,
       isWeekend: Boolean(period.isWeekend),
+      isToday: isPeriodToday(period.periodStart, period.periodEnd),
     })
   }
   return cells
@@ -629,6 +714,39 @@ const onGridScroll = (e: Event) => {
 let resizeObserver: ResizeObserver | null = null
 let rootResizeObserver: ResizeObserver | null = null
 
+/**
+ * 定位到"今天"所在的周期列（日/周/月刻度通用），并使其在网格视口中水平居中，
+ * 对齐任务/资源视图 Timeline.scrollToTodayCenter 的效果。找不到（如日期范围/资源均为空）时静默跳过。
+ */
+const scrollToToday = () => {
+  nextTick(() => {
+    const list = periods.value
+    const idx = list.findIndex(p => isPeriodToday(p.periodStart, p.periodEnd))
+    if (idx === -1 || !gridScrollRef.value) return
+    const targetLeft =
+      idx * columnWidthPx.value - gridScrollRef.value.clientWidth / 2 + columnWidthPx.value / 2
+    gridScrollRef.value.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+  })
+}
+
+// 首次挂载资源数据可能尚未就绪（异步加载），resources 由空变为非空时补一次定位
+watch(
+  () => props.resources.length,
+  (newLen, oldLen) => {
+    if (oldLen === 0 && newLen > 0) {
+      scrollToToday()
+    }
+  }
+)
+
+// 切换刻度（日/周/月）后，列宽/周期列表都会重新计算，之前的横向滚动位置不再对应今日列，
+// 需要重新定位今日，对齐任务/资源视图切换刻度后 Timeline 的既有体验
+watch(scaleInternal, (next, prev) => {
+  if (next !== prev) {
+    scrollToToday()
+  }
+})
+
 onMounted(() => {
   window.addEventListener(
     'task-list-vertical-scroll',
@@ -657,6 +775,8 @@ onMounted(() => {
       })
       rootResizeObserver.observe(rootRef.value)
     }
+    // 页面加载后自动居中今日，对齐任务/资源视图 Timeline 的默认行为
+    scrollToToday()
   })
 })
 
@@ -672,7 +792,7 @@ onUnmounted(() => {
   window.removeEventListener('task-list-hover', handleTaskListHoverEvent as EventListener)
 })
 
-defineExpose({ refreshAggregation, setScale })
+defineExpose({ refreshAggregation, setScale, scrollToToday })
 </script>
 
 <style scoped>
@@ -740,6 +860,7 @@ defineExpose({ refreshAggregation, setScale })
 .gantt-resource-usage-grid-header {
   flex-shrink: 0;
   height: 80px;
+  box-sizing: border-box; /* border-bottom 计入 80px 内，避免比 .task-list-header 多出 1px */
   overflow: hidden;
   position: relative;
   background-color: var(--gantt-bg-secondary);
@@ -793,6 +914,13 @@ defineExpose({ refreshAggregation, setScale })
 .gantt-resource-usage-grid-header-cell.is-weekend {
   background-color: var(--gantt-bg-tertiary);
   color: var(--gantt-text-muted);
+}
+
+/* 今日/本周/本月高亮，对齐任务/资源视图 Timeline 表头的 .timeline-day.today / .timeline-week.today 蓝色系样式 */
+.gantt-resource-usage-grid-header-cell.is-today {
+  background-color: var(--gantt-primary);
+  color: var(--gantt-text-white);
+  font-weight: 600;
 }
 
 .gantt-resource-usage-grid-scroll {
