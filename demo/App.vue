@@ -1679,6 +1679,14 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </a>
       </div> -->
       <div class="title-right docs-links">
+        <a
+          class="official-site-btn"
+          href="https://gantt.jordium.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="demoMessages.officialSite?.title || 'Visit official website'"
+        >{{ demoMessages.officialSite?.btnLabel || '🌐 Official Site' }}</a>
+        <span class="docs-divider"></span>
         <button class="sponsors-count-badge" @click="showSponsorsListDialog = true" :title="demoMessages.sponsorsList?.badgeTitle || 'View Sponsors'">
           <span class="badge-icon">💖</span>{{ sponsorsList.length }} {{ demoMessages.sponsorsList?.badgeLabel || 'Sponsors' }}
         </button>
@@ -4974,6 +4982,31 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.official-site-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #409eff 0%, #36cfc9 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+  line-height: 1.4;
+}
+
+.official-site-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(64, 158, 255, 0.45);
+  color: white;
 }
 
 /* ===== Sponsor Dialog ===== */
