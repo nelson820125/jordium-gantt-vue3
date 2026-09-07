@@ -3167,7 +3167,7 @@ const generateDayTimelineData = () => {
 // 判断是否为工作时间
 // v1.14.1 新增 isWeekendDisplay 参数：由调用方传入"已结合工作日历例外覆盖后"的周末判断结果，
 // 避免这里重复一份纯 dayOfWeek 判断导致与表头/背景列的灰色状态不一致
-const isWorkingHour = (hour: number, dayOfWeek: number, isWeekendDisplay: boolean) => {
+const isWorkingHour = (hour: number, isWeekendDisplay: boolean) => {
   // 非工作日（自然周末，或被工作日历例外覆盖为假日）直接返回false，保持周末样式
   if (isWeekendDisplay) {
     return false
@@ -3217,7 +3217,7 @@ const generateHourTimelineData = () => {
         shortLabel: String(hour).padStart(2, '0'), // 简化显示格式，只显示小时数
         date: hourDate,
         isToday: isToday(hourDate) && hour === new Date().getHours(),
-        isWorkingHour: isWorkingHour(hour, dayOfWeek, isWeekendDisplay), // 判断是否为工作时间
+        isWorkingHour: isWorkingHour(hour, isWeekendDisplay), // 判断是否为工作时间
         isWeekend: isWeekendDisplay, // 是否按非工作日(灰)展示
       })
     }

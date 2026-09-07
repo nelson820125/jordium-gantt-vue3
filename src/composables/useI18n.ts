@@ -163,14 +163,6 @@ const messages = {
     pdfExportLoading: '正在生成PDF，请稍候...',
     pdfExportTitle: '甘特图导出',
     pdfExportDate: '导出日期',
-    // PDF导出日期范围弹窗
-    pdfExportRangeTitle: '选择导出日期范围',
-    pdfExportRangeMessage:
-      '当前时间跨度较大，导出全部内容可能生成体积很大的 PDF。请选择要导出的日期范围（跨越该范围的任务会完整保留，不会被截断）。',
-    pdfExportRangeMaxSpanHint: '导出跨度建议不超过 {days} 天',
-    pdfExportRangeInvalid: '结束日期不能早于开始日期',
-    pdfExportRangeConfirm: '导出',
-    pdfExportRangeExportAll: '导出全部',
 
     milestoneGroup: '里程碑',
     collapseTaskList: '收起任务列表',
@@ -548,14 +540,6 @@ const messages = {
     pdfExportLoading: 'Generating PDF, please wait...',
     pdfExportTitle: 'Gantt Chart Export',
     pdfExportDate: 'Export Date',
-    // PDF export date-range dialog
-    pdfExportRangeTitle: 'Select Export Date Range',
-    pdfExportRangeMessage:
-      'The current time span is large and exporting everything may produce a very large PDF. Please choose the date range to export (tasks overlapping this range will be kept in full, not truncated).',
-    pdfExportRangeMaxSpanHint: 'Recommended span: no more than {days} days',
-    pdfExportRangeInvalid: 'End date cannot be earlier than start date',
-    pdfExportRangeConfirm: 'Export',
-    pdfExportRangeExportAll: 'Export All',
 
     milestoneGroup: 'Milestone',
     collapseTaskList: 'Collapse Task List',

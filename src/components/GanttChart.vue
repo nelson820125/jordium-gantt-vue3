@@ -16,7 +16,6 @@ import Timeline from './Timeline.vue'
 import GanttToolbar from './GanttToolbar.vue'
 import TaskDrawer from './TaskDrawer.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
-import PdfExportRangeDialog from './PdfExportRangeDialog.vue'
 import CalendarView from './Calendar/CalendarView.vue'
 import type {
   CalendarScale,
@@ -2914,53 +2913,6 @@ const generateCsvContent = (tasks: Task[]): string => {
   return csvRows.join('\n')
 }
 
-// ---- PDF导出：可滚动区域展开工具 ----
-// html-to-image 是"克隆 DOM + 复制 computed style + 交给浏览器在独立的 SVG foreignObject
-// 里重新渲染"，与 html2canvas 的脚本手绘完全不同，由此带来三个问题：
-// 1) 克隆节点不会带上 scrollLeft/scrollTop 这类运行时滚动状态，导出画面永远从滚动位置 0 开始；
-// 2) 会真实还原 overflow:auto 元素的原生滚动条（html2canvas 手绘不还原滚动条）；
-// 3) Timeline/ResourceUsageView 内部按"当前 scrollLeft + 容器宽度"做虚拟滚动，只在 DOM 里挂载
-//    可视窗口附近的任务条/单元格，克隆时不存在的节点无法凭空生成。
-// 因此导出前需要把真正产生滚动的容器临时展开为完整内容尺寸、滚动位置归零、等待虚拟滚动补渲染，
-// 截图后再原样还原——不依赖"当前滚动到哪"这类假设，无论用户导出前停在今日、月末还是任意位置都一致。
-interface ScrollExpandRecord {
-  el: HTMLElement
-  scrollLeft: number
-  scrollTop: number
-  overflow: string
-  overflowX: string
-  overflowY: string
-  width: string
-  height: string
-  flex: string
-}
-
-function captureExpandRecord(el: HTMLElement): ScrollExpandRecord {
-  return {
-    el,
-    scrollLeft: el.scrollLeft,
-    scrollTop: el.scrollTop,
-    overflow: el.style.overflow,
-    overflowX: el.style.overflowX,
-    overflowY: el.style.overflowY,
-    width: el.style.width,
-    height: el.style.height,
-    flex: el.style.flex,
-  }
-}
-
-function restoreExpandRecord(record: ScrollExpandRecord) {
-  const { el } = record
-  el.style.overflow = record.overflow
-  el.style.overflowX = record.overflowX
-  el.style.overflowY = record.overflowY
-  el.style.width = record.width
-  el.style.height = record.height
-  el.style.flex = record.flex
-  el.scrollLeft = record.scrollLeft
-  el.scrollTop = record.scrollTop
-}
-
 // 通用识别容器内所有"真正产生滚动"的元素（含自身），不依赖具体类名，
 // 因此任务视图（TaskList/Timeline）、日历视图、资源工时视图都能自动适配
 function findScrollableElements(root: HTMLElement): HTMLElement[] {
@@ -2974,152 +2926,6 @@ function findScrollableElements(root: HTMLElement): HTMLElement[] {
       el.scrollHeight > el.clientHeight + 1
     return scrollableX || scrollableY
   })
-}
-
-// 将单个滚动容器临时展开为完整内容尺寸，滚动位置归零，移除滚动条
-function expandScrollElement(el: HTMLElement): ScrollExpandRecord {
-  const record = captureExpandRecord(el)
-  const fullWidth = el.scrollWidth
-  const fullHeight = el.scrollHeight
-  const needWidth = fullWidth > el.clientWidth + 1
-  const needHeight = fullHeight > el.clientHeight + 1
-
-  el.scrollLeft = 0
-  el.scrollTop = 0
-  el.style.overflowX = 'visible'
-  el.style.overflowY = 'visible'
-  el.style.overflow = 'visible'
-  if (needWidth || needHeight) {
-    el.style.flex = 'none'
-  }
-  if (needWidth) {
-    el.style.width = `${fullWidth}px`
-  }
-  if (needHeight) {
-    el.style.height = `${fullHeight}px`
-  }
-  return record
-}
-
-// 把滚动容器展开后的真实尺寸回传给其外层面板包裹容器（.gantt-panel-left/right/full-view），
-// 避免外层仍保持旧宽高，被 flex 布局裁切或与相邻面板重叠
-function expandPanelWrappers(
-  leafRecords: ScrollExpandRecord[],
-  ganttElement: HTMLElement
-): ScrollExpandRecord[] {
-  const wrapperLeaves = new Map<HTMLElement, HTMLElement[]>()
-
-  for (const { el } of leafRecords) {
-    const wrapper = el.closest<HTMLElement>(
-      '.gantt-panel-left, .gantt-panel-right, .gantt-panel-full-view, ' +
-        '.gantt-resource-usage-list-panel, .gantt-resource-usage-grid-panel'
-    )
-    if (!wrapper || wrapper === ganttElement) continue
-    const leaves = wrapperLeaves.get(wrapper) ?? []
-    leaves.push(el)
-    wrapperLeaves.set(wrapper, leaves)
-  }
-
-  const wrapperRecords: ScrollExpandRecord[] = []
-  wrapperLeaves.forEach((leaves, wrapper) => {
-    const record = captureExpandRecord(wrapper)
-    // 同一面板内可能并排存在多个滚动区域（如资源工时视图的左侧列表+右侧网格），宽度按并排求和、
-    // 高度按并排取最大值，估算的目的是宁可偏大留白，也不能偏小导致内容被截断
-    const neededWidth = leaves.reduce((sum, leaf) => sum + leaf.offsetWidth, 0)
-    const neededHeight = Math.max(...leaves.map(leaf => leaf.offsetHeight))
-
-    wrapper.style.overflow = 'visible'
-    if (neededWidth > wrapper.clientWidth) {
-      wrapper.style.width = `${neededWidth}px`
-      wrapper.style.flex = 'none'
-    }
-    if (neededHeight > wrapper.clientHeight) {
-      wrapper.style.height = `${neededHeight}px`
-    }
-    wrapperRecords.push(record)
-  })
-
-  return wrapperRecords
-}
-
-// 等待虚拟滚动（基于 scrollLeft/容器宽度计算可视区域）完成防抖 + 重新渲染，
-// 确保展开后新暴露的区域已经真实挂载到 DOM 上，而不是仍停留在展开前的可视窗口
-function waitForVirtualScrollSettle() {
-  return new Promise<void>(resolve => {
-    requestAnimationFrame(() => {
-      window.setTimeout(() => resolve(), 220)
-    })
-  })
-}
-
-interface HeaderHeightRecord {
-  el: HTMLElement
-  height: string
-}
-
-// 对齐 TaskList 表头（.task-list-header）与 Timeline/资源工时网格表头
-// （.timeline-header / .gantt-resource-usage-grid-header）的高度：两者理论上都是固定 80px，
-// 但展开过程中的极端场景（自定义列内容换行等）可能导致其一实际渲染高度出现偏差，
-// 强制取两者较大值同步，避免导出结果里表头出现视觉错位
-function syncExportHeaderHeights(ganttElement: HTMLElement): HeaderHeightRecord[] {
-  const headers = Array.from(
-    ganttElement.querySelectorAll<HTMLElement>(
-      '.task-list-header, .timeline-header, .gantt-resource-usage-grid-header'
-    )
-  )
-  if (headers.length < 2) return []
-
-  const records = headers.map(el => ({ el, height: el.style.height }))
-  const maxHeight = Math.max(...headers.map(el => el.offsetHeight))
-  headers.forEach(el => {
-    el.style.height = `${maxHeight}px`
-  })
-  return records
-}
-
-// 展开甘特图导出所需的全部可滚动区域（任意当前视图），返回还原函数；
-// 调用方必须在截图完成后调用返回值，恢复原始滚动位置和样式
-async function expandGanttForExport(ganttElement: HTMLElement): Promise<() => Promise<void>> {
-  const leafRecords = findScrollableElements(ganttElement).map(expandScrollElement)
-  const wrapperRecords = expandPanelWrappers(leafRecords, ganttElement)
-
-  await nextTick()
-  await waitForVirtualScrollSettle()
-  await nextTick()
-
-  // 展开后 TaskList/Timeline 容器尺寸发生了变化，Timeline 内部关系线(GanttLinks)/TaskBar
-  // 的坐标缓存是基于展开前的容器尺寸计算的，需要显式触发一次与"全屏切换"相同的重算事件，
-  // 否则导出结果中连接线位置会停留在展开前的坐标（详见 handleTimelineContainerResized）
-  window.dispatchEvent(
-    new CustomEvent('timeline-container-resized', { detail: { source: 'pdf-export' } })
-  )
-  // handleTimelineContainerResized 内部有 300ms 延迟才会重新计算气泡/SVG尺寸，这里多等一点确保完成
-  await new Promise<void>(resolve => window.setTimeout(resolve, 360))
-  await nextTick()
-
-  const headerHeightRecords = syncExportHeaderHeights(ganttElement)
-
-  return async () => {
-    headerHeightRecords.forEach(({ el, height }) => {
-      el.style.height = height
-    })
-    for (let i = wrapperRecords.length - 1; i >= 0; i--) {
-      restoreExpandRecord(wrapperRecords[i])
-    }
-    for (let i = leafRecords.length - 1; i >= 0; i--) {
-      restoreExpandRecord(leafRecords[i])
-    }
-    await nextTick()
-
-    // 还原尺寸/滚动位置后，Timeline 内部关系线(GanttLinks)/TaskBar坐标缓存仍停留在展开时的
-    // 大尺寸状态（因为只有展开时触发过一次重算事件），必须再次触发同一事件让其按还原后的真实
-    // 容器尺寸重新计算，否则导出完成后页面会残留任务条错位、跑出可视区域等"背景拉伸"外观
-    window.dispatchEvent(
-      new CustomEvent('timeline-container-resized', { detail: { source: 'pdf-export-restore' } })
-    )
-    await new Promise<void>(resolve => window.setTimeout(resolve, 360))
-    await nextTick()
-  }
 }
 
 // PDF导出：手动拷贝所有 <canvas>（关系线/背景网格等）的位图内容到克隆节点。
@@ -3138,106 +2944,54 @@ function copyCanvasBitmaps(source: HTMLElement, clone: HTMLElement) {
   })
 }
 
-// PDF导出：按日期范围裁剪整张截图——TaskList 面板原样保留，Timeline 面板按像素范围裁剪后拼接，
-// 避免大跨度(天/小时刻度下横跨多年)导出时产生体积过大的 PDF
-function buildCroppedMainCanvas(
-  sourceCanvas: HTMLCanvasElement,
-  taskListWidthPx: number,
-  cropStartPx: number,
-  cropEndPx: number,
-  pixelRatio: number
-): HTMLCanvasElement {
-  const scaledTaskListWidth = Math.max(0, Math.round(taskListWidthPx * pixelRatio))
-  const scaledCropStart = Math.max(0, Math.round(cropStartPx * pixelRatio))
-  const scaledCropEnd = Math.min(sourceCanvas.width, Math.round(cropEndPx * pixelRatio))
-  const scaledCropWidth = Math.max(1, scaledCropEnd - scaledCropStart)
+// PDF导出策略（v1.14.2 起简化）：只导出当前视窗可见范围，与旧版 html2canvas 效果对齐，
+// 不再展开全部内容/弹窗选择日期范围（更完整的分页报表能力留给未来 Pro Edition）。
+// html-to-image 内部会对传入节点再次 cloneNode 序列化为 SVG（见
+// node_modules/html-to-image/src/index.ts 的 toSvg），运行时 scrollLeft/scrollTop 属性不属于
+// computed style/序列化内容的一部分，无论设置多少次都会在那次内部再克隆时丢失，必须在截图前把
+// "已经滚动到这个位置"转换成能被序列化保留的 CSS transform——直接作用在可滚动容器的直接子元素上
+// （不新增包裹层，避免破坏子元素依赖该容器作为 position:relative 定位上下文的现有布局）。
+// 注意：此函数必须在 clone 已经挂载到文档后再调用——findScrollableElements 依赖
+// scrollWidth/clientWidth/computed style，脱离文档的节点这些值恒为 0，会导致扫不到任何可滚动元素。
+function syncScrollableClonesForExport(source: HTMLElement, clone: HTMLElement) {
+  const sourceEls = findScrollableElements(source)
+  const cloneEls = findScrollableElements(clone)
+  sourceEls.forEach((el, index) => {
+    const cloneEl = cloneEls[index]
+    if (!cloneEl) return
+    cloneEl.style.overflow = 'hidden'
+    const { scrollLeft, scrollTop } = el
+    if (!scrollLeft && !scrollTop) return
+    Array.from(cloneEl.children).forEach(child => {
+      const childEl = child as HTMLElement
+      const prevTransform = childEl.style.transform
+      childEl.style.transform = prevTransform
+        ? `${prevTransform} translate(${-scrollLeft}px, ${-scrollTop}px)`
+        : `translate(${-scrollLeft}px, ${-scrollTop}px)`
+    })
+  })
+}
 
-  const cropped = document.createElement('canvas')
-  cropped.width = scaledTaskListWidth + scaledCropWidth
-  cropped.height = sourceCanvas.height
-  const ctx = cropped.getContext('2d')
-  if (!ctx) return sourceCanvas
-
-  if (scaledTaskListWidth > 0) {
-    ctx.drawImage(
-      sourceCanvas,
-      0,
-      0,
-      scaledTaskListWidth,
-      sourceCanvas.height,
-      0,
-      0,
-      scaledTaskListWidth,
-      sourceCanvas.height
+// 对齐 TaskList 表头（.task-list-header）与 Timeline/资源工时网格表头
+// （.timeline-header / .gantt-resource-usage-grid-header）的高度：两者理论上都是固定 80px，
+// 但极端场景（自定义列内容换行等）可能导致其一实际渲染高度出现偏差，强制取两者较大值同步。
+// 同样必须在 clone 挂载后调用（需要真实布局后的 offsetHeight），无需还原（克隆体截图后即丢弃）
+function syncExportHeaderHeights(clone: HTMLElement): void {
+  const headers = Array.from(
+    clone.querySelectorAll<HTMLElement>(
+      '.task-list-header, .timeline-header, .gantt-resource-usage-grid-header'
     )
-  }
-  ctx.drawImage(
-    sourceCanvas,
-    scaledTaskListWidth + scaledCropStart,
-    0,
-    scaledCropWidth,
-    sourceCanvas.height,
-    scaledTaskListWidth,
-    0,
-    scaledCropWidth,
-    sourceCanvas.height
   )
-  return cropped
+  if (headers.length < 2) return
+
+  const maxHeight = Math.max(...headers.map(el => el.offsetHeight))
+  headers.forEach(el => {
+    el.style.height = `${maxHeight}px`
+  })
 }
 
-interface ExportDateRange {
-  start: Date
-  end: Date
-}
-
-// 扁平化当前视图涉及的全部任务/子任务/里程碑（仅取 startDate/endDate 用于范围计算）
-function flattenTasksForExportRange(): { startDate?: string; endDate?: string }[] {
-  type MinimalTask = { startDate?: string; endDate?: string; children?: MinimalTask[] }
-  const result: MinimalTask[] = []
-  const walk = (list?: MinimalTask[]) => {
-    if (!list) return
-    for (const item of list) {
-      result.push(item)
-      if (item.children && item.children.length) walk(item.children)
-    }
-  }
-  if (currentViewMode.value === 'resource' && props.resources) {
-    for (const resource of props.resources as Resource[]) {
-      if (resource.tasks) walk(resource.tasks as unknown as MinimalTask[])
-    }
-  } else {
-    walk(props.tasks as unknown as MinimalTask[])
-  }
-  if (props.milestones) {
-    walk(props.milestones as unknown as MinimalTask[])
-  }
-  return result
-}
-
-// 计算实际导出日期范围：以用户选择的范围为基础，凡是与该范围有交集的任务/里程碑，
-// 其完整起止时间都会被纳入（即使超出用户选择的边界），确保任务条不会被从中间截断
-function computeEffectiveExportRange(selected: ExportDateRange): ExportDateRange {
-  const all = flattenTasksForExportRange()
-  let minStart: Date | null = null
-  let maxEnd: Date | null = null
-  for (const item of all) {
-    if (!item.startDate) continue
-    const s = new Date(item.startDate)
-    const e = item.endDate ? new Date(item.endDate) : s
-    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) continue
-    if (s.getTime() <= selected.end.getTime() && e.getTime() >= selected.start.getTime()) {
-      if (!minStart || s.getTime() < minStart.getTime()) minStart = s
-      if (!maxEnd || e.getTime() > maxEnd.getTime()) maxEnd = e
-    }
-  }
-  const start =
-    minStart && minStart.getTime() < selected.start.getTime() ? minStart : selected.start
-  const end = maxEnd && maxEnd.getTime() > selected.end.getTime() ? maxEnd : selected.end
-  return { start, end }
-}
-
-// PDF导出核心处理器：exportRange 为空表示导出全部日期范围（不裁剪）
-const runPdfExport = async (exportRange?: ExportDateRange) => {
+// PDF导出核心处理器：只导出当前视窗可见范围
+const runPdfExport = async () => {
   let loadingEl: HTMLElement | null = null
   try {
     // 获取当前语言的文本
@@ -3261,53 +3015,15 @@ const runPdfExport = async (exportRange?: ExportDateRange) => {
       throw new Error('找不到甘特图元素')
     }
 
-    // 设置临时样式以确保完整截图
-    const originalStyle = {
-      overflow: ganttElement.style.overflow,
-      height: ganttElement.style.height,
-    }
-
-    ganttElement.style.overflow = 'visible'
-    ganttElement.style.height = 'auto'
-
-    // 展开左右面板/日历/资源工时视图内部所有真正可滚动的区域为完整内容尺寸，
-    // 不管导出前停在哪个滚动位置，导出结果始终是完整数据
-    const restoreScrollExpand = await expandGanttForExport(ganttElement)
-
-    // 计算截图所需的真实完整尺寸：取 gantt-body 直接子面板（左右面板并排，或日历/资源工时单独占满）
-    // 的实际尺寸求和/取最大值。不使用 ganttElement.scrollWidth/scrollHeight——
-    // overflow:visible 元素的 scrollWidth 不会包含视觉溢出的子元素尺寸，仍会按旧的可视区域宽高裁切
+    // 只截取当前视窗可见尺寸（不展开、不改动真实页面任何样式）：取 gantt-body 直接子面板
+    // （左右面板并排，或日历/资源工时单独占满）的实际渲染尺寸求和/取最大值
     const directChildren = Array.from(ganttElement.children) as HTMLElement[]
     const mainWidth = directChildren.length
       ? directChildren.reduce((sum, child) => sum + child.offsetWidth, 0)
-      : ganttElement.scrollWidth
+      : ganttElement.offsetWidth
     const mainHeight = directChildren.length
       ? Math.max(...directChildren.map(child => child.offsetHeight))
-      : ganttElement.scrollHeight
-
-    // 计算日期范围裁剪信息（仅当调用方指定了导出范围、且当前处于任务/资源视图时才生效）
-    let cropInfo: { taskListWidthPx: number; cropStartPx: number; cropEndPx: number } | null = null
-    if (exportRange && timelineRef.value) {
-      const hasTaskListPanel =
-        directChildren.length > 1 && directChildren[0].classList.contains('gantt-panel-left')
-      const taskListWidthPx = hasTaskListPanel ? directChildren[0].offsetWidth : 0
-      const timelinePanelEl = hasTaskListPanel ? directChildren[1] : directChildren[0]
-
-      if (timelinePanelEl) {
-        const effectiveRange = computeEffectiveExportRange(exportRange)
-        const startPx = timelineRef.value.getDatePixelOffset(effectiveRange.start)
-        const endPx = timelineRef.value.getDatePixelOffset(effectiveRange.end)
-        const cropBufferPx = 24
-        let cropStartPx = Math.max(0, startPx - cropBufferPx)
-        let cropEndPx = Math.min(timelinePanelEl.offsetWidth, endPx + cropBufferPx)
-        if (cropEndPx <= cropStartPx) {
-          // 计算结果异常（如日期范围内没有匹配的任务/像素换算越界），安全兜底为不裁剪
-          cropStartPx = 0
-          cropEndPx = timelinePanelEl.offsetWidth
-        }
-        cropInfo = { taskListWidthPx, cropStartPx, cropEndPx }
-      }
-    }
+      : ganttElement.offsetHeight
 
     const currentDate = new Date().toLocaleDateString(i18nLocale.value)
 
@@ -3347,18 +3063,23 @@ const runPdfExport = async (exportRange?: ExportDateRange) => {
     headerEl.appendChild(dateEl)
     exportStage.appendChild(headerEl)
 
-    // 不再对"正在展开中的真实可见 DOM"直接截图（会让用户看到甘特图短暂拉伸后才恢复）。
-    // 展开+位置重算稳定后，把完整 DOM 克隆到离屏舞台，手动搬运 canvas 位图内容，
-    // 随后立即恢复真实页面 DOM——真实页面仅在这一次同步克隆操作期间保持展开态，
-    // 耗时更长的截图(toCanvas)转而对离屏克隆执行，不再拖长真实页面的"展开可见"时间窗口
+    // 克隆当前 DOM（保留虚拟滚动已挂载的可视窗口内容），先挂载到离屏舞台、手动搬运 canvas 位图内容，
+    // 再同步滚动位置、隐藏滚动条、对齐表头高度——后三项都需要真实布局信息（offsetHeight/
+    // scrollWidth 等），必须在挂载后再调用，否则这些值对脱离文档的节点恒为 0。
+    // 全部只作用于克隆体，真实页面全程不受任何影响，无需展开/还原
     const ganttClone = ganttElement.cloneNode(true) as HTMLElement
     copyCanvasBitmaps(ganttElement, ganttClone)
     exportStage.appendChild(ganttClone)
-
-    // 克隆已就绪，立即恢复真实页面滚动状态与样式
-    await restoreScrollExpand()
-    ganttElement.style.overflow = originalStyle.overflow
-    ganttElement.style.height = originalStyle.height
+    // .gantt-body 自身没有固定宽高（display:flex;flex:1，靠父容器撑开），挂进 width:0;height:0 的
+    // exportStage 后会连带塌缩成 0——左侧任务列表面板宽度由 JS 内联样式固定不受影响，但右侧
+    // Timeline/资源工时面板是 flex:1 靠"剩余空间"撑开，容器塌缩后它分不到任何宽度，导致克隆体里
+    // 右侧面板（含表头）渲染为 0 宽、视觉上"没有内容"。这里显式把克隆体自身钳制为真实测量到的
+    // mainWidth/mainHeight，让 flex 子元素能按原比例重新分配空间，必须在下面两个同步函数之前设置，
+    // 否则它们读到的仍是塌缩后的错误布局。
+    ganttClone.style.width = `${mainWidth}px`
+    ganttClone.style.height = `${mainHeight}px`
+    syncScrollableClonesForExport(ganttElement, ganttClone)
+    syncExportHeaderHeights(ganttClone)
 
     let headerCanvas: HTMLCanvasElement
     let mainCanvas: HTMLCanvasElement
@@ -3380,16 +3101,6 @@ const runPdfExport = async (exportRange?: ExportDateRange) => {
       ])
     } finally {
       document.body.removeChild(exportStage)
-    }
-
-    if (cropInfo) {
-      mainCanvas = buildCroppedMainCanvas(
-        mainCanvas,
-        cropInfo.taskListWidthPx,
-        cropInfo.cropStartPx,
-        cropInfo.cropEndPx,
-        2
-      )
     }
 
     const headerImgData = headerCanvas.toDataURL('image/png')
@@ -3450,77 +3161,11 @@ const runPdfExport = async (exportRange?: ExportDateRange) => {
   }
 }
 
-// PDF导出日期范围弹窗相关状态：时间跨度过大(天/小时刻度下跨多年)时，
-// 导出前先询问用户希望导出的日期范围，避免生成体积过大的 PDF
-const pdfExportRangeDialogVisible = ref(false)
-const pdfExportRangeDefault = ref<[string, string]>(['', ''])
-const PDF_EXPORT_RANGE_MAX_SPAN_DAYS = 366
-type PdfExportRangeChoice = ExportDateRange | 'all' | null
-let pdfExportRangeResolve: ((choice: PdfExportRangeChoice) => void) | null = null
-
-function formatDateForPicker(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-// PDF导出入口：先判断是否需要询问导出日期范围，再调用实际导出逻辑
+// PDF导出入口：直接导出当前视窗可见范围，不再弹窗选择日期范围（更完整的日期范围/分页报表方案
+// 见 .ai/.claude/reports/frontend-engineer/solutions/pdfexport-v1.14.0.md，作为未来
+// Pro Edition 高级PDF报告功能的设计参考保留，本次不采用）
 const pdfExportHandler = async () => {
-  const isTimelineView = currentViewMode.value === 'task' || currentViewMode.value === 'resource'
-  const isDenseScale =
-    currentTimeScale.value === TimelineScale.HOUR || currentTimeScale.value === TimelineScale.DAY
-
-  if (!isTimelineView || !isDenseScale) {
-    await runPdfExport()
-    return
-  }
-
-  const { min, max } = timelineDateRange.value
-  const totalSpanDays = Math.ceil((max.getTime() - min.getTime()) / (1000 * 60 * 60 * 24))
-  if (totalSpanDays <= PDF_EXPORT_RANGE_MAX_SPAN_DAYS) {
-    await runPdfExport()
-    return
-  }
-
-  // 跨度较大：默认以"今天"为中心前后各半年，并夹紧到任务实际的最小/最大日期范围内
-  const today = new Date()
-  const defaultStart = new Date(today)
-  defaultStart.setMonth(defaultStart.getMonth() - 6)
-  const defaultEnd = new Date(today)
-  defaultEnd.setMonth(defaultEnd.getMonth() + 6)
-  const clamp = (d: Date) =>
-    d.getTime() < min.getTime() ? min : d.getTime() > max.getTime() ? max : d
-  pdfExportRangeDefault.value = [
-    formatDateForPicker(clamp(defaultStart)),
-    formatDateForPicker(clamp(defaultEnd)),
-  ]
-  pdfExportRangeDialogVisible.value = true
-
-  const choice = await new Promise<PdfExportRangeChoice>(resolve => {
-    pdfExportRangeResolve = resolve
-  })
-  pdfExportRangeDialogVisible.value = false
-
-  if (choice === null) return
-  if (choice === 'all') {
-    await runPdfExport()
-    return
-  }
-  await runPdfExport(choice)
-}
-
-function handlePdfExportRangeConfirm(range: { start: string; end: string }) {
-  pdfExportRangeResolve?.({ start: new Date(range.start), end: new Date(range.end) })
-  pdfExportRangeResolve = null
-}
-function handlePdfExportRangeExportAll() {
-  pdfExportRangeResolve?.('all')
-  pdfExportRangeResolve = null
-}
-function handlePdfExportRangeCancel() {
-  pdfExportRangeResolve?.(null)
-  pdfExportRangeResolve = null
+  await runPdfExport()
 }
 
 // 监听GanttToolbar的全屏切换事件
@@ -3720,6 +3365,8 @@ onMounted(() => {
     if (timelineRef.value && typeof timelineRef.value.scrollToTodayCenter === 'function') {
       timelineRef.value.scrollToTodayCenter()
     }
+    // 资源工时视图无 Timeline 实例，需单独触发它自己的今日定位
+    resourceUsageViewRef.value?.scrollToToday?.()
   })
 })
 
@@ -3728,6 +3375,11 @@ const todayLocateHandler = () => {
   // 如果有外部处理器，先调用它
   if (props.onTodayLocate && typeof props.onTodayLocate === 'function') {
     props.onTodayLocate()
+    return
+  }
+  // 资源工时视图（无 Timeline 实例）走自己的横向滚动定位
+  if (currentViewMode.value === 'resource-usage') {
+    resourceUsageViewRef.value?.scrollToToday?.()
     return
   }
   // 使用Timeline组件的scrollToTodayCenter方法，确保今日居中
@@ -3930,6 +3582,8 @@ const taskDrawerEditMode = ref(false)
 
 // v1.12.5 日历视图的组件引用：TaskDrawer 关闭后清空日历的拖拽选区高亮，避免高亮长期滞留
 const calendarViewRef = ref<InstanceType<typeof CalendarView> | null>(null)
+// 资源工时视图的组件引用：今日定位需要转发给它自己的横向滚动定位（与 Timeline 完全独立的滚动容器）
+const resourceUsageViewRef = ref<InstanceType<typeof ResourceUsageView> | null>(null)
 watch(taskDrawerVisible, visible => {
   if (!visible) {
     calendarViewRef.value?.clearSelection()
@@ -4689,6 +4343,7 @@ defineExpose({
       <!-- v1.12.5 资源工时视图：与任务/资源视图互斥渲染；左侧列表内嵌复用资源视图/任务视图共用的 TaskList 组件本体 -->
       <ResourceUsageView
         v-else-if="currentViewMode === 'resource-usage'"
+        ref="resourceUsageViewRef"
         class="gantt-panel-full-view"
         :resources="props.resources"
         :resource-list-config="props.resourceListConfig"
@@ -4880,16 +4535,6 @@ defineExpose({
       @close="handleMilestoneDialogClose"
       @save="handleMilestoneSave"
       @delete="handleMilestoneDialogDelete"
-    />
-
-    <!-- PDF导出日期范围弹窗 - 时间跨度过大(天/小时刻度下跨多年)时导出前询问所需范围 -->
-    <PdfExportRangeDialog
-      :visible="pdfExportRangeDialogVisible"
-      :default-range="pdfExportRangeDefault"
-      :max-span-days="PDF_EXPORT_RANGE_MAX_SPAN_DAYS"
-      @confirm="handlePdfExportRangeConfirm"
-      @export-all="handlePdfExportRangeExportAll"
-      @cancel="handlePdfExportRangeCancel"
     />
   </div>
 </template>

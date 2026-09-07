@@ -42,7 +42,7 @@
                 v-for="col in visiblePeriodCells"
                 :key="col.index"
                 class="gantt-resource-usage-grid-header-cell"
-                :class="{ 'is-weekend': col.isWeekend }"
+                :class="{ 'is-weekend': col.isWeekend && !col.isToday, 'is-today': col.isToday }"
                 :style="{ left: col.left + 'px', width: columnWidthPx + 'px' }"
               >
                 {{ formatPeriodLabel(col.period.periodStart) }}
@@ -626,6 +626,23 @@ const visibleRows = computed(() => {
   return rows
 })
 
+/**
+ * 判断某个周期（日/周/月）是否包含"今天"，仅比较日期部分（忽略时分秒）。
+ * periodEnd 对齐 useResourceUsageAggregation 里的语义：当天/当周/当月最后一天的 23:59:59.999，
+ * 因此只需判断"今天"是否落在 [periodStart 日期, periodEnd 日期] 闭区间内即可，三种刻度通用。
+ */
+const isPeriodToday = (periodStart: Date, periodEnd: Date): boolean => {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const start = new Date(
+    periodStart.getFullYear(),
+    periodStart.getMonth(),
+    periodStart.getDate()
+  ).getTime()
+  const end = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime()
+  return today >= start && today <= end
+}
+
 const visiblePeriodCells = computed(() => {
   const { start, end } = visibleColRange.value
   const cells: Array<{
@@ -633,6 +650,7 @@ const visiblePeriodCells = computed(() => {
     period: { periodStart: Date; periodEnd: Date }
     left: number
     isWeekend: boolean
+    isToday: boolean
   }> = []
   for (let i = start; i <= end; i++) {
     const period = periods.value[i]
@@ -642,6 +660,7 @@ const visiblePeriodCells = computed(() => {
       period,
       left: i * columnWidthPx.value,
       isWeekend: Boolean(period.isWeekend),
+      isToday: isPeriodToday(period.periodStart, period.periodEnd),
     })
   }
   return cells
@@ -695,6 +714,39 @@ const onGridScroll = (e: Event) => {
 let resizeObserver: ResizeObserver | null = null
 let rootResizeObserver: ResizeObserver | null = null
 
+/**
+ * 定位到"今天"所在的周期列（日/周/月刻度通用），并使其在网格视口中水平居中，
+ * 对齐任务/资源视图 Timeline.scrollToTodayCenter 的效果。找不到（如日期范围/资源均为空）时静默跳过。
+ */
+const scrollToToday = () => {
+  nextTick(() => {
+    const list = periods.value
+    const idx = list.findIndex(p => isPeriodToday(p.periodStart, p.periodEnd))
+    if (idx === -1 || !gridScrollRef.value) return
+    const targetLeft =
+      idx * columnWidthPx.value - gridScrollRef.value.clientWidth / 2 + columnWidthPx.value / 2
+    gridScrollRef.value.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+  })
+}
+
+// 首次挂载资源数据可能尚未就绪（异步加载），resources 由空变为非空时补一次定位
+watch(
+  () => props.resources.length,
+  (newLen, oldLen) => {
+    if (oldLen === 0 && newLen > 0) {
+      scrollToToday()
+    }
+  }
+)
+
+// 切换刻度（日/周/月）后，列宽/周期列表都会重新计算，之前的横向滚动位置不再对应今日列，
+// 需要重新定位今日，对齐任务/资源视图切换刻度后 Timeline 的既有体验
+watch(scaleInternal, (next, prev) => {
+  if (next !== prev) {
+    scrollToToday()
+  }
+})
+
 onMounted(() => {
   window.addEventListener(
     'task-list-vertical-scroll',
@@ -723,6 +775,8 @@ onMounted(() => {
       })
       rootResizeObserver.observe(rootRef.value)
     }
+    // 页面加载后自动居中今日，对齐任务/资源视图 Timeline 的默认行为
+    scrollToToday()
   })
 })
 
@@ -738,7 +792,7 @@ onUnmounted(() => {
   window.removeEventListener('task-list-hover', handleTaskListHoverEvent as EventListener)
 })
 
-defineExpose({ refreshAggregation, setScale })
+defineExpose({ refreshAggregation, setScale, scrollToToday })
 </script>
 
 <style scoped>
@@ -860,6 +914,13 @@ defineExpose({ refreshAggregation, setScale })
 .gantt-resource-usage-grid-header-cell.is-weekend {
   background-color: var(--gantt-bg-tertiary);
   color: var(--gantt-text-muted);
+}
+
+/* 今日/本周/本月高亮，对齐任务/资源视图 Timeline 表头的 .timeline-day.today / .timeline-week.today 蓝色系样式 */
+.gantt-resource-usage-grid-header-cell.is-today {
+  background-color: var(--gantt-primary);
+  color: var(--gantt-text-white);
+  font-weight: 600;
 }
 
 .gantt-resource-usage-grid-scroll {
