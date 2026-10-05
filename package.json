@@ -1,6 +1,6 @@
 {
   "name": "jordium-gantt-vue3",
-  "version": "1.12.4",
+  "version": "1.14.0",
   "type": "module",
   "main": "npm-package/dist/jordium-gantt-vue3.cjs.js",
   "module": "npm-package/dist/jordium-gantt-vue3.es.js",
@@ -57,6 +57,8 @@
     "resource-management",
     "resource-scheduler",
     "scheduler",
+    "calendar",
+    "resource-usage",
     "vue3-resource-planning",
     "vue3-scheduler"
   ],
@@ -82,7 +84,7 @@
   "dependencies": {
     "date-fns": "^4.1.0",
     "dompurify": "^3.3.2",
-    "html2canvas": "^1.4.1",
+    "html-to-image": "^1.11.13",
     "jspdf": "^4.0.0",
     "vue": "^3.5.13"
   },

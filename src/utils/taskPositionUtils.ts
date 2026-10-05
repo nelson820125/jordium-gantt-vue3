@@ -17,6 +17,7 @@
 
 import type { PositionCache } from './positionCache'
 import { TimelineScale } from '../models/types/TimelineScale'
+import { getEffectiveEndDateOnly } from './dateBoundaryUtils'
 
 /** TaskBar 边框宽度（border: 2px solid，无 box-sizing: border-box） */
 const TASK_BAR_BORDER_WIDTH = 2
@@ -137,7 +138,9 @@ export function computeTaskViewLogicalPosition(
   if (!startD || !endD) return null
 
   const startOnly = toDateOnly(startD)
-  const endOnly = toDateOnly(endD)
+  // v1.13.5：若 endDate 带 time 部分，需先 -15分钟 再截断为日期部分，
+  // 避免与下方 +1天 逻辑产生二次偏移（详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+  const endOnly = getEffectiveEndDateOnly(task.endDate, endD)
 
   const left = cache ? cache.getPosition(startOnly, timeScale) : null
   if (left === null) return null // 任务日期在时间线范围外

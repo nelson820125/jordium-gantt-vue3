@@ -31,6 +31,8 @@
   --gantt-warning-light: #f5dab1;
   --gantt-danger: #f56c6c;
   --gantt-danger-light: #fab6b6; /* 里程碑边框浅红色 */
+  --gantt-off-leave: #8764b8; /* 资源专属请假/停机（v1.14.0），参考 Fluent UI 紫色 */
+  --gantt-off-leave-light: #ede7f6; /* 淡紫色背景，类似 Microsoft Teams「休假中」状态配色 */
 
   /* 滚动条 */
   --gantt-scrollbar-thumb: #c1c1c1;
@@ -97,6 +99,8 @@
   --gantt-warning-light: #cc7722; /* 深橙背景 */
   --gantt-danger: #ff4444; /* 鲜艳的红色 */
   --gantt-danger-light: #cc3333; /* 深红背景，里程碑边框 */
+  --gantt-off-leave: #b19cd9; /* 资源专属请假/停机（v1.14.0），暗黑背景下提亮的淡紫色，提升对比度 */
+  --gantt-off-leave-light: #5c4b8c; /* 深紫色背景 */
 
   /* 滚动条 - 高可见性 */
   --gantt-scrollbar-thumb: #888888; /* 明亮的滚动条 */

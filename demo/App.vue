@@ -8,21 +8,26 @@ import mediumData from './data-100.json'
 import largeData from './data-large-1m.json'
 import resourcesData from './data-resources.json'
 import largeResourcesData from './data-resources-large.json'
+import sponsorInfos from './sponsors.json'
 import packageInfo from '../package.json'
 // 导入主题变量
 import '../src/styles/theme-variables.css'
 import VersionHistoryDrawer from './VersionHistoryDrawer.vue'
 import HtmlContent from './HtmlContent.vue'
+import WorkCalendarDialog from './WorkCalendarDialog.vue'
 import { useMessage } from '../src/composables/useMessage'
 import { useI18n } from '../src/composables/useI18n'
 import { useDemoLocale } from './useDemoLocale'
 import { getPredecessorIds, predecessorIdsToString } from '../src/utils/predecessorUtils'
+import { getEffectiveEndDateOnly } from '../src/utils/dateBoundaryUtils'
 import type { Task } from '../src/models/Task'
 import type { Resource } from '../src/models/classes/Resource'
 import { createResource, addTaskToResource, updateResourceUtilization } from '../src/utils/resourceUtils'
 import type { TaskListConfig, TaskListColumnConfig } from '../src/models/configs/TaskListConfig'
 import type { ResourceListConfig } from '../src/models/configs/ResourceListConfig'
 import type { TaskBarConfig, LinkConfig } from '../src/models/configs/TaskBarConfig'
+import type { WorkCalendarException, ResolveWorkingMinutes } from '../src/models/types/ResourceUsageTypes'
+import { createWorkCalendarResolver } from '../src/utils/workCalendarUtils'
 
 const { showMessage } = useMessage()
 const { t, formatTranslation } = useI18n()
@@ -40,7 +45,7 @@ const gantt = ref<InstanceType<typeof import('../src/components/GanttChart.vue')
 const tasks = ref<Task[]>([])
 const milestones = ref<Task[]>([])
 const resources = ref<Resource[]>([])
-const viewMode = ref<'task' | 'resource'>('task')
+const viewMode = ref<'task' | 'resource' | 'calendar' | 'resource-usage'>('task')
 const useDefaultDrawer = ref(true)
 
 const rawDataSources = [
@@ -104,6 +109,7 @@ const applyDataSource = (source: RawDataSource) => {
       return createResource({
         id: resData.id,
         name: resData.name,
+        title: resData.title,
         type: resData.type,
         avatar: resData.avatar,
         description: resData.description,
@@ -119,7 +125,8 @@ const applyDataSource = (source: RawDataSource) => {
     const resourceAssigneeOptions = resources.value.map(res => ({
       value: res.id as string,
       label: res.name,
-      avatar: res.avatar
+      avatar: res.avatar,
+      type: res.type
     }))
     assigneeOptions.value = [...resourceAssigneeOptions]
   } else {
@@ -211,6 +218,10 @@ const isMilestoneEditMode = ref(false)
 const showVersionDrawer = ref(false)
 const showSponsorDialog = ref(false)
 
+// 赞助者名单（与 SPONSORS.md / SPONSORS-EN.md 保持一致）
+const showSponsorsListDialog = ref(false)
+const sponsorsList = sponsorInfos.sponsors
+
 // v1.9.7 资源编辑提示dialog状态
 const resourceEditHintVisible = ref(false)
 const clickedResource = ref<Resource | null>(null)
@@ -233,6 +244,16 @@ const toolbarConfig = reactive({
   defaultTimeScale: 'month',
   showExpandCollapse: true, // 显示全部展开/折叠按钮
   showViewMode: true, // 显示 Task/Resource 视图切换按钮组
+})
+
+// 全部时间刻度维度，供日历视图/工时视图退出时恢复使用
+const ALL_TIME_SCALE_DIMENSIONS = ['hour', 'day', 'week', 'month', 'quarter', 'year']
+// 日历视图/工时视图仅支持日/周/月粒度，切入这两个视图时联动收窄 Gantt 工具栏的时间刻度按钮组
+watch(viewMode, mode => {
+  toolbarConfig.timeScaleDimensions =
+    mode === 'calendar' || mode === 'resource-usage'
+      ? ['day', 'week', 'month']
+      : ALL_TIME_SCALE_DIMENSIONS
 })
 
 // TaskList列渲染模式配置
@@ -305,15 +326,10 @@ const enableTaskListCollapsible = ref(true)
 const taskListVisible = ref(true)
 
 // 资源列表配置
+// 注：不包含 key/type 为 'name' 的列——TaskList 组件始终在外层单独硬编码渲染名称列
+// （.col-name.col-fixed），此处若重复声明 name 列会导致名称重复显示两次
 const resourceListConfig = computed<ResourceListConfig>(() => ({
   columns: [
-    {
-      key: 'name',
-      label: '资源名称',
-      visible: true,
-      width: 200,
-      formatter: (resource: Resource) => resource.name || '-',
-    },
     {
       key: 'capacity',
       label: '利用率',
@@ -330,11 +346,25 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
       },
     },
     {
+      key: 'title',
+      label: '职务',
+      visible: true,
+      width: 100,
+      formatter: (resource: Resource) => resource.title || '-',
+    },
+    {
       key: 'type',
-      label: '类型',
+      label: '类别',
       visible: true,
       width: 100,
       formatter: (resource: Resource) => resource.type || '-',
+    },
+    {
+      key: 'department',
+      label: '部门',
+      visible: true,
+      width: 120,
+      formatter: (resource: Resource) => resource.department || '-',
     },
     {
       key: 'taskCount',
@@ -354,6 +384,223 @@ const resourceListConfig = computed<ResourceListConfig>(() => ({
     widthUnit.value === '%' ? `${widthPercentage.value.maxWidth}%` : taskListWidth.value.maxWidth,
 }))
 
+// 工时视图（resource-usage）配置：直接复用 resources 数据集，无需单独转换数据结构；
+// 这里演示自定义阈值背景色（覆盖组件默认配色），scale/dateRange 由 GanttChart 根据工具栏
+// 日/周/月 与任务时间范围自动推导，无需在此重复传入
+// 自定义色需要跟随明暗主题切换，否则暗黑模式下单元格仍会保持浅色底（与主题背景冲突）
+const resourceUsageProps = computed(() => ({
+  overloadThreshold: 100,
+  underloadThreshold: 60,
+  // v1.14.0 资源专属请假/停机单元格样式：显式开启并自定义配色（跟随主题），
+  // 默认值本身就是 true + 内置淡紫色，这里显式传入仅为演示可自定义
+  showResourceOffOrLeaveStyle: true,
+  ...(currentThemeStatus.value === 'dark'
+    ? {
+        overloadColor: '#5c3232',
+        normalColor: '#2f4a2a',
+        underloadColor: '#5c4a26',
+        weekendColor: '#5a5a5a',
+        resourceOffOrLeaveColor: '#5c4b8c',
+      }
+    : {
+        overloadColor: '#fde2e2',
+        normalColor: '#e1f3d8',
+        underloadColor: '#fdf6ec',
+        weekendColor: '#f0f0f0',
+        resourceOffOrLeaveColor: '#ede7f6',
+      }),
+  // v1.14.0 工作日历配置演示：仅在启用开关时传入，未启用时组件使用内置默认行为
+  // 若同时启用"资源专属例外"演示，改传 resolveWorkingMinutes（优先级高于 workCalendarExceptions），
+  // 该回调内部已合并了公司级例外，故两者互不冲突
+  ...(enableWorkCalendarDemo.value
+    ? enableResourcePersonalExceptions.value
+      ? {
+          resolveWorkingMinutes: personalResolveWorkingMinutes.value,
+          dailyCapacityHours: workCalendarCapacityMode.value === 'device' ? 24 : 8,
+        }
+      : {
+          workCalendarExceptions: effectiveWorkCalendarExceptions.value,
+          dailyCapacityHours: workCalendarCapacityMode.value === 'device' ? 24 : 8,
+        }
+    : {}),
+}))
+
+// v1.14.0 工作日历（节假日/调休/请假）配置演示，参考现有 workingHoursConfig（上/下午具体钟点，
+// 服务于日历视图小时格渲染），两者是相互独立的维度：workingHours 回答"一天里哪几个钟点算上班"，
+// 这里的工作日历回答"某天算不算工作日、按多大比例折算工时"，仅作用于工时视图（ResourceUsageView）
+const enableWorkCalendarDemo = ref(false)
+const workCalendarCapacityMode = ref<'human' | 'device'>('human')
+const workCalendarExceptionToggles = reactive({
+  holiday: true,
+  halfDayLeave: true,
+  crossDayHoliday: true,
+  weekendMakeup: true,
+})
+
+// 演示例外表：基于"今天"生成相对日期，确保无论示例数据的任务时间范围如何都落在可见区间内
+const demoWorkCalendarExceptions = computed<WorkCalendarException[]>(() => {
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const addDays = (d: Date, n: number) => {
+    const r = new Date(d)
+    r.setDate(r.getDate() + n)
+    return r
+  }
+  const today = new Date()
+  const labels = t.value.workCalendarConfig.exceptions
+  const exceptions: WorkCalendarException[] = []
+
+  if (workCalendarExceptionToggles.holiday) {
+    const day = fmt(addDays(today, 3))
+    exceptions.push({ id: 'demo-holiday', name: labels?.holidayLabel, start: day, end: day, working: false })
+  }
+  if (workCalendarExceptionToggles.halfDayLeave) {
+    const day = fmt(addDays(today, 5))
+    exceptions.push({
+      id: 'demo-half-day',
+      name: labels?.halfDayLabel,
+      start: `${day} 08:00`,
+      end: `${day} 12:00`,
+      working: false,
+    })
+  }
+  if (workCalendarExceptionToggles.crossDayHoliday) {
+    exceptions.push({
+      id: 'demo-cross-day',
+      name: labels?.crossDayLabel,
+      start: fmt(addDays(today, 8)),
+      end: fmt(addDays(today, 10)),
+      working: false,
+    })
+  }
+  if (workCalendarExceptionToggles.weekendMakeup) {
+    let makeupDay = addDays(today, 12)
+    while (makeupDay.getDay() !== 6) makeupDay = addDays(makeupDay, 1) // 找最近的周六作为调休补班演示日
+    const day = fmt(makeupDay)
+    exceptions.push({ id: 'demo-weekend-makeup', name: labels?.weekendMakeupLabel, start: day, end: day, working: true })
+  }
+  return exceptions
+})
+
+// v1.14.1：MS Project 风格「更改工作时间」弹窗（Demo 专用，非组件库导出 API）。
+// 用户通过弹窗确认后的例外表优先于上方勾选框生成的演示例外；未打开过弹窗前维持原勾选框行为，
+// 保证两套配置方式互不冲突（弹窗 = 手动全量接管，勾选框 = 快速预设）。
+const showWorkCalendarDialog = ref(false)
+const customWorkCalendarExceptions = ref<WorkCalendarException[] | null>(null)
+const effectiveWorkCalendarExceptions = computed<WorkCalendarException[]>(
+  () => customWorkCalendarExceptions.value ?? demoWorkCalendarExceptions.value
+)
+const handleWorkCalendarDialogConfirm = (exceptions: WorkCalendarException[]) => {
+  customWorkCalendarExceptions.value = exceptions
+}
+
+// resolveWorkingMinutes 自定义回调演示：将例外数组挂在 resource 的自定义字段（resource.workExceptions）
+// 上而非公司级共享数组，用于演示"资源专属、彼此独立"的排班需求（对应 README「Resource 自定义字段扩展」小节）
+// resourceWorkExceptionsMap 用 reactive() 包裹是关键：resolveDayWorkRatio 会在 cellsByResource 这个
+// computed 内部同步调用 personalResolveWorkingMinutes 闭包，闭包内对该 Map 的读取会被 Vue 依赖收集，
+// 因此 .set() 之后工时视图能自动重新计算，无需手动触发
+const enableResourcePersonalExceptions = ref(false)
+const resourceWorkExceptionsMap = reactive(new Map<string | number, WorkCalendarException[]>())
+const selectedPersonalExceptionResourceId = ref<string | number | null>(null)
+const personalExceptionsJsonDraft = ref('[]')
+const personalExceptionsJsonError = ref('')
+
+watch(
+  resources,
+  list => {
+    if (selectedPersonalExceptionResourceId.value == null && list.length > 0) {
+      selectedPersonalExceptionResourceId.value = list[0].id
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  selectedPersonalExceptionResourceId,
+  id => {
+    personalExceptionsJsonError.value = ''
+    const existing = id == null ? [] : (resourceWorkExceptionsMap.get(id) ?? [])
+    personalExceptionsJsonDraft.value = JSON.stringify(existing, null, 2)
+  },
+  { immediate: true }
+)
+
+const applyPersonalExceptionsJson = () => {
+  const id = selectedPersonalExceptionResourceId.value
+  if (id == null) return
+  const labels = t.value.workCalendarConfig.personalExceptions
+  try {
+    const parsed = JSON.parse(personalExceptionsJsonDraft.value)
+    if (!Array.isArray(parsed)) {
+      personalExceptionsJsonError.value = labels.invalidArrayError
+      return
+    }
+    resourceWorkExceptionsMap.set(id, parsed as WorkCalendarException[])
+    personalExceptionsJsonError.value = ''
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    personalExceptionsJsonError.value = labels.invalidJsonError.replace('{message}', message)
+  }
+}
+
+const clearPersonalExceptionsJson = () => {
+  const id = selectedPersonalExceptionResourceId.value
+  if (id == null) return
+  resourceWorkExceptionsMap.set(id, [])
+  personalExceptionsJsonDraft.value = '[]'
+  personalExceptionsJsonError.value = ''
+}
+
+// 填充一条与所选资源类型相关的示例（仅写入文本框，仍需点击"应用"才会真正生效，
+// 模拟 Swagger「Try it out」先编辑请求体、再手动发送的操作习惯）
+const fillPersonalExceptionsSample = () => {
+  const id = selectedPersonalExceptionResourceId.value
+  const resource = resources.value.find(r => r.id === id)
+  if (!resource) return
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const addDays = (d: Date, n: number) => {
+    const r = new Date(d)
+    r.setDate(r.getDate() + n)
+    return r
+  }
+  const today = new Date()
+  let nearestSaturday = addDays(today, 1)
+  while (nearestSaturday.getDay() !== 6) nearestSaturday = addDays(nearestSaturday, 1)
+
+  const sample: WorkCalendarException[] =
+    resource.type === 'Device'
+      ? [
+          {
+            id: 'demo-personal-device-weekend-use',
+            name: `${resource.name} 本周六临时计入工时（该设备当天被占用，不代表长期 7x24）`,
+            start: fmt(nearestSaturday),
+            end: fmt(nearestSaturday),
+            working: true,
+          },
+        ]
+      : [
+          {
+            id: 'demo-personal-extra-leave',
+            name: `${resource.name} 个人请假（与公司级例外无关）`,
+            start: fmt(addDays(today, 2)),
+            end: fmt(addDays(today, 2)),
+            working: false,
+          },
+        ]
+  personalExceptionsJsonDraft.value = JSON.stringify(sample, null, 2)
+}
+
+// 合并"公司级例外 + 该资源自定义字段中的专属例外"，通过 createWorkCalendarResolver 转换为
+// ResolveWorkingMinutes 回调；未做缓存（演示数据量小），生产环境建议参考 README 按 resource.id
+// 缓存 resolver，避免每次调用都重新构建
+const personalResolveWorkingMinutes = computed<ResolveWorkingMinutes>(() => {
+  return (rangeStart, rangeEnd, resource) => {
+    const personal = resourceWorkExceptionsMap.get(resource.id) ?? []
+    const merged = [...effectiveWorkCalendarExceptions.value, ...personal]
+    return createWorkCalendarResolver(merged)(rangeStart, rangeEnd, resource)
+  }
+})
 
 // 控制是否允许拖拽和拉伸
 const allowDragAndResize = ref(true)
@@ -409,6 +656,9 @@ const taskBarOptions = ref({
 const showActualTaskBar = ref(true)
 // Tooltip 自定义 Slot 演示
 const useCustomTooltip = ref(true)
+// Milestone 自定义内容 Slot 演示（v1.13.5）
+const useCustomMilestoneContent = ref(false)
+const milestoneLabelPosition = ref<'left' | 'top' | 'right' | 'bottom'>('right')
 const pendingTaskBackgroundColor = ref('#409eff')
 const delayTaskBackgroundColor = ref('#f56c6c')
 const completeTaskBackgroundColor = ref('#909399')
@@ -448,6 +698,9 @@ const isDataSourcePanelCollapsed = ref(true)
 
 // TaskList 配置区域折叠状态（默认收起）
 const isTaskListConfigCollapsed = ref(true)
+
+// 工作日历配置区域折叠状态（默认收起）
+const isWorkCalendarConfigCollapsed = ref(true)
 
 // TaskBar 配置区域折叠状态（默认收起）
 const isTaskBarConfigCollapsed = ref(true)
@@ -551,6 +804,11 @@ const toggleDataSourcePanel = () => {
 // 切换 TaskList 配置区域
 const toggleTaskListConfig = () => {
   isTaskListConfigCollapsed.value = !isTaskListConfigCollapsed.value
+}
+
+// 切换工作日历配置区域
+const toggleWorkCalendarConfig = () => {
+  isWorkCalendarConfigCollapsed.value = !isWorkCalendarConfigCollapsed.value
 }
 
 // 切换 TaskBar 配置区域
@@ -734,7 +992,7 @@ const closeResourceEditHint = () => {
 }
 
 // v1.9.7 处理视图模式变化事件，同步GanttChart内部状态
-const handleViewModeChanged = (newMode: 'task' | 'resource') => {
+const handleViewModeChanged = (newMode: 'task' | 'resource' | 'calendar' | 'resource-usage') => {
   viewMode.value = newMode
   // useDefaultDrawer会由watch(viewMode)自动更新
 }
@@ -757,6 +1015,24 @@ const formatPropertyValue = (value: unknown): string => {
     return JSON.stringify(value, null, 2)
   }
   return String(value)
+}
+
+/**
+ * 格式化结束日期显示（endDate / actualEndDate 通用）
+ * v1.13.5：若原始值显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+ * '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+ * 修正（-15分钟再截断）再展示为 YYYY-MM-DD，避免自定义 slot 里显示的结束
+ * 日期比实际渲染的 taskbar 多算一天
+ */
+const formatEndDateOnly = (raw: string | undefined | null): string => {
+  if (!raw) return '-'
+  const parsed = new Date(raw)
+  if (isNaN(parsed.getTime())) return raw
+  const effective = getEffectiveEndDateOnly(raw, parsed)
+  const y = effective.getFullYear()
+  const m = String(effective.getMonth() + 1).padStart(2, '0')
+  const d = String(effective.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 // 切换列显示状态
@@ -1026,6 +1302,16 @@ function handleTaskbarDragOrResizeEnd(newTask) {
     `任务【${newTask.name}】已更新\n` +
       `开始日期: ${newTask.startDate}\n` +
       `结束日期: ${newTask.endDate}`,
+    'success',
+    { closable: true },
+  )
+}
+// v1.13.0 日历视图拖拽已创建任务后监听：GanttChart 已经更新了 props.tasks，这里展示新旧日期供参考
+function handleCalendarTaskMove(payload) {
+  showMessage(
+    `任务【${payload.task.name}】已通过日历拖拽更新\n` +
+      `开始日期: ${payload.task.startDate}\n` +
+      `结束日期: ${payload.task.endDate}`,
     'success',
     { closable: true },
   )
@@ -1393,6 +1679,17 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         </a>
       </div> -->
       <div class="title-right docs-links">
+        <a
+          class="official-site-btn"
+          href="https://gantt.jordium.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="demoMessages.officialSite?.title || 'Visit official website'"
+        >{{ demoMessages.officialSite?.btnLabel || '🌐 Official Site' }}</a>
+        <span class="docs-divider"></span>
+        <button class="sponsors-count-badge" @click="showSponsorsListDialog = true" :title="demoMessages.sponsorsList?.badgeTitle || 'View Sponsors'">
+          <span class="badge-icon">💖</span>{{ sponsorsList.length }} {{ demoMessages.sponsorsList?.badgeLabel || 'Sponsors' }}
+        </button>
         <button class="sponsor-btn" @click="showSponsorDialog = true">{{ demoMessages.sponsor?.btnLabel || '&#9749; Sponsor' }}</button>
         <span class="docs-divider"></span>
         <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
@@ -1448,7 +1745,53 @@ const handleCustomMenuAction = (action: string, task: Task) => {
       </Transition>
     </Teleport>
 
+    <!-- Sponsors List Dialog -->
+    <Teleport to="body">
+      <Transition name="sponsor-fade">
+        <div v-if="showSponsorsListDialog" class="sponsor-overlay" @click.self="showSponsorsListDialog = false">
+          <div class="sponsor-dialog sponsors-list-dialog">
+            <button class="sponsor-dialog-close" @click="showSponsorsListDialog = false">&times;</button>
+            <div class="sponsor-dialog-title">{{ demoMessages.sponsorsList?.dialogTitle || 'Our Sponsors' }}</div>
+            <div class="sponsor-dialog-subtitle">{{ demoMessages.sponsorsList?.dialogSubtitle }}</div>
+            <table class="sponsors-table">
+              <thead>
+                <tr>
+                  <th>{{ demoMessages.sponsorsList?.columns?.avatar || 'Avatar' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.name || 'Sponsor' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.type || 'Type' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.amount || 'Amount' }}</th>
+                  <th>{{ demoMessages.sponsorsList?.columns?.since || 'Since' }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sponsor in sponsorsList" :key="sponsor.name">
+                  <td><img class="sponsor-avatar" :src="sponsor.avatar" :alt="sponsor.name" /></td>
+                  <td><a :href="sponsor.url" target="_blank" rel="noopener noreferrer">{{ sponsor.name }}</a></td>
+                  <td>{{ demoMessages.sponsorsList?.types?.[sponsor.typeKey] || sponsor.typeKey }}</td>
+                  <td>{{ sponsor.amount }}</td>
+                  <td>{{ sponsor.since }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="sponsor-star-hint">
+              <a href="https://github.com/nelson820125/jordium-gantt-vue3/blob/main/SPONSORS.md" target="_blank" rel="noopener noreferrer">
+                {{ demoMessages.sponsorsList?.viewFullList || 'View full sponsor list' }}
+              </a>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <VersionHistoryDrawer :visible="showVersionDrawer" @close="showVersionDrawer = false" />
+
+    <WorkCalendarDialog
+      v-model="showWorkCalendarDialog"
+      :exceptions="effectiveWorkCalendarExceptions"
+      :resources="resources"
+      :locale="demoLocale"
+      @confirm="handleWorkCalendarDialogConfirm"
+    />
 
     <div class="data-source-panel" :class="{ collapsed: isDataSourcePanelCollapsed }">
       <div class="data-source-header" @click="toggleDataSourcePanel">
@@ -1759,6 +2102,181 @@ const handleCustomMenuAction = (action: string, task: Task) => {
             </transition>
           </div>
 
+          <!-- 工作日历配置区域（v1.14.0，演示工时视图 ResourceUsageView 的节假日/调休/请假配置） -->
+          <div class="config-section">
+            <div class="section-header" @click="toggleWorkCalendarConfig">
+              <div class="section-header-title">
+                <svg
+                  class="section-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {{ t.workCalendarConfig.title }}
+              </div>
+              <button
+                class="section-collapse-button"
+                :class="{ collapsed: isWorkCalendarConfigCollapsed }"
+              >
+                <svg
+                  class="collapse-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <transition name="section-content">
+              <div v-show="!isWorkCalendarConfigCollapsed" class="section-content">
+                <div class="subsection">
+                  <label class="taskbar-control">
+                    <input v-model="enableWorkCalendarDemo" type="checkbox" />
+                    <span class="taskbar-label">{{ t.workCalendarConfig.enableDemo }}</span>
+                  </label>
+                  <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                    {{ t.workCalendarConfig.enableDemoHint }}
+                  </div>
+                  <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                    {{ t.workCalendarConfig.relationHint }}
+                  </div>
+                </div>
+
+                <transition name="section-content">
+                  <div v-show="enableWorkCalendarDemo">
+                    <!-- 每日基准工时 -->
+                    <div class="subsection">
+                      <h5 class="subsection-title">{{ t.workCalendarConfig.capacityMode.title }}</h5>
+                      <div
+                        class="width-unit-toggle"
+                        style="margin-bottom: 12px; display: flex; align-items: center; gap: 16px"
+                      >
+                        <label class="taskbar-control">
+                          <input v-model="workCalendarCapacityMode" type="radio" value="human" />
+                          <span class="taskbar-label">{{ t.workCalendarConfig.capacityMode.human }}</span>
+                        </label>
+                        <label class="taskbar-control">
+                          <input v-model="workCalendarCapacityMode" type="radio" value="device" />
+                          <span class="taskbar-label">{{ t.workCalendarConfig.capacityMode.device }}</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- 例外列表 -->
+                    <div class="subsection">
+                      <h5 class="subsection-title">{{ t.workCalendarConfig.exceptions.title }}</h5>
+                      <div class="column-controls">
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.holiday" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.holidayLabel }}</span>
+                        </label>
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.halfDayLeave" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.halfDayLabel }}</span>
+                        </label>
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.crossDayHoliday" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.crossDayLabel }}</span>
+                        </label>
+                        <label class="column-control">
+                          <input v-model="workCalendarExceptionToggles.weekendMakeup" type="checkbox" />
+                          <span class="column-label">{{ t.workCalendarConfig.exceptions.weekendMakeupLabel }}</span>
+                        </label>
+                      </div>
+                      <div class="config-hint" style="margin-top: 4px">
+                        {{ t.workCalendarConfig.exceptions.customHint }}
+                      </div>
+                      <button
+                        type="button"
+                        class="wc-open-dialog-btn"
+                        @click="showWorkCalendarDialog = true"
+                      >
+                        {{ t.workCalendarConfig.exceptions.openDialogButton }}
+                      </button>
+                      <button
+                        v-if="customWorkCalendarExceptions"
+                        type="button"
+                        class="wc-open-dialog-btn"
+                        @click="customWorkCalendarExceptions = null"
+                      >
+                        {{ t.workCalendarConfig.exceptions.resetToPresetButton }}
+                      </button>
+                    </div>
+
+                    <!-- 资源专属例外（resolveWorkingMinutes 自定义回调演示） -->
+                    <div class="subsection">
+                      <h5 class="subsection-title">{{ t.workCalendarConfig.personalExceptions.title }}</h5>
+                      <label class="taskbar-control">
+                        <input v-model="enableResourcePersonalExceptions" type="checkbox" />
+                        <span class="taskbar-label">{{ t.workCalendarConfig.personalExceptions.enableLabel }}</span>
+                      </label>
+                      <div class="config-hint" style="margin-top: 4px; margin-left: 20px;">
+                        {{ t.workCalendarConfig.personalExceptions.enableHint }}
+                      </div>
+
+                      <transition name="section-content">
+                        <div v-show="enableResourcePersonalExceptions" style="margin-top: 8px;">
+                          <label class="config-label" style="display: block; margin-bottom: 4px;">
+                            {{ t.workCalendarConfig.personalExceptions.resourceLabel }}
+                          </label>
+                          <select v-model="selectedPersonalExceptionResourceId" class="wc-input">
+                            <option v-for="res in resources" :key="res.id" :value="res.id">
+                              {{ res.name }}
+                            </option>
+                          </select>
+
+                          <label class="config-label" style="display: block; margin: 8px 0 4px;">
+                            {{ t.workCalendarConfig.personalExceptions.jsonLabel }}
+                          </label>
+                          <textarea
+                            v-model="personalExceptionsJsonDraft"
+                            class="wc-json-textarea"
+                            rows="8"
+                            spellcheck="false"
+                          ></textarea>
+                          <div v-if="personalExceptionsJsonError" class="wc-json-error">
+                            {{ personalExceptionsJsonError }}
+                          </div>
+
+                          <div style="margin-top: 6px; display: flex; gap: 8px;">
+                            <button type="button" class="wc-open-dialog-btn" @click="applyPersonalExceptionsJson">
+                              {{ t.workCalendarConfig.personalExceptions.applyButton }}
+                            </button>
+                            <button type="button" class="wc-open-dialog-btn" @click="fillPersonalExceptionsSample">
+                              {{ t.workCalendarConfig.personalExceptions.fillSampleButton }}
+                            </button>
+                            <button type="button" class="wc-open-dialog-btn" @click="clearPersonalExceptionsJson">
+                              {{ t.workCalendarConfig.personalExceptions.clearButton }}
+                            </button>
+                          </div>
+                          <div class="config-hint" style="margin-top: 4px;">
+                            {{ t.workCalendarConfig.personalExceptions.appliedHint }}
+                          </div>
+                          <div class="config-hint" style="margin-top: 4px;">
+                            {{ t.workCalendarConfig.personalExceptions.permanentHint }}
+                          </div>
+                        </div>
+                      </transition>
+                    </div>
+                  </div>
+                </transition>
+              </div>
+            </transition>
+          </div>
+
           <!-- TaskBar配置区域 -->
           <div class="config-section">
             <div class="section-header" @click="toggleTaskBarConfig">
@@ -1822,6 +2340,19 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                     <label class="taskbar-control">
                       <input v-model="useCustomTooltip" type="checkbox" />
                       <span class="taskbar-label">🎨 自定义 Tooltip（Slot 演示）</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <input v-model="useCustomMilestoneContent" type="checkbox" />
+                      <span class="taskbar-label">🏳️ 自定义里程碑内容（custom-milestone-content Slot 演示）</span>
+                    </label>
+                    <label class="taskbar-control">
+                      <span class="taskbar-label">里程碑标签位置：</span>
+                      <select v-model="milestoneLabelPosition">
+                        <option value="right">right</option>
+                        <option value="left">left</option>
+                        <option value="top">top</option>
+                        <option value="bottom">bottom</option>
+                      </select>
                     </label>
                   </div>
 
@@ -2583,7 +3114,9 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :milestones="milestones"
         :resources="resources"
         :view-mode="viewMode"
+        :available-view-modes="['task', 'resource', 'calendar', 'resource-usage']"
         :resource-list-config="resourceListConfig"
+        :resource-usage-props="resourceUsageProps"
         :locale="controlMode === 'props' ? propsLocale : undefined"
         :time-scale="controlMode === 'props' ? propsTimeScale : undefined"
         :fullscreen="controlMode === 'props' ? propsFullscreen : undefined"
@@ -2596,6 +3129,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :task-bar-config="taskBarConfig"
         :scale-configs="scaleConfigs"
         :working-hours="workingHoursConfig"
+        :work-calendar-exceptions="enableWorkCalendarDemo ? effectiveWorkCalendarExceptions : undefined"
         :use-default-milestone-dialog="true"
         :allow-drag-and-resize="allowDragAndResize"
         :enable-task-row-move="enableTaskRowMove"
@@ -2607,6 +3141,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :task-list-column-render-mode="taskListColumnRenderMode"
         :show-actual-taskbar="showActualTaskBar"
         :enable-task-bar-tooltip="true"
+        :milestone-label-position="milestoneLabelPosition"
         :pending-task-background-color="pendingTaskBackgroundColor"
         :delay-task-background-color="delayTaskBackgroundColor"
         :complete-task-background-color="completeTaskBackgroundColor"
@@ -2642,6 +3177,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         @task-updated="handleTaskUpdateEvent"
         @task-row-moved="handleTaskRowMoved"
         @resource-drag-end="handleResourceDragEnd"
+        @calendar-task-move="handleCalendarTaskMove"
       >
         <!-- 自定义任务名称内容 (TaskRow 和 TaskBar) -->
         <template #custom-task-content="item">
@@ -2816,7 +3352,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
               </div>
               <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
                 <span style="opacity: 0.9;">🏁 结束：</span>
-                <span style="font-weight: 500;">{{ task.endDate?.slice(0, 10) ?? '-' }}</span>
+                <span style="font-weight: 500;">{{ formatEndDateOnly(task.endDate) }}</span>
               </div>
               <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px;">
                 <span style="opacity: 0.9;">📊 进度：</span>
@@ -2945,7 +3481,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                   </div>
                   <div style="display: flex; justify-content: space-between; color: #666;">
                     <span>🏁 计划结束</span>
-                    <span style="color: #333; font-weight: 500;">{{ task.endDate?.slice(0, 10) ?? '-' }}</span>
+                    <span style="color: #333; font-weight: 500;">{{ formatEndDateOnly(task.endDate) }}</span>
                   </div>
                   <template v-if="task.actualStartDate || task.actualEndDate">
                     <div style="border-top: 1px solid #f0f0f0; margin: 2px 0;"/>
@@ -2955,7 +3491,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                     </div>
                     <div v-if="task.actualEndDate" style="display: flex; justify-content: space-between; color: #888;">
                       <span>✅ 实际结束</span>
-                      <span style="color: #555; font-weight: 500;">{{ task.actualEndDate?.slice(0, 10) }}</span>
+                      <span style="color: #555; font-weight: 500;">{{ formatEndDateOnly(task.actualEndDate) }}</span>
                     </div>
                   </template>
                 </div>
@@ -3041,6 +3577,42 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                 "
               >✨ 自定义 Milestone Tooltip</div>
             </div>
+          </div>
+        </template>
+
+        <!-- ── Milestone 自定义内容 Slot（custom-milestone-content，v1.13.5）────────── -->
+        <!-- 示例演示如何利用 slot 暴露的 labelPosition 自行调整布局：与内置图标+标签的实现
+             方式保持一致——"图标"（🏳️）始终固定在锚点位置（relative 容器的左上角，不受
+             labelPosition 影响，磁吸/定位逻辑均以此为准），文本标签改为绝对定位相对该锚点
+             向外叠加展示，不参与布局计算，不会反过来推挤/偏移图标本身的位置。 -->
+        <template
+          v-if="useCustomMilestoneContent"
+          #custom-milestone-content="{ milestone, task, labelPosition }"
+        >
+          <div style="position: relative; display: inline-block; cursor: pointer;">
+            <!-- <span style="font-size: 16px; display: block;">🏳️</span> -->
+             <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M868.032 160h-92.032v-40A8 8 0 0 0 768 112H256a8 8 0 0 0-8 8V160H155.968a44.032 44.032 0 0 0-43.968 44.032V352c0 81.728 60.032 149.632 138.24 161.984a256.32 256.32 0 0 0 225.728 220.544v105.152H280.064a32 32 0 0 0-32 32v32.32c0 4.416 3.584 8 8 8h512a8 8 0 0 0 8-8v-32.32a32 32 0 0 0-32-32H547.968v-105.152a256.32 256.32 0 0 0 225.856-220.544A164.288 164.288 0 0 0 912 352V203.968a44.032 44.032 0 0 0-44.032-43.968z m-684.032 192V232h64v207.616c-37.12-11.84-64-46.592-64-87.616zM704 480c0 49.088-19.072 95.36-53.888 130.112a182.784 182.784 0 0 1-130.112 53.888h-16c-49.088 0-95.36-19.072-130.112-53.888A182.784 182.784 0 0 1 320 480V184h384V480z m136-128c0 40.96-26.88 75.776-64 87.616V232h64V352z" fill="#d81e06"></path></svg>
+             <!-- <span style="position: absolute; white-space: nowrap; font-size: 10px; font-weight: bold; color: #f56c6c; top: 100%; left: 50%; transform: translateX(-50%);">
+              {{ milestone.name }}{{ task?.assigneeName ? `（${task.assigneeName}）` : '' }}
+            </span> -->
+            <span
+              :style="{
+                position: 'absolute',
+                whiteSpace: 'nowrap',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: '#f56c6c',
+                ...(labelPosition === 'top'
+                  ? { bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '2px' }
+                  : labelPosition === 'bottom'
+                    ? { top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '2px' }
+                    : labelPosition === 'left'
+                      ? { right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: '4px' }
+                      : { left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: '4px' }),
+              }"
+            >
+              {{ milestone.name }}{{ task?.assigneeName ? `（${task.assigneeName}）` : '' }}
+            </span>
           </div>
         </template>
 
@@ -3601,6 +4173,60 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   margin-bottom: 12px;
   padding-left: 12px;
   border-left: 2px solid var(--gantt-border-color, #e4e7ed);
+}
+
+.wc-open-dialog-btn {
+  margin-top: 8px;
+  margin-right: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--gantt-primary-color, #409eff);
+  background: transparent;
+  color: var(--gantt-primary-color, #409eff);
+  cursor: pointer;
+}
+
+.wc-open-dialog-btn:hover {
+  background: var(--gantt-primary-light, #ecf5ff);
+}
+
+.config-label {
+  font-size: 12px;
+  color: var(--gantt-text-secondary, #666);
+}
+
+.wc-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  background: var(--gantt-bg-color, #fff);
+  color: var(--gantt-text-primary, #333);
+  box-sizing: border-box;
+}
+
+.wc-json-textarea {
+  width: 100%;
+  max-width: 480px;
+  padding: 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  border-radius: 4px;
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
+  background: var(--gantt-bg-color, #fff);
+  color: var(--gantt-text-primary, #333);
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.wc-json-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f56c6c;
 }
 
 .subsection-title {
@@ -4358,6 +4984,31 @@ const handleCustomMenuAction = (action: string, task: Task) => {
   gap: 8px;
 }
 
+.official-site-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #409eff 0%, #36cfc9 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+  line-height: 1.4;
+}
+
+.official-site-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(64, 158, 255, 0.45);
+  color: white;
+}
+
 /* ===== Sponsor Dialog ===== */
 .sponsor-btn {
   display: inline-flex;
@@ -4380,6 +5031,70 @@ const handleCustomMenuAction = (action: string, task: Task) => {
 .sponsor-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(255, 107, 107, 0.45);
+}
+
+.sponsors-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #ff9ec4 0%, #ff6b9d 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3);
+  line-height: 1.4;
+}
+
+.sponsors-count-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 107, 157, 0.45);
+}
+
+.sponsors-list-dialog {
+  width: 480px;
+}
+
+.sponsors-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.sponsors-table th,
+.sponsors-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+}
+
+.sponsors-table th {
+  color: #888;
+  font-weight: 600;
+}
+
+.sponsors-table td a {
+  color: #333;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sponsors-table td a:hover {
+  color: var(--gantt-primary-color, #409eff);
+}
+
+.sponsor-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .sponsor-overlay {

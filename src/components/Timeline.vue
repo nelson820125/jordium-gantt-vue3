@@ -22,6 +22,7 @@ import { useI18n } from '../composables/useI18n'
 import { useViewMode } from '../composables/useViewMode' // v1.9.9 视图模式状态管理
 import type { TaskBarConfig } from '../models/configs/TaskBarConfig'
 import { getPredecessorIds } from '../utils/predecessorUtils'
+import { getEffectiveEndDateOnly } from '../utils/dateBoundaryUtils'
 import { perfMonitor } from '../utils/perfMonitor'
 import { perfMonitor2 } from '../utils/perfMonitor2' // v1.9.6 性能诊断工具
 import type { Task } from '../models/classes/Task'
@@ -35,7 +36,10 @@ import type {
   MilestoneTooltipShowPayload,
 } from '../models/types/TimelineDataTypes'
 import { positionCache } from '../utils/positionCache' // v1.9.6 Phase1 位置计算缓存
+import { applyTimelineFormat } from '../utils/timelineFormat' // v1.13.0 抽取为共享工具，供 ResourceUsageView 复用同一套格式化逻辑
 import { computeTaskViewLogicalPosition } from '../utils/taskPositionUtils' // 逻辑坐标种子填充
+import { resolveWorkCalendarDisplayOverride } from '../utils/workCalendarUtils' // v1.14.1 工作日历例外 → 表头周末灰色展示覆盖
+import type { WorkCalendarException } from '../models/types/ResourceUsageTypes'
 
 // 定义Props接口
 interface Props {
@@ -56,6 +60,9 @@ interface Props {
     morning?: { start: number; end: number }
     afternoon?: { start: number; end: number }
   }
+  // v1.14.1 工作日历例外（节假日/调休），仅取其中"整天 + 未指定 resourceIds"的记录，
+  // 用于覆盖表头/背景列默认的周末灰色判断；与资源利用率视图数值计算是独立链路，语义详见 workCalendarUtils.ts
+  workCalendarExceptions?: WorkCalendarException[]
   // TaskBar 配置
   taskBarConfig?: TaskBarConfig
   // 是否允许拖拽和拉伸（默认为 true）
@@ -66,6 +73,8 @@ interface Props {
   enableTaskBarTooltip?: boolean
   // 是否启用里程碑气泡提示框（默认为 true）
   enableMilestoneTooltip?: boolean
+  // 里程碑标签展示位置（默认 'right'，与现状保持一致）
+  milestoneLabelPosition?: 'left' | 'top' | 'right' | 'bottom'
   // 自定义任务状态背景色
   pendingTaskBackgroundColor?: string
   delayTaskBackgroundColor?: string
@@ -93,11 +102,13 @@ const props = withDefaults(defineProps<Props>(), {
     morning: { start: 8, end: 11 },
     afternoon: { start: 13, end: 17 },
   }),
+  workCalendarExceptions: undefined,
   taskBarConfig: undefined,
   allowDragAndResize: true,
   showActualTaskbar: false,
   enableTaskBarTooltip: true,
   enableMilestoneTooltip: true,
+  milestoneLabelPosition: 'right',
   pendingTaskBackgroundColor: undefined,
   delayTaskBackgroundColor: undefined,
   completeTaskBackgroundColor: undefined,
@@ -167,13 +178,18 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
   if (!currentTask || !currentTask.startDate || !currentTask.endDate) return []
 
   const currentStart = new Date(currentTask.startDate).getTime()
-  const currentEnd = new Date(currentTask.endDate).getTime()
+  const currentEndDate = new Date(currentTask.endDate)
 
   // v1.9.7 修复：返回所有与当前任务时间重叠的冲突任务
   // 不需要再次验证占比相加是否超过100%，因为resourceConflicts已经包含了所有冲突的任务ID
   // 当多个任务同时重叠时（如3个任务各75%），应该全部返回，而不是只返回第一个两两超载的任务
   // v1.9.9 修复：endDate 包含当天，需要 +1 天来判断交集（与 conflictUtils 保持一致）
-  const currentEndPlus = currentEnd + 24 * 60 * 60 * 1000
+  // v1.13.5 修复：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+  // '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+  // 修正（-15分钟再截断）再 +1天，避免把次日0点误当成占满当天，导致本不冲突的
+  // 任务被错误列入冲突列表（详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+  const currentEndPlus =
+    getEffectiveEndDateOnly(currentTask.endDate, currentEndDate).getTime() + 24 * 60 * 60 * 1000
 
   const conflictTasks = resource.tasks.filter(task => {
     if (task.id === taskId) return false
@@ -182,8 +198,9 @@ const getConflictTasksForTask = (resourceId: string | number, taskId: string | n
     if (!conflictTaskIds.has(task.id)) return false
 
     const taskStart = new Date(task.startDate).getTime()
-    const taskEnd = new Date(task.endDate).getTime()
-    const taskEndPlus = taskEnd + 24 * 60 * 60 * 1000
+    const taskEndDate = new Date(task.endDate)
+    const taskEndPlus =
+      getEffectiveEndDateOnly(task.endDate, taskEndDate).getTime() + 24 * 60 * 60 * 1000
 
     // 检查时间重叠：endDate 包含当天，所以需要 +1 天来判断
     // 例如：任务A endDate=12-24, 任务B startDate=12-24，应判断为重叠（都占用12-24这一天）
@@ -279,7 +296,7 @@ const tooltipState = reactive({
   parentAutoSchedule: undefined as
     | {
         enabled: boolean
-        childrenRange: { minStart: Date; maxEnd: Date } | null
+        childrenRange: { minStart: Date; maxEnd: Date; maxEndRaw?: Task['endDate'] } | null
         hasOverflow: boolean
       }
     | undefined,
@@ -299,6 +316,20 @@ const tooltipState = reactive({
 const formatTooltipDate = (dateStr: string | undefined): string => {
   if (!dateStr) return t('dateNotSet')
   return String(dateStr).substring(0, 10)
+}
+
+/**
+ * 格式化 endDate 显示 (YYYY-MM-DD)
+ * v1.13.5：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+ * '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+ * 修正（-15分钟再截断）再展示，避免 tooltip 显示的结束日期比实际渲染多算一天
+ * （详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+ */
+const formatTooltipEndDate = (dateStr: string | undefined): string => {
+  if (!dateStr) return t('dateNotSet')
+  const parsed = new Date(dateStr)
+  if (isNaN(parsed.getTime())) return t('dateNotSet')
+  return formatDateObj(getEffectiveEndDateOnly(dateStr, parsed))
 }
 
 /** 格式化 Date 对象为 YYYY-MM-DD 字符串（用于父级自动调度日期展示） */
@@ -549,46 +580,10 @@ function sanitizeBuffer(value: number | undefined): number | null {
 }
 
 /**
- * 计算日期的 ISO 周数（W token 使用）
- */
-function getISOWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayOfWeek = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
-
-/**
- * 将格式字符串应用于指定日期，返回格式化后的标签字符串。
- * 支持 token：yyyy, MM, M, dd, d, HH, mm, Q（季度数字1-4）, W（ISO周数）
- * 特殊 pattern：'AAA|BBB' —— 月份 < 6（1-6月, index 0-5）时返回 AAA，否则返回 BBB
+ * 将格式字符串应用于指定日期，返回格式化后的标签字符串（实现见 utils/timelineFormat.ts）。
  */
 function applyFormatter(formatStr: string, date: Date): string {
-  if (formatStr.includes('|')) {
-    const parts = formatStr.split('|')
-    return date.getMonth() < 6 ? parts[0] : (parts[1] ?? parts[0])
-  }
-  const yyyy = date.getFullYear().toString()
-  const MM = String(date.getMonth() + 1).padStart(2, '0')
-  const M = String(date.getMonth() + 1)
-  const dd = String(date.getDate()).padStart(2, '0')
-  const d = String(date.getDate())
-  const HH = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  const Q = String(Math.ceil((date.getMonth() + 1) / 3))
-  const W = getISOWeekNumber(date).toString()
-  // 注意替换顺序：多字符 token 优先，避免单字符 token 误替换
-  return formatStr
-    .replace('yyyy', yyyy)
-    .replace('MM', MM)
-    .replace('dd', dd)
-    .replace('HH', HH)
-    .replace('mm', mm)
-    .replace('M', M)
-    .replace('d', d)
-    .replace('Q', Q)
-    .replace('W', W)
+  return applyTimelineFormat(formatStr, date)
 }
 
 /**
@@ -779,21 +774,13 @@ const getDayTimelineRange = () => {
   const customPreBuffer = sanitizeBuffer(scaleConf.preBuffer)
   const customSufBuffer = sanitizeBuffer(scaleConf.sufBuffer)
 
-  if (!taskRange) {
-    // 如果没有任务，根据容器宽度计算范围
-    const today = new Date()
-    const daysNeeded = Math.max(Math.ceil(containerWidth / cellWidthDay), 60) // 至少60天
-
-    const startDate = new Date(today)
-    startDate.setDate(startDate.getDate() - Math.floor(daysNeeded / 2))
-
-    const endDate = new Date(today)
-    endDate.setDate(endDate.getDate() + Math.ceil(daysNeeded / 2))
-
-    return { startDate, endDate }
-  }
-
-  const { minDate, maxDate } = taskRange
+  // bugfix: 无任务（tasks=[]）时以"今天"作为 minDate/maxDate 锚点，复用下方与"有任务"时
+  // 完全相同的月对齐 + buffer 计算逻辑，而不是另用一套固定 ±30天窗口。
+  // 原因：旧的无任务分支不遵循 preBuffer/sufBuffer 配置、也不按月对齐，计算出的范围
+  // 比"有任务"分支窄很多（约60天 vs 三个月），当任务从空数组变为真实数据时，
+  // getDayTimelineRange 会从这条分支切换到下方分支，导致 timelineConfig 范围突变、
+  // 引发不必要的 timelineData 重新生成和滚动位置跳变。统一锚点后两条路径结果一致。
+  const { minDate, maxDate } = taskRange || { minDate: new Date(), maxDate: new Date() }
 
   // 开始日期：自定义preBuffer月前对齐月初，或默认前一个月月初
   // 对齐到月初原因：避免日期溢出导致 generateDayTimelineData 月份迭代 setMonth(+1) 跳过月份
@@ -1844,6 +1831,13 @@ const timelineDataCache = new Map<string, TimelineCacheEntry>()
 const CACHE_TTL = 60000 // 缓存有效期：1分钟
 const MAX_CACHE_SIZE = 4 // 最多缓存4个刻度（日/周/月/年）
 
+// v1.14.1 workCalendarExceptions 变化时的版本号。必须在 getCachedTimelineData 顶部无条件读取，
+// 确保每次都被 optimizedTimelineData/totalTimelineWidth 等 computed 追踪为响应式依赖——
+// 否则若上一次求值走的是"缓存命中"分支（未调用 generateXxxTimelineData，不会读取
+// props.workCalendarExceptions），computed 就不会在例外变化时失效，需等 scale/日期范围真正变化
+// 才会重新生成，用户会看到"确认更改工作时间后 Timeline 没有立即刷新"。
+const workCalendarVersion = ref(0)
+
 // 初始化状态
 const isInitialLoad = ref(true)
 
@@ -2632,10 +2626,12 @@ const debouncedUpdateCanvasPosition = debounce(() => {
 
 // v1.9.5 P2-3优化 - 智能缓存时间轴数据的函数
 const getCachedTimelineData = (): unknown => {
+  // 必须在最前面无条件读取，保证每次求值都建立响应式依赖（见上方 workCalendarVersion 定义处说明）
+  const calendarVersion = workCalendarVersion.value
   const scale = currentTimeScale.value
   const startTime = timelineConfig.value.startDate.getTime()
   const endTime = timelineConfig.value.endDate.getTime()
-  const key = `${scale}-${startTime}-${endTime}`
+  const key = `${scale}-${startTime}-${endTime}-${calendarVersion}`
 
   // 检查缓存是否存在且未过期
   const cached = timelineDataCache.get(key)
@@ -3107,6 +3103,26 @@ const clearTimelineCache = () => {
   timelineDataCache.clear()
 }
 
+// v1.14.1 工作日历例外变化时，让已缓存的表头/背景列数据重新生成：递增版本号使缓存 key 变化，
+// 从而让 optimizedTimelineData 等 computed 无条件感知到变化并重新调用 generateXxxTimelineData
+// （若仅清空 Map 而不改变 computed 的响应式依赖，可能要等 CACHE_TTL 到期或 scale/日期变化才会生效）
+watch(
+  () => props.workCalendarExceptions,
+  () => {
+    workCalendarVersion.value++
+    clearTimelineCache()
+  }
+)
+
+/**
+ * 判断某天在表头/背景列上是否按"非工作日(周末灰)"展示：优先采纳 workCalendarExceptions 里
+ * 命中的"整天 + 公司级"例外覆盖，未命中时回退到调用方传入的自然日历周末判断（周六/周日）
+ */
+const resolveDisplayWeekend = (date: Date, calendarWeekend: boolean): boolean => {
+  const override = resolveWorkCalendarDisplayOverride(date, props.workCalendarExceptions)
+  return override !== undefined ? override : calendarWeekend
+}
+
 // 生成日视图时间轴数据 (原有逻辑)
 const generateDayTimelineData = () => {
   const months: unknown[] = []
@@ -3123,7 +3139,7 @@ const generateDayTimelineData = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day)
       const dayOfWeek = date.getDay() // 0=周日, 6=周六
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const isWeekend = resolveDisplayWeekend(date, dayOfWeek === 0 || dayOfWeek === 6)
 
       days.push({
         day,
@@ -3149,9 +3165,11 @@ const generateDayTimelineData = () => {
 }
 
 // 判断是否为工作时间
-const isWorkingHour = (hour: number, dayOfWeek: number) => {
-  // 周末（周六=6，周日=0）直接返回false，保持周末样式
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
+// v1.14.1 新增 isWeekendDisplay 参数：由调用方传入"已结合工作日历例外覆盖后"的周末判断结果，
+// 避免这里重复一份纯 dayOfWeek 判断导致与表头/背景列的灰色状态不一致
+const isWorkingHour = (hour: number, isWeekendDisplay: boolean) => {
+  // 非工作日（自然周末，或被工作日历例外覆盖为假日）直接返回false，保持周末样式
+  if (isWeekendDisplay) {
     return false
   }
 
@@ -3190,6 +3208,7 @@ const generateHourTimelineData = () => {
     // 生成该天的24小时数据
     const hours = []
     const dayOfWeek = currentDate.getDay() // 获取星期几
+    const isWeekendDisplay = resolveDisplayWeekend(currentDate, dayOfWeek === 0 || dayOfWeek === 6)
     for (let hour = 0; hour < 24; hour++) {
       const hourDate = new Date(year, month - 1, day, hour)
       hours.push({
@@ -3198,8 +3217,8 @@ const generateHourTimelineData = () => {
         shortLabel: String(hour).padStart(2, '0'), // 简化显示格式，只显示小时数
         date: hourDate,
         isToday: isToday(hourDate) && hour === new Date().getHours(),
-        isWorkingHour: isWorkingHour(hour, dayOfWeek), // 判断是否为工作时间
-        isWeekend: dayOfWeek === 0 || dayOfWeek === 6, // 是否为周末
+        isWorkingHour: isWorkingHour(hour, isWeekendDisplay), // 判断是否为工作时间
+        isWeekend: isWeekendDisplay, // 是否按非工作日(灰)展示
       })
     }
 
@@ -3292,9 +3311,11 @@ const generateSubDaysForWeek = (weekStart: Date) => {
   for (let i = 0; i < 7; i++) {
     const date = new Date(weekStart)
     date.setDate(date.getDate() + i)
+    const dayOfWeek = date.getDay()
     subDays.push({
       date: new Date(date),
-      dayOfWeek: date.getDay(),
+      dayOfWeek,
+      isWeekend: resolveDisplayWeekend(date, dayOfWeek === 0 || dayOfWeek === 6),
     })
   }
   return subDays
@@ -3490,15 +3511,27 @@ watch(
 
 // 保证每次时间轴数据变化后都自动居中今日（仅初始化和外部props变更时触发，不因任务/里程碑变更触发）
 let hasInitialAutoScroll = false
+// bugfix: 任务视图下 tasks 从空数组变为真实数据时，timelineConfig 可能被连续更新两次——
+// 1) GanttChart 的 timelineDateRange 通过 props.startDate/endDate 驱动的 watch（同步生效）
+// 2) 本组件内部 debouncedUpdateTimelineRange（50ms 延迟，基于当前 currentTimeScale 重算）
+// 若不做防抖，第一次（可能不是最终范围）就会消费掉 hasInitialAutoScroll 标记并立即滚动，
+// 第二次真正生效的范围到达时标记已为 true，不会再次滚动，导致今日定位到错误位置（仅默认的
+// "天"刻度会暴露，因为其他刻度都是用户手动切换触发 updateTimeScale()，该函数会无条件调用
+// scrollToTodayCenter()，不依赖这个标记）。改为防抖：短时间内的多次变化只取最后一次生效后的状态。
+let initialScrollDebounceTimer: number | null = null
 watch(
   () => [timelineData.value, timelineConfig.value.startDate, timelineConfig.value.endDate],
   () => {
-    if (!hasInitialAutoScroll) {
+    if (hasInitialAutoScroll) return
+    if (initialScrollDebounceTimer) clearTimeout(initialScrollDebounceTimer)
+    initialScrollDebounceTimer = setTimeout(() => {
+      initialScrollDebounceTimer = null
+      if (hasInitialAutoScroll) return
+      hasInitialAutoScroll = true
       nextTick(() => {
         scrollToTodayCenter()
-        hasInitialAutoScroll = true
       })
-    }
+    }, 120) // 大于内部各处 updateTimelineRange 相关防抖延迟（50ms/100ms），确保拿到最终稳定范围
   }
   // 优化：移除 deep: true，因为监听的是基础类型（startDate/endDate）和 shallowRef（timelineData）
   // 不需要深度监听，可减少 90% 的监听开销
@@ -3919,7 +3952,10 @@ const scrollToToday = () => {
  * 滚动到指定日期（居中显示）
  * @param date 日期（Date对象或日期字符串）
  */
-const scrollToDate = (date: Date | string) => {
+// 计算指定日期相对于当前 Timeline 内容起始位置（scrollLeft=0 处）的像素偏移，
+// 与 scrollToDate 内部滚动定位使用同一套换算逻辑（各时间刻度换算方式一致），
+// 供 PDF 导出裁剪等需要"日期 -> 像素"的外部场景复用，避免另写一份重复且可能不一致的换算代码
+const getDatePixelOffset = (date: Date | string): number => {
   const targetDate = typeof date === 'string' ? new Date(date) : date
   const timelineStart = timelineConfig.value.startDate
 
@@ -4046,6 +4082,15 @@ const scrollToDate = (date: Date | string) => {
     // 日视图：每天30px
     datePosition = daysDiff * dayWidth.value
   }
+
+  return datePosition
+}
+
+const scrollToDate = (date: Date | string) => {
+  const targetDate = typeof date === 'string' ? new Date(date) : date
+
+  // 目标日期在时间线中的像素位置（与 getDatePixelOffset 共用同一套换算逻辑）
+  const datePosition = getDatePixelOffset(targetDate)
 
   // 使用缓存的容器元素
   const timeline = timelineContainerElement.value
@@ -4654,6 +4699,11 @@ watch(
     // 真实数据到来后范围扩展，若不重置则 scrollToTodayCenter 不会再次触发
     if (oldLength === 0 && newLength > 0) {
       hasInitialAutoScroll = false
+      // bugfix: 资源视图下 updateTimelineRange 默认短路，需显式打开一次性阀门，
+      // 否则首次由空数组变为真实数据时范围不会重算（天刻度默认场景下尤为明显）
+      if (viewMode.value === 'resource') {
+        forceTimelineRangeInResourceView = true
+      }
       debouncedUpdateTimelineRange(50)
     }
 
@@ -5353,6 +5403,8 @@ defineExpose({
   scrollToToday,
   scrollToTodayCenter,
   scrollToDate,
+  // 日期 -> 像素偏移换算（供 PDF 导出裁剪等外部场景复用）
+  getDatePixelOffset,
   // 时间线配置
   timelineConfig,
   // 时间刻度更新
@@ -5479,9 +5531,13 @@ watch([timelineData, timelineContainerWidth], () => {
 })
 
 // 监听viewMode和dataSource变化，刷新缓存和时间线
-watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
+watch([viewMode, dataSource], ([newViewMode, newDataSource], [oldViewMode, oldDataSource]) => {
   invalidateTaskDateRangeCache()
   const viewModeChanged = newViewMode !== oldViewMode
+  // bugfix: 资源视图下宿主重新查询并整体替换 resources 数组（首次填充或切换查询条件）时，
+  // dataSource 引用会变化但 viewMode 不变，此前只判断 viewModeChanged 会导致漏掉这个场景，
+  // timelineConfig 停留在旧/空数据兜底范围，表现为无法自动定位今天、或定位后任务不在可见窗口内
+  const dataSourceChanged = newDataSource !== oldDataSource
   if (newViewMode === 'task') {
     // bugfix: 切换回任务视图时重置 hasInitialAutoScroll，确保 updateTimelineRange 完成后能重新定位今日
     // 场景：资源视图切换回任务视图时，updateTimelineRange 重新计算任务范围导致像素偏移，
@@ -5489,8 +5545,9 @@ watch([viewMode, dataSource], ([newViewMode], [oldViewMode]) => {
     hasInitialAutoScroll = false
     debouncedUpdateTimelineRange()
   } else if (newViewMode === 'resource') {
-    if (viewModeChanged) {
-      // 切换到资源视图：基于资源任务重算日期范围，重算完成后由 watch([timelineData,...]) 触发滚到今日
+    if (viewModeChanged || dataSourceChanged) {
+      // 切换到资源视图 / 资源数据整体替换：基于资源任务重算日期范围，
+      // 重算完成后由 watch([timelineData,...]) 触发滚到今日
       // 重置 hasInitialAutoScroll，确保 watch([timelineData, timelineConfig...]) 在重算完成后能滚到今日
       // 不在此处直接调用 scrollToTodayCenter()，因为 debouncedUpdateTimelineRange 有 50ms 延迟，
       // nextTick 会在 50ms 之前就执行，导致用旧的 task 视图坐标滚到错误位置
@@ -5654,12 +5711,13 @@ const generateMonthTimelineData = () => {
       const subDays = []
       for (let day = 1; day <= monthData.dayCount; day++) {
         const date = new Date(monthData.year, monthData.month - 1, day)
+        const dayOfWeek = date.getDay()
         subDays.push({
           day,
           date: new Date(date),
-          dayOfWeek: date.getDay(),
+          dayOfWeek,
           isToday: isToday(date),
-          isWeekend: date.getDay() === 0 || date.getDay() === 6,
+          isWeekend: resolveDisplayWeekend(date, dayOfWeek === 0 || dayOfWeek === 6),
         })
       }
 
@@ -6292,7 +6350,7 @@ const handleAddSuccessor = (task: Task) => {
                     :key="`subday-col-${dayIndex}`"
                     class="sub-day-column"
                     :class="{
-                      weekend: subDay.dayOfWeek === 0 || subDay.dayOfWeek === 6,
+                      weekend: subDay.isWeekend,
                       today: isToday(subDay.date),
                     }"
                     :style="{ height: `${contentHeight}px`, width: `${dayWidth}px` }"
@@ -6386,6 +6444,8 @@ const handleAddSuccessor = (task: Task) => {
                   :period-width="dayWidth"
                   :name="milestone.name"
                   :milestone="convertTaskToMilestone(milestone)"
+                  :task="milestone"
+                  :label-position="props.milestoneLabelPosition"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
                   :milestone-id="milestone.id"
@@ -6399,7 +6459,14 @@ const handleAddSuccessor = (task: Task) => {
                   @drag-end="handleMilestoneDragEnd"
                   @milestone-tooltip-show="handleMilestoneTooltipShow"
                   @milestone-tooltip-hide="handleMilestoneTooltipHide"
-                />
+                >
+                  <template
+                    v-if="$slots['custom-milestone-content']"
+                    #custom-milestone-content="milestoneScope"
+                  >
+                    <slot name="custom-milestone-content" v-bind="milestoneScope" />
+                  </template>
+                </MilestonePoint>
               </template>
               <!-- 独立里程碑 -->
               <template v-else-if="task.type === 'milestone'">
@@ -6422,6 +6489,8 @@ const handleAddSuccessor = (task: Task) => {
                   :period-width="dayWidth"
                   :name="task.name"
                   :milestone="convertTaskToMilestone(task)"
+                  :task="task"
+                  :label-position="props.milestoneLabelPosition"
                   :scroll-left="timelineScrollLeft"
                   :container-width="timelineContainerWidth"
                   :milestone-id="task.id"
@@ -6435,7 +6504,14 @@ const handleAddSuccessor = (task: Task) => {
                   @drag-end="handleMilestoneDragEnd"
                   @milestone-tooltip-show="handleMilestoneTooltipShow"
                   @milestone-tooltip-hide="handleMilestoneTooltipHide"
-                />
+                >
+                  <template
+                    v-if="$slots['custom-milestone-content']"
+                    #custom-milestone-content="milestoneScope"
+                  >
+                    <slot name="custom-milestone-content" v-bind="milestoneScope" />
+                  </template>
+                </MilestonePoint>
               </template>
               <!-- 普通任务条 - 排除里程碑分组和普通里程碑 -->
               <TaskBar
@@ -6705,7 +6781,12 @@ const handleAddSuccessor = (task: Task) => {
             <div class="hover-tooltip-row">
               <span class="hover-tooltip-label">{{ t('childrenLatestEnd') }}:</span>
               <span class="hover-tooltip-value">{{
-                formatDateObj(tooltipState.parentAutoSchedule.childrenRange.maxEnd)
+                formatDateObj(
+                  getEffectiveEndDateOnly(
+                    tooltipState.parentAutoSchedule.childrenRange.maxEndRaw,
+                    tooltipState.parentAutoSchedule.childrenRange.maxEnd
+                  )
+                )
               }}</span>
             </div>
           </template>
@@ -6720,7 +6801,7 @@ const handleAddSuccessor = (task: Task) => {
             <div class="hover-tooltip-row">
               <span class="hover-tooltip-label">{{ t('plannedEndDate') }}:</span>
               <span class="hover-tooltip-value">{{
-                formatTooltipDate(tooltipState.task?.endDate)
+                formatTooltipEndDate(tooltipState.task?.endDate)
               }}</span>
             </div>
             <!-- 手动模式父级且子任务溢出：额外显示子任务实际范围 -->
@@ -6743,7 +6824,12 @@ const handleAddSuccessor = (task: Task) => {
               <div class="hover-tooltip-row">
                 <span class="hover-tooltip-label">{{ t('childrenLatestEnd') }}:</span>
                 <span class="hover-tooltip-value">{{
-                  formatDateObj(tooltipState.parentAutoSchedule.childrenRange.maxEnd)
+                  formatDateObj(
+                    getEffectiveEndDateOnly(
+                      tooltipState.parentAutoSchedule.childrenRange.maxEndRaw,
+                      tooltipState.parentAutoSchedule.childrenRange.maxEnd
+                    )
+                  )
                 }}</span>
               </div>
             </template>
@@ -6762,7 +6848,7 @@ const handleAddSuccessor = (task: Task) => {
               <span class="hover-tooltip-label">{{ t('actualEndDate') }}:</span>
               <span class="hover-tooltip-value">{{
                 tooltipState.task?.actualEndDate
-                  ? formatTooltipDate(tooltipState.task.actualEndDate)
+                  ? formatTooltipEndDate(tooltipState.task.actualEndDate)
                   : '-'
               }}</span>
             </div>

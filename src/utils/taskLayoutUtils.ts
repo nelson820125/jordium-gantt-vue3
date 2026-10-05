@@ -1,4 +1,5 @@
 import type { Task } from '../models/classes/Task'
+import { getEffectiveEndDateOnly } from './dateBoundaryUtils'
 
 /**
  * v1.9.0 任务布局工具函数
@@ -15,16 +16,21 @@ const FIFTEEN_MINUTES_MS = 15 * 60 * 1000
  * @param timeScale 当前时间刻度，小时视图('hour')下使用15分钟精度判断
  */
 export function hasTimeOverlap(task1: Task, task2: Task, timeScale?: string): boolean {
-  // 获取任务的开始和结束日期（时间戳）
-  const start1 = task1.startDate ? new Date(task1.startDate).getTime() : null
-  const end1 = task1.endDate ? new Date(task1.endDate).getTime() : null
-  const start2 = task2.startDate ? new Date(task2.startDate).getTime() : null
-  const end2 = task2.endDate ? new Date(task2.endDate).getTime() : null
+  // 获取任务的开始和结束日期
+  const start1Date = task1.startDate ? new Date(task1.startDate) : null
+  const end1Date = task1.endDate ? new Date(task1.endDate) : null
+  const start2Date = task2.startDate ? new Date(task2.startDate) : null
+  const end2Date = task2.endDate ? new Date(task2.endDate) : null
 
   // 如果任一任务缺少日期信息，视为无交集
-  if (!start1 || !end1 || !start2 || !end2) {
+  if (!start1Date || !end1Date || !start2Date || !end2Date) {
     return false
   }
+
+  const start1 = start1Date.getTime()
+  const end1 = end1Date.getTime()
+  const start2 = start2Date.getTime()
+  const end2 = end2Date.getTime()
 
   if (timeScale === 'hour') {
     // 小时视图：按15分钟粒度取整后做精确区间判断，避免+1天偏移导致同天不重叠任务被错误分行
@@ -39,8 +45,13 @@ export function hasTimeOverlap(task1: Task, task2: Task, timeScale?: string): bo
   // 例如：task1结束于2025-01-29，task2开始于2025-01-29
   // end1Plus = 2025-01-30，start2 = 2025-01-29
   // 判断：end1Plus(2025-01-30) > start2(2025-01-29) 为true，所以它们重叠
-  const end1Plus = end1 + 24 * 60 * 60 * 1000
-  const end2Plus = end2 + 24 * 60 * 60 * 1000
+  //
+  // v1.13.5：若 endDate 显式带 time 部分（如 TaskDrawer 编辑保存后写入的
+  // '2025-08-01 00:00'，语义上是"7月31日结束"），需先经 getEffectiveEndDateOnly
+  // 修正（-15分钟再截断）再 +1天，避免把次日0点误当成占满当天，导致资源视图
+  // 中本不重叠的两个任务被错误换行（详见 .ai/.claude/requirments/v1.13.5.md 第9节）
+  const end1Plus = getEffectiveEndDateOnly(task1.endDate, end1Date).getTime() + 24 * 60 * 60 * 1000
+  const end2Plus = getEffectiveEndDateOnly(task2.endDate, end2Date).getTime() + 24 * 60 * 60 * 1000
 
   // 判断是否有交集
   return end1Plus > start2 && end2Plus > start1

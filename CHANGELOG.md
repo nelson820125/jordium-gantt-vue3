@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-09-04
+
+### Added
+- 🎉 新增：`ResourceUsageView` 支持自定义工作日历（节假日/调休/请假），新增 `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` 属性及 `createWorkCalendarResolver` 工具函数，未配置时行为与升级前完全一致
+- 🎉 新增：`GanttChart` 新增顶层 `workCalendarExceptions` 属性，与 `ResourceUsageView` 共用同一份工作日历例外表；仅其中"整天 + 未指定 `resourceIds`"的记录会驱动 `Timeline`/`CalendarView`/`ResourceUsageView` 共享表头的周末灰色展示，`resourceUsageProps.workCalendarExceptions` 可单独覆盖以仅影响该视图的工时数值计算
+- 🎉 新增：`ResourceUsageView` 支持资源专属请假/停机单元格样式（`resourceOffOrLeaveLevel`），复用已有的 `resolveWorkingMinutes`/`workCalendarExceptions` 计算结果，仅 `scale === 'day'` 时对"某资源当天有效工作占比为 0 且非公司级共享周末"的单元格标记为 `'full'`；新增 `resourceOffOrLeaveColor`（默认内置淡紫色）与 `showResourceOffOrLeaveStyle`（默认 `true`）两个 `ResourceUsageView` 属性
+- 🎉 Added: `ResourceUsageView` supports custom work calendars (holidays/makeup workdays/leave) via new `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` properties and a `createWorkCalendarResolver` utility; default behavior is unchanged when not configured
+- 🎉 Added: `GanttChart` gained a new top-level `workCalendarExceptions` property, sharing the same exception table with `ResourceUsageView`; only "full-day + no `resourceIds`" entries drive the shared weekend gray-out header across `Timeline`/`CalendarView`/`ResourceUsageView`, and `resourceUsageProps.workCalendarExceptions` can be set separately to affect only that view's numeric calculation
+- 🎉 Added: `ResourceUsageView` supports a resource-specific leave/downtime cell style (`resourceOffOrLeaveLevel`), reusing the existing `resolveWorkingMinutes`/`workCalendarExceptions` calculation result; when `scale === 'day'`, cells where a resource's effective working ratio for the day is `0` and the day is not a company-wide shared weekend are marked `'full'`. Added two new `ResourceUsageView` properties: `resourceOffOrLeaveColor` (built-in light purple default) and `showResourceOffOrLeaveStyle` (default `true`)
+
+### Changed
+- ⚠️ 依赖变更：PDF 导出功能的截图依赖由 `html2canvas` 替换为 `html-to-image`，导出效果与调用方式保持一致
+- ⚠️ Changed: Replaced the `html2canvas` dependency with `html-to-image` for PDF export screenshots; export behavior and usage remain the same
+
+## [1.13.5] - 2026-08-16
+
+### Added
+- 🎉 新增：`MilestonePoint` 新增 `custom-milestone-content` 插槽，可完整自定义里程碑图标+标签的渲染内容（非破坏性变更，不使用该插槽时行为不变）
+- 🎉 新增：`milestoneLabelPosition` 属性（`GanttChart`/`Timeline`），支持配置里程碑标签展示位置 `'left' | 'top' | 'right' | 'bottom'`，默认 `'right'`（与改造前行为一致）
+- 🎉 新增：`Resource` 接口新增 `title` 字段（资源职务/头衔，自由文本）
+- 🎉 新增：`AssigneeOption`（`assigneeOptions`）新增可选 `type` 字段，选中资源时自动带出类别到资源绑定行
+- 🎉 新增：`TaskDrawer` 资源分配表单新增"类别"下拉（人力/设备/其他）
+- 🎉 新增：`GanttChart` 新增 `resourceTypeOptions` 属性，支持外部自定义 TaskDrawer 资源分配行“类别”下拉的选项集合（替换内置 Human/Device/Others，`label` 完全由外部提供，可实现多语言）
+- 🎉 新增：`GanttChart` 新增 `showResourceTypeOption` 属性（默认 `true`），可完全隐藏该类别下拉列
+- 🎉 Added: `MilestonePoint` now supports a `custom-milestone-content` slot to fully customize the milestone icon and label rendering (non-breaking; existing behavior is unchanged when the slot is not used)
+- 🎉 Added: New `milestoneLabelPosition` property (on `GanttChart`/`Timeline`) to configure the milestone label position `'left' | 'top' | 'right' | 'bottom'`, defaulting to `'right'` (matches the previous hardcoded behavior)
+- 🎉 Added: `Resource` interface gained a new `title` field (job title/role, free text)
+- 🎉 Added: `AssigneeOption` (`assigneeOptions`) gained an optional `type` field that auto-fills the category on the bound resource row when a resource is selected;
+- 🎉 Added: `TaskDrawer` resource allocation form now includes a "Category" dropdown (Human/Device/Others)
+- 🎉 Added: `GanttChart` now supports a `resourceTypeOptions` property, allowing external customization of the option set for the TaskDrawer resource allocation row's "category" dropdown (replaces the built-in Human/Device/Others; `label` is fully controlled externally, enabling i18n)
+- 🎉 Added: `GanttChart` supports a `showResourceTypeOption` property (default `true`) to fully hide this category dropdown
+
+### Changed
+- ⚠️ 行为微调（非破坏性）：里程碑的点击/双击/拖拽/悬浮 Tooltip 等交互事件监听器统一绑定到最外层容器，可交互响应区域从"仅图标 24×24"扩大为"图标+标签整个区域"
+- ⚠️ **<span style="color:red">Breaking Change</span>**：`Resource.type` 字段语义调整。为支持资源分类（人力/设备/其他），`type` 字段语义从"自由文本描述"调整为"资源类别"，原本存放在 `type` 里的职位/头衔信息请迁移到新增的 `title` 字段：
+  - 升级前：`{ type: '前端工程师' }`
+  - 升级后：`{ title: '前端工程师', type: 'Human' }`
+  - **<span style="color:red">本次不提供运行时自动兼容</span>**（不会把旧的 `type` 值自动读取为 `title`），请在升级前手动迁移你自己的资源数据源，否则「职务」列会显示为空、「类别」列会显示原本的职位文本。若未设置 `type`，组件内部默认按 `'Human'` 处理（不影响不关心该分类功能的现有项目）。
+  - `ResourceListConfig` 默认列同步调整：新增"职务"列（对应 `title`），原"资源类型"列标签改为"类别"（对应 `type`），列顺序调整为 职务 → 类别 → 部门 → 利用率
+- ⚠️ Minor behavior change (non-breaking): milestone interaction handlers (click/double-click/drag/hover tooltip) are now bound on the outermost container, expanding the interactive hit area from "icon only (24×24)" to "the entire icon + label region"
+- ⚠️ **<span style="color:red">Breaking Change</span>**: `Resource.type` field semantics changed. To support resource categorization (Human/Device/Others), the semantics of `type` changed from "free-text description" to "resource category". Please migrate any job-title/role text previously stored in `type` to the new `title` field:
+  - Before: `{ type: 'Frontend Engineer' }`
+  - After: `{ title: 'Frontend Engineer', type: 'Human' }`
+  - **<span style="color:red">No automatic runtime fallback is provided</span>** (the old `type` value will NOT be read as `title`). Please migrate your resource data before upgrading, otherwise the "title" column will be empty and the "category" column will show your old job-title text. If `type` is not set, it defaults to `'Human'` internally (no impact on existing projects that don't use this new categorization).
+  - `ResourceListConfig` default columns updated accordingly: added a "title" column (maps to `title`), the previous "Resource Type" column label changed to "Category" (maps to `type`), column order changed to Title → Category → Department → Utilization
+
+### Fixed
+- 🔧 修复：同一资源的任务冲突检测误判问题
+- 🔧 Fixed: Incorrect same-resource task conflict detection
+
+## [1.13.4] - 2026-08-03
+
+### Added
+- 🎉 新增：`taskbarDescFixed`属性，支持是否固定Taskbar内部内容，不跟随timeline横向移动而产生左右边吸附效果
+- 🎉 Added: Introduced the `taskbarDescFixed` property to control whether the content inside the Taskbar remains fixed instead of moving horizontally with the timeline, avoiding the left/right edge snapping effect.
+
+## [1.13.3] - 2026-07-31
+
+### Fixed
+- 🔧 修复：Package.json打包时出现export拦截问题
+- 🔧 Fixed: Resolved package export issues during npm building
+
+## [1.13.2] - 2026-07-20
+
+### Added
+- 🔧 修复：资源视图中`日`维度下今日定位和Taskbar消失的问题
+- 🔧 Fixed: Today's positioning and Taskbar disappearance issue in the 'Day' view of the Resource view
+
+## [1.13.0] - 2026-07-19
+
+### Added
+- 🎉 新增：`CalendarView` 日历视图组件（日/周/月三种维度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等
+- 🎉 新增：`CalendarView`/`CalendarDayView`/`CalendarWeekView` 新增 `taskCardOpacity`、`taskAccentWidth`、`allDayLabel` 属性以及 `#task-card` 插槽，支持自定义任务卡片外观（默认为半透明蓝色底 + 左侧 5px 深色强调条）
+- 🎉 新增：GanttChart 可通过 `calendarProps` 透传上述所有 CalendarView 属性
+- 🎉 新增：`CalendarView` 新增 `task-click`/`task-move` 事件（GanttChart 转发为 `calendar-task-click`/`calendar-task-move`），日/周/月视图的任务卡片支持单击（打开内置 TaskDrawer 编辑）与左键拖拽移动（日视图改时段、周视图改时段+跨日、月视图跨日期 cell），拖拽中任务卡片高亮凸显
+- 🎉 新增：`ResourceUsageView`资源利用率组件（日/周/月三种维度）, 以资源为单位汇总各个维度的分配工时，并配置不同颜色表示利用率级别
+- 🎉 新增：GanttChart 的 `resourceUsageProps` 透传新增 `columnRenderMode`，并在 `view-mode="resource-usage"` 下转发默认插槽（用于声明式列定义），与 `TaskList` 分支保持一致
+
+### Added
+- 🎉 Added: New `CalendarView` calendar view component (Day/Week/Month three time dimensions), supporting drag-to-select task creation by resource, current time indicator line, all-day task row, working hours highlighting, and more
+- 🎉 Added: Added `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` properties and the `#task-card` slot to `CalendarView`/`CalendarDayView`/`CalendarWeekView`, enabling customization of task card appearance (default: semi-transparent blue background with a 5px dark accent bar on the left)
+- 🎉 Added: `GanttChart` now supports passing through all the above `CalendarView` properties via `calendarProps`
+- 🎉 Added: Added `task-click`/`task-move` events to `CalendarView` (`GanttChart` forwards them as `calendar-task-click`/`calendar-task-move`). Task cards in Day/Week/Month views now support single-click actions (opening the built-in `TaskDrawer` for editing) and left-click drag-and-drop movement (Day view: change time slot; Week view: change time slot and move across days; Month view: move across date cells). The dragged task card is highlighted during the drag operation
+- 🎉 Added: New `ResourceUsageView` resource utilization component (Day/Week/Month three time dimensions), which aggregates allocated working hours by resource across different dimensions and uses different colors to represent utilization levels
+- 🎉 Added: `GanttChart`'s `resourceUsageProps` now supports passing through the new `columnRenderMode`. When `view-mode="resource-usage"` is enabled, the default slot is forwarded (for declarative column definitions), keeping it consistent with the `TaskList` branch
+
 ## [1.12.4] - 2026-06-27
 
 ### Added

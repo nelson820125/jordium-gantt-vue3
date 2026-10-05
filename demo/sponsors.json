@@ -1,0 +1,28 @@
+{
+  "sponsors": [
+    {
+      "avatar": "https://avatars.githubusercontent.com/u/129715913?v=4",
+      "name": "zhanmqGithub",
+      "url": "https://github.com/zhanmqGithub",
+      "typeKey": "individual",
+      "amount": "￥50",
+      "since": "2026-07"
+    },
+    {
+      "avatar": "https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png",
+      "name": "henryli1024",
+      "url": "https://gitee.com/henryli1024",
+      "typeKey": "individual",
+      "amount": "￥50",
+      "since": "2026-08"
+    },
+    {
+      "avatar": "avatar.svg",
+      "name": "hankzhang1688",
+      "url": "https://gitee.com/hankzhang1688",
+      "typeKey": "individual",
+      "amount": "￥100",
+      "since": "2026-08"
+    }
+  ]
+}

@@ -39,6 +39,37 @@ Example:
 - **Main Contributions**: Configurable TaskList; TaskContent slot; Collapse/expand all; Time-based sorting; Component optimizations
 - **Participation Period**: 2025-09
 
+## 💖 Sponsors & Supporters
+
+We sincerely appreciate all individuals and organizations who support the development of **jordium-gantt-vue3**.  
+Your support helps us continue maintaining the project, improving features, and building a better open-source community.
+
+### 🌟 GitHub Sponsors
+
+<img src="https://avatars.githubusercontent.com/u/129715913?v=4" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[zhanmqGithub](https://github.com/zhanmqGithub)
+
+- **Support Type**: GitHub Sponsor
+- **Contribution**: Supporting continuous development and maintenance of the project
+- **Support Period**: 2026-07
+
+<img src="https://foruda.gitee.com/avatar/1785814118313172570/17408879_henryli1024_1785814118.png" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[henryli1024](https://gitee.com/henryli1024)
+
+- **Support Type**: Gitee Sponsor
+- **Contribution**: Supporting continuous development and maintenance of the project
+- **Support Period**: 2026-08
+
+<img src="https://gitee.com/hankzhang1688" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[hankzhang1688](https://gitee.com/hankzhang1688)
+
+- **Support Type**: Gitee Sponsor
+- **Contribution**: Supporting continuous development and maintenance of the project
+- **Support Period**: 2026-08
+
+### 💎 Special Thanks
+
+Thank you to everyone who supports this project through sponsorship, promotion, feedback, and community engagement.
+
+Every contribution, whether technical or financial, helps make **jordium-gantt-vue3** better.
+
 ## 📊 Contribution Statistics
 
 ### Code Contributions

@@ -100,6 +100,9 @@ const messages = {
     collapseAll: '全部折叠',
     // v1.9.0 视图模式
     taskView: '任务视图',
+    // v1.12.5 日历/资源工时视图
+    calendarView: '日历视图',
+    resourceUsageView: '资源利用率',
     language: '中文',
     languageTooltip: '选择语言',
     lightMode: '明亮模式',
@@ -116,6 +119,8 @@ const messages = {
     timeScaleQuarter: '季',
     timeScaleYear: '年',
     timeScaleTooltip: '切换时间刻度',
+    scrollLeftTooltip: '向左滚动',
+    scrollRightTooltip: '向右滚动',
     halfYearFirst: '上半年',
     halfYearSecond: '下半年',
     // 确认对话框
@@ -215,6 +220,11 @@ const messages = {
     resourceAllocation: '资源分配',
     selectResource: '选择资源',
     addResource: '添加资源',
+    // v1.13.5 资源类别（人力/设备/其他）
+    resourceCategory: '类别',
+    resourceCategoryHuman: '人力',
+    resourceCategoryDevice: '设备',
+    resourceCategoryOthers: '其他',
     percentMinError: '最小占比为20%',
     percentMaxWarning: '占比超过100%将标记为超负荷',
     // 通用消息
@@ -285,6 +295,54 @@ const messages = {
         dragDelayTimeHint: '延迟启动拖拽的时间',
         allowDragOnClick: '允许拖拽和拉伸 TaskBar 和 Milestone',
         allowDragOnClickHint: '控制是否允许拖拽 TaskBar 和 Milestone，以及拉伸 TaskBar 的长度',
+      },
+    },
+    // 工作日历配置（v1.14.0，节假日/调休/请假等自定义工作日，仅作用于工时视图 ResourceUsageView）
+    workCalendarConfig: {
+      title: '工作日历配置',
+      enableDemo: '启用自定义工作日历（演示）',
+      enableDemoHint:
+        '未启用时工时视图按内置默认规则计算（周六日不计工作日，每日基准 8 小时）；' +
+        '启用后通过 workCalendarExceptions 传入节假日/调休/请假等例外，覆盖默认规则',
+      relationHint:
+        '与下方"工作时间配置"（服务于日历视图小时格渲染）是两个独立维度：工作时间回答' +
+        '"一天里哪几个钟点算上班"，工作日历回答"某天算不算工作日、按多大比例折算工时"',
+      capacityMode: {
+        title: '每日基准工时',
+        human: '人力资源 (8 小时/天)',
+        device: '设备资源 (24 小时/天)',
+      },
+      exceptions: {
+        title: '例外列表（演示数据，相对今天生成）',
+        holidayLabel: '法定节假日（全天）',
+        halfDayLabel: '请假（半天）',
+        crossDayLabel: '连续假期（跨天）',
+        weekendMakeupLabel: '调休补班（周六）',
+        customHint:
+          '若上方勾选框不够灵活，可点击下方按钮打开“更改工作时间”弹窗自定义增/改/删例外，弹窗确认后将优先于上方勾选框',
+        openDialogButton: '更改工作时间...',
+        resetToPresetButton: '重置为勾选框预设',
+      },
+      personalExceptions: {
+        title: '资源专属例外（resolveWorkingMinutes 自定义回调演示）',
+        enableLabel: '启用资源专属例外',
+        enableHint:
+          '演示将例外数组挂在 resource 的自定义字段上（本例用 resource.workExceptions），' +
+          '再通过自定义 resolveWorkingMinutes 回调合并"公司级例外 + 该资源专属例外"，' +
+          '与上方公司级 workCalendarExceptions 互不冲突：启用后以此回调为准',
+        resourceLabel: '选择资源',
+        jsonLabel: 'resource.workExceptions（JSON 数组，可直接编辑后点击应用）',
+        applyButton: '应用',
+        fillSampleButton: '填充示例',
+        clearButton: '清空',
+        invalidJsonError: 'JSON 解析失败：{message}',
+        invalidArrayError: 'workExceptions 必须是数组',
+        appliedHint:
+          '已应用到该资源，工时视图数值已按此重新计算。若当前刻度为"日"且该资源当天被标记为全天不可用，' +
+          '工时视图对应单元格会显示为淡紫色（resourceOffOrLeaveColor），与公司级共享的周末灰色区分开',
+        permanentHint:
+          '仅适合偶发的个别调整；若某类资源需要长期固定不同于他人的排班（如设备 7×24），' +
+          '更推荐直接编写自定义 resolveWorkingMinutes 按 resource.type 分支处理，避免在例外表中堆砌大量重复日期',
       },
     },
     disableTaskbarFocusMode: '关闭聚焦功能',
@@ -421,6 +479,9 @@ const messages = {
     collapseAll: 'Collapse All',
     // v1.9.0 视图模式
     taskView: 'Task View',
+    // v1.12.5 Calendar/Resource usage view
+    calendarView: 'Calendar View',
+    resourceUsageView: 'Resource Utilization',
     language: 'English',
     languageTooltip: 'Select language',
     lightMode: 'Light Mode',
@@ -437,6 +498,8 @@ const messages = {
     timeScaleQuarter: 'Quarter',
     timeScaleYear: 'Year',
     timeScaleTooltip: 'Switch Time Scale',
+    scrollLeftTooltip: 'Scroll left',
+    scrollRightTooltip: 'Scroll right',
     halfYearFirst: 'First Half',
     halfYearSecond: 'Second Half',
     // Confirm dialog
@@ -537,6 +600,11 @@ const messages = {
     resourceAllocation: 'Resource Allocation',
     selectResource: 'Select resource',
     addResource: 'Add Resource',
+    // v1.13.5 Resource category (Human/Device/Others)
+    resourceCategory: 'Category',
+    resourceCategoryHuman: 'Human',
+    resourceCategoryDevice: 'Device',
+    resourceCategoryOthers: 'Others',
     percentMinError: 'Minimum percentage is 20%',
     percentMaxWarning: 'Percentage over 100% will be marked as overloaded',
     // Common messages
@@ -609,6 +677,62 @@ const messages = {
         allowDragOnClick: 'Allow dragging and resizing of TaskBars and Milestones',
         allowDragOnClickHint:
           'Controls whether to allow dragging of TaskBars and Milestones, as well as resizing the length of TaskBars',
+      },
+    },
+    // Work calendar configuration (v1.14.0, holidays/makeup workdays/leave, only affects ResourceUsageView)
+    workCalendarConfig: {
+      title: 'Work Calendar Configuration',
+      enableDemo: 'Enable custom work calendar (demo)',
+      enableDemoHint:
+        'When disabled, the usage view follows the built-in default rule (weekends excluded, 8 hours/day base); ' +
+        'when enabled, pass holidays/makeup workdays/leave via workCalendarExceptions to override the default rule',
+      relationHint:
+        'This is independent from "Working Hours" below (which drives hour-cell rendering in the calendar view): ' +
+        'Working Hours answers "which clock hours count as work", Work Calendar answers "does this day count as a workday and at what ratio"',
+      capacityMode: {
+        title: 'Daily Base Capacity',
+        human: 'Human Resource (8h/day)',
+        device: 'Device Resource (24h/day)',
+      },
+      exceptions: {
+        title: 'Exception List (demo data, generated relative to today)',
+        holidayLabel: 'Public Holiday (full day)',
+        halfDayLabel: 'Leave (half day)',
+        crossDayLabel: 'Consecutive Holiday (multi-day)',
+        weekendMakeupLabel: 'Makeup Workday (Saturday)',
+        customHint:
+          'If the checkboxes above are not flexible enough, click the button below to open the ' +
+          '"Change Working Time" dialog to add/edit/delete exceptions; once confirmed there, it ' +
+          'takes priority over the checkboxes above',
+        openDialogButton: 'Change Working Time...',
+        resetToPresetButton: 'Reset to Checkbox Presets',
+      },
+      personalExceptions: {
+        title: 'Per-Resource Exceptions (resolveWorkingMinutes custom callback demo)',
+        enableLabel: 'Enable per-resource exceptions',
+        enableHint:
+          'Demonstrates attaching an exceptions array to a custom field on the resource ' +
+          '(here, resource.workExceptions), then merging "company-wide exceptions + this ' +
+          'resource\'s own exceptions" via a custom resolveWorkingMinutes callback; does not ' +
+          'conflict with the company-wide workCalendarExceptions above — once enabled, this ' +
+          'callback takes priority',
+        resourceLabel: 'Select resource',
+        jsonLabel: 'resource.workExceptions (JSON array, editable — click Apply to take effect)',
+        applyButton: 'Apply',
+        fillSampleButton: 'Fill Sample',
+        clearButton: 'Clear',
+        invalidJsonError: 'Failed to parse JSON: {message}',
+        invalidArrayError: 'workExceptions must be an array',
+        appliedHint:
+          'Applied to this resource; usage view figures have been recalculated. If the current ' +
+          'scale is Day and this resource is marked fully unavailable on a given day, that cell ' +
+          'shows a light-purple background (resourceOffOrLeaveColor), distinct from the shared ' +
+          'gray weekend color',
+        permanentHint:
+          'Best suited for occasional per-resource tweaks; if a resource type needs a permanently ' +
+          'different schedule (e.g. a device running 7x24), it is better to write a custom ' +
+          'resolveWorkingMinutes that branches on resource.type, instead of piling up repeated ' +
+          'dates in this exception list',
       },
     },
     disableTaskbarFocusMode: 'Disable Focus Mode',

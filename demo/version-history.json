@@ -835,5 +835,89 @@
       "🔧 Fixed: GanttToolbar Default TimeScalesKeys missing quarter",
       "🔧 Fixed: GanttToolbar Segmented Control style issue"
     ]
+  },
+  {
+    "version": "1.13.0",
+    "date": "2026-07-19",
+    "notes": [
+      "🎉 新增：`CalendarView` 日历视图组件（日/周/月三种维度），支持按资源拖拽选区创建任务、当前时间指示线、全天任务行、工作时间高亮等",
+      "🎉 新增：`CalendarView`/`CalendarDayView`/`CalendarWeekView` 新增 `taskCardOpacity`、`taskAccentWidth`、`allDayLabel` 属性以及 `#task-card` 插槽，支持自定义任务卡片外观（默认为半透明蓝色底 + 左侧 5px 深色强调条）",
+      "🎉 新增：GanttChart 可通过 `calendarProps` 透传上述所有 CalendarView 属性",
+      "🎉 新增：`CalendarView` 新增 `task-click`/`task-move` 事件（GanttChart 转发为 `calendar-task-click`/`calendar-task-move`），日/周/月视图的任务卡片支持单击（打开内置 TaskDrawer 编辑）与左键拖拽移动（日视图改时段、周视图改时段+跨日、月视图跨日期 cell），拖拽中任务卡片高亮凸显",
+      "🎉 新增：`ResourceUsageView`资源利用率组件（日/周/月三种维度）, 以资源为单位汇总各个维度的分配工时，并配置不同颜色表示利用率级别",
+      "🎉 新增：GanttChart 的 `resourceUsageProps` 透传新增 `columnRenderMode`，并在 `view-mode='resource-usage'` 下转发默认插槽（用于声明式列定义），与 `TaskList` 分支保持一致",
+      "🎉 Added: New `CalendarView` calendar view component (Day/Week/Month three time dimensions), supporting drag-to-select task creation by resource, current time indicator line, all-day task row, working hours highlighting, and more",
+      "🎉 Added: Added `taskCardOpacity`, `taskAccentWidth`, `allDayLabel` properties and the `#task-card` slot to `CalendarView`/`CalendarDayView`/`CalendarWeekView`, enabling customization of task card appearance (default: semi-transparent blue background with a 5px dark accent bar on the left)",
+      "🎉 Added: `GanttChart` now supports passing through all the above `CalendarView` properties via `calendarProps`",
+      "🎉 Added: Added `task-click`/`task-move` events to `CalendarView` (`GanttChart` forwards them as `calendar-task-click`/`calendar-task-move`). Task cards in Day/Week/Month views now support single-click actions (opening the built-in `TaskDrawer` for editing) and left-click drag-and-drop movement (Day view: change time slot; Week view: change time slot and move across days; Month view: move across date cells). The dragged task card is highlighted during the drag operation",
+      "🎉 Added: New `ResourceUsageView` resource utilization component (Day/Week/Month three time dimensions), which aggregates allocated working hours by resource across different dimensions and uses different colors to represent utilization levels",
+      "🎉 Added: `GanttChart`'s `resourceUsageProps` now passes through the new `columnRenderMode` property, and forwards the default slot (for declarative column definitions) when `view-mode='resource-usage'`, keeping it consistent with the `TaskList` branch"
+    ]
+  },
+  {
+    "version": "1.13.2",
+    "date": "2026-07-20",
+    "notes": [
+      "🔧 修复：资源视图中`日`维度下今日定位和Taskbar消失的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢zhanmqGithub@github的使用与反馈</span>",
+      "🔧 Fixed: Today's positioning and Taskbar disappearance issue in the 'Day' view of the Resource view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to zhanmqGithub@github for their use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.13.4",
+    "date": "2026-08-04",
+    "notes": [
+      "🎉 新增：`taskbarDescFixed`属性，支持是否固定Taskbar内部内容，不跟随timeline横向移动而产生左右边吸附效果",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢ranjizhou@gitee的使用与反馈</span>",
+      "🎉 Added: Introduced the `taskbarDescFixed` property to control whether the content inside the Taskbar remains fixed instead of moving horizontally with the timeline, avoiding the left/right edge snapping effect.",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to ranjizhou@gitee for their use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.13.5",
+    "date": "2026-08-16",
+    "notes": [
+      "🎉 新增：`MilestonePoint` 新增 `custom-milestone-content` 插槽，可完整自定义里程碑图标+标签的渲染内容（非破坏性变更，不使用该插槽时行为不变）",
+      "🎉 新增：`milestoneLabelPosition` 属性（`GanttChart`/`Timeline`），支持配置里程碑标签展示位置 `'left' | 'top' | 'right' | 'bottom'`，默认 `'right'`（与改造前行为一致）",
+      "🎉 新增：`Resource` 接口新增 `title` 字段（资源职务/头衔，自由文本）",
+      "🎉 新增：`AssigneeOption`（`assigneeOptions`）新增可选 `type` 字段，选中资源时自动带出类别到资源绑定行",
+      "🎉 新增：`TaskDrawer` 资源分配表单新增`类别`下拉（人力/设备/其他）",
+      "🎉 新增：`GanttChart` 新增 `resourceTypeOptions` 属性，支持外部自定义 TaskDrawer 资源分配行“类别”下拉的选项集合（替换内置 Human/Device/Others，`label` 完全由外部提供，可实现多语言）",
+      "🎉 新增：`GanttChart` 新增 `showResourceTypeOption` 属性（默认 `true`），可完全隐藏该类别下拉列",
+      "⚠️ 变更：`Resource.type` 字段语义调整，从'自由文本描述'调整为'资源类别'，<b style=\"color:red\">本次不提供运行时自动兼容</b>，请在升级后自行调整数据结构",
+      "🔧 修复：同一资源的任务冲突检测误判问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢hankzhang1688@gitee / tombstonedguy@github的使用与反馈</span>",
+      "🎉 Added: `MilestonePoint` now supports a `custom-milestone-content` slot to fully customize the milestone icon and label rendering (non-breaking; existing behavior is unchanged when the slot is not used)",
+      "🎉 Added: New `milestoneLabelPosition` property (on `GanttChart`/`Timeline`) to configure the milestone label position `'left' | 'top' | 'right' | 'bottom'`, defaulting to `'right'` (matches the previous hardcoded behavior)",
+      "🎉 Added: `Resource` interface now includes a `title` field (for resource position/title, free text)",
+      "🎉 Added: `AssigneeOption` (in `assigneeOptions`) now includes an optional `type` field, automatically populating the category in the resource binding row when a resource is selected",
+      "🎉 Added: `TaskDrawer` resource assignment form now includes a 'Category' dropdown (Human/Device/Other)",
+      "🎉 Added: `GanttChart` now includes a `resourceTypeOptions` property to allow external customization of the TaskDrawer resource assignment row 'Category' dropdown options (replacing the built-in Human/Device/Others, with `label` fully provided externally for multi-language support)",
+      "🎉 Added: `GanttChart` now includes a `showResourceTypeOption` property (default `true`) to completely hide the 'Category' dropdown column",
+      "⚠️ Changed: The semantics of the `Resource.type` field have been adjusted from 'free text description' to 'resource category'. <b style=\"color:red\">No runtime automatic compatibility is provided in this release</b>; please adjust your data structure accordingly after upgrading.",
+      "🔧 Fixed: Incorrect same-resource task conflict detection",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to hankzhang1688@gitee / tombstonedguy@github for their use and feedback</span>"
+    ]
+  },
+  {
+    "version": "1.14.0",
+    "date": "2026-09-04",
+    "notes": [
+      "🎉 新增：`ResourceUsageView` 支持自定义工作日历（节假日/调休/请假），新增 `resolveWorkingMinutes`/`workCalendarExceptions`/`dailyCapacityHours` 属性及 `createWorkCalendarResolver` 工具函数，未配置时行为与升级前完全一致",
+      "🎉 新增：`GanttChart` 新增顶层 `workCalendarExceptions` 属性，与 `ResourceUsageView` 共用同一份工作日历例外表；仅其中\"整天 + 未指定 `resourceIds`\"的记录会驱动 `Timeline`/`CalendarView`/`ResourceUsageView` 共享表头的周末灰色展示，`resourceUsageProps.workCalendarExceptions` 可单独覆盖以仅影响该视图的工时数值计算",
+      "🎉 新增：`ResourceUsageView` 支持资源专属请假/停机单元格样式",
+      "🎉 新增：新增 `resourceOffOrLeaveColor`（默认内置淡紫色）与 `showResourceOffOrLeaveStyle`（默认 `true`）两个 `ResourceUsageView` 属性",
+      "⚠️ 依赖变更：PDF 导出功能的截图依赖由 `html2canvas` 替换为 `html-to-image`，导出效果与调用方式保持一致",
+      "🔧 修复：资源利用率视图`今日`样式与任务视图保持一致",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢hankzhang1688@gitee / GVLLIFESTYLE@github的使用与反馈</span>",
+      "🎉 Added: `ResourceUsageView` now supports custom work calendars (holidays/adjusted workdays/leaves), with new properties `resolveWorkingMinutes`, `workCalendarExceptions`, `dailyCapacityHours`, and the utility function `createWorkCalendarResolver`. When not configured, behavior remains identical to pre-upgrade.",
+      "🎉 Added: `GanttChart` now includes a top-level `workCalendarExceptions` property, sharing the same work calendar exceptions table with `ResourceUsageView`. Only records with \"whole day + unspecified `resourceIds`\" will drive the weekend gray display in `Timeline`/`CalendarView`/`ResourceUsageView`. `resourceUsageProps.workCalendarExceptions` can be used to override and only affect the working hours calculation in that view.",
+      "🎉 Added: `ResourceUsageView` now supports resource-specific leave/downtime cell styling",
+      "🎉 Added: New `resourceOffOrLeaveColor` (default light purple) and `showResourceOffOrLeaveStyle` (default `true`) properties for `ResourceUsageView`",
+      "⚠️ Dependency Change: The screenshot dependency for PDF export has been changed from `html2canvas` to `html-to-image`, with export effects and usage remaining consistent",
+      "🔧 Fixed: The 'Today' style in the Resource Usage view now matches the task view",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to hankzhang1688@gitee / GVLLIFESTYLE@github for their use and feedback</span>"
+    ]
   }
 ]

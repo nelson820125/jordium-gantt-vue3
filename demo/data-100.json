@@ -64,7 +64,15 @@
               "parentId": 1100,
               "description": "招募24名健康志愿者，完成医学筛选和入组评估",
               "custom": "test11111",
-              "barColor": "#FF4D4F"
+              "barColor": "#FF4D4F",
+              "resources": [
+                {
+                  "id": "resource-zhang",
+                  "type": "Human",
+                  "name": "数据分析师 张伟",
+                  "capacity": 100
+                }
+              ]
             },
             {
               "id": 1103,

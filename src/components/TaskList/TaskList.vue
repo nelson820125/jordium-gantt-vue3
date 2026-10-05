@@ -112,7 +112,11 @@ const visibleColumns = computed(() => {
     return [] as TaskListColumnConfig[]
   }
   // 默认模式：fixed-left 排前（name 列固定在外层硬编码，此处为其余动态列）
-  const cols = finalColumnsConfig.value.filter(col => col.visible !== false)
+  // 过滤掉 type/key 为 'name' 的列配置：外层模板始终单独硬编码渲染名称列（.col-name.col-fixed），
+  // 若消费方传入的列配置中也包含 name 列会导致名称重复显示两次
+  const cols = finalColumnsConfig.value.filter(
+    col => col.visible !== false && col.type !== 'name' && col.key !== 'name'
+  )
   return [...cols].sort((a, b) => fixedRank(a.fixed) - fixedRank(b.fixed))
 })
 
@@ -562,6 +566,7 @@ defineExpose({
   font-weight: 700;
   padding: 0;
   height: 80px;
+  box-sizing: border-box; /* border-bottom 计入 80px 内，与 .timeline-header 的 80px 总高对齐，避免出现 1px 表头错位 */
   align-items: center;
   width: max-content;
   flex-shrink: 0;
