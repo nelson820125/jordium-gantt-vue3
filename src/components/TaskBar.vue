@@ -357,7 +357,7 @@ const createLocalToday = (): Date => {
 // 缓存今天的日期，避免频繁创建
 // 每分钟更新一次缓存（对于日期判断来说足够了）
 const cachedToday = ref(createLocalToday())
-let todayCacheTimer: number | null = null
+let todayCacheTimer: number | ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
   // 每60秒更新一次今天的日期缓存
@@ -439,7 +439,7 @@ const tempTaskPixelLeft = ref<number | null>(null) // 资源视图拖拽时的�
 const taskDragPixelLeft = ref<number | null>(null) // 任务视图拖拽时的精确像素位置（用于丝滑跟手）
 
 // 长按检测状态
-const longPressTimer = ref<number | null>(null)
+const longPressTimer = ref<number | ReturnType<typeof setTimeout> | null>(null)
 const longPressTriggered = ref(false)
 const LONG_PRESS_DURATION = 1000 // 1秒（缩短了）
 
@@ -461,7 +461,7 @@ const dynamicBorderColor = computed(() => {
 const dragThreshold = computed(() => barConfig.value.dragThreshold ?? 5)
 const isDragThresholdMet = ref(false) // 是否达到拖拽阈值
 const dragType = ref<'drag' | 'resize-left' | 'resize-right' | null>(null) // 记录操作类型
-const dragDelayTimer = ref<number | null>(null) // 延迟拖拽定时器
+const dragDelayTimer = ref<number | ReturnType<typeof setTimeout> | null>(null) // 延迟拖拽定时器
 const isDelayPassed = ref(false) // 延迟是否已过
 
 // 相对位置拖拽方案：记录鼠标相对于TaskBar的位置
@@ -2477,7 +2477,7 @@ watch(
 )
 
 // 单击/双击延迟处理
-let clickTimer: number | null = null
+let clickTimer: number | ReturnType<typeof setTimeout> | null = null
 const clickDelay = 250 // 延迟时间（毫秒）
 
 // 处理TaskBar单击事件（使用延迟以区分双击）
@@ -2855,11 +2855,11 @@ const showTooltip = ref(false)
 const tooltipPosition = ref({ x: 0, y: 0 })
 
 // TaskBar 悬停 tooltip 延迟定时器（状态已上移至 Timeline）
-let hoverTooltipTimer: number | null = null
+let hoverTooltipTimer: number | ReturnType<typeof setTimeout> | null = null
 
 // 跟踪滚动状态，避免非滚动时的动画
 const isScrollingContext = ref(false)
-const scrollTimeout = ref<number | null>(null)
+const scrollTimeout = ref<number | ReturnType<typeof setTimeout> | null>(null)
 const hasManualResize = ref(false) // 跟踪是否有手动resize事件
 const isInitializing = ref(true) // 跟踪初始化状态
 const isAutoScrolling = ref(false) // 跟踪自动滚动状态（如定位到今日、点击半圆定位等）

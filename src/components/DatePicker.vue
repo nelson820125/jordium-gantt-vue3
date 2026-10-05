@@ -54,7 +54,7 @@ const timePickerRef = ref<HTMLElement>()
 const timeInputRef = ref<HTMLElement>()
 const hourListRef = ref<HTMLElement>()
 const minuteListRef = ref<HTMLElement>()
-const blurTimer = ref<number | null>(null)
+const blurTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const positionUpdateKey = ref(0) // 用于强制重新计算位置
 
 // 保存打开选择器时的原始值（用于取消时恢复）
