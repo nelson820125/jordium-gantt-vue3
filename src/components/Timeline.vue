@@ -537,8 +537,28 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
         newEnd.getTime() === timelineConfig.value.endDate.getTime()
       )
         return
+      // 数据驱动的范围扩展（如新增任务超出旧范围）：记录今日的像素偏移，timelineData 重生成
+      // 与布局完成后按偏移差补偿 scrollLeft —— 视口停留在同一日期上。范围向左扩前缀时全幅
+      // 内容右移，若不补偿，用户视口会"跳变"，表现为整个甘特被刷新（首帧定位仍走既有自动居中）。
+      let anchorOffsetBefore: number | null = null
+      if (hasInitialAutoScroll) {
+        anchorOffsetBefore = getDatePixelOffset(new Date())
+      }
       timelineConfig.value.startDate = newStart
       timelineConfig.value.endDate = newEnd
+      if (anchorOffsetBefore != null) {
+        const offsetBefore = anchorOffsetBefore
+        nextTick(() => {
+          requestAnimationFrame(() => {
+            const container = timelineContainerElement.value
+            if (!container) return
+            const delta = getDatePixelOffset(new Date()) - offsetBefore
+            if (Math.abs(delta) > 0.5) {
+              container.scrollLeft = Math.max(0, container.scrollLeft + delta)
+            }
+          })
+        })
+      }
     }
   }
 })
