@@ -3370,7 +3370,6 @@ const getGlobalWeekPosition = (monthIndex: number, weekIndex: number) => {
 
 // 更新时间刻度方法 - 供外部调用
 const updateTimeScale = (scale: TimelineScale) => {
-  console.trace('[GanttPerfTrace] Timeline.updateTimeScale', scale) // [GanttPerfTrace] 临时探针：定位 add 计划后的冗余调用者
   perfMonitor2.start(`updateTimeScale-${scale}`)
 
   currentTimeScale.value = scale

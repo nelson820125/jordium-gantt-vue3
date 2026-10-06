@@ -1254,7 +1254,6 @@ watch(
   () => timelineRef.value,
   (newTimeline, oldTimeline) => {
     if (newTimeline && !oldTimeline) {
-      console.info('[GanttPerfTrace] timelineRef mount-sync（Timeline 重挂载）') // [GanttPerfTrace] 临时探针
       newTimeline.updateTimeScale(currentTimeScale.value)
     }
   }
@@ -2657,7 +2656,6 @@ const csvExportHandler = () => {
 
 // 时间刻度变化处理函数
 const handleTimeScaleChange = (scale: TimelineScale) => {
-  console.trace('[GanttPerfTrace] GanttChart.handleTimeScaleChange', scale) // [GanttPerfTrace] 临时探针
   currentTimeScale.value = scale
   // 通知 Timeline 组件更新时间刻度
   if (timelineRef.value) {
