@@ -260,7 +260,7 @@ npm run dev
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | Whether to allow TaskDrawer to auto-close (closes on outside click or Esc key). Set to `false` to disable auto-close — the drawer can only be closed via its internal close button |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | Row height (px) shared by both Timeline and TaskList. Valid range: `30`–`60`. Values below 30 are clamped to 30, values above 60 are clamped to 60. When set below 40, TaskBar content (name + progress) automatically switches to a compact horizontal layout to fit the smaller row |
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Whether to enable auto-scheduling for parent tasks. `true`: parent task's TaskBar time window automatically stretches to span the earliest start and latest end of its children. `false`: parent task displays its own configured date range; a red indicator line appears above its TaskBar when children overflow the configured bounds |
-| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Resource view lane stacking mode. `true`: greedy lane packing — non-overlapping tasks share the same row, maximizing space efficiency. `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters |
+| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | Resource view lane stacking mode. `true`: greedy lane packing — non-overlapping tasks share the same row, maximizing space efficiency. `false`: each task occupies its own row, ideal for dense schedules where individual task readability matters. **Interaction note**: when enabled and `taskBarConfig.titlePosition='right'`, the resource view automatically renders as `'inside'` instead, to avoid covering the adjacent task sharing the same lane; disabling it restores the `'right'` rendering |
 | `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | Link line style configuration. Supports switching line type (bezier/straight/orthogonal), customizing colors, line width, and dotted/solid style. See [LinkConfig Configuration](#linkconfig-configuration) |
 | `taskbarDescFixed` ![v1.13.4](https://img.shields.io/badge/v1.13.4-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `false` | Whether the Taskbar content follows the horizontal scrolling of the Timeline. `false`: The Taskbar content, including the title, progress, and avatar information, moves horizontally with the Timeline. When approaching the left or right boundary of the Timeline, the content will be automatically pinned with a snapping effect. `true`: The Taskbar content, including the title, progress, and avatar information, remains fixed at the center of the Taskbar. When approaching the left or right boundary of the Timeline, no snapping effect will be applied. |
 
@@ -2494,7 +2494,7 @@ Controls task bar display content and interaction behavior。
 | `resizeHandleWidth` | `number`  | `5`     | Resize handle width (pixels), max 15px                    |
 | `enableDragDelay`   | `boolean` | `false` | Whether to enable drag delay (prevent accidental trigger) |
 | `dragDelayTime`     | `number`  | `150`   | Drag delay time (milliseconds)                            |
-| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above'` | `'inside'` | Task title render position. `'inside'`: title inside the bar (white text, default). `'above'`: title floats above the bar; only progress percentage is shown inside — ideal for narrow bars (1–3 day tasks) or long task names |
+| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above' \| 'right'` | `'inside'` | Task title render position. `'inside'`: title inside the bar (white text, default). `'above'`: title floats above the bar; only progress percentage is shown inside — ideal for narrow bars (1–3 day tasks) or long task names. `'right'`: title floats outside the bar on the right; only progress percentage is shown inside — ideal when the task name text overlaps the bar; **in Resource View, when `enableResourceLaneStacking` (default `true`) is enabled, this automatically renders as `'inside'`** to avoid covering the adjacent task sharing the same lane, and only renders as `'right'` once lane stacking is disabled |
 
 > **💡 Edit Permission Control**：
 >
@@ -2597,6 +2597,28 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 }))
 </script>
 ```
+
+**Example6：Title Displayed Outside the Bar on the Right**
+
+Ideal for scenarios where the task name text overlaps the bar (e.g. a task only has planned dates, no actual dates).
+
+```vue
+<script setup lang="ts">
+import type { TaskBarConfig } from 'jordium-gantt-vue3'
+
+const taskBarConfig: TaskBarConfig = {
+  titlePosition: 'right',
+}
+</script>
+```
+
+> **💡 Automatic downgrade in Resource View**: Resource View enables lane stacking by default
+> (`enableResourceLaneStacking=true`), where non-overlapping tasks for the same resource share the same
+> row, often sitting right next to each other. Keeping `'right'` in that case would cover the adjacent
+> task, so the component **automatically downgrades the behavior to `'inside'`** in this combination;
+> `'right'` only renders as expected in Resource View once you explicitly set
+> `enableResourceLaneStacking: false` (each task occupies its own row). Task View is unaffected —
+> `'right'` always renders as configured.
 
 #### LinkConfig (Link Line Style Configuration) ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF)
 

@@ -258,7 +258,7 @@ npm run dev
 | `enableTaskDrawerAutoClose` ![v1.9.3](https://img.shields.io/badge/v1.9.3-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean`                                                                                 | `true` | 是否允许 TaskDrawer 自动关闭（外总点击或按 Esc 时自动关闭）。设为 `false` 时禁用自动关闭，仅可通过内部按钮手动关闭 |
 | `rowHeight` ![v1.11.4](https://img.shields.io/badge/v1.11.4-409EFF?style=flat-square&labelColor=ECF5FF) | `number` | `51` | 行高（px），Timeline 和 TaskList 共用同一行高。有效区间：`30`～`60`，超出范围的值将被自动截断（小于 30 截断至 30，大于 60 截断至 60）。当设置小于 40 时，TaskBar 内的任务名称和进度将自动切换为紧凑横排布局以适应小行高 |
 | `enableParentTaskAutoSchedule` ![v1.11.5](https://img.shields.io/badge/v1.11.5-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 是否开启父任务自动调度。`true`：父任务的 TaskBar 时间窗口自动跟随子任务的最早开始／最晚结束日期同步拉伸。`false`：父任务显示自身配置的固定日期范围，子任务超出时其 TaskBar 上方显示红色指示线 |
-| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 资源视图车道堆叠模式。`true`：启用贪心车道堆叠——时间不重叠的任务共享同一行，最大化空间利用率。`false`：禁用堆叠——每个任务独占一行，适合任务密集、需要清晰辨识的场景 |
+| `enableResourceLaneStacking` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `true` | 资源视图车道堆叠模式。`true`：启用贪心车道堆叠——时间不重叠的任务共享同一行，最大化空间利用率。`false`：禁用堆叠——每个任务独占一行，适合任务密集、需要清晰辨识的场景。**联动说明**：开启时若 `taskBarConfig.titlePosition='right'`，资源视图下会自动按 `'inside'` 渲染，避免遮挡同一泳道内的相邻任务；关闭后恢复按 `'right'` 显示 |
 | `linkConfig` ![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF) | `LinkConfig` | `undefined` | 连线样式配置。支持切换连线类型（贝塞尔/直线/折线）、自定义颜色、线宽及实线/虚线样式。详见 [LinkConfig 配置](#linkconfig-配置) |
 | `taskbarDescFixed` ![v1.13.4](https://img.shields.io/badge/v1.13.4-409EFF?style=flat-square&labelColor=ECF5FF) | `boolean` | `false` | Taskbar的内容是否跟随Timeline进行横向滑动。`false`: 表示Taskbar的内容'标题'、'进度'、'头像'信息将跟随timeline横向滑动，在左右边界区域实现吸附的效果。`true`: 表示Taskbar的内容'标题'、'进度'、'头像'信息始终固定在taskbar的中心位置，接近timtline左右边界时，不出现吸附的效果 |
 
@@ -2638,7 +2638,7 @@ const taskListConfig = computed<TaskListConfig>(() => ({
 | `resizeHandleWidth` | `number`  | `5`     | 拉伸手柄宽度（像素），最大 15px |
 | `enableDragDelay`   | `boolean` | `false` | 是否启用拖拽延迟（防止误触）    |
 | `dragDelayTime`     | `number`  | `150`   | 拖拽延迟时间（毫秒）            |
-| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above'` | `'inside'` | 任务标题渲染位置。`'inside'`：标题在任务条内部（白色文字，默认行为）。`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比，适合任务条较窄或任务名称较长的场景 |
+| `titlePosition` ![v1.12.0](https://img.shields.io/badge/v1.12.0-409EFF?style=flat-square&labelColor=ECF5FF) | `'inside' \| 'above' \| 'right'` | `'inside'` | 任务标题渲染位置。`'inside'`：标题在任务条内部（白色文字，默认行为）。`'above'`：标题悬浮在任务条上方，条内仅显示进度百分比，适合任务条较窄或任务名称较长的场景。`'right'`：标题悬浮在任务条右侧外部，条内仅显示进度百分比，适合任务条内文字与条形重叠的场景；**资源视图下，若 `enableResourceLaneStacking`（默认 `true`）开启，会自动按 `'inside'` 渲染**，避免遮挡同一泳道内的相邻任务，关闭车道堆叠后才会按 `'right'` 显示 |
 
 > **💡 编辑权限控制**：
 >
@@ -2741,6 +2741,26 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
 }))
 </script>
 ```
+
+**示例6：标题显示在任务条右侧外部**
+
+适合任务条内文字与条形重叠的场景（如任务只有计划日期、没有实际日期时）。
+
+```vue
+<script setup lang="ts">
+import type { TaskBarConfig } from 'jordium-gantt-vue3'
+
+const taskBarConfig: TaskBarConfig = {
+  titlePosition: 'right',
+}
+</script>
+```
+
+> **💡 资源视图下的自动降级**：资源视图默认开启车道堆叠（`enableResourceLaneStacking=true`），同一资源下
+> 时间不重叠的任务会共享同一行，彼此首尾相接。此时若仍按 `'right'` 显示，标题会遮挡紧邻的下一个任务，
+> 因此组件会**自动将该行为降级为 `'inside'`**，仅在显式设置 `enableResourceLaneStacking: false`（每个
+> 任务独占一行）后，`'right'` 才会在资源视图下按预期显示在任务条右侧外部。任务视图不受此限制，`'right'`
+> 始终按设置生效。
 
 #### LinkConfig（连线样式配置）![v1.12.1](https://img.shields.io/badge/v1.12.1-409EFF?style=flat-square&labelColor=ECF5FF)
 

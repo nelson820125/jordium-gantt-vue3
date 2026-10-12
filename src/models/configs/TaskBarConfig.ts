@@ -9,12 +9,15 @@ export interface TaskBarConfig {
   enableDragDelay?: boolean // 是否启用拖拽延迟（防止误触），默认 false
   dragDelayTime?: number // 拖拽延迟时间（毫秒），默认 150ms
   /**
-   * 任务标题渲染位置（默认 'inside'）v1.12.0
+   * 任务标题渲染位置（默认 'inside'）v1.12.0，新增 'right'
    * 'inside' → 标题渲染在任务条内部（白色文字，默认行为）
    * 'above'  → 标题渲染在任务条上方，条内仅显示进度百分比
    *            适用于任务条较窄（1–3天）或任务名称较长的场景
+   * 'right'  → 标题渲染在任务条右侧外部，条内仅显示进度百分比
+   *            适用于任务条内文字与条形重叠的场景；资源视图车道堆叠开启时会自动降级为
+   *            'inside'（避免遮挡同一泳道内的相邻任务，见 GanttChart 的 enableResourceLaneStacking）
    */
-  titlePosition?: 'inside' | 'above'
+  titlePosition?: 'inside' | 'above' | 'right'
 }
 
 // 默认配置

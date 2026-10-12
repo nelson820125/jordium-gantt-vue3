@@ -5,15 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.14.1] - 2026-10-12
+## [1.14.2] - 2026-10-12
 
 ### Added
 - 🎉 新增：TaskList 行拖拽分带放置判定（叶子行可建立首个子级）
 - 🎉 新增：定时器句柄类型统一（DatePicker / TaskBar / Timeline）
 - 🎉 新增：新增：GanttToolbar ResizeObserver 守卫：observe() 前增加 instanceof HTMLElement 检查（uni-app/webview 混合渲染下 ref 可能为非元素对象）
+- 🎉 新增：`TaskBarConfig.titlePosition` 新增 `'right'` 取值，支持任务标题渲染在任务条右侧外部；资源视图车道堆叠开启时会自动降级为 `'inside'`，避免遮挡同一泳道内的相邻任务
 - 🎉 Added: TaskList now supports row drag-and-drop with band placement determination (leaf rows can establish the first child).
 - 🎉 Added: Timer handle types unified (DatePicker / TaskBar / Timeline).
 - 🎉 Added: GanttToolbar now includes a ResizeObserver guard: an instanceof HTMLElement check is added before calling observe() (in uni-app/webview mixed rendering, ref may be a non-element object).
+- 🎉 Added: `TaskBarConfig.titlePosition` gained a new `'right'` value to render the task title outside the bar on the right; in Resource View, this automatically downgrades to `'inside'` when lane stacking is enabled, to avoid covering the adjacent task sharing the same lane
 
 ## [1.14.0] - 2026-09-04
 

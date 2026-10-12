@@ -219,6 +219,13 @@ const taskbarDescFixed = inject<ComputedRef<boolean>>(
   computed(() => false)
 )
 
+// 注入enableResourceLaneStacking配置：资源视图车道堆叠开启时，titlePosition='right' 会
+// 自动降级为 'inside'，避免遮挡同一泳道内的相邻任务（见 effectiveTitlePosition）
+const enableResourceLaneStacking = inject<ComputedRef<boolean>>(
+  'gantt-enable-resource-lane-stacking',
+  computed(() => true)
+)
+
 // 注入资源布局信息（用于判断跨行拖拽边界）
 const resourceRowPositions = inject<ComputedRef<Map<string, number>>>(
   'resourceRowPositions',
@@ -311,6 +318,14 @@ const barConfig = computed(() => ({
   ...DEFAULT_TASK_BAR_CONFIG,
   ...props.taskBarConfig,
 }))
+
+// titlePosition 的有效值：资源视图车道堆叠开启时，'right' 自动降级为 'inside'，
+// 避免外置标题遮挡同一泳道内紧邻的下一个任务；'inside'/'above' 不受影响
+const effectiveTitlePosition = computed<'inside' | 'above' | 'right'>(() => {
+  const position = barConfig.value.titlePosition ?? 'inside'
+  const isRiskyResourceLane = viewMode.value === 'resource' && enableResourceLaneStacking.value
+  return position === 'right' && isRiskyResourceLane ? 'inside' : position
+})
 
 // 判断是否有实际进度数据（需要提前定义，供 titleAbovePaddingValue 引用）
 const hasActualProgress = computed(() => {
@@ -2781,6 +2796,34 @@ const aboveTitleStyle = computed(() => {
   return {}
 })
 
+// titlePosition='right' 的标题贴边磁吸：标题默认在条右侧外部（CSS left: calc(100% + 6px)），
+// 仅当条右边缘+标题会被可视区右边界裁切、且条本身仍部分可见时，才吸附到可视区右边缘内侧
+const rightTitleStyle = computed(() => {
+  if (effectiveTitlePosition.value !== 'right') return {}
+
+  // taskbarDescFixed为true时，标题固定在初始化位置（CSS默认右侧外部），不执行贴边磁吸
+  if (taskbarDescFixed.value) return {}
+
+  const scrollLeft = props.scrollLeft || 0
+  const containerWidth = props.containerWidth || 0
+  if (!containerWidth) return {}
+
+  const nameWidth = Math.max(nameTextWidth.value, 40) // 最小40px，与 aboveTitleStyle 估算口径一致
+  const taskLeft = parseInt(taskBarStyle.value.left)
+  const taskWidth = parseInt(taskBarStyle.value.width)
+  const taskRight = taskLeft + taskWidth
+  const rightBoundary = scrollLeft + containerWidth
+
+  // 标题默认位置（条右边缘外侧 6px 间距）是否超出可视区右边界，且条本身仍部分可见
+  const labelDefaultRightEdge = taskRight + 6 + nameWidth
+  const needsRightSticky = labelDefaultRightEdge > rightBoundary && taskLeft < rightBoundary
+  if (!needsRightSticky) return {}
+
+  // 吸附到可视区右边缘内侧：改用像素 left 替代 CSS 默认的 left: calc(100% + 6px)
+  const offset = rightBoundary - taskLeft - nameWidth - 10
+  return { left: `${offset}px`, transform: 'translateY(-50%)' }
+})
+
 // 计算气泡指示器的显示状态和位置
 const bubbleIndicator = computed(() => {
   const scrollLeft = props.scrollLeft || 0
@@ -3903,8 +3946,8 @@ const handleAnchorDragEnd = (anchorEvent: {
       @mouseenter="handleTaskBarMouseEnter"
       @mouseleave="handleTaskBarMouseLeave"
     >
-      <!-- 父级任务的标题（直接在内部居中显示）：above 模式时隐藏，改由 task-title-above 渲染 -->
-      <div v-if="isParent && barConfig.titlePosition !== 'above'" class="parent-label-inner">
+      <!-- 父级任务的标题（直接在内部居中显示）：仅 inside 模式渲染，above/right 模式改由各自的外置节点渲染 -->
+      <div v-if="isParent && effectiveTitlePosition === 'inside'" class="parent-label-inner">
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <template v-else> {{ task.name }} ({{ task.progress || 0 }}%) </template>
       </div>
@@ -3915,11 +3958,27 @@ const handleAnchorDragEnd = (anchorEvent: {
       <div
         v-if="
           barConfig.showTitle &&
-          barConfig.titlePosition === 'above' &&
+          effectiveTitlePosition === 'above' &&
           !(showActualTaskbar && hasActualProgress)
         "
         class="task-title-above"
         :style="aboveTitleStyle"
+      >
+        <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
+        <span v-else>{{ task.name }}{{ isParent ? ` (${task.progress || 0}%)` : '' }}</span>
+      </div>
+
+      <!-- 标题渲染在 Bar 右侧外部（titlePosition: 'right' 模式，含 parent 任务）
+           资源视图车道堆叠开启时 effectiveTitlePosition 已自动降级为 'inside'，此节点不会渲染
+           磁吸效果通过 rightTitleStyle 控制 left/transform -->
+      <div
+        v-if="
+          barConfig.showTitle &&
+          effectiveTitlePosition === 'right' &&
+          !(showActualTaskbar && hasActualProgress)
+        "
+        class="task-title-right"
+        :style="rightTitleStyle"
       >
         <slot v-if="hasContentSlot" name="custom-task-content" v-bind="slotPayload" />
         <span v-else>{{ task.name }}{{ isParent ? ` (${task.progress || 0}%)` : '' }}</span>
@@ -4056,12 +4115,12 @@ const handleAnchorDragEnd = (anchorEvent: {
           </div>
         </div>
 
-        <!-- 任务名称 - 有实际TaskBar时隐藏；above 模式时也隐藏（标题已在 bar 上方渲染） -->
+        <!-- 任务名称 - 有实际TaskBar时隐藏；above/right 模式时也隐藏（标题已在 bar 外部渲染） -->
         <div
           v-if="
             barConfig.showTitle &&
             !(showActualTaskbar && hasActualProgress) &&
-            barConfig.titlePosition !== 'above'
+            effectiveTitlePosition === 'inside'
           "
           ref="taskBarNameRef"
           :style="{
@@ -4966,6 +5025,25 @@ const handleAnchorDragEnd = (anchorEvent: {
   bottom: calc(100% + 2px); /* 紧贴 bar 上方 2px 间距 */
   left: 50%;
   transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: var(--gantt-z-avatar); /* 标题在连线(33)之上 */
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: left 0.15s ease-out;
+}
+
+/* titlePosition: 'right' 模式（含 parent 任务）：标题悬浮在 Bar 右侧外部，条内仅显示进度百分比。
+ * 颜色/层级约定与 task-title-above 保持一致；使用 left: calc(100% + 6px) 紧贴 bar 右侧外部。
+ * 磁吸過渡由 JS rightTitleStyle 動態控制 left/transform。 */
+.task-title-right {
+  position: absolute;
+  left: calc(100% + 6px); /* 紧贴 bar 右侧外部 6px 间距 */
+  top: 50%;
+  transform: translateY(-50%);
   white-space: nowrap;
   font-size: 12px;
   font-weight: 600;

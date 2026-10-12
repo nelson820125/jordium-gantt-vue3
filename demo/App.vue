@@ -659,6 +659,10 @@ const useCustomTooltip = ref(true)
 // Milestone 自定义内容 Slot 演示（v1.13.5）
 const useCustomMilestoneContent = ref(false)
 const milestoneLabelPosition = ref<'left' | 'top' | 'right' | 'bottom'>('right')
+// 任务标题渲染位置：'right' 时，资源视图车道堆叠开启会自动降级为 'inside'（见 enableResourceLaneStacking）
+const titlePosition = ref<'inside' | 'above' | 'right'>('inside')
+// 资源视图车道堆叠：关闭后每个任务独占一行，titlePosition='right' 不再被自动降级
+const enableResourceLaneStacking = ref(true)
 const pendingTaskBackgroundColor = ref('#409eff')
 const delayTaskBackgroundColor = ref('#f56c6c')
 const completeTaskBackgroundColor = ref('#909399')
@@ -672,7 +676,7 @@ const taskBarConfig = computed<TaskBarConfig>(() => ({
   resizeHandleWidth: taskBarOptions.value.resizeHandleWidth,
   enableDragDelay: taskBarOptions.value.enableDragDelay,
   dragDelayTime: taskBarOptions.value.dragDelayTime,
-  // titlePosition: 'above', // 标题显示在任务条上方
+  titlePosition: titlePosition.value,
 }))
 
 // [v1.12.1] Gantt Links配置 - 独立状态便于Demo面板调控
@@ -2354,6 +2358,21 @@ const handleCustomMenuAction = (action: string, task: Task) => {
                         <option value="bottom">bottom</option>
                       </select>
                     </label>
+                    <label class="taskbar-control">
+                      <span class="taskbar-label">任务标题位置（titlePosition）：</span>
+                      <select v-model="titlePosition">
+                        <option value="inside">inside</option>
+                        <option value="above">above</option>
+                        <option value="right">right</option>
+                      </select>
+                    </label>
+                    <label class="taskbar-control">
+                      <input v-model="enableResourceLaneStacking" type="checkbox" />
+                      <span class="taskbar-label">资源视图车道堆叠（enableResourceLaneStacking）</span>
+                    </label>
+                    <p v-if="titlePosition === 'right'" class="control-hint">
+                      💡 titlePosition='right' 在资源视图下：车道堆叠开启时自动按 'inside' 渲染（避免遮挡同一泳道内的相邻任务），关闭后才会按 'right' 显示在任务条右侧外部
+                    </p>
                   </div>
 
                   <!-- 自定义任务状态背景色 -->
@@ -3149,7 +3168,7 @@ const handleCustomMenuAction = (action: string, task: Task) => {
         :use-default-drawer="useDefaultDrawer"
         :enable-task-drawer-auto-close="false"
         :enable-parent-task-auto-schedule="enableParentAutoSchedule"
-        :enable-resource-lane-stacking="true"
+        :enable-resource-lane-stacking="enableResourceLaneStacking"
         @milestone-saved="handleMilestoneSaved"
         @milestone-deleted="handleMilestoneDeleted"
         @milestone-icon-changed="handleMilestoneIconChanged"

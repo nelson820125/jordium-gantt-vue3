@@ -230,6 +230,13 @@ provide(
   computed(() => props.taskbarDescFixed)
 )
 
+// 提供enableResourceLaneStacking配置给TaskBar组件：资源视图车道堆叠开启时，
+// titlePosition='right' 会自动降级为 'inside'，避免遮挡同一泳道内的相邻任务
+provide(
+  'gantt-enable-resource-lane-stacking',
+  computed(() => props.enableResourceLaneStacking !== false)
+)
+
 // 提供行高配置给所有子组件（Timeline、TaskList、TaskRow 等均通过 inject 消费）
 // v1.12.x: gantt-row-height 现在只返回 base 值，per-task 的 +18px 逻辑移至 taskRowLayouts
 const TITLE_ABOVE_ROW_PADDING = 18 // px
@@ -313,9 +320,12 @@ const resourceTaskLayouts = computed(() => {
           }
 
           // v2.0 方案2：检查缓存
+          // 缓存键需包含 baseRowHeight（随 rowHeight/titlePosition='above' 变化），
+          // 否则切换 titlePosition 后会复用未重新计算行高的旧布局，导致资源冲突可视化等
+          // 依赖 rowHeights 的下游渲染出现错位/留白
           const tasksHash = getTasksHash(tasks)
           const stackingFlag = props.enableResourceLaneStacking !== false ? '1' : '0'
-          const cacheHash = `${currentTimeScale.value}:${stackingFlag}:${tasksHash}`
+          const cacheHash = `${currentTimeScale.value}:${stackingFlag}:${baseRowHeight}:${tasksHash}`
           const cached = resourceLayoutCache.get(resourceId)
 
           if (cached && cached.hash === cacheHash) {
@@ -349,10 +359,10 @@ const resourceTaskLayouts = computed(() => {
             return
           }
 
-          // v2.0 方案2：检查缓存
+          // v2.0 方案2：检查缓存（缓存键含 baseRowHeight，理由同增量更新分支）
           const tasksHash = getTasksHash(tasks)
           const stackingFlag = props.enableResourceLaneStacking !== false ? '1' : '0'
-          const cacheHash = `${currentTimeScale.value}:${stackingFlag}:${tasksHash}`
+          const cacheHash = `${currentTimeScale.value}:${stackingFlag}:${baseRowHeight}:${tasksHash}`
           const cached = resourceLayoutCache.get(resourceId)
 
           if (cached && cached.hash === cacheHash) {
