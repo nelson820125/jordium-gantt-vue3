@@ -132,9 +132,15 @@ export function useTaskRowDrag(options: UseDragOptions) {
     event.preventDefault()
     event.stopPropagation()
 
-    // 确定放置位置：根据是否有子任务
-    const hasChildren = task.children && task.children.length > 0
-    const position: 'after' | 'child' = hasChildren ? 'child' : 'after'
+    // 确定放置位置：按鼠标在目标行内的纵向位置分带 ——
+    // 中部（25%~75%）= 'child'（成为目标的子级；叶子目标会即时建出 children，支持「首个子级」的建立），
+    // 上/下边缘 = 'after'（插到目标之后、与其同级）。
+    // 旧版仅按「目标是否已有子任务」判定（有孩子恒 child、叶子恒 after）：
+    // 叶子行永远给不出 child 放置，无法通过拖拽建立第一个子级。
+    const rect = element.getBoundingClientRect()
+    const rowHeight = Math.max(rect.height, 1)
+    const offsetRatio = (event.clientY - rect.top) / rowHeight
+    const position: 'after' | 'child' = offsetRatio > 0.25 && offsetRatio < 0.75 ? 'child' : 'after'
 
     dragState.value.dropTargetTask = task
     dragState.value.dropPosition = position

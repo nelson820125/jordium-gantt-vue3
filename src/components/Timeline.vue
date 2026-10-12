@@ -269,7 +269,7 @@ const timelineBodyScrollTop = ref(0) // 纵向滚动位置
 let _isSyncingScrollFromTaskList = false
 // GanttLinks 性能优化：滚动期间暂停 canvas 重绘，滚动停止后补绘一次
 const isTimelineScrolling = ref(false)
-let _scrollIdleTimer: ReturnType<typeof setTimeout> | null = null
+let _scrollIdleTimer: number | ReturnType<typeof setTimeout> | null = null
 const timelineBodyHeight = ref(0) // 容器高度状态管理
 
 // v1.9.9 优化：注入GanttChart提供的资源布局，避免重复计算
@@ -537,8 +537,28 @@ watch([timelineStartDate, timelineEndDate], ([newStart, newEnd]) => {
         newEnd.getTime() === timelineConfig.value.endDate.getTime()
       )
         return
+      // 数据驱动的范围扩展（如新增任务超出旧范围）：记录今日的像素偏移，timelineData 重生成
+      // 与布局完成后按偏移差补偿 scrollLeft —— 视口停留在同一日期上。范围向左扩前缀时全幅
+      // 内容右移，若不补偿，用户视口会"跳变"，表现为整个甘特被刷新（首帧定位仍走既有自动居中）。
+      let anchorOffsetBefore: number | null = null
+      if (hasInitialAutoScroll) {
+        anchorOffsetBefore = getDatePixelOffset(new Date())
+      }
       timelineConfig.value.startDate = newStart
       timelineConfig.value.endDate = newEnd
+      if (anchorOffsetBefore != null) {
+        const offsetBefore = anchorOffsetBefore
+        nextTick(() => {
+          requestAnimationFrame(() => {
+            const container = timelineContainerElement.value
+            if (!container) return
+            const delta = getDatePixelOffset(new Date()) - offsetBefore
+            if (Math.abs(delta) > 0.5) {
+              container.scrollLeft = Math.max(0, container.scrollLeft + delta)
+            }
+          })
+        })
+      }
     }
   }
 })
@@ -1228,7 +1248,7 @@ const linkDragSourceTask = shallowRef<Task | null>(null) // 拖拽起始任务�
 const linkDragTargetTask = shallowRef<Task | null>(null) // 当前悬停的目标任务（使用 shallowRef 优化性能）
 const isValidLinkTarget = ref(false) // 是否是有效的连接目标（保留用于 handleLinkDragEnd）
 const linkValidationError = ref<string>('') // 连接验证失败的原因（保留用于兼容）
-const linkAutoScrollInterval = ref<number | null>(null) // 自动滚动定时器
+const linkAutoScrollInterval = ref<number | ReturnType<typeof setTimeout> | null>(null) // 自动滚动定时器
 
 // 🚀 非响应式拖拽状态（用于高频更新，避免 Vue 响应式开销）
 let nonReactiveIsValidTarget = false
@@ -1798,7 +1818,7 @@ const isScrolledLeft = ref(false)
 const isScrolledRight = ref(false)
 const scrollProgress = ref(0)
 const isScrolling = ref(false)
-let scrollTimeout: number | null = null
+let scrollTimeout: number | ReturnType<typeof setTimeout> | null = null
 
 // 粘性效果所需的滚动位置信息
 const timelineScrollLeft = ref(0)
@@ -1815,7 +1835,7 @@ let forceTimelineRangeInResourceView = false
 // 半圆气泡控制状态
 const hideBubbles = ref(true) // 初始时隐藏半圆，等待初始滚动完成
 const isInitialScrolling = ref(true) // 跟踪初始滚动状态
-let hideBubblesTimeout: number | null = null // 半圆显示恢复定时器
+let hideBubblesTimeout: number | ReturnType<typeof setTimeout> | null = null // 半圆显示恢复定时器
 
 // 虚拟滚动相关状态
 const VIRTUAL_BUFFER = 10 // 减少缓冲区以提升滑动性能
@@ -1883,7 +1903,7 @@ const visibleHourRange = computed(() => {
 // v1.9.6 Sprint2(P1) - 防抖的滚动位置（减少visibleTimeRange的触发频率）
 const debouncedScrollLeft = ref(0)
 const debouncedContainerWidth = ref(0)
-let scrollDebounceTimer: number | null = null
+let scrollDebounceTimer: number | ReturnType<typeof setTimeout> | null = null
 let visibleTimeRangeCallCount = 0
 
 watch(
@@ -3518,7 +3538,7 @@ let hasInitialAutoScroll = false
 // 第二次真正生效的范围到达时标记已为 true，不会再次滚动，导致今日定位到错误位置（仅默认的
 // "天"刻度会暴露，因为其他刻度都是用户手动切换触发 updateTimeScale()，该函数会无条件调用
 // scrollToTodayCenter()，不依赖这个标记）。改为防抖：短时间内的多次变化只取最后一次生效后的状态。
-let initialScrollDebounceTimer: number | null = null
+let initialScrollDebounceTimer: number | ReturnType<typeof setTimeout> | null = null
 watch(
   () => [timelineData.value, timelineConfig.value.startDate, timelineConfig.value.endDate],
   () => {
@@ -4744,7 +4764,7 @@ let scrollRafId: number | null = null // 时间轴拖拽滚动的 RAF ID
 
 // 边界滚动相关状态
 const isAutoScrolling = ref(false)
-let autoScrollTimer: number | null = null
+let autoScrollTimer: number | ReturnType<typeof setTimeout> | null = null
 const EDGE_SCROLL_ZONE = 50 // 边界滚动触发区域宽度
 const EDGE_SCROLL_SPEED = 5 // 每次滚动的像素数
 
@@ -5436,7 +5456,7 @@ const convertTaskToMilestone = (task: Task): Milestone => {
 }
 
 // 优化：统一的防抖函数，避免重复的 setTimeout 造成性能浪费
-let timelineUpdateTimer: number | null = null
+let timelineUpdateTimer: number | ReturnType<typeof setTimeout> | null = null
 
 const debouncedUpdateTimelineRange = (delay = 50) => {
   if (timelineUpdateTimer) clearTimeout(timelineUpdateTimer)
@@ -5503,7 +5523,7 @@ watch(
 )
 
 // 监听timelineData或容器宽度变化，强制TaskBar重新渲染（优化：使用防抖）
-let taskBarRenderTimer: number | null = null
+let taskBarRenderTimer: number | ReturnType<typeof setTimeout> | null = null
 watch([timelineData, timelineContainerWidth], () => {
   // 拖拽 splitter 时跳过 TaskBar 重新渲染
   if (isSplitterDragging.value) return
@@ -6296,7 +6316,7 @@ const handleAddSuccessor = (task: Task) => {
                     position: 'absolute',
                     width: `${effectiveScaleConfigs['quarter'].cellWidth}px`,
                     height: `${contentHeight}px`,
-                    left: `${yearIndex * effectiveScaleConfigs['quarter'].cellWidth * 4 + quarterIndex * effectiveScaleConfigs['quarter'].cellWidth}px`,
+                    left: `${Number(yearIndex) * effectiveScaleConfigs['quarter'].cellWidth * 4 + Number(quarterIndex) * effectiveScaleConfigs['quarter'].cellWidth}px`,
                   }"
                 ></div>
               </template>

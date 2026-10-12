@@ -50,7 +50,14 @@
             </div>
           </div>
         </div>
-        <div ref="gridScrollRef" class="gantt-resource-usage-grid-scroll" @scroll="onGridScroll">
+        <div
+          ref="gridScrollRef"
+          class="gantt-resource-usage-grid-scroll"
+          :class="{ 'is-panning': gridPanning }"
+          @scroll="onGridScroll"
+          @mousedown="onGridPanStart"
+          @click.capture="onGridClickCapture"
+        >
           <div
             class="gantt-resource-usage-grid-inner"
             :style="{ width: totalColsWidth + 'px', height: totalRowsHeight + 'px' }"
@@ -711,6 +718,83 @@ const onGridScroll = (e: Event) => {
   )
 }
 
+// ─── 画布拖拽平移（grab-and-pan）────────────────────────────────────────
+// 按住左键拖拽网格 = 平移（与滚动条等价，scroll 事件自然联动表头与左侧行同步）。
+// 移动超过阈值才进入拖拽态：普通单击（看单元格明细）不触发；拖拽松手后的
+// click（会被派发到单元格）用 capture 阶段监听吞掉一次，避免误开明细弹层。
+const GRID_PAN_THRESHOLD = 4
+
+const gridPanning = ref(false)
+let gridPanState: {
+  startX: number
+  startY: number
+  scrollLeft: number
+  scrollTop: number
+  active: boolean
+} | null = null
+let gridSuppressClick = false
+
+const onGridPanStart = (e: MouseEvent) => {
+  if (props.disabled || e.button !== 0 || !gridScrollRef.value) return
+  // 分隔条有自己的拖宽逻辑，不作为平移起点
+  if ((e.target as HTMLElement).closest('.gantt-resource-usage-splitter')) return
+  gridPanState = {
+    startX: e.clientX,
+    startY: e.clientY,
+    scrollLeft: gridScrollRef.value.scrollLeft,
+    scrollTop: gridScrollRef.value.scrollTop,
+    active: false,
+  }
+  window.addEventListener('mousemove', onGridPanMove)
+  window.addEventListener('mouseup', onGridPanEnd, { once: true })
+}
+
+const onGridPanMove = (e: MouseEvent) => {
+  const state = gridPanState
+  if (!state || !gridScrollRef.value) return
+  const dx = e.clientX - state.startX
+  const dy = e.clientY - state.startY
+  if (!state.active) {
+    if (Math.abs(dx) < GRID_PAN_THRESHOLD && Math.abs(dy) < GRID_PAN_THRESHOLD) return
+    state.active = true
+    gridPanning.value = true
+    document.body.classList.add('gantt-grid-panning')
+  }
+  gridScrollRef.value.scrollLeft = state.scrollLeft - dx
+  gridScrollRef.value.scrollTop = state.scrollTop - dy
+  e.preventDefault()
+}
+
+const onGridPanEnd = () => {
+  window.removeEventListener('mousemove', onGridPanMove)
+  const state = gridPanState
+  gridPanState = null
+  gridPanning.value = false
+  document.body.classList.remove('gantt-grid-panning')
+  // 拖拽发生过 ⇒ 吞掉 mouseup 后派发到单元格的 click（同一事件轮次内）
+  if (state?.active) {
+    gridSuppressClick = true
+    window.setTimeout(() => {
+      gridSuppressClick = false
+    }, 0)
+  }
+}
+
+const onGridClickCapture = (e: MouseEvent) => {
+  if (gridSuppressClick) {
+    e.stopPropagation()
+    e.preventDefault()
+    gridSuppressClick = false
+  }
+}
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onGridPanMove)
+  gridPanState = null
+  gridPanning.value = false
+  document.body.classList.remove('gantt-grid-panning')
+})
+
 let resizeObserver: ResizeObserver | null = null
 let rootResizeObserver: ResizeObserver | null = null
 
@@ -927,10 +1011,22 @@ defineExpose({ refreshAggregation, setScale, scrollToToday })
   flex: 1;
   min-height: 0;
   overflow: auto;
+  cursor: grab;
 
   /* 细滚动条，对齐 .timeline 容器 */
   scrollbar-width: thin;
   scrollbar-color: var(--gantt-scrollbar-thumb) transparent;
+}
+
+/* 拖拽平移中：整页 grabbing + 禁选中（覆盖单元格 pointer，松手恢复） */
+.gantt-resource-usage-grid-scroll.is-panning {
+  cursor: grabbing;
+}
+
+:global(body.gantt-grid-panning),
+:global(body.gantt-grid-panning *) {
+  cursor: grabbing !important;
+  user-select: none !important;
 }
 
 .gantt-resource-usage-grid-scroll::-webkit-scrollbar {
