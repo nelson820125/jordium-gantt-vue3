@@ -919,5 +919,19 @@
       "🔧 Fixed: The 'Today' style in the Resource Usage view now matches the task view",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to hankzhang1688@gitee / GVLLIFESTYLE@github for their use and feedback</span>"
     ]
+  },
+  {
+    "version": "1.14.1",
+    "date": "2026-10-12",
+    "notes": [
+      "🎉 新增：TaskList 行拖拽分带放置判定（叶子行可建立首个子级）",
+      "🎉 新增：定时器句柄类型统一（DatePicker / TaskBar / Timeline）",
+      "🎉 新增：GanttToolbar ResizeObserver 守卫：observe() 前增加 instanceof HTMLElement 检查（uni-app/webview 混合渲染下 ref 可能为非元素对象）",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢qiuchengw@gitee的代码贡献</span>",
+      "🎉 Added: TaskList now supports row drag-and-drop with band placement determination (leaf rows can establish the first child).",
+      "🎉 Added: Timer handle types unified (DatePicker / TaskBar / Timeline).",
+      "🎉 Added: GanttToolbar now includes a ResizeObserver guard: an instanceof HTMLElement check is added before calling observe() (in uni-app/webview mixed rendering, ref may be a non-element object).",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to qiuchengw@gitee for their code contribution</span>"
+    ]
   }
 ]
