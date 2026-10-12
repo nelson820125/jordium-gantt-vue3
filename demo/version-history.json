@@ -937,5 +937,15 @@
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to qiuchengw@gitee for their code contribution</span>",
       "<span style=\"font-weight: bold; color: #f00;\">Special thanks to YQ6494@gitee for their usage and feedback</span>"
     ]
+  },
+  {
+    "version": "1.14.3",
+    "date": "2026-10-12",
+    "notes": [
+      "🔧 修复：修复 src/utils/predecessorUtils.ts 中 createLocalDate() 对非法日期输入返回 Invalid Date（truthy）而非 null 的问题",
+      "<span style=\"font-weight: bold; color: #f00;\">特别感谢yuren0312@gitee的代码贡献</span>",
+      "🔧 Fixed: Corrected the behavior of createLocalDate() in src/utils/predecessorUtils.ts to return null instead of Invalid Date for invalid date inputs.",
+      "<span style=\"font-weight: bold; color: #f00;\">Special thanks to yuren0312@gitee for their code contribution</span>"
+    ]
   }
 ]
