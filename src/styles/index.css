@@ -1,4 +1,0 @@
-/* 源码依赖样式入口：等效 npm 构建产物 index.css（theme-variables / list / app 聚合） */
-@import './theme-variables.css';
-@import './list.css';
-@import './app.css';
