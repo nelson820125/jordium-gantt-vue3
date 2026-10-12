@@ -10,8 +10,21 @@
 export function createLocalDate(dateString: string): Date | null {
   if (!dateString) return null
 
-  const [year, month, day] = dateString.split('-').map(Number)
-  return new Date(year, month - 1, day)
+  const parts = dateString.split('-').map(Number)
+  // 仅接受严格 YYYY-MM-DD 三段且每段均为有限数字
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null
+
+  const [year, month, day] = parts
+  const date = new Date(year, month - 1, day)
+
+  // 回检：JS 的 Date 会自动进位非法值（如 2025-13-45、2025-02-30），
+  // 需确认构造结果与输入一致，否则视为非法日期返回 null，
+  // 避免上层拿到 Invalid Date 后参与坐标/日期运算产生 NaN。
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null
+  }
+
+  return date
 }
 
 /**
