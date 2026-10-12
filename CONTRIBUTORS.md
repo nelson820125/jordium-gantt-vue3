@@ -29,14 +29,24 @@
 - **参与时间**: 2025-01
 -->
 <img src="https://avatars.githubusercontent.com/u/12778673?v=4" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[gitmigor](https://github.com/gitmigor)
-- **贡献类型**: 代码开发
+- **贡献类型**: 代码
 - **主要贡献**: 任务Tooltip语言增强
 - **参与时间**: 2025-08
 
 <img src="https://foruda.gitee.com/avatar/1676904209687527903/139467_qiuchengw_1578919251.jpg!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[秋成](https://gitee.com/qiuchengw)
-- **贡献类型**: 代码开发
+- **贡献类型**: 代码
 - **主要贡献**: TaskList可配置；TaskContent插槽；全部收起/展开；按照时间排序；优化组件
 - **参与时间**: 2025-09
+
+<img src="https://foruda.gitee.com/avatar/1676904209687527903/139467_qiuchengw_1578919251.jpg!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[秋成](https://gitee.com/qiuchengw)
+- **贡献类型**: 代码
+- **主要贡献**: 行拖拽分带放置判定（叶子行可建立首个子级）+ 定时器句柄类型兼容 + GanttToolbar 观察器守卫
+- **参与时间**: 2026-10
+
+<img src="https://foruda.gitee.com/avatar/1787640327841546083/17479276_yuren0312_1787640327.png!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[Yuren0312](https://gitee.com/yuren0312)
+- **贡献类型**: 代码
+- **主要贡献**: createLocalDate 非法日期返回 null 而非 Invalid Date + 补全单测
+- **参与时间**: 2026-10
 
 ## 💖 支持者与赞助者
 

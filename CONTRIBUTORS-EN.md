@@ -39,6 +39,16 @@ Example:
 - **Main Contributions**: Configurable TaskList; TaskContent slot; Collapse/expand all; Time-based sorting; Component optimizations
 - **Participation Period**: 2025-09
 
+<img src="https://foruda.gitee.com/avatar/1676904209687527903/139467_qiuchengw_1578919251.jpg!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[秋成](https://gitee.com/qiuchengw)
+- **Contribution Type**: Code
+- **Main Contributions**: TaskList now supports row drag-and-drop with band placement determination (leaf rows can establish the first child); Timer handle types unified (DatePicker / TaskBar / Timeline); GanttToolbar now includes a ResizeObserver guard
+- **Participation Period**: 2026-10
+
+<img src="https://foruda.gitee.com/avatar/1787640327841546083/17479276_yuren0312_1787640327.png!avatar200" alt="" width="32" style="vertical-align:middle;margin-right:8px;" />[Yuren0312](https://gitee.com/yuren0312)
+- **Contribution Type**: Code
+- **Main Contributions**: Corrected the behavior of createLocalDate() in src/utils/predecessorUtils.ts to return null instead of Invalid Date for invalid date inputs
+- **Participation Period**: 2026-10
+
 ## 💖 Sponsors & Supporters
 
 We sincerely appreciate all individuals and organizations who support the development of **jordium-gantt-vue3**.  
