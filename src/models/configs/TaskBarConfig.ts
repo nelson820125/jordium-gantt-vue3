@@ -62,5 +62,5 @@ export const DEFAULT_LINK_CONFIG: Required<LinkConfig> = {
   hoverColor: '#67c23a',
   width: 2,
   highlightWidth: 3,
-  style: 'dotted',
+  style: 'solid',
 }

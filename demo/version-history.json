@@ -949,7 +949,7 @@
     ]
   },
   {
-    "version": "1.14.4",
+    "version": "1.14.5",
     "date": "2026-10-13",
     "notes": [
       "🔧 优化：Taskbar组件、GanttToolbar以及连线样式优化",

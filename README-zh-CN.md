@@ -2776,7 +2776,7 @@ const taskBarConfig: TaskBarConfig = {
 | `hoverColor` | `string` | `'#67c23a'` | 悬停连线颜色 |
 | `width` | `number` | `2` | 普通连线线宽 |
 | `highlightWidth` | `number` | `3` ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF) | 高亮连线线宽 |
-| `style` | `'dotted' \| 'solid'` | `'dotted'` | 连线样式。`'dotted'`：虚线；`'solid'`：实线 |
+| `style` | `'dotted' \| 'solid'` | `'solid'`![v1.14.5](https://img.shields.io/badge/v1.14.5-409EFF?style=flat-square&labelColor=ECF5FF) | 连线样式。`'dotted'`：虚线；`'solid'`：实线 |
 
 **示例1：静态配置**
 

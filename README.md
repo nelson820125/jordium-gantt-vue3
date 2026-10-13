@@ -2634,7 +2634,7 @@ Controls the style and interaction behavior of dependency links (GanttLinks) in 
 | `hoverColor` | `string` | `'#67c23a'` | Hover link color |
 | `width` | `number` | `2` | Normal link line width |
 | `highlightWidth` | `number` | `3` ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF)| Highlight link line width |
-| `style` | `'dotted' \| 'solid'` | `'dotted'` | Link style. `'dotted'`: dashed line; `'solid'`: solid line |
+| `style` | `'dotted' \| 'solid'` | `'solid'`![v1.14.5](https://img.shields.io/badge/v1.14.5-409EFF?style=flat-square&labelColor=ECF5FF) | Link style. `'dotted'`: dashed line; `'solid'`: solid line |
 
 **Example 1: Static Configuration**
 
