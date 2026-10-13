@@ -505,7 +505,7 @@ const taskBarStyle = computed(() => {
   if (quarterDragOverride.value && props.currentTimeScale === TimelineScale.QUARTER) {
     const taskBarHeight = effectiveRowHeightForBar.value - 10
     const topOffset =
-      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2 // -4: 2px border each side
+      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 2) / 2 // -2: 1px border each side
     return {
       left: `${quarterDragOverride.value.left ?? 0}px`,
       width: `${quarterDragOverride.value.width ?? 100}px`,
@@ -536,7 +536,7 @@ const taskBarStyle = computed(() => {
   if (!startDate && !endDate) {
     const taskBarHeight = effectiveRowHeightForBar.value - 10
     const topOffset =
-      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2
+      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 2) / 2
     return {
       left: '0px',
       width: '0px',
@@ -556,7 +556,7 @@ const taskBarStyle = computed(() => {
   if (!renderStartDate || !renderEndDate || !renderBaseStart) {
     const taskBarHeight = effectiveRowHeightForBar.value - 10
     const topOffset =
-      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2
+      titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 2) / 2
     return {
       left: '0px',
       width: '0px',
@@ -842,7 +842,7 @@ const taskBarStyle = computed(() => {
   // v1.9.1 计算垂直位置：资源视图中支持换行布局
   // v1.12.0: above 模式时，topOffset 额外加上 titleAbovePaddingValue，将 bar 推入行内的 bar 工作区域
   let topOffset =
-    titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 4) / 2 // 默认：居中对齐（考虑 2px border）
+    titleAbovePaddingValue.value + (effectiveRowHeightForBar.value - taskBarHeight - 2) / 2 // 默认：居中对齐（考虑 2px border）
 
   if (
     viewMode.value === 'resource' &&
@@ -873,13 +873,13 @@ const taskBarStyle = computed(() => {
         cumulativeOffset +
         titleAbovePaddingValue.value +
         5 +
-        (effectiveCurrentRowHeight - 5 - taskBarHeight - 4) / 2
+        (effectiveCurrentRowHeight - 5 - taskBarHeight - 2) / 2
     } else {
       // 后续行：居中对齐
       topOffset =
         cumulativeOffset +
         titleAbovePaddingValue.value +
-        (effectiveCurrentRowHeight - taskBarHeight - 4) / 2
+        (effectiveCurrentRowHeight - taskBarHeight - 2) / 2
     }
   }
 
@@ -3801,7 +3801,7 @@ const handleAnchorDragEnd = (anchorEvent: {
         ...actualBarStyle,
         backgroundColor: taskStatus.color,
         filter: 'brightness(1.15) saturate(0.9)' /* 加白并降低饱和度，与计划TaskBar色系一致 */,
-        boxShadow: `0 6px 20px ${taskStatus.color}60, 0 3px 10px ${taskStatus.color}40` /* 使用TaskBar颜色的阴影，移除白边 */,
+        boxShadow: `0 1px 6px ${taskStatus.color}60` /* 使用TaskBar颜色的阴影，移除白边 */,
       }"
     >
       <div
@@ -3918,8 +3918,8 @@ const handleAnchorDragEnd = (anchorEvent: {
         '--task-bar-bg-color': taskStatus.bgColor /* v1.9.1 传递背景色给伪元素 */,
         '--task-bar-border-color': dynamicBorderColor /* v1.9.2 使用动态边框颜色 */,
         boxShadow: isParent
-          ? `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 父级任务也使用动态颜色阴影 */
-          : `0 4px 16px ${taskStatus.color}40, 0 2px 8px ${taskStatus.color}26` /* 使用TaskBar颜色的阴影 - 加强版 */,
+          ? `0 0 10px ${taskStatus.color}40` /* 父级任务也使用动态颜色阴影 */
+          : `0 0 10px ${taskStatus.color}40` /* 使用TaskBar颜色的阴影 - 加强版 */,
       }"
       :class="{
         dragging: isDragging,
@@ -4367,7 +4367,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 .task-bar {
   position: absolute;
-  border-radius: 4px;
+  border-radius: 2px;
   user-select: none;
   touch-action: none; /* JS 完全接管拖拽手势，不影响父层水平滚动 */
   /* 阴影通过JS动态设置，使用TaskBar的颜色 */
@@ -4377,7 +4377,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     filter 0.3s,
     z-index 0s; /* v1.9.0 z-index不使用动画 */
   z-index: auto; /* 不建立层叠上下文，子元素参与父级层叠（hover/highlight 用 !important 覆盖） */
-  border: 2px solid;
+  border: 1px solid;
   /* 添加半透明黑色边框增强对比度 */
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   overflow: visible; /* 允许内容超出 TaskBar */
@@ -4396,7 +4396,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 /* 有实际进度时，计划条使用虚线边框样式 */
 .task-bar.has-actual {
   /* 不再强制设置半透明背景，由内联样式的isTaskBarHovered控制 */
-  border-width: 2px;
+  border-width: 1px;
   border-style: dashed; /* 虚线边框表示这是计划 */
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.3) inset,
@@ -4442,7 +4442,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   justify-content: center;
   background: transparent !important;
   border: none !important;
-  box-shadow: none !important;
+  /* box-shadow: none !important; */
 }
 
 /* 上半部分：镂空区域（仅上、左、右三边虚线） */
@@ -5096,7 +5096,6 @@ const handleAnchorDragEnd = (anchorEvent: {
   height: 100%;
   cursor: ew-resize;
   background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
   transition: all 0.2s;
   z-index: 2;
 }
@@ -5108,10 +5107,12 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 .resize-handle-left {
   left: 0;
+  border-radius: 1px 0 0 1px;
 }
 
 .resize-handle-right {
   right: 0;
+  border-radius: 0 1px 1px 0;
 }
 
 /* 溢出效果下的拉伸handle优化 */
@@ -5142,10 +5143,10 @@ const handleAnchorDragEnd = (anchorEvent: {
   height: 16px; /* 半圆高度 */
   z-index: var(--gantt-z-bar-drag) !important; /* v1.9.1 确保不被任意task-bar内容遮挡 */
   cursor: pointer;
-  border: 2px solid;
+  border: 1px solid;
   transform: translateY(-50%);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 1px 8px rgba(0, 0, 0, 0.15),
     0 1px 3px rgba(0, 0, 0, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -5188,7 +5189,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     width: 60px;
     height: 30px;
     border-radius: 4px 0 0 4px;
-    border-right: 2px solid;
+    border-right: 1px solid;
     border-left: none;
     opacity: 0.8;
     transform: translateY(-50%);
@@ -5206,7 +5207,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     width: 12px;
     height: 20px;
     border-radius: 0 10px 10px 0;
-    border-right: 2px solid;
+    border-right: 1px solid;
     border-left: none;
     opacity: 1;
     transform: translateY(-50%);
@@ -5216,7 +5217,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     width: 8px;
     height: 16px;
     border-radius: 0 8px 8px 0;
-    border-right: 2px solid;
+    border-right: 1px solid;
     border-left: none;
     opacity: 1;
     transform: translateY(-50%);
@@ -5229,7 +5230,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     width: 60px;
     height: 30px;
     border-radius: 0 4px 4px 0;
-    border-left: 2px solid;
+    border-left: 1px solid;
     border-right: none;
     opacity: 0.8;
     transform: translateY(-50%);
@@ -5247,7 +5248,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     width: 12px;
     height: 20px;
     border-radius: 10px 0 0 10px;
-    border-left: 2px solid;
+    border-left: 1px solid;
     border-right: none;
     opacity: 1;
     transform: translateY(-50%);
@@ -5257,7 +5258,7 @@ const handleAnchorDragEnd = (anchorEvent: {
     width: 8px;
     height: 16px;
     border-radius: 8px 0 0 8px;
-    border-left: 2px solid;
+    border-left: 1px solid;
     border-right: none;
     opacity: 1;
     transform: translateY(-50%);
@@ -5266,19 +5267,19 @@ const handleAnchorDragEnd = (anchorEvent: {
 
 /* 应用动画类 */
 .bubble-animation-morphToSemiCircle {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* 左侧半圆的变换动画 */
 .bubble-left.bubble-animation-morphToSemiCircle {
   animation: morphToLeftSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* 右侧半圆的变换动画 */
 .bubble-right.bubble-animation-morphToSemiCircle {
   animation: morphToRightSemiCircle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* TaskBar 重新出现动画已移除，保持简洁 */
@@ -5294,8 +5295,8 @@ const handleAnchorDragEnd = (anchorEvent: {
   z-index: var(--gantt-z-overlay);
   max-width: 250px;
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.4),
-    0 4px 12px rgba(0, 0, 0, 0.3);
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 2px 12px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   backdrop-filter: blur(4px); /* 增加模糊背景效果 */
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -5354,7 +5355,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   background: rgba(0, 123, 255, 0.95);
   color: white;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   z-index: var(--gantt-z-overlay);
@@ -5368,7 +5369,7 @@ const handleAnchorDragEnd = (anchorEvent: {
 .drag-preview {
   position: fixed;
   opacity: 0.5;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 2px dashed rgba(255, 255, 255, 0.8);
   z-index: var(--gantt-z-overlay);
   pointer-events: none;
@@ -5419,7 +5420,7 @@ const handleAnchorDragEnd = (anchorEvent: {
   background-color: rgba(0, 0, 0, 0.85);
   color: white;
   padding: 10px 14px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 12px;
   z-index: var(--gantt-z-overlay);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -5503,14 +5504,14 @@ const handleAnchorDragEnd = (anchorEvent: {
 :global(.gantt-root[data-theme='dark']) .task-bar {
   border-color: #111827 !important;
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.7),
-    0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    0 2px 12px rgba(0, 0, 0, 0.7),
+    0 1px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 :global(.gantt-root[data-theme='dark']) .task-bar:hover {
   box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.8),
-    0 4px 8px rgba(0, 0, 0, 0.4) !important;
+    0 3px 20px rgba(0, 0, 0, 0.8),
+    0 2px 8px rgba(0, 0, 0, 0.4) !important;
   transform: translateY(-2px);
   transition: all 0.2s ease;
 }

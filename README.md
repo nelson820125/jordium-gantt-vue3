@@ -2628,12 +2628,12 @@ Controls the style and interaction behavior of dependency links (GanttLinks) in 
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `type` | `'bezier' \| 'straight' \| 'orthogonal'` | `'bezier'` | Link path type. `'bezier'`: Bézier curve (default); `'straight'`: straight line; `'orthogonal'`: L/Z-shaped orthogonal polyline |
-| `color` | `string` | `'#c0c4cc'` | Normal link color |
+| `type` | `'bezier' \| 'straight' \| 'orthogonal'` | `'orthogonal'` | Link path type. `'bezier'`: Bézier curve; `'straight'`: straight line; `'orthogonal'`: L/Z-shaped orthogonal polyline (default) ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF) |
+| `color` | `string` | `'#aaa'` | Normal link color ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF)|
 | `highlightColor` | `string` | `'#409eff'` | Highlight link color (when hovering over dependent task) |
 | `hoverColor` | `string` | `'#67c23a'` | Hover link color |
 | `width` | `number` | `2` | Normal link line width |
-| `highlightWidth` | `number` | `4` | Highlight link line width |
+| `highlightWidth` | `number` | `3` ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF)| Highlight link line width |
 | `style` | `'dotted' \| 'solid'` | `'dotted'` | Link style. `'dotted'`: dashed line; `'solid'`: solid line |
 
 **Example 1: Static Configuration**

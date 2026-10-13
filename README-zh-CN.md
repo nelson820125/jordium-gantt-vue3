@@ -2770,12 +2770,12 @@ const taskBarConfig: TaskBarConfig = {
 
 | 字段名 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `type` | `'bezier' \| 'straight' \| 'orthogonal'` | `'bezier'` | 连线路径类型。`'bezier'`：贝塞尔曲线（默认）；`'straight'`：直线；`'orthogonal'`：L/Z 形正交折线 |
-| `color` | `string` | `'#c0c4cc'` | 普通连线颜色 |
+| `type` | `'bezier' \| 'straight' \| 'orthogonal'` | `'orthogonal'` | 连线路径类型。`'bezier'`：贝塞尔曲线；`'straight'`：直线；`'orthogonal'`：L/Z 形正交折线（默认）![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF) |
+| `color` | `string` | `'#aaa'` | 普通连线颜色 ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF) |
 | `highlightColor` | `string` | `'#409eff'` | 高亮连线颜色（鼠标悬停依赖任务时） |
 | `hoverColor` | `string` | `'#67c23a'` | 悬停连线颜色 |
 | `width` | `number` | `2` | 普通连线线宽 |
-| `highlightWidth` | `number` | `4` | 高亮连线线宽 |
+| `highlightWidth` | `number` | `3` ![v1.14.4](https://img.shields.io/badge/v1.14.4-409EFF?style=flat-square&labelColor=ECF5FF) | 高亮连线线宽 |
 | `style` | `'dotted' \| 'solid'` | `'dotted'` | 连线样式。`'dotted'`：虚线；`'solid'`：实线 |
 
 **示例1：静态配置**

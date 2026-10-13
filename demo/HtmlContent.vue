@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<Props>(), {})
 
 <style scoped>
 .html-content-card {
-  display: inline-block;
+  /* display: inline-block; */
 }
 
 .task-row {

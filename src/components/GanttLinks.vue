@@ -174,6 +174,10 @@ const drawLinks = () => {
         continue
       }
 
+      // 与 TaskBar.vue 的 CSS transform 保持一致（.task-bar.highlighted / .primary-highlight）
+      const HIGHLIGHT_SCALE = 1.05
+      const PRIMARY_SCALE = 1.08
+
       // 判断高亮状态
       const fromIsPrimary = props.highlightedTaskId === predecessorId
       const toIsPrimary = props.highlightedTaskId === task.id
@@ -190,10 +194,23 @@ const drawLinks = () => {
       const fromYOffset = fromIsPrimary ? -8 : fromIsHighlighted ? -5 : 0
       const toYOffset = toIsPrimary ? -8 : toIsHighlighted ? -5 : 0
 
-      // 计算坐标（全局坐标）
-      const globalX1 = fromBar.left + fromBar.width
+      // [2026-10-13][新增]：计算缩放系数（对应 scale()），transform-origin 默认 center，
+      // 向四周等比扩张，每侧扩张量 = (scale - 1) * 尺寸 / 2
+      const fromScale = fromIsPrimary ? PRIMARY_SCALE : fromIsHighlighted ? HIGHLIGHT_SCALE : 1
+      const toScale = toIsPrimary ? PRIMARY_SCALE : toIsHighlighted ? HIGHLIGHT_SCALE : 1
+
+      const fromWidthGrow = (fromBar.width * (fromScale - 1)) / 2
+      const toWidthGrow = (toBar.width * (toScale - 1)) / 2
+      // 如需连带修正正交路由用到的上下边缘，也可以算一份高度扩张量：
+      const fromHeightGrow = (fromBar.height * (fromScale - 1)) / 2
+      const toHeightGrow = (toBar.height * (toScale - 1)) / 2
+
+      // [2026-10-13][fix]计算坐标（全局坐标）
+      // 起点在前驱任务条【右边缘】，高亮放大后右边缘向右多凸出 fromWidthGrow
+      const globalX1 = fromBar.left + fromBar.width + fromWidthGrow
       const globalY1 = fromBar.top + fromBar.height / 2 + fromYOffset
-      const globalX2 = toBar.left
+      // 终点在后继任务条【左边缘】，高亮放大后左边缘向左多凸出 toWidthGrow
+      const globalX2 = toBar.left - toWidthGrow
       const globalY2 = toBar.top + toBar.height / 2 + toYOffset
 
       // 虚拟渲染：跳过不在 Canvas 覆盖范围内的关系线
@@ -301,11 +318,11 @@ const drawLinks = () => {
             { x: x2, y: y2 },
           ]
         } else {
-          // 计算两 bar 之间的垂直缝隙中点
-          const fromBottom = fromBar.top + fromBar.height
-          const toTopEdge = toBar.top
-          const toBottomEdge = toBar.top + toBar.height
-          const fromTopEdge = fromBar.top
+          // [2026-10-13][fix]计算两 bar 之间的垂直缝隙中点（高亮时边缘同步外扩）
+          const fromBottom = fromBar.top + fromBar.height + fromHeightGrow
+          const toTopEdge = toBar.top - toHeightGrow
+          const toBottomEdge = toBar.top + toBar.height + toHeightGrow
+          const fromTopEdge = fromBar.top - fromHeightGrow
           let globalGapY: number
           if (toTopEdge >= fromBottom) {
             globalGapY = fromBottom + (toTopEdge - fromBottom) / 2
@@ -407,7 +424,7 @@ const drawLinks = () => {
     ctx.stroke()
 
     for (const line of highlightedLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line), cfg.highlightWidth)
     }
   }
 
@@ -415,7 +432,7 @@ const drawLinks = () => {
   if (hoveredLines.length > 0) {
     ctx.strokeStyle = cfg.hoverColor
     ctx.fillStyle = cfg.hoverColor
-    ctx.lineWidth = 3
+    ctx.lineWidth = 2
     ctx.globalAlpha = 1
 
     ctx.beginPath()
@@ -425,7 +442,7 @@ const drawLinks = () => {
     ctx.stroke()
 
     for (const line of hoveredLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line), 2)
     }
   }
 
@@ -443,7 +460,7 @@ const drawLinks = () => {
     ctx.stroke()
 
     for (const line of normalLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line), cfg.width)
     }
   }
 
@@ -461,7 +478,7 @@ const drawLinks = () => {
     ctx.stroke()
 
     for (const line of fadedLines) {
-      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line))
+      drawArrowOptimized(ctx, line.x2, line.y2, getArrowAngle(line), cfg.width)
     }
 
     ctx.globalAlpha = 1
@@ -529,10 +546,26 @@ const drawOrthogonalPath = (
     ctx.lineTo(line.x2, line.y2)
     return
   }
+  const RADIUS = 2 // 固定圆角半径
+
   ctx.moveTo(pts[0].x, pts[0].y)
-  for (let i = 1; i < pts.length; i++) {
-    ctx.lineTo(pts[i].x, pts[i].y)
+
+  if (pts.length === 2) {
+    ctx.lineTo(pts[1].x, pts[1].y)
+    return
   }
+
+  // 中间点（不含首尾）逐个用 arcTo 切圆角，首尾两段仍是直线 lineTo
+  for (let i = 1; i < pts.length - 1; i++) {
+    const curr = pts[i]
+    const next = pts[i + 1]
+    // arcTo(x1, y1, x2, y2, radius)：以"当前点→下一点"为切线方向，在当前点处画圆角
+    ctx.arcTo(curr.x, curr.y, next.x, next.y, RADIUS)
+  }
+
+  // 收尾连到最后一个点
+  const last = pts[pts.length - 1]
+  ctx.lineTo(last.x, last.y)
 }
 
 /**
@@ -542,22 +575,36 @@ const drawArrowOptimized = (
   ctx: CanvasRenderingContext2D,
   x2: number,
   y2: number,
-  angle: number
+  angle: number,
+  lineWidth: number // [2026-10-13][新增] 当前线条的 lineWidth，用于联动箭头尺寸
 ) => {
-  const arrowLength = 8
-  const arrowWidth = 4
+  const BASE_LINE_WIDTH = 2 // 对应 DEFAULT_LINK_CONFIG.width 的基准线宽
+  const BASE_ARROW_LENGTH = 6
+  const BASE_ARROW_WIDTH = 4
+
+  // 按线宽比例缩放，钳制范围避免过粗/过细线时箭头畸形
+  const scale = Math.min(2, Math.max(0.75, lineWidth / BASE_LINE_WIDTH))
+  const arrowLength = BASE_ARROW_LENGTH * scale
+  const arrowWidth = BASE_ARROW_WIDTH * scale
+  const CORNER_RADIUS = 1 // 箭头三个角的圆角半径，数值越大越钝
+
+  // 三角形三个顶点：尖端(tip) + 两个后翼(back1/back2)
+  const tip = { x: x2, y: y2 }
+  const back1 = {
+    x: x2 - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle),
+    y: y2 - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle),
+  }
+  const back2 = {
+    x: x2 - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle),
+    y: y2 - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle),
+  }
 
   ctx.beginPath()
-  // fillStyle 已在外部设置，无需重复设置
-  ctx.moveTo(x2, y2)
-  ctx.lineTo(
-    x2 - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle),
-    y2 - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle)
-  )
-  ctx.lineTo(
-    x2 - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle),
-    y2 - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle)
-  )
+  // 从 back1→tip 的中点开始，依次对 tip、back2、back1 三个角用 arcTo 切圆角
+  ctx.moveTo((back1.x + tip.x + 2) / 2, (back1.y + tip.y) / 2)
+  ctx.arcTo(tip.x + 2, tip.y, back2.x, back2.y, CORNER_RADIUS)
+  ctx.arcTo(back2.x, back2.y, back1.x, back1.y, CORNER_RADIUS)
+  ctx.arcTo(back1.x, back1.y, tip.x + 2, tip.y, CORNER_RADIUS)
   ctx.closePath()
   ctx.fill()
 }

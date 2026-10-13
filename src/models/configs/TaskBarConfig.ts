@@ -49,18 +49,18 @@ export interface LinkConfig {
   hoverColor?: string
   /** 普通连线线宽，默认 2 */
   width?: number
-  /** 高亮连线线宽，默认 4 */
+  /** 高亮连线线宽，默认 3 */
   highlightWidth?: number
   /** 连线样式，'dotted' 虚线 | 'solid' 实线，默认 'dotted' */
   style?: 'dotted' | 'solid'
 }
 
 export const DEFAULT_LINK_CONFIG: Required<LinkConfig> = {
-  type: 'bezier',
-  color: '#c0c4cc',
+  type: 'orthogonal',
+  color: '#aaa',
   highlightColor: '#409eff',
   hoverColor: '#67c23a',
   width: 2,
-  highlightWidth: 4,
+  highlightWidth: 3,
   style: 'dotted',
 }
