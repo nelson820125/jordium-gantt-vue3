@@ -952,8 +952,8 @@
     "version": "1.14.4",
     "date": "2026-10-13",
     "notes": [
-      "🔧 优化：Taskbar组件以及连线样式优化",
-      "🔧 Optimized: TaskBar component and GanttLink styles."
+      "🔧 优化：Taskbar组件、GanttToolbar以及连线样式优化",
+      "🔧 Optimized: TaskBar component, GanttToolbar, and GanttLink styles."
     ]
   }
 ]

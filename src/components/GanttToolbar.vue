@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolbarConfig } from '../models/configs/ToolbarConfig'
@@ -1437,7 +1437,7 @@ onUnmounted(() => {
   height: 36px;
   padding: 0 12px;
   border-radius: 4px;
-  background: transparent;
+  background: var(--gantt-bg-primary, #ffffff);
   border: 1px solid var(--gantt-border-color, #dcdfe6);
   color: var(--gantt-text-primary, #606266);
   cursor: pointer;
@@ -1447,9 +1447,9 @@ onUnmounted(() => {
 }
 
 .toolbar-lang-btn:hover {
-  background: var(--gantt-bg-hover, #f5f7fa);
-  border-color: var(--gantt-primary-color, #409eff);
-  color: var(--gantt-primary-color, #409eff);
+  background: #ecf5ff;
+  border-color: #b3d8ff;
+  color: #409eff;
 }
 
 .toolbar-lang-btn:focus {
@@ -1603,23 +1603,23 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式样式 */
-:global(.gantt-root[data-theme='dark']) .toolbar-icon-btn:hover {
+.gantt-root[data-theme='dark'] .toolbar-icon-btn:hover {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.08));
   color: var(--gantt-primary, #66b1ff);
 }
 
-:global(.gantt-root[data-theme='dark']) .toolbar-icon-btn:focus {
+.gantt-root[data-theme='dark'] .toolbar-icon-btn:focus {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.1));
   color: var(--gantt-primary, #66b1ff);
 }
 
-:global(.gantt-root[data-theme='dark']) .toolbar-lang-btn:hover {
-  background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.06));
-  border-color: var(--gantt-primary, #66b1ff);
-  color: var(--gantt-primary, #66b1ff);
+.gantt-root[data-theme='dark'] .toolbar-lang-btn:hover {
+  color: var(--gantt-primary, #3399ff) !important;
+  background: var(--gantt-bg-secondary, #4b4b4b);
+  border-color: var(--gantt-primary, #3399ff);
 }
 
-:global(.gantt-root[data-theme='dark']) .toolbar-lang-btn:focus {
+.gantt-root[data-theme='dark'] .toolbar-lang-btn:focus {
   background: var(--gantt-bg-hover, rgba(255, 255, 255, 0.08));
   border-color: var(--gantt-primary, #66b1ff);
   color: var(--gantt-primary, #66b1ff);
@@ -1687,19 +1687,13 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 
-.gantt-btn-group:hover,
-.gantt-btn-group:focus-within {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
-}
-
 .gantt-btn-group-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 10px;
-  border: 1px solid;
-  background: #ffffff;
+  background: var(--gantt-bg-primary, #ffffff);
+  border: 1px solid var(--gantt-border-color, #dcdfe6);
   color: #606266;
   font-size: 14px;
   font-weight: 500;
@@ -1816,11 +1810,11 @@ onUnmounted(() => {
   overflow: hidden;
   padding: 1px;
   transition: border-color 0.2s ease;
-  height: 36px;
+  height: 34px;
 }
 
 .gantt-view-mode-control:hover {
-  border-color: var(--gantt-primary-light, #79bbff);
+  border-color: #b3d8ff;
 }
 
 .view-mode-track {
@@ -1868,8 +1862,8 @@ onUnmounted(() => {
 }
 
 .view-mode-item:hover:not(.active) {
-  color: var(--gantt-primary, #409eff);
-  background: var(--gantt-bg-hover, rgba(64, 158, 255, 0.06));
+  background: #ecf5ff;
+  color: #409eff;
 }
 
 .view-mode-item:active:not(.active) {
@@ -1889,79 +1883,75 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式下的视图模式切换样式 */
-:global(.gantt-root[data-theme='dark']) .gantt-view-mode-control {
-  background: var(--gantt-bg-secondary, #4b4b4b);
+.gantt-root[data-theme='dark'] .gantt-view-mode-control {
   border-color: var(--gantt-border-color, #808080);
 }
 
-:global(.gantt-root[data-theme='dark']) .gantt-view-mode-control:hover {
+.gantt-root[data-theme='dark'] .gantt-view-mode-control:hover {
   border-color: var(--gantt-primary, #3399ff);
 }
 
-:global(.gantt-root[data-theme='dark']) .view-mode-thumb {
+.gantt-root[data-theme='dark'] .view-mode-thumb {
   background: var(--gantt-primary, #3399ff);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.3),
-    0 1px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
-:global(.gantt-root[data-theme='dark']) .view-mode-item {
+.gantt-root[data-theme='dark'] .view-mode-item {
   color: #ffffff !important;
 }
 
-:global(.gantt-root[data-theme='dark']) .view-mode-item:hover:not(.active) {
-  color: var(--gantt-primary, #3399ff);
-  background: rgba(51, 153, 255, 0.12);
+.gantt-root[data-theme='dark'] .view-mode-item:hover:not(.active) {
+  color: var(--gantt-primary, #3399ff) !important;
+  background: var(--gantt-bg-secondary, #4b4b4b);
 }
 
-:global(.gantt-root[data-theme='dark']) .view-mode-item:active:not(.active) {
+.gantt-root[data-theme='dark'] .view-mode-item:active:not(.active) {
   background: rgba(51, 153, 255, 0.2);
 }
 
-:global(.gantt-root[data-theme='dark']) .view-mode-item.active {
+.gantt-root[data-theme='dark'] .view-mode-item.active {
   color: #ffffff;
 }
 
 /* 暗黑模式下的按钮组样式 */
-:global(.gantt-root[data-theme='dark']) .gantt-btn-group {
-  box-shadow:
-    0 1px 3px 0 rgba(0, 0, 0, 0.3),
-    0 1px 2px -1px rgba(0, 0, 0, 0.3);
+.gantt-root[data-theme='dark'] .gantt-btn-group {
+  border-color: var(--gantt-border-color, #808080);
 }
 
-:global(.gantt-root[data-theme='dark']) .gantt-btn-group:hover,
-:global(.gantt-root[data-theme='dark']) .gantt-btn-group:focus-within {
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
-}
-
-:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item {
+.gantt-root[data-theme='dark'] .add-btn-group .gantt-btn-group-item {
   background: #337ecc;
   border-color: #337ecc;
   color: #ffffff;
 }
 
-:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item:hover {
+.gantt-root[data-theme='dark'] .add-btn-group .gantt-btn-group-item:hover {
   background: #4d94d4;
   border-color: #4d94d4;
 }
 
-:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item:focus {
+.gantt-root[data-theme='dark'] .add-btn-group .gantt-btn-group-item:focus {
   background: #2c5aa0;
   border-color: #2c5aa0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
-:global(.gantt-root[data-theme='dark']) .add-btn-group .gantt-btn-group-item:active {
+.gantt-root[data-theme='dark'] .add-btn-group .gantt-btn-group-item:active {
   background: #1f4872;
   border-color: #1f4872;
 }
 
-:global(.gantt-root[data-theme='dark'])
+.gantt-root[data-theme='dark'] .gantt-btn-group:not(.gantt-add-btn-group) .gantt-btn-group-item {
+  /* background: #2c2c2c; */
+  border-color: var(--gantt-border-color, #808080);
+  color: #fff;
+  /* background: var(--gantt-bg-secondary, #4b4b4b); */
+}
+
+.gantt-root[data-theme='dark']
   .gantt-btn-group:not(.gantt-add-btn-group)
-  .gantt-btn-group-item {
-  background: #2c2c2c;
-  border-color: #4c4c4c;
-  color: #e5e5e5;
+  .gantt-btn-group-item:hover {
+  border-color: var(--gantt-primary, #3399ff);
+  color: var(--gantt-primary, #3399ff) !important;
+  background: var(--gantt-bg-secondary, #4b4b4b);
 }
 
 /* 分段控制器样式 - Element Plus Segmented 风格 */
@@ -1979,7 +1969,7 @@ onUnmounted(() => {
 }
 
 .segmented-control:hover {
-  border-color: var(--gantt-primary-light, #79bbff);
+  border-color: #b3d8ff;
 }
 
 .segmented-track {
@@ -2027,8 +2017,8 @@ onUnmounted(() => {
 }
 
 .segmented-item:hover:not(.active) {
-  color: var(--gantt-primary, #409eff);
-  background: var(--gantt-bg-hover, rgba(64, 158, 255, 0.06));
+  background: #ecf5ff;
+  color: #409eff;
 }
 
 .segmented-item:active:not(.active) {
@@ -2051,41 +2041,37 @@ onUnmounted(() => {
 }
 
 /* 暗黑模式下的分段控制器样式 */
-:global(.gantt-root[data-theme='dark']) .segmented-control {
-  background: var(--gantt-bg-secondary, #4b4b4b);
+.gantt-root[data-theme='dark'] .segmented-control {
   border-color: var(--gantt-border-color, #808080);
 }
 
-:global(.gantt-root[data-theme='dark']) .segmented-control:hover {
+.gantt-root[data-theme='dark'] .segmented-control:hover {
   border-color: var(--gantt-primary, #3399ff);
 }
 
-:global(.gantt-root[data-theme='dark']) .segmented-thumb {
+.gantt-root[data-theme='dark'] .segmented-thumb {
   background: var(--gantt-primary, #3399ff);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.3),
-    0 1px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
-:global(.gantt-root[data-theme='dark']) .segmented-item {
+.gantt-root[data-theme='dark'] .segmented-item {
   color: #ffffff !important; /* 强制使用纯白色，更加突出 */
 }
 
 /* 特别针对时间刻度分段控制器的暗黑模式样式 */
-:global(.gantt-root[data-theme='dark']) .time-scale-segmented .segmented-item {
+.gantt-root[data-theme='dark'] .time-scale-segmented .segmented-item {
   color: #ffffff !important; /* 确保时间刻度按钮也使用纯白色 */
 }
 
-:global(.gantt-root[data-theme='dark']) .segmented-item:hover:not(.active) {
-  color: var(--gantt-primary, #3399ff); /* 使用主色调，更加鲜艳 */
-  background: rgba(51, 153, 255, 0.12); /* 调整背景透明度，与主色调匹配 */
+.gantt-root[data-theme='dark'] .segmented-item:hover:not(.active) {
+  color: var(--gantt-primary, #3399ff) !important;
+  background: var(--gantt-bg-secondary, #4b4b4b);
 }
 
-:global(.gantt-root[data-theme='dark']) .segmented-item:active:not(.active) {
+.gantt-root[data-theme='dark'] .segmented-item:active:not(.active) {
   background: rgba(51, 153, 255, 0.2); /* 调整背景透明度，与主色调匹配 */
 }
 
-:global(.gantt-root[data-theme='dark']) .segmented-item.active {
+.gantt-root[data-theme='dark'] .segmented-item.active {
   color: #ffffff;
 }
 </style>

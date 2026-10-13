@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.14.4] - 2026-10-13
 
 ### Changed
-- 🔧 优化：Taskbar组件以及连线样式优化
-- 🔧 Optimized: TaskBar component and GanttLink styles.
+- 🔧 优化：Taskbar组件、GanttToolbar以及连线样式优化
+- 🔧 Optimized: TaskBar component, GanttToolbar, and GanttLink styles.
 
 ## [1.14.3] - 2026-10-12
 
