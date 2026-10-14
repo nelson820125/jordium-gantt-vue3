@@ -4500,14 +4500,14 @@ const handleAnchorDragEnd = (anchorEvent: {
   top: auto;
   height: calc(var(--allocation-capacity, 1) * 100%);
   z-index: 1;
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 0 2px 2px;
   pointer-events: none;
   box-shadow: 2px 0 6px rgba(0, 0, 0, 0.8); /* 右侧黑色阴影，增强层次感 */
 }
 
 /* 占比100%时，进度条四个角圆角 */
 .task-bar.resource-view[style*='--allocation-capacity: 1'] .progress-bar {
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /* 已完成任务的进度条不显示阴影 */
@@ -4530,41 +4530,6 @@ const handleAnchorDragEnd = (anchorEvent: {
 .task-bar.resource-view:hover::after {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
-
-/* v1.9.0 资源冲突样式 - 已移除，由GanttConflicts组件独立渲染 */
-/*
-.task-bar.resource-conflict::before {
-  border-color: var(--gantt-error-color, #f56c6c) !important;
-  opacity: 1 !important;
-  z-index: 10 !important;
-}
-
-.task-bar.resource-conflict::after {
-  border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
-  background-color: rgba(245, 108, 108, 0.12) !important;
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 10px,
-      rgba(245, 108, 108, 0.1) 10px,
-      rgba(245, 108, 108, 0.1) 20px
-    ) !important;
-  z-index: 1 !important;
-}
-
-.task-bar.completed.resource-conflict::after {
-  background-color: transparent !important;
-  background-image: none !important;
-  border-left: 3px solid var(--gantt-error-color, #f56c6c) !important;
-}
-
-.task-bar.resource-conflict .task-name,
-.task-bar.resource-conflict .task-progress {
-  font-weight: 600;
-  z-index: 11;
-}
-*/
 
 .task-bar.dragging {
   opacity: 0.8;
@@ -4693,6 +4658,14 @@ const handleAnchorDragEnd = (anchorEvent: {
   height: 100%;
   opacity: 0.3;
   transition: width 0.3s ease;
+  border-radius: 0 0 2px 2px;
+  pointer-events: none;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.8); /* 右侧黑色阴影，增强层次感 */
+}
+
+/* 已完成任务的进度条不显示阴影 */
+.task-bar.completed .progress-bar {
+  box-shadow: none;
 }
 
 /* 实际进度条样式 - 独立在顶层渲染 */
