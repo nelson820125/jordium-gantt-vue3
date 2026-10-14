@@ -42,6 +42,10 @@
 </p> -->
 
 <p align="center">
+  <a href="https://gantt.jordium.com">
+    <strong>🌐 Official Website</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
     <strong>📱 Gitee Live Demo</strong>
   </a>
@@ -60,6 +64,10 @@
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
     <strong>📚 npm</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="https://github.com/nelson820125/jordium-gantt-vue3/discussions">
+    <strong>💬 Feedback & Ideas</strong>
   </a>
 </p>
 
@@ -4551,6 +4559,24 @@ View the complete [Contributors list](./CONTRIBUTORS.md)。
 ## � Troubleshooting
 
 For common issues and solutions, please refer to [Troubleshooting-EN.md](./Troubleshooting-EN.md).
+
+---
+
+## 💬 Feedback & Feature Requests
+
+Your feedback helps improve Jordium Gantt and shape its future development.
+
+- **Share your experience:** Tell us how you're using Jordium Gantt in your projects.
+- **Suggest improvements:** Share ideas for new features, usability improvements, or customization options.
+- **Discuss use cases:** Describe your requirements or challenges when building Gantt chart applications.
+
+Join the discussion on GitHub:
+
+👉 [Share Your Feedback and Ideas](https://github.com/nelson820125/jordium-gantt-vue3/discussions)
+
+All feedback is welcome. While not every suggestion can be implemented, your input helps guide future improvements.
+
+Thanks for supporting Jordium Gantt!
 
 ---
 

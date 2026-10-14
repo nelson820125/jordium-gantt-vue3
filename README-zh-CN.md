@@ -42,6 +42,10 @@
 </p> -->
 
 <p align="center">
+  <a href="https://gantt.jordium.com">
+    <strong>🌐 官方网站</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://jordium.gitee.io/jordium-gantt-vue3/">
     <strong>📱 Gitee在线演示</strong>
   </a>
@@ -60,6 +64,10 @@
   &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://www.npmjs.com/package/jordium-gantt-vue3">
     <strong>📚 npm</strong>
+  </a>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="https://github.com/nelson820125/jordium-gantt-vue3/discussions">
+    <strong>💬 反馈与建议</strong>
   </a>
 </p>
 
@@ -4695,6 +4703,26 @@ TaskList 组件经过深度重构，采用模块化设计，提升了代码可�
 ## Troubleshooting
 
 常见问题与解决方案请参阅 [Troubleshooting.md](./Troubleshooting.md)。
+
+---
+
+---
+
+## 💬 反馈与功能建议
+
+你的反馈将帮助 Jordium Gantt 持续改进，并为后续开发方向提供参考。
+
+- **分享使用体验：** 介绍你如何在实际项目中使用 Jordium Gantt。
+- **提出改进建议：** 分享你希望新增的功能、易用性优化或自定义能力。
+- **交流实际场景：** 描述你在构建甘特图应用时遇到的需求与挑战。
+
+欢迎在 GitHub Discussions 中参与讨论：
+
+👉 [分享反馈与功能建议](https://github.com/nelson820125/jordium-gantt-vue3/discussions)
+
+我们欢迎各种意见和建议。虽然无法承诺实现每一项需求，但你的反馈将帮助我们更好地规划后续改进。
+
+感谢你对 Jordium Gantt 的支持！
 
 ---
 
